@@ -1276,7 +1276,7 @@ void
 report_heap_memory_use ()
 {
 #if defined(HAVE_MALLINFO) || defined(HAVE_MALLINFO2)
-#ifdef HAVE_MALLINFO2
+#if defined HAVE_MALLINFO2 && HAVE_DECL_MALLINFO2
   #define MALLINFO_FN mallinfo2
 #else
   #define MALLINFO_FN mallinfo
