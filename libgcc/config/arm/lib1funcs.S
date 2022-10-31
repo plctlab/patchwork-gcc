@@ -69,11 +69,13 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #define TYPE(x) .type SYM(x),function
 #define SIZE(x) .size SYM(x), . - SYM(x)
 #define LSYM(x) .x
+#define LLSYM(x) .L##x
 #else
 #define __PLT__
 #define TYPE(x)
 #define SIZE(x)
 #define LSYM(x) x
+#define LLSYM(x) x
 #endif
 
 /* Function end macros.  Variants for interworking.  */
@@ -180,6 +182,16 @@ LSYM(Lend_fde):
 	.popsection
 \end_label:
 #endif
+.endm
+
+.macro CFI_START_FUNCTION
+	.cfi_startproc
+	.cfi_remember_state
+.endm
+
+.macro CFI_END_FUNCTION
+	.cfi_restore_state
+	.cfi_endproc
 .endm
 
 /* Don't pass dirn, it's there just to get token pasting right.  */
@@ -324,10 +336,6 @@ LSYM(Lend_fde):
 .endm
 #endif
 
-.macro FUNC_END name
-	SIZE (__\name)
-.endm
-
 .macro DIV_FUNC_END name signed
 	cfi_start	__\name, LSYM(Lend_div0)
 LSYM(Ldiv0):
@@ -340,48 +348,76 @@ LSYM(Ldiv0):
 	FUNC_END \name
 .endm
 
-.macro THUMB_FUNC_START name
-	.globl	SYM (\name)
-	TYPE	(\name)
-	.thumb_func
-SYM (\name):
-.endm
-
 /* Function start macros.  Variants for ARM and Thumb.  */
 
 #ifdef __thumb__
 #define THUMB_FUNC .thumb_func
 #define THUMB_CODE .force_thumb
-# if defined(__thumb2__)
-#define THUMB_SYNTAX
-# else
-#define THUMB_SYNTAX
-# endif
 #else
 #define THUMB_FUNC
 #define THUMB_CODE
-#define THUMB_SYNTAX
 #endif
 
-.macro FUNC_START name
-	.text
-	.globl SYM (__\name)
-	TYPE (__\name)
-	.align 0
-	THUMB_CODE
-	THUMB_FUNC
-	THUMB_SYNTAX
-SYM (__\name):
-.endm
-
-.macro ARM_SYM_START name
-       TYPE (\name)
-       .align 0
+.macro THUMB_FUNC_START name
+	.globl  SYM (\name)
+	TYPE    (\name)
+	.thumb_func
 SYM (\name):
 .endm
 
-.macro SYM_END name
-       SIZE (\name)
+/* Strong global symbol, ".text" section.
+   The default macro for function declarations. */
+.macro FUNC_START name
+	FUNC_START_SECTION \name .text
+.endm
+
+/* Weak global symbol, ".text" section.
+   Use WEAK_* macros to declare a function/object that may be discarded in by
+    the linker when another library or object exports the same name.
+   Typically, functions declared with WEAK_* macros implement a subset of
+    functionality provided by the overriding definition, and are discarded
+    when the full functionality is required. */
+.macro WEAK_START name
+	.weak SYM(__\name)
+	FUNC_START_SECTION \name .text
+.endm
+
+/* Strong global symbol, alternate section.
+   Use the *_START_SECTION macros for declarations that the linker should
+    place in a non-defailt section (e.g. ".rodata", ".text.subsection"). */
+.macro FUNC_START_SECTION name section
+	.section \section,"x"
+	.align 0
+	FUNC_ENTRY \name
+.endm
+
+/* Weak global symbol, alternate section. */
+.macro WEAK_START_SECTION name section
+	.weak SYM(__\name)
+	FUNC_START_SECTION \name \section
+.endm
+
+/* Strong global symbol.
+   Use *_ENTRY macros internal to a function/object body to declare a second
+    or subsequent entry point without changing the assembler state.
+   Because there is no alignment specification, these macros should never
+    replace the *_START_* macros as the first declaration in any object. */
+.macro FUNC_ENTRY name
+	.globl SYM (__\name)
+	TYPE (__\name)
+	THUMB_CODE
+	THUMB_FUNC
+SYM (__\name):
+.endm
+
+/* Weak global symbol. */
+.macro WEAK_ENTRY name
+	.weak SYM(__\name)
+	FUNC_ENTRY \name
+.endm
+
+.macro FUNC_END name
+	SIZE (__\name)
 .endm
 
 /* Special function that will always be coded in ARM assembly, even if
@@ -445,6 +481,11 @@ SYM (__\name):
 #else
 	.set	SYM (__\new), SYM (__\old)
 #endif
+.endm
+
+.macro WEAK_ALIAS new old
+	.weak SYM(__\new)
+	FUNC_ALIAS \new \old
 .endm
 
 #ifndef NOT_ISA_TARGET_32BIT
@@ -1459,10 +1500,8 @@ LSYM(Lover12):
 #ifdef L_dvmd_tls
 
 #ifdef __ARM_EABI__
-	WEAK aeabi_idiv0
-	WEAK aeabi_ldiv0
-	FUNC_START aeabi_idiv0
-	FUNC_START aeabi_ldiv0
+	WEAK_START aeabi_idiv0
+	WEAK_START aeabi_ldiv0
 	RET
 	FUNC_END aeabi_ldiv0
 	FUNC_END aeabi_idiv0
@@ -2169,16 +2208,6 @@ LSYM(Lchange_\register):
 #endif
 
 #endif /* Arch supports thumb.  */
-
-.macro CFI_START_FUNCTION
-	.cfi_startproc
-	.cfi_remember_state
-.endm
-
-.macro CFI_END_FUNCTION
-	.cfi_restore_state
-	.cfi_endproc
-.endm
 
 #ifndef __symbian__
 /* The condition here must match the one in gcc/config/arm/elf.h and
