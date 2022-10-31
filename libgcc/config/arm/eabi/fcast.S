@@ -254,3 +254,280 @@ FUNC_END D2F_NAME
 
 #endif /* L_arm_d2f || L_arm_truncdfsf2 */
 
+
+#if defined(L_aeabi_h2f_ieee) || defined(L_aeabi_h2f_alt)
+
+#ifdef L_aeabi_h2f_ieee
+  #define H2F_NAME aeabi_h2f
+  #define H2F_ALIAS gnu_h2f_ieee
+#else
+  #define H2F_NAME aeabi_h2f_alt
+  #define H2F_ALIAS gnu_h2f_alternative
+#endif
+
+// float __aeabi_h2f(short hf)
+// float __aeabi_h2f_alt(short hf)
+// Converts a half-precision float in $r0 to single-precision.
+// Rounding, overflow, and underflow conditions are impossible.
+// In IEEE mode, INF, ZERO, and NAN are returned unmodified.
+FUNC_START_SECTION H2F_NAME .text.sorted.libgcc.h2f
+FUNC_ALIAS H2F_ALIAS H2F_NAME
+    CFI_START_FUNCTION
+
+        // Set up registers for __fp_normalize2().
+        push    { rT, lr }
+                .cfi_remember_state
+                .cfi_adjust_cfa_offset 8
+                .cfi_rel_offset rT, 0
+                .cfi_rel_offset lr, 4
+
+        // Save the mantissa and exponent.
+        lsls    r2,     r0,     #17
+
+        // Isolate the sign.
+        lsrs    r0,     #15
+        lsls    r0,     #31
+
+        // Align the exponent at bit[24] for normalization.
+        // If zero, return the original sign.
+        lsrs    r2,     #3
+
+      #ifdef __HAVE_FEATURE_IT
+        do_it   eq
+        RETc(eq)
+      #else
+        beq     LLSYM(__h2f_return)
+      #endif
+
+        // Split the exponent and mantissa into separate registers.
+        // This is the most efficient way to convert subnormals in the
+        //  half-precision form into normals in single-precision.
+        // This does add a leading implicit '1' to INF and NAN,
+        //  but that will be absorbed when the value is re-assembled.
+        bl      SYM(__fp_normalize2) __PLT__
+
+   #ifdef L_aeabi_h2f_ieee
+        // Set up the exponent bias.  For INF/NAN values, the bias is 223,
+        //  where the last '1' accounts for the implicit '1' in the mantissa.
+        adds    r2,     #(255 - 31 - 1)
+
+        // Test for INF/NAN.
+        cmp     r2,     #254
+
+      #ifdef __HAVE_FEATURE_IT
+        do_it   ne
+      #else
+        beq     LLSYM(__h2f_assemble)
+      #endif
+
+        // For normal values, the bias should have been 111.
+        // However, this offset must be adjusted per the INF check above.
+     IT(sub,ne) r2,     #((255 - 31 - 1) - (127 - 15 - 1))
+
+    #else /* L_aeabi_h2f_alt */
+        // Set up the exponent bias.  All values are normal.
+        adds    r2,     #(127 - 15 - 1)
+    #endif
+
+    LLSYM(__h2f_assemble):
+        // Combine exponent and sign.
+        lsls    r2,     #23
+        adds    r0,     r2
+
+        // Combine mantissa.
+        lsrs    r3,     #8
+        add     r0,     r3
+
+    LLSYM(__h2f_return):
+        pop     { rT, pc }
+                .cfi_restore_state
+
+    CFI_END_FUNCTION
+FUNC_END H2F_NAME
+FUNC_END H2F_ALIAS
+
+#endif /* L_aeabi_h2f_ieee || L_aeabi_h2f_alt */
+
+
+#if defined(L_aeabi_f2h_ieee) || defined(L_aeabi_f2h_alt)
+
+#ifdef L_aeabi_f2h_ieee
+  #define F2H_NAME aeabi_f2h
+  #define F2H_ALIAS gnu_f2h_ieee
+#else
+  #define F2H_NAME aeabi_f2h_alt
+  #define F2H_ALIAS gnu_f2h_alternative
+#endif
+
+// short __aeabi_f2h(float f)
+// short __aeabi_f2h_alt(float f)
+// Converts a single-precision float in $r0 to half-precision,
+//  rounding to nearest, ties to even.
+// Values out of range are forced to either ZERO or INF.
+// In IEEE mode, the upper 12 bits of a NAN will be preserved.
+FUNC_START_SECTION F2H_NAME .text.sorted.libgcc.f2h
+FUNC_ALIAS F2H_ALIAS F2H_NAME
+    CFI_START_FUNCTION
+
+        // Set up the sign.
+        lsrs    r2,     r0,     #31
+        lsls    r2,     #15
+
+        // Save the exponent and mantissa.
+        // If ZERO, return the original sign.
+        lsls    r0,     #1
+
+      #ifdef __HAVE_FEATURE_IT
+        do_it   ne,t
+        addne   r0,     r2
+        RETc(ne)
+      #else
+        beq     LLSYM(__f2h_return)
+      #endif
+
+        // Isolate the exponent.
+        lsrs    r1,     r0,     #24
+
+  #ifdef L_aeabi_f2h_ieee
+        // Check for NAN.
+        cmp     r1,     #255
+        beq     LLSYM(__f2h_indefinite)
+
+        // Check for overflow.
+        cmp     r1,     #(127 + 15)
+        bhi     LLSYM(__f2h_overflow)
+
+  #else /* L_aeabi_f2h_alt */
+        // Detect overflow.
+        subs    r1,     #(127 + 16)
+        rsbs    r3,     r1,     $0
+        asrs    r3,     #31
+
+        // Saturate the mantissa on overflow.
+        bics    r0,     r3
+        lsrs    r3,     #17
+	orrs    r0,     r3
+        bcs     LLSYM(__f2h_return)
+
+  #endif /* L_aeabi_f2h_alt */
+
+        // Isolate the mantissa, adding back the implicit '1'.
+        lsls    r0,     #8
+        adds    r0,     #1
+        rors    r0,     r0
+
+        // Adjust exponent bias for half-precision, including '1' to
+        //  account for the mantissa's implicit '1'.
+      #ifdef L_aeabi_f2h_ieee
+        subs    r1,     #(127 - 15 + 1)
+      #else
+        adds    r1,     #((127 + 16) - (127 - 15 + 1))
+      #endif
+
+        bmi     LLSYM(__f2h_underflow)
+
+        // This next part is delicate.  The rouncing check requires a scratch
+        //  register, but the sign can't be merged in until after the final
+        //  overflow check below. Prepare the exponent.
+        // The mantissa and exponent can be combined, but the exponent
+        //  must be prepared now while the flags don't matter.
+        lsls    r1,     #10
+
+        // Split the mantissa (11 bits) and remainder (13 bits).
+        lsls    r3,     r0,     #12
+        lsrs    r0,     #21
+
+        // Combine mantissa and exponent without affecting flags.
+        add     r0,     r1
+
+     LLSYM(__f2h_round):
+        // If the carry bit is '0', always round down.
+      #ifdef __HAVE_FEATURE_IT
+        do_it   cs,t
+        addcs   r0,     r2
+        RETc(cs)
+      #else
+        bcc     LLSYM(__f2h_return)
+      #endif
+
+        // Carry was set.  If a tie (no remainder) and the
+        //  LSB of the result is '0', round down (to even).
+        lsls    r1,     r0,     #31
+        orrs    r1,     r3
+
+      #ifdef __HAVE_FEATURE_IT
+        do_it   ne
+      #else
+        beq     LLSYM(__f2h_return)
+      #endif
+
+        // Round up, ties to even.
+     IT(add,ne) r0,     #1
+
+  #ifndef L_aeabi_f2h_ieee
+        // HACK: The result may overflow to -0 not INF in alt mode.
+        // Subtract overflow to reverse.
+        lsrs    r3,    r0,    #15
+        subs    r0,    r3
+  #endif
+
+     LLSYM(__f2h_return):
+        // Combine mantissa and exponent with the sign.
+        adds    r0,     r2
+        RET
+
+    LLSYM(__f2h_underflow):
+        // Align the remainder. The remainder consists of the last 12 bits
+        //  of the mantissa plus the magnitude of underflow.
+        movs    r3,     r0
+        adds    r1,     #12
+        lsls    r3,     r1
+
+        // Align the mantissa.  The MSB of the remainder must be
+        // shifted out last into the 'C' flag for rounding.
+        subs    r1,     #33
+        rsbs    r1,     #0
+        lsrs    r0,     r1
+        b       LLSYM(__f2h_round)
+
+  #ifdef L_aeabi_f2h_ieee
+    LLSYM(__f2h_overflow):
+        // Create single-precision INF from which to construct half-precision.
+        movs    r0,     #255
+        lsls    r0,     #24
+
+    LLSYM(__f2h_indefinite):
+        // Check for INF.
+        lsls    r3,     r0,     #8
+
+      #ifdef __HAVE_FEATURE_IT
+        do_it   ne,t
+      #else
+        beq     LLSYM(__f2h_infinite)
+      #endif
+
+        // HACK: The ARM specification states "the least significant 13 bits
+        //  of a NAN are lost in the conversion." But what happens when the
+        //  NAN-ness of the value resides in these 13 bits?
+        // Set bit[8] to ensure NAN without changing bit[9] (quiet).
+     IT(add,ne) r2,     #128
+     IT(add,ne) r2,     #128
+
+    LLSYM(__f2h_infinite):
+        // Construct the result from the upper 11 bits of the mantissa
+        //  and the lower 5 bits of the exponent.
+        lsls    r0,     #3
+        lsrs    r0,     #17
+
+        // Combine with the sign (and possibly NAN flag).
+        orrs    r0,     r2
+        RET
+
+  #endif /* L_aeabi_f2h_ieee */
+
+    CFI_END_FUNCTION
+FUNC_END F2H_NAME
+FUNC_END F2H_ALIAS
+
+#endif  /* L_aeabi_f2h_ieee || L_aeabi_f2h_alt */
+
