@@ -30,6 +30,7 @@ LIB1ASMFUNCS += \
 ifeq (__ARM_ARCH_ISA_THUMB 1,$(ARM_ISA)$(THUMB1_ISA))
 # Group 0B: WEAK overridable function objects built for v6m only.
 LIB1ASMFUNCS += \
+	_internal_cmpsf2 \
 	_muldi3 \
 	
 endif
@@ -79,6 +80,23 @@ LIB1ASMFUNCS += \
 	_arm_muldivsf3 \
 	_arm_negsf2 \
 	_arm_unordsf2 \
+
+ifeq (__ARM_ARCH_ISA_THUMB 1,$(ARM_ISA)$(THUMB1_ISA))
+# Group 2B: Single precision function objects built for v6m only.
+LIB1ASMFUNCS += \
+        _arm_cfcmpeq \
+        _arm_cfcmple \
+        _arm_cfrcmple \
+        _arm_fcmpeq \
+        _arm_fcmpge \
+        _arm_fcmpgt \
+        _arm_fcmple \
+        _arm_fcmplt \
+        _arm_fcmpne \
+        _arm_eqsf2 \
+        _arm_gesf2 \
+
+endif
 
 
 # Group 3: Double precision floating point function objects.
