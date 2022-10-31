@@ -26,14 +26,17 @@ LIB1ASMFUNCS += \
 	_ctzsi2 \
 	_paritysi2 \
 	_popcountsi2 \
+	_arm_floatundisf \
 	_arm_mulsf3 \
 
 ifeq (__ARM_ARCH_ISA_THUMB 1,$(ARM_ISA)$(THUMB1_ISA))
 # Group 0B: WEAK overridable function objects built for v6m only.
 LIB1ASMFUNCS += \
 	_internal_cmpsf2 \
+	_internal_floatundisf \
 	_muldi3 \
         _arm_addsf3 \
+	_arm_floatsisf \
 	
 endif
 
@@ -78,7 +81,6 @@ LIB1ASMFUNCS += \
 	_arm_fixsfsi \
 	_arm_fixunssfsi \
 	_arm_floatdisf \
-	_arm_floatundisf \
 	_arm_muldivsf3 \
 	_arm_negsf2 \
 	_arm_unordsf2 \
@@ -99,6 +101,7 @@ LIB1ASMFUNCS += \
         _arm_gesf2 \
         _arm_frsubsf3 \
 	_arm_divsf3 \
+	_arm_floatunsisf \
 	_fp_exceptionf \
 	_fp_checknanf \
 	_fp_assemblef \
