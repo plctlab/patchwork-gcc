@@ -1577,6 +1577,7 @@ LSYM(Lover12):
 
 #define PEDANTIC_DIV0 (1)
 #include "eabi/idiv.S"
+#include "eabi/ldiv.S"
 #endif /* NOT_ISA_TARGET_32BIT */
 
 /* ------------------------------------------------------------------------ */
