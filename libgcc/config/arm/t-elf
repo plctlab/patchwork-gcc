@@ -31,6 +31,8 @@ LIB1ASMFUNCS += \
 	_ashldi3 \
 	_ashrdi3 \
 	_lshrdi3 \
+	_clrsbsi2 \
+	_clrsbdi2 \
 	_clzdi2 \
 	_ctzdi2 \
 	_dvmd_tls \
