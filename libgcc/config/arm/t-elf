@@ -50,6 +50,15 @@ LIB1ASMFUNCS += \
 	_umodsi3 \
 
 
+ifeq (__ARM_ARCH_ISA_THUMB 1,$(ARM_ISA)$(THUMB1_ISA))
+# Group 1B: Integer functions built for v6m only.
+LIB1ASMFUNCS += \
+	_divdi3 \
+	_udivdi3 \
+
+endif
+
+
 # Group 2: Single precision floating point function objects.
 LIB1ASMFUNCS += \
 	_arm_addsubsf3 \
