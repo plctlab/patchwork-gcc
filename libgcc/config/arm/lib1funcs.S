@@ -2019,6 +2019,7 @@ LSYM(Lchange_\register):
 #include "eabi/fdiv.S"
 #include "eabi/ffixed.S"
 #include "eabi/ffloat.S"
+#include "eabi/fcast.S"
 #endif /* NOT_ISA_TARGET_32BIT */
 #include "eabi/lcmp.S"
 #endif /* !__symbian__ */
