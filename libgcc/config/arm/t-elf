@@ -19,13 +19,18 @@ endif # !__symbian__
 # assembly implementation here for double-precision values.
 
 
+# Group 0: WEAK overridable function objects.
+# See respective sources for rationale.
+LIB1ASMFUNCS += \
+        _clzsi2 \
+
+
 # Group 1: Integer function objects.
 LIB1ASMFUNCS += \
 	_ashldi3 \
 	_ashrdi3 \
 	_lshrdi3 \
 	_clzdi2 \
-	_clzsi2 \
 	_ctzsi2 \
 	_dvmd_tls \
 	_divsi3 \
