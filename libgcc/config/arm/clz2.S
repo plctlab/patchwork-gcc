@@ -1,4 +1,4 @@
-/* clz2.S: Cortex M0 optimized 'clz' functions
+/* clz2.S: ARM optimized 'clz' and related functions
 
    Copyright (C) 2018-2022 Free Software Foundation, Inc.
    Contributed by Daniel Engel (gnu@danielengel.com)
@@ -23,7 +23,7 @@
    <http://www.gnu.org/licenses/>.  */
 
 
-#if defined(__ARM_FEATURE_CLZ) && __ARM_FEATURE_CLZ
+#ifdef __ARM_FEATURE_CLZ
 
 #ifdef L_clzdi2
 
@@ -241,4 +241,108 @@ FUNC_END clzdi2
 #endif /* L_clzsi2 || L_clzdi2 */
 
 #endif /* !__ARM_FEATURE_CLZ */
+
+
+#ifdef L_clrsbdi2
+
+// int __clrsbdi2(int)
+// Counts the number of "redundant sign bits" in $r1:$r0.
+// Returns the result in $r0.
+// Uses $r2 and $r3 as scratch space.
+FUNC_START_SECTION clrsbdi2 .text.sorted.libgcc.clz2.clrsbdi2
+    CFI_START_FUNCTION
+
+  #if defined(__ARM_FEATURE_CLZ) && __ARM_FEATURE_CLZ
+        // Invert negative signs to keep counting zeros.
+        asrs    r3,     xxh,    #31
+        eors    xxl,    r3
+        eors    xxh,    r3
+
+        // Same as __clzdi2(), except that the 'C' flag is pre-calculated.
+        // Also, the trailing 'subs', since the last bit is not redundant.
+        do_it   eq,     et
+        clzeq   r0,     xxl
+        clzne   r0,     xxh
+        addeq   r0,     #32
+        subs    r0,     #1
+        RET
+
+  #else  /* !__ARM_FEATURE_CLZ */
+        // Result if all the bits in the argument are zero.
+        // Set it here to keep the flags clean after 'eors' below.
+        movs    r2,     #31
+
+        // Invert negative signs to keep counting zeros.
+        asrs    r3,     xxh,    #31
+        eors    xxh,    r3
+
+    #if defined(__ARMEB__) && __ARMEB__
+        // If the upper word is non-zero, return '__clzsi2(upper) - 1'.
+        bne     SYM(__internal_clzsi2)
+
+        // The upper word is zero, prepare the lower word.
+        movs    r0,     r1
+        eors    r0,     r3
+
+    #else /* !__ARMEB__ */
+        // Save the lower word temporarily.
+        // This somewhat awkward construction adds one cycle when the
+        //  branch is not taken, but prevents a double-branch.
+        eors    r3,     r0
+
+        // If the upper word is non-zero, return '__clzsi2(upper) - 1'.
+        movs    r0,     r1
+        bne    SYM(__internal_clzsi2)
+
+        // Restore the lower word.
+        movs    r0,     r3
+
+    #endif /* !__ARMEB__ */
+
+        // The upper word is zero, return '31 + __clzsi2(lower)'.
+        adds    r2,     #32
+        b       SYM(__internal_clzsi2)
+
+  #endif /* !__ARM_FEATURE_CLZ */
+
+    CFI_END_FUNCTION
+FUNC_END clrsbdi2
+
+#endif /* L_clrsbdi2 */
+
+
+#ifdef L_clrsbsi2
+
+// int __clrsbsi2(int)
+// Counts the number of "redundant sign bits" in $r0.
+// Returns the result in $r0.
+// Uses $r2 and possibly $r3 as scratch space.
+FUNC_START_SECTION clrsbsi2 .text.sorted.libgcc.clz2.clrsbsi2
+    CFI_START_FUNCTION
+
+        // Invert negative signs to keep counting zeros.
+        asrs    r2,     r0,    #31
+        eors    r0,     r2
+
+      #if defined(__ARM_FEATURE_CLZ) && __ARM_FEATURE_CLZ
+        // Count.
+        clz     r0,     r0
+
+        // The result for a positive value will always be >= 1.
+        // By definition, the last bit is not redundant.
+        subs    r0,     #1
+        RET
+
+      #else /* !__ARM_FEATURE_CLZ */
+        // Result if all the bits in the argument are zero.
+        // By definition, the last bit is not redundant.
+        movs    r2,     #31
+        b       SYM(__internal_clzsi2)
+
+      #endif  /* !__ARM_FEATURE_CLZ */
+
+    CFI_END_FUNCTION
+FUNC_END clrsbsi2
+
+#endif /* L_clrsbsi2 */
 
