@@ -27,6 +27,13 @@ LIB1ASMFUNCS += \
 	_paritysi2 \
 	_popcountsi2 \
 
+ifeq (__ARM_ARCH_ISA_THUMB 1,$(ARM_ISA)$(THUMB1_ISA))
+# Group 0B: WEAK overridable function objects built for v6m only.
+LIB1ASMFUNCS += \
+	_muldi3 \
+	
+endif
+
 
 # Group 1: Integer function objects.
 LIB1ASMFUNCS += \
@@ -51,11 +58,13 @@ LIB1ASMFUNCS += \
 
 
 ifeq (__ARM_ARCH_ISA_THUMB 1,$(ARM_ISA)$(THUMB1_ISA))
-# Group 1B: Integer functions built for v6m only.
+# Group 1B: Integer function objects built for v6m only.
 LIB1ASMFUNCS += \
 	_divdi3 \
 	_udivdi3 \
-
+	_mulsidi3 \
+	_umulsidi3 \
+	
 endif
 
 
