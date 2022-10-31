@@ -25,6 +25,7 @@ LIB1ASMFUNCS += \
         _clzsi2 \
 	_ctzsi2 \
 	_paritysi2 \
+	_popcountsi2 \
 
 
 # Group 1: Integer function objects.
@@ -39,6 +40,7 @@ LIB1ASMFUNCS += \
 	_ffssi2 \
 	_ffsdi2 \
 	_paritydi2 \
+	_popcountdi2 \
 	_dvmd_tls \
 	_divsi3 \
 	_modsi3 \
