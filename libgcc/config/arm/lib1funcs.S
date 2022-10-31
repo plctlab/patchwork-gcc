@@ -1158,6 +1158,10 @@ LSYM(Ldivbyzero_negative):
 /* ------------------------------------------------------------------------ */
 /*		Start of the Real Functions				    */
 /* ------------------------------------------------------------------------ */
+
+/* Disable these on v6m in favor of 'eabi/idiv.S', below. */
+#ifndef NOT_ISA_TARGET_32BIT
+
 #ifdef L_udivsi3
 
 #if defined(__prefer_thumb__)
@@ -1563,6 +1567,18 @@ LSYM(Lover12):
 	DIV_FUNC_END modsi3 signed
 
 #endif /* L_modsi3 */
+
+#else /* NOT_ISA_TARGET_32BIT */
+/* Temp registers. */
+#define rP r4
+#define rQ r5
+#define rS r6
+#define rT r7
+
+#define PEDANTIC_DIV0 (1)
+#include "eabi/idiv.S"
+#endif /* NOT_ISA_TARGET_32BIT */
+
 /* ------------------------------------------------------------------------ */
 #ifdef L_dvmd_tls
 
@@ -1578,7 +1594,8 @@ LSYM(Lover12):
 	FUNC_END div0
 #endif
 	
-#endif /* L_divmodsi_tools */
+#endif /* L_div_tls */
+
 /* ------------------------------------------------------------------------ */
 #ifdef L_dvmd_lnx
 @ GNU/Linux division-by zero handler.  Used in place of L_dvmd_tls
