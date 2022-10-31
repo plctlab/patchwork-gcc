@@ -46,6 +46,19 @@ FUNC_START_SECTION LCMP_NAME LCMP_SECTION
         subs    xxl,    yyl
         sbcs    xxh,    yyh
 
+    #ifdef __HAVE_FEATURE_IT
+        do_it   lt,t
+
+      #ifdef L_aeabi_lcmp
+        movlt   r0,    #-1
+      #else
+        movlt   r0,    #0
+      #endif
+
+        // Early return on '<'.
+        RETc(lt)
+
+    #else /* !__HAVE_FEATURE_IT */
         // With $r2 free, create a known offset value without affecting
         //  the N or Z flags.
         // BUG? The originally unified instruction for v6m was 'mov r2, r3'.
@@ -62,17 +75,27 @@ FUNC_START_SECTION LCMP_NAME LCMP_SECTION
         //  argument is larger, otherwise the offset value remains 0.
         adds    r2,     #2
 
+    #endif
+
         // Check for zero (equality in 64 bits).
         // It doesn't matter which register was originally "hi".
         orrs    r0,    r1
 
+    #ifdef __HAVE_FEATURE_IT
+        // The result is already 0 on equality.
+        // -1 already returned, so just force +1.
+        do_it   ne
+        movne   r0,     #1
+
+    #else /* !__HAVE_FEATURE_IT */
         // The result is already 0 on equality.
         beq     LLSYM(__lcmp_return)
 
-    LLSYM(__lcmp_lt):
+      LLSYM(__lcmp_lt):
         // Create +1 or -1 from the offset value defined earlier.
         adds    r3,     #1
         subs    r0,     r2,     r3
+    #endif
 
     LLSYM(__lcmp_return):
       #ifdef L_cmpdi2
@@ -111,21 +134,43 @@ FUNC_START_SECTION ULCMP_NAME ULCMP_SECTION
         subs    xxl,    yyl
         sbcs    xxh,    yyh
 
+    #ifdef __HAVE_FEATURE_IT
+        do_it   lo,t
+
+      #ifdef L_aeabi_ulcmp
+        movlo   r0,     -1
+      #else
+        movlo   r0,     #0
+      #endif
+
+        // Early return on '<'.
+        RETc(lo)
+
+    #else
         // Capture the carry flg.
         // $r2 will contain -1 if the first value is smaller,
         //  0 if the first value is larger or equal.
         sbcs    r2,     r2
+    #endif
 
         // Check for zero (equality in 64 bits).
         // It doesn't matter which register was originally "hi".
         orrs    r0,     r1
 
+    #ifdef __HAVE_FEATURE_IT
+        // The result is already 0 on equality.
+        // -1 already returned, so just force +1.
+        do_it   ne
+        movne   r0,     #1
+
+    #else /* !__HAVE_FEATURE_IT */
         // The result is already 0 on equality.
         beq     LLSYM(__ulcmp_return)
 
         // Assume +1.  If -1 is correct, $r2 will override.
         movs    r0,     #1
         orrs    r0,     r2
+    #endif
 
     LLSYM(__ulcmp_return):
       #ifdef L_ucmpdi2
