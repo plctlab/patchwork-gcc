@@ -32,9 +32,6 @@
 #ifdef L_muldi3
 #define DECLARE_LIBRARY_RENAMES RENAME_LIBRARY (muldi3, lmul)
 #endif
-#ifdef L_muldi3
-#define DECLARE_LIBRARY_RENAMES RENAME_LIBRARY (muldi3, lmul)
-#endif
 #ifdef L_fixdfdi
 #define DECLARE_LIBRARY_RENAMES RENAME_LIBRARY (fixdfdi, d2lz) \
   extern DWtype __fixdfdi (DFtype) __attribute__((pcs("aapcs"))); \
@@ -61,9 +58,6 @@
    assembly routines.  */
 #ifdef L_fixunsdfsi
 #define DECLARE_LIBRARY_RENAMES RENAME_LIBRARY (fixunsdfsi, d2uiz)
-#endif
-#ifdef L_fixunssfsi
-#define DECLARE_LIBRARY_RENAMES RENAME_LIBRARY (fixunssfsi, f2uiz)
 #endif
 #ifdef L_floatundidf
 #define DECLARE_LIBRARY_RENAMES RENAME_LIBRARY (floatundidf, ul2d)
