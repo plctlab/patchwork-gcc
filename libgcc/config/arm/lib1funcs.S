@@ -1704,6 +1704,7 @@ LSYM(Lover12):
 
 #include "clz2.S"
 #include "ctz2.S"
+#include "parity.S"
 
 /* ------------------------------------------------------------------------ */
 /* These next two sections are here despite the fact that they contain Thumb 
