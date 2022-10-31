@@ -34,48 +34,6 @@
 	.eabi_attribute 25, 1
 #endif /* __ARM_EABI__ */
 
-#ifdef L_aeabi_lcmp
-
-ARM_FUNC_START aeabi_lcmp
-	cmp	xxh, yyh
-	do_it	lt
-	movlt	r0, #-1
-	do_it	gt
-	movgt	r0, #1
-	do_it	ne
-	RETc(ne)
-	subs	r0, xxl, yyl
-	do_it	lo
-	movlo	r0, #-1
-	do_it	hi
-	movhi	r0, #1
-	RET
-	FUNC_END aeabi_lcmp
-
-#endif /* L_aeabi_lcmp */
-	
-#ifdef L_aeabi_ulcmp
-
-ARM_FUNC_START aeabi_ulcmp
-	cmp	xxh, yyh
-	do_it	lo
-	movlo	r0, #-1
-	do_it	hi
-	movhi	r0, #1
-	do_it	ne
-	RETc(ne)
-	cmp	xxl, yyl
-	do_it	lo
-	movlo	r0, #-1
-	do_it	hi
-	movhi	r0, #1
-	do_it	eq
-	moveq	r0, #0
-	RET
-	FUNC_END aeabi_ulcmp
-
-#endif /* L_aeabi_ulcmp */
-
 .macro test_div_by_zero signed
 /* Tail-call to divide-by-zero handlers which may be overridden by the user,
    so unwinding works properly.  */
