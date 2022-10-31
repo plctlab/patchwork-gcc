@@ -56,9 +56,6 @@
 #ifdef L_floatdidf
 #define DECLARE_LIBRARY_RENAMES RENAME_LIBRARY (floatdidf, l2d)
 #endif
-#ifdef L_floatdisf
-#define DECLARE_LIBRARY_RENAMES RENAME_LIBRARY (floatdisf, l2f)
-#endif
 
 /* These renames are needed on ARMv6M.  Other targets get them from
    assembly routines.  */
@@ -70,9 +67,6 @@
 #endif
 #ifdef L_floatundidf
 #define DECLARE_LIBRARY_RENAMES RENAME_LIBRARY (floatundidf, ul2d)
-#endif
-#ifdef L_floatundisf
-#define DECLARE_LIBRARY_RENAMES RENAME_LIBRARY (floatundisf, ul2f)
 #endif
 
 /* For ARM bpabi, we only want to use a "__gnu_" prefix for the fixed-point
