@@ -41,6 +41,8 @@ LIB1ASMFUNCS += \
 	_ffsdi2 \
 	_paritydi2 \
 	_popcountdi2 \
+	_cmpdi2 \
+	_ucmpdi2 \
 	_dvmd_tls \
 	_divsi3 \
 	_modsi3 \
