@@ -106,6 +106,8 @@ LIB1ASMFUNCS += \
 	_arm_floatunsisf \
 	_arm_fixsfdi \
 	_arm_fixunssfdi \
+	_arm_d2f \
+	_arm_f2d \
 	_fp_exceptionf \
 	_fp_checknanf \
 	_fp_assemblef \
