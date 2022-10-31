@@ -10,7 +10,7 @@ THUMB1_ISA:=$(findstring __ARM_ARCH_ISA_THUMB 1,$(shell $(gcc_compile_bare) -dM 
 # inclusion create when only multiplication is used, thus avoiding pulling in
 # useless division code.
 ifneq (__ARM_ARCH_ISA_THUMB 1,$(ARM_ISA)$(THUMB1_ISA))
-LIB1ASMFUNCS += _arm_muldf3 _arm_mulsf3
+LIB1ASMFUNCS += _arm_muldf3
 endif
 endif # !__symbian__
 
@@ -26,6 +26,7 @@ LIB1ASMFUNCS += \
 	_ctzsi2 \
 	_paritysi2 \
 	_popcountsi2 \
+	_arm_mulsf3 \
 
 ifeq (__ARM_ARCH_ISA_THUMB 1,$(ARM_ISA)$(THUMB1_ISA))
 # Group 0B: WEAK overridable function objects built for v6m only.
