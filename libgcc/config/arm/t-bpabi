@@ -1,6 +1,13 @@
 # Add the bpabi.S functions.
 LIB1ASMFUNCS += _aeabi_lcmp _aeabi_ulcmp _aeabi_ldivmod _aeabi_uldivmod
 
+# Only enabled for v6m.
+ARM_ISA:=$(findstring __ARM_ARCH_ISA_ARM,$(shell $(gcc_compile_bare) -dM -E - </dev/null))
+THUMB1_ISA:=$(findstring __ARM_ARCH_ISA_THUMB 1,$(shell $(gcc_compile_bare) -dM -E - </dev/null))
+ifeq (__ARM_ARCH_ISA_THUMB 1,$(ARM_ISA)$(THUMB1_ISA))
+LIB1ASMFUNCS += _aeabi_f2h_ieee _aeabi_h2f_ieee _aeabi_f2h_alt _aeabi_h2f_alt
+endif
+
 # Add the BPABI C functions.
 LIB2ADD += $(srcdir)/config/arm/unaligned-funcs.c
 

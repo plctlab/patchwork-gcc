@@ -198,6 +198,8 @@ __gnu_h2f_internal(unsigned short a, int ieee)
   return sign | (((aexp + 0x70) << 23) + (mantissa << 13));
 }
 
+#if (__ARM_ARCH_ISA_ARM) || (__ARM_ARCH_ISA_THUMB > 1)
+
 unsigned short
 __gnu_f2h_ieee(unsigned int a)
 {
@@ -221,6 +223,8 @@ __gnu_h2f_alternative(unsigned short a)
 {
   return __gnu_h2f_internal(a, 0);
 }
+
+#endif /* NOT_ISA_TARGET_32BIT */
 
 unsigned short
 __gnu_d2h_ieee (unsigned long long a)
