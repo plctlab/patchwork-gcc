@@ -1991,6 +1991,6 @@ LSYM(Lchange_\register):
 #include "bpabi.S"
 #else /* NOT_ISA_TARGET_32BIT */
 #include "bpabi-v6m.S"
-#include "eabi/lcmp.S"
 #endif /* NOT_ISA_TARGET_32BIT */
+#include "eabi/lcmp.S"
 #endif /* !__symbian__ */
