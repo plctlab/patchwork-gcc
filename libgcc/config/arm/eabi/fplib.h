@@ -45,9 +45,6 @@
 /* Push extra registers when required for 64-bit stack alignment */
 #define DOUBLE_ALIGN_STACK (1)
 
-/* Manipulate *div0() parameters to meet the ARM runtime ABI specification. */
-#define PEDANTIC_DIV0 (1)
-
 /* Define various exception codes.  These don't map to anything in particular */
 #define SUBTRACTED_INFINITY (20)
 #define INFINITY_TIMES_ZERO (21)
