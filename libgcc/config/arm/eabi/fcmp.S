@@ -1,7 +1,7 @@
 /* Miscellaneous BPABI functions.  Thumb-1 implementation, suitable for ARMv4T,
    ARMv6-M and ARMv8-M Baseline like ISA variants.
 
-   Copyright (C) 2006-2022 Free Software Foundation, Inc.
+   Copyright (C) 2006-2020 Free Software Foundation, Inc.
    Contributed by CodeSourcery.
 
    This file is free software; you can redistribute it and/or modify it
@@ -23,66 +23,23 @@
    see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
    <http://www.gnu.org/licenses/>.  */
 
-#ifdef __ARM_EABI__
-/* Some attributes that are common to all routines in this file.  */
-	/* Tag_ABI_align_needed: This code does not require 8-byte
-	   alignment from the caller.  */
-	/* .eabi_attribute 24, 0  -- default setting.  */
-	/* Tag_ABI_align_preserved: This code preserves 8-byte
-	   alignment in any callee.  */
-	.eabi_attribute 25, 1
-#endif /* __ARM_EABI__ */
 
+#ifdef L_arm_cmpsf2
 
-#ifdef L_arm_addsubsf3
-
-FUNC_START aeabi_frsub
-
-      push	{r4, lr}
-      movs	r4, #1
-      lsls	r4, #31
-      eors	r0, r0, r4
-      bl	__aeabi_fadd
-      pop	{r4, pc}
-
-      FUNC_END aeabi_frsub
-
-#endif /* L_arm_addsubsf3 */
-
-#ifdef L_arm_addsubdf3
-
-FUNC_START aeabi_drsub
-
-      push	{r4, lr}
-      movs	r4, #1
-      lsls	r4, #31
-      eors	xxh, xxh, r4
-      bl	__aeabi_dadd
-      pop	{r4, pc}
-
-      FUNC_END aeabi_drsub
-
-#endif /* L_arm_addsubdf3 */
-
-#ifdef L_arm_cmpdf2
-
-FUNC_START aeabi_cdrcmple
+FUNC_START aeabi_cfrcmple
 
 	mov	ip, r0
-	movs	r0, r2
-	mov	r2, ip
-	mov	ip, r1
-	movs	r1, r3
-	mov	r3, ip
+	movs	r0, r1
+	mov	r1, ip
 	b	6f
 
-FUNC_START aeabi_cdcmpeq
-FUNC_ALIAS aeabi_cdcmple aeabi_cdcmpeq
+FUNC_START aeabi_cfcmpeq
+FUNC_ALIAS aeabi_cfcmple aeabi_cfcmpeq
 
 	@ The status-returning routines are required to preserve all
 	@ registers except ip, lr, and cpsr.
 6:	push	{r0, r1, r2, r3, r4, lr}
-	bl	__ledf2
+	bl	__lesf2
 	@ Set the Z flag correctly, and the C flag unconditionally.
 	cmp	r0, #0
 	@ Clear the C flag if the return value was -1, indicating
@@ -93,22 +50,22 @@ FUNC_ALIAS aeabi_cdcmple aeabi_cdcmpeq
 1:
 	pop	{r0, r1, r2, r3, r4, pc}
 
-	FUNC_END aeabi_cdcmple
-	FUNC_END aeabi_cdcmpeq
-	FUNC_END aeabi_cdrcmple
+	FUNC_END aeabi_cfcmple
+	FUNC_END aeabi_cfcmpeq
+	FUNC_END aeabi_cfrcmple
 
-FUNC_START	aeabi_dcmpeq
+FUNC_START	aeabi_fcmpeq
 
 	push	{r4, lr}
-	bl	__eqdf2
+	bl	__eqsf2
 	negs	r0, r0
 	adds	r0, r0, #1
 	pop	{r4, pc}
 
-	FUNC_END aeabi_dcmpeq
+	FUNC_END aeabi_fcmpeq
 
-.macro COMPARISON cond, helper, mode=df2
-FUNC_START	aeabi_dcmp\cond
+.macro COMPARISON cond, helper, mode=sf2
+FUNC_START	aeabi_fcmp\cond
 
 	push	{r4, lr}
 	bl	__\helper\mode
@@ -120,7 +77,7 @@ FUNC_START	aeabi_dcmp\cond
 	movs	r0, #1
 	pop	{r4, pc}
 
-	FUNC_END aeabi_dcmp\cond
+	FUNC_END aeabi_fcmp\cond
 .endm
 
 COMPARISON lt, le
@@ -128,4 +85,5 @@ COMPARISON le, le
 COMPARISON gt, ge
 COMPARISON ge, ge
 
-#endif /* L_arm_cmpdf2 */
+#endif /* L_arm_cmpsf2 */
+
