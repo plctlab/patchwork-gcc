@@ -204,7 +204,7 @@ LSYM(Lend_fde):
 # if defined(__thumb2__)
 	pop\cond	{\regs, lr}
 # else
-	ldm\cond\dirn	sp!, {\regs, lr}
+	ldm\dirn\cond	sp!, {\regs, lr}
 # endif
 	.endif
 	.ifnc "\unwind", ""
@@ -220,7 +220,7 @@ LSYM(Lend_fde):
 # if defined(__thumb2__)
 	pop\cond	{\regs, pc}
 # else
-	ldm\cond\dirn	sp!, {\regs, pc}
+	ldm\dirn\cond	sp!, {\regs, pc}
 # endif
 	.endif
 #endif
@@ -292,7 +292,6 @@ LSYM(Lend_fde):
 	pop	{r1, pc}
 
 #elif defined(__thumb2__)
-	.syntax unified
 	.ifc \signed, unsigned
 	cbz	r0, 1f
 	mov	r0, #0xffffffff
@@ -429,7 +428,6 @@ SYM (__\name):
 /* For Thumb-2 we build everything in thumb mode.  */
 .macro ARM_FUNC_START name
        FUNC_START \name
-       .syntax unified
 .endm
 #define EQUIV .thumb_set
 .macro  ARM_CALL name
@@ -643,7 +641,7 @@ pc		.req	r15
 	orrhs	\result,   \result,   \curbit,  lsr #3
 	cmp	\dividend, #0			@ Early termination?
 	do_it	ne, t
-	movnes	\curbit,   \curbit,  lsr #4	@ No, any more bits to do?
+	movsne	\curbit,   \curbit,  lsr #4	@ No, any more bits to do?
 	movne	\divisor,  \divisor, lsr #4
 	bne	1b
 
@@ -745,7 +743,7 @@ pc		.req	r15
 	subhs	\dividend, \dividend, \divisor, lsr #3
 	cmp	\dividend, #1
 	mov	\divisor, \divisor, lsr #4
-	subges	\order, \order, #4
+	subsge	\order, \order, #4
 	bge	1b
 
 	tst	\order, #3
@@ -2093,7 +2091,7 @@ LSYM(Lchange_\register):
 	.globl .Lchange_lr
 .Lchange_lr:
 	tst	lr, #1
-	stmeqdb	r13!, {lr, pc}
+	stmdbeq	r13!, {lr, pc}
 	mov	ip, lr
 	adreq	lr, _arm_return
 	bx	ip
