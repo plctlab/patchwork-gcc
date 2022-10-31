@@ -358,10 +358,11 @@ LSYM(Ldiv0):
 #define THUMB_CODE
 #endif
 
-.macro THUMB_FUNC_START name
+.macro THUMB_FUNC_ENTRY name
 	.globl  SYM (\name)
 	TYPE    (\name)
 	.thumb_func
+	.force_thumb
 SYM (\name):
 .endm
 
@@ -1944,10 +1945,9 @@ ARM_FUNC_START ctzsi2
 	
 	.text
 	.align 0
-        .force_thumb
 
 .macro call_via register
-	THUMB_FUNC_START _call_via_\register
+	THUMB_FUNC_ENTRY _call_via_\register
 
 	bx	\register
 	nop
@@ -2030,7 +2030,7 @@ _arm_return_r11:
 .macro interwork_with_frame frame, register, name, return
 	.code	16
 
-	THUMB_FUNC_START \name
+	THUMB_FUNC_ENTRY \name
 
 	bx	pc
 	nop
@@ -2047,7 +2047,7 @@ _arm_return_r11:
 .macro interwork register
 	.code	16
 
-	THUMB_FUNC_START _interwork_call_via_\register
+	THUMB_FUNC_ENTRY _interwork_call_via_\register
 
 	bx	pc
 	nop
@@ -2084,7 +2084,7 @@ LSYM(Lchange_\register):
 	/* The LR case has to be handled a little differently...  */
 	.code 16
 
-	THUMB_FUNC_START _interwork_call_via_lr
+	THUMB_FUNC_ENTRY _interwork_call_via_lr
 
 	bx 	pc
 	nop
@@ -2112,9 +2112,7 @@ LSYM(Lchange_\register):
 	
 	.text
 	.align 0
-        .force_thumb
-	.syntax unified
-	THUMB_FUNC_START __gnu_thumb1_case_sqi
+	THUMB_FUNC_ENTRY __gnu_thumb1_case_sqi
 	push	{r1}
 	mov	r1, lr
 	lsrs	r1, r1, #1
@@ -2131,9 +2129,7 @@ LSYM(Lchange_\register):
 	
 	.text
 	.align 0
-        .force_thumb
-	.syntax unified
-	THUMB_FUNC_START __gnu_thumb1_case_uqi
+	THUMB_FUNC_ENTRY __gnu_thumb1_case_uqi
 	push	{r1}
 	mov	r1, lr
 	lsrs	r1, r1, #1
@@ -2150,9 +2146,7 @@ LSYM(Lchange_\register):
 	
 	.text
 	.align 0
-        .force_thumb
-	.syntax unified
-	THUMB_FUNC_START __gnu_thumb1_case_shi
+	THUMB_FUNC_ENTRY __gnu_thumb1_case_shi
 	push	{r0, r1}
 	mov	r1, lr
 	lsrs	r1, r1, #1
@@ -2170,9 +2164,7 @@ LSYM(Lchange_\register):
 	
 	.text
 	.align 0
-        .force_thumb
-	.syntax unified
-	THUMB_FUNC_START __gnu_thumb1_case_uhi
+	THUMB_FUNC_ENTRY __gnu_thumb1_case_uhi
 	push	{r0, r1}
 	mov	r1, lr
 	lsrs	r1, r1, #1
@@ -2190,9 +2182,7 @@ LSYM(Lchange_\register):
 	
 	.text
 	.align 0
-        .force_thumb
-	.syntax unified
-	THUMB_FUNC_START __gnu_thumb1_case_si
+	THUMB_FUNC_ENTRY __gnu_thumb1_case_si
 	push	{r0, r1}
 	mov	r1, lr
 	adds.n	r1, r1, #2	/* Align to word.  */
