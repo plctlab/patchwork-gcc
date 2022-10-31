@@ -33,52 +33,6 @@
 	.eabi_attribute 25, 1
 #endif /* __ARM_EABI__ */
 
-#ifdef L_aeabi_lcmp
-
-FUNC_START aeabi_lcmp
-	cmp	xxh, yyh
-	beq	1f
-	bgt	2f
-	movs	r0, #1
-	negs	r0, r0
-	RET
-2:
-	movs	r0, #1
-	RET
-1:
-	subs	r0, xxl, yyl
-	beq	1f
-	bhi	2f
-	movs	r0, #1
-	negs	r0, r0
-	RET
-2:
-	movs	r0, #1
-1:
-	RET
-	FUNC_END aeabi_lcmp
-
-#endif /* L_aeabi_lcmp */
-	
-#ifdef L_aeabi_ulcmp
-
-FUNC_START aeabi_ulcmp
-	cmp	xxh, yyh
-	bne	1f
-	subs	r0, xxl, yyl
-	beq	2f
-1:
-	bcs	1f
-	movs	r0, #1
-	negs	r0, r0
-	RET
-1:
-	movs	r0, #1
-2:
-	RET
-	FUNC_END aeabi_ulcmp
-
-#endif /* L_aeabi_ulcmp */
 
 .macro test_div_by_zero signed
 	cmp	yyh, #0
