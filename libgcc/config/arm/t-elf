@@ -23,6 +23,7 @@ endif # !__symbian__
 # See respective sources for rationale.
 LIB1ASMFUNCS += \
         _clzsi2 \
+	_ctzsi2 \
 
 
 # Group 1: Integer function objects.
@@ -31,7 +32,7 @@ LIB1ASMFUNCS += \
 	_ashrdi3 \
 	_lshrdi3 \
 	_clzdi2 \
-	_ctzsi2 \
+	_ctzdi2 \
 	_dvmd_tls \
 	_divsi3 \
 	_modsi3 \
