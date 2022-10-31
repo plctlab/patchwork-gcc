@@ -98,10 +98,12 @@ LIB1ASMFUNCS += \
         _arm_eqsf2 \
         _arm_gesf2 \
         _arm_frsubsf3 \
+	_arm_divsf3 \
 	_fp_exceptionf \
 	_fp_checknanf \
 	_fp_assemblef \
 	_fp_normalizef \
+	_fp_divloopf \
 
 endif
 
