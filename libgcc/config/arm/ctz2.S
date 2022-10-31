@@ -1,4 +1,4 @@
-/* ctz2.S: ARM optimized 'ctz' functions
+/* ctz2.S: ARM optimized 'ctz' and related functions
 
    Copyright (C) 2020-2022 Free Software Foundation, Inc.
    Contributed by Daniel Engel (gnu@danielengel.com)
@@ -237,4 +237,79 @@ FUNC_END ctzdi2
 #endif
 
 #endif /* L_ctzsi2 || L_ctzdi2 */
+
+
+#ifdef L_ffsdi2
+
+// int __ffsdi2(int)
+// Return the index of the least significant 1-bit in $r1:r0,
+//  or zero if $r1:r0 is zero.  The least significant bit is index 1.
+// Returns the result in $r0.
+// Uses $r2 and possibly $r3 as scratch space.
+// Same section as __ctzsi2() for sake of the tail call branches.
+FUNC_START_SECTION ffsdi2 .text.sorted.libgcc.ctz2.ffsdi2
+    CFI_START_FUNCTION
+
+        // Simplify branching by assuming a non-zero lower word.
+        // For all such, ffssi2(x) == ctzsi2(x) + 1.
+        movs    r2,    #(33 - CTZ_RESULT_OFFSET)
+
+      #if defined(__ARMEB__) && __ARMEB__
+        // HACK: Save the upper word in a scratch register.
+        movs    r3,     r0
+
+        // Test the lower word.
+        movs    r0,     r1
+        bne     SYM(__internal_ctzsi2)
+
+        // Test the upper word.
+        movs    r2,    #(65 - CTZ_RESULT_OFFSET)
+        movs    r0,     r3
+        bne     SYM(__internal_ctzsi2)
+
+      #else /* !__ARMEB__ */
+        // Test the lower word.
+        cmp     r0,     #0
+        bne     SYM(__internal_ctzsi2)
+
+        // Test the upper word.
+        movs    r2,    #(65 - CTZ_RESULT_OFFSET)
+        movs    r0,     r1
+        bne     SYM(__internal_ctzsi2)
+
+      #endif /* !__ARMEB__ */
+
+        // Upper and lower words are both zero.
+        RET
+
+    CFI_END_FUNCTION
+FUNC_END ffsdi2
+
+#endif /* L_ffsdi2 */
+
+
+#ifdef L_ffssi2
+
+// int __ffssi2(int)
+// Return the index of the least significant 1-bit in $r0,
+//  or zero if $r0 is zero.  The least significant bit is index 1.
+// Returns the result in $r0.
+// Uses $r2 and possibly $r3 as scratch space.
+// Same section as __ctzsi2() for sake of the tail call branches.
+FUNC_START_SECTION ffssi2 .text.sorted.libgcc.ctz2.ffssi2
+    CFI_START_FUNCTION
+
+        // Simplify branching by assuming a non-zero argument.
+        // For all such, ffssi2(x) == ctzsi2(x) + 1.
+        movs    r2,    #(33 - CTZ_RESULT_OFFSET)
+
+        // Test for zero, return unmodified.
+        cmp     r0,     #0
+        bne     SYM(__internal_ctzsi2)
+        RET
+
+    CFI_END_FUNCTION
+FUNC_END ffssi2
+
+#endif /* L_ffssi2 */
 
