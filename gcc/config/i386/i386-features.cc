@@ -273,6 +273,8 @@ xlogue_layout::get_stub_rtx (enum xlogue_stub stub)
 
 unsigned scalar_chain::max_id = 0;
 
+bitmap_head scalar_chain::skipped_regs;
+
 namespace {
 
 /* Initialize new chain.  */
@@ -477,6 +479,72 @@ scalar_chain::build (bitmap candidates, unsigned insn_uid)
   BITMAP_FREE (queue);
 }
 
+/* Add all scalar mode registers, which are set by INSN and not used in
+   both vector and scalar modes, to skipped register map. */
+
+void
+scalar_chain::update_skipped_regs (rtx_insn *insn)
+{
+  for (df_ref def = DF_INSN_DEFS (insn);
+       def;
+       def = DF_REF_NEXT_LOC (def))
+    {
+      rtx reg = DF_REF_REG (def);
+      if (GET_MODE (reg) == smode
+	  && !bitmap_bit_p (defs_conv, REGNO (reg)))
+	bitmap_set_bit (&skipped_regs, REGNO (reg));
+    }
+}
+
+/* Check convert gain for INSN.  Return 1 if any registers, which are
+   set or used by INSN, have been converted to vector mode.  Return -1
+   if any registers set by INSN are skipped in other chains.  Return 0
+   otherwise.  */
+
+int
+scalar_chain::check_convert_gain (rtx_insn *insn)
+{
+  for (df_ref def = DF_INSN_DEFS (insn);
+       def;
+       def = DF_REF_NEXT_LOC (def))
+    {
+      rtx reg = DF_REF_REG (def);
+      if (GET_MODE (reg) == vmode)
+	{
+	  if (dump_file)
+	    fprintf (dump_file,
+		     "  Gain 1 for converted register r%d\n",
+		     REGNO (reg));
+	  return 1;
+	}
+      else if (bitmap_bit_p (&skipped_regs, REGNO (reg)))
+	{
+	  if (dump_file)
+	    fprintf (dump_file,
+		     "  Gain -1 for skipped register r%d\n",
+		     REGNO (reg));
+	  return -1;
+	}
+    }
+
+  for (df_ref ref = DF_INSN_USES (insn);
+       ref;
+       ref = DF_REF_NEXT_LOC (ref))
+    {
+      rtx reg = DF_REF_REG (ref);
+      if (GET_MODE (reg) == vmode)
+	{
+	  if (dump_file)
+	    fprintf (dump_file,
+		     "  Gain 1 for converted register r%d\n",
+		     REGNO (reg));
+	  return 1;
+	}
+    }
+
+  return 0;
+}
+
 /* Return a cost of building a vector costant
    instead of using a scalar one.  */
 
@@ -515,10 +583,15 @@ general_scalar_chain::compute_convert_gain ()
   EXECUTE_IF_SET_IN_BITMAP (insns, 0, insn_uid, bi)
     {
       rtx_insn *insn = DF_INSN_UID_GET (insn_uid)->insn;
+      /* If check_convert_gain returns non-zero on any INSN, the chain
+	 must be converted or can't be converted since some registers
+	 have been converted or skipped in other chains.  */
+      int igain = check_convert_gain (insn);
+      if (igain)
+	return igain;
       rtx def_set = single_set (insn);
       rtx src = SET_SRC (def_set);
       rtx dst = SET_DEST (def_set);
-      int igain = 0;
 
       if (REG_P (src) && REG_P (dst))
 	igain += 2 * m - ix86_cost->xmm_move;
@@ -655,6 +728,15 @@ general_scalar_chain::compute_convert_gain ()
     fprintf (dump_file, "  Registers conversion cost: %d\n", cost);
 
   gain -= cost;
+
+  /* If this chain won't be converted, mark all scalar mode registers
+     in the chain as skipped.  */
+  if (gain < 0)
+    EXECUTE_IF_SET_IN_BITMAP (insns, 0, insn_uid, bi)
+      {
+	rtx_insn *insn = DF_INSN_UID_GET (insn_uid)->insn;
+	update_skipped_regs (insn);
+      }
 
   if (dump_file)
     fprintf (dump_file, "  Total gain: %d\n", gain);
@@ -1206,12 +1288,17 @@ timode_scalar_chain::compute_convert_gain ()
   EXECUTE_IF_SET_IN_BITMAP (insns, 0, insn_uid, bi)
     {
       rtx_insn *insn = DF_INSN_UID_GET (insn_uid)->insn;
+      /* If check_convert_gain returns non-zero on any INSN, the chain
+	 must be converted or can't be converted since some registers
+	 have been converted or skipped in other chains.  */
+      int igain = check_convert_gain (insn);
+      if (igain)
+	return igain;
       rtx def_set = single_set (insn);
       rtx src = SET_SRC (def_set);
       rtx dst = SET_DEST (def_set);
       HOST_WIDE_INT op1val;
       int scost, vcost;
-      int igain = 0;
 
       switch (GET_CODE (src))
 	{
@@ -1411,6 +1498,15 @@ timode_scalar_chain::compute_convert_gain ()
 	}
       gain += igain;
     }
+
+  /* If this chain won't be converted, mark all scalar mode registers
+     in the chain as skipped.  */
+  if (gain < 0)
+    EXECUTE_IF_SET_IN_BITMAP (insns, 0, insn_uid, bi)
+      {
+	rtx_insn *insn = DF_INSN_UID_GET (insn_uid)->insn;
+	update_skipped_regs (insn);
+      }
 
   if (dump_file)
     fprintf (dump_file, "  Total gain: %d\n", gain);
@@ -2159,6 +2255,9 @@ convert_scalars_to_vector (bool timode_p)
   for (unsigned i = 0; i < 3; ++i)
     bitmap_initialize (&candidates[i], &bitmap_default_obstack);
 
+  bitmap_initialize (&scalar_chain::skipped_regs,
+		     &bitmap_default_obstack);
+
   calculate_dominance_info (CDI_DOMINATORS);
   df_set_flags (DF_DEFER_INSN_RESCAN | DF_RD_PRUNE_DEAD_DEFS);
   df_chain_add_problem (DF_DU_CHAIN | DF_UD_CHAIN);
@@ -2235,6 +2334,7 @@ convert_scalars_to_vector (bool timode_p)
   if (dump_file)
     fprintf (dump_file, "Total insns converted: %d\n", converted_insns);
 
+  bitmap_release (&scalar_chain::skipped_regs);
   for (unsigned i = 0; i <= 2; ++i)
     bitmap_release (&candidates[i]);
   bitmap_obstack_release (NULL);

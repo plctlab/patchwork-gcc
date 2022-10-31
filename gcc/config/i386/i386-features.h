@@ -132,6 +132,9 @@ class scalar_chain
 
   static unsigned max_id;
 
+  /* All registers which are skipped in any chains.  */
+  static bitmap_head skipped_regs;
+
   /* Scalar mode.  */
   enum machine_mode smode;
   /* Vector mode.  */
@@ -154,6 +157,8 @@ class scalar_chain
   unsigned n_integer_to_sse;
 
   void build (bitmap candidates, unsigned insn_uid);
+  int check_convert_gain (rtx_insn *insn);
+  void update_skipped_regs (rtx_insn *insn);
   virtual int compute_convert_gain () = 0;
   int convert ();
 
