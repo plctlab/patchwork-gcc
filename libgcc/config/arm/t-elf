@@ -32,6 +32,7 @@ ifeq (__ARM_ARCH_ISA_THUMB 1,$(ARM_ISA)$(THUMB1_ISA))
 LIB1ASMFUNCS += \
 	_internal_cmpsf2 \
 	_muldi3 \
+        _arm_addsf3 \
 	
 endif
 
@@ -95,6 +96,11 @@ LIB1ASMFUNCS += \
         _arm_fcmpne \
         _arm_eqsf2 \
         _arm_gesf2 \
+        _arm_frsubsf3 \
+	_fp_exceptionf \
+	_fp_checknanf \
+	_fp_assemblef \
+	_fp_normalizef \
 
 endif
 
