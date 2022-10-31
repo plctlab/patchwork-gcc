@@ -33,22 +33,6 @@
 	.eabi_attribute 25, 1
 #endif /* __ARM_EABI__ */
 
-
-#ifdef L_arm_addsubsf3
-
-FUNC_START aeabi_frsub
-
-      push	{r4, lr}
-      movs	r4, #1
-      lsls	r4, #31
-      eors	r0, r0, r4
-      bl	__aeabi_fadd
-      pop	{r4, pc}
-
-      FUNC_END aeabi_frsub
-
-#endif /* L_arm_addsubsf3 */
-
 #ifdef L_arm_addsubdf3
 
 FUNC_START aeabi_drsub
