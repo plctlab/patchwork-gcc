@@ -214,17 +214,40 @@ FUNC_ENTRY clzsi2
      IT(sub,ne) r2,     #4
 
     LLSYM(__clz2):
+  #if defined(__PURE_CODE__) && __PURE_CODE__
+        // Without access to table data, continue unrolling the loop.
+        lsrs    r1,     r0,     #2
+
+      #ifdef __HAVE_FEATURE_IT
+        do_it   ne,t
+      #else
+        beq     LLSYM(__clz1)
+      #endif
+
+        // Out of 4 bits, the first '1' is somewhere in the highest 2,
+        //  so the lower 2 bits are no longer interesting.
+     IT(mov,ne) r0,     r1
+     IT(sub,ne) r2,     #2
+
+    LLSYM(__clz1):
+        // Convert remainder {0,1,2,3} to {0,1,2,2}.
+        lsrs    r1,     r0,     #1
+        bics    r0,     r1
+
+  #else /* !__PURE_CODE__ */
         // Load the remainder by index
         adr     r1,     LLSYM(__clz_remainder)
         ldrb    r0,     [r1, r0]
 
+  #endif /* !__PURE_CODE__ */
   #endif /* !__OPTIMIZE_SIZE__ */
 
         // Account for the remainder.
         subs    r0,     r2,     r0
         RET
 
-  #if !defined(__OPTIMIZE_SIZE__) || !__OPTIMIZE_SIZE__
+  #if !(defined(__OPTIMIZE_SIZE__) && __OPTIMIZE_SIZE__) && \
+      !(defined(__PURE_CODE__) && __PURE_CODE__)
         .align 2
     LLSYM(__clz_remainder):
         .byte 0,1,2,2,3,3,3,3,4,4,4,4,4,4,4,4

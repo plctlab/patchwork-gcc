@@ -454,7 +454,12 @@ SYM (\name):
    Use the *_START_SECTION macros for declarations that the linker should
     place in a non-defailt section (e.g. ".rodata", ".text.subsection"). */
 .macro FUNC_START_SECTION name section
-	.section \section,"x"
+#ifdef __PURE_CODE__
+	/* SHF_ARM_PURECODE | SHF_ALLOC | SHF_EXECINSTR */
+	.section \section,"0x20000006",%progbits
+#else
+	.section \section,"ax",%progbits
+#endif
 	.align 0
 	FUNC_ENTRY \name
 .endm

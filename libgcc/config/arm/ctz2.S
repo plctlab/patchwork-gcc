@@ -209,11 +209,44 @@ FUNC_ENTRY ctzsi2
      IT(sub,ne) r2,     #4
 
     LLSYM(__ctz2):
+  #if defined(__PURE_CODE__) && __PURE_CODE__
+        // Without access to table data, continue unrolling the loop.
+        lsls    r1,     r0,     #2
+
+      #ifdef __HAVE_FEATURE_IT
+        do_it   ne, t
+      #else
+        beq     LLSYM(__ctz1)
+      #endif
+
+        // Out of 4 bits, the first '1' is somewhere in the lowest 2,
+        //  so the higher 2 bits are no longer interesting.
+     IT(mov,ne) r0,     r1
+     IT(sub,ne) r2,     #2
+
+    LLSYM(__ctz1):
+        // Convert remainder {0,1,2,3} in $r0[31:30] to {0,2,1,2}.
+        lsrs    r0,     #31
+
+      #ifdef __HAVE_FEATURE_IT
+        do_it   cs, t
+      #else
+        bcc     LLSYM(__ctz_zero)
+      #endif
+
+        // If bit[30] of the remainder is set, neither of these bits count
+        //  towards the result.  Bit[31] must be cleared.
+        // Otherwise, bit[31] becomes the final remainder.
+     IT(sub,cs) r2,     #2
+     IT(eor,cs) r0,     r0
+
+  #else /* !__PURE_CODE__ */
         // Look up the remainder by index.
         lsrs    r0,     #28
         adr     r3,     LLSYM(__ctz_remainder)
         ldrb    r0,     [r3, r0]
 
+  #endif /* !__PURE_CODE__ */
   #endif /* !__OPTIMIZE_SIZE__ */
 
     LLSYM(__ctz_zero):
@@ -221,8 +254,9 @@ FUNC_ENTRY ctzsi2
         subs    r0,     r2,     r0
         RET
 
-  #if (!defined(__ARM_FEATURE_CLZ) || !__ARM_FEATURE_CLZ) && \
-      (!defined(__OPTIMIZE_SIZE__) || !__OPTIMIZE_SIZE__)
+  #if !(defined(__ARM_FEATURE_CLZ) && __ARM_FEATURE_CLZ) && \
+      !(defined(__OPTIMIZE_SIZE__) && __OPTIMIZE_SIZE__) && \
+      !(defined(__PURE_CODE__) && __PURE_CODE__)
         .align 2
     LLSYM(__ctz_remainder):
         .byte 0,4,3,4,2,4,3,4,1,4,3,4,2,4,3,4

@@ -23,6 +23,29 @@
    <http://www.gnu.org/licenses/>.  */
 
 
+#if defined(L_popcountdi2) || defined(L_popcountsi2)
+
+.macro ldmask reg, temp, value
+    #if defined(__PURE_CODE__) && (__PURE_CODE__)
+      #ifdef NOT_ISA_TARGET_32BIT
+        movs    \reg,   \value
+        lsls    \temp,  \reg,   #8
+        orrs    \reg,   \temp
+        lsls    \temp,  \reg,   #16
+        orrs    \reg,   \temp
+      #else
+        // Assumption: __PURE_CODE__ only support M-profile.
+        movw    \reg    ((\value) * 0x101)
+        movt    \reg    ((\value) * 0x101)
+      #endif
+    #else
+        ldr     \reg,   =((\value) * 0x1010101)
+    #endif
+.endm
+
+#endif
+
+
 #ifdef L_popcountdi2
 
 // int __popcountdi2(int)
@@ -49,7 +72,7 @@ FUNC_START_SECTION popcountdi2 .text.sorted.libgcc.popcountdi2
 
   #else /* !__OPTIMIZE_SIZE__ */
         // Load the one-bit alternating mask.
-        ldr     r3,     =0x55555555
+        ldmask  r3,     r2,     0x55
 
         // Reduce the second word.
         lsrs    r2,     r1,     #1
@@ -62,7 +85,7 @@ FUNC_START_SECTION popcountdi2 .text.sorted.libgcc.popcountdi2
         subs    r0,     r2
 
         // Load the two-bit alternating mask.
-        ldr     r3,     =0x33333333
+        ldmask  r3,     r2,     0x33
 
         // Reduce the second word.
         lsrs    r2,     r1,     #2
@@ -140,7 +163,7 @@ FUNC_ENTRY popcountsi2
   #else /* !__OPTIMIZE_SIZE__ */
 
         // Load the one-bit alternating mask.
-        ldr     r3,     =0x55555555
+        ldmask  r3,     r2,     0x55
 
         // Reduce the word.
         lsrs    r1,     r0,     #1
@@ -148,7 +171,7 @@ FUNC_ENTRY popcountsi2
         subs    r0,     r1
 
         // Load the two-bit alternating mask.
-        ldr     r3,     =0x33333333
+        ldmask  r3,     r2,     0x33
 
         // Reduce the word.
         lsrs    r1,     r0,     #2
@@ -158,7 +181,7 @@ FUNC_ENTRY popcountsi2
         adds    r0,     r1
 
         // Load the four-bit alternating mask.
-        ldr     r3,     =0x0F0F0F0F
+        ldmask  r3,     r2,     0x0F
 
         // Reduce the word.
         lsrs    r1,     r0,     #4
