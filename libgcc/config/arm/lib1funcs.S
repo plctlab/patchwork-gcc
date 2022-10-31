@@ -230,6 +230,7 @@ LSYM(Lend_fde):
    ARM and Thumb-2.  However this is only supported by recent gas, so define
    a set of macros to allow ARM code on older assemblers.  */
 #if defined(__thumb2__)
+#define __HAVE_FEATURE_IT
 .macro do_it cond, suffix=""
 	it\suffix	\cond
 .endm
@@ -245,6 +246,9 @@ LSYM(Lend_fde):
 	\name \dest, \src1, \tmp
 .endm
 #else
+#if !defined(__thumb__)
+#define __HAVE_FEATURE_IT
+#endif
 .macro do_it cond, suffix=""
 .endm
 .macro shift1 op, arg0, arg1, arg2
@@ -258,6 +262,70 @@ LSYM(Lend_fde):
 #endif
 
 #define COND(op1, op2, cond) op1 ## op2 ## cond
+
+
+/* The IT() macro streamlines the construction of short branchless contitional
+    sequences that support ARM, Thumb-2, and Thumb-1.  It is intended as an
+    extension to the .do_it macro defined above.  Code not written with the
+    intent to support Thumb-1 need not use IT().
+
+   IT()'s main advantage is the minimization of syntax differences.  Unified
+    functions can support Thumb-1 without imposiing an undue performance
+    penalty on ARM and Thumb-2.  Writing code without duplicate instructions
+    and operands keeps the high level function flow clearer and should reduce
+    the incidence of maintenance bugs.
+
+   Where conditional execution is supported by ARM and Thumb-2, the specified
+    instruction compiles with the conditional suffix 'c'.
+
+   Where Thumb-1 and v6m do not support IT, the given instruction compiles
+    with the standard unified syntax suffix "s", and a preceding branch
+    instruction is required to implement conditional behavior.
+
+   (Aside: The Thumb-1 "s"-suffix pattern is somewhat simplistic, since it
+    does not support 'cmp' or 'tst' with a non-"s" suffix.  It also appends
+    "s" to 'mov' and 'add' with high register operands which are otherwise
+    legal on v6m.  Use of IT() will result in a compiler error for all of
+    these exceptional cases, and a full #ifdef code split will be required.
+    However, it is unlikely that code written with Thumb-1 compatibility
+    in mind will use such patterns, so IT() still promises a good value.)
+
+   Typical if/then/else usage is:
+
+    #ifdef __HAVE_FEATURE_IT
+        // ARM and Thumb-2 'true' condition.
+        do_it   c,      tee
+    #else
+        // Thumb-1 'false' condition.  This must be opposite the
+        //  sense of the ARM and Thumb-2 condition, since the
+        //  branch is taken to skip the 'true' instruction block.
+        b!c     else_label
+    #endif
+
+        // Conditional 'true' execution for all compile modes.
+     IT(ins1,c) op1,    op2
+     IT(ins2,c) op1,    op2
+
+    #ifndef __HAVE_FEATURE_IT
+        // Thumb-1 branch to skip the 'else' instruction block.
+        // Omitted for if/then usage.
+        b       end_label
+    #endif
+
+   else_label:
+        // Conditional 'false' execution for all compile modes.
+        // Omitted for if/then usage.
+     IT(ins3,!c) op1,   op2
+     IT(ins4,!c) op1,   op2
+
+   end_label:
+        // Unconditional execution resumes here.
+ */
+#ifdef __HAVE_FEATURE_IT
+  #define IT(ins,c) ins##c
+#else
+  #define IT(ins,c) ins##s
+#endif
 
 #ifdef __ARM_EABI__
 .macro ARM_LDIV0 name signed
