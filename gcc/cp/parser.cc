@@ -24334,6 +24334,10 @@ cp_parser_template_type_arg (cp_parser *parser)
   const char *saved_message = parser->type_definition_forbidden_message;
   parser->type_definition_forbidden_message
     = G_("types may not be defined in template arguments");
+  /* It's wrong to issue a -Wignored-qualifiers warning for
+      static_assert(!is_same_v<void(*)(), const void(*)()>);
+     because there the qualifier matters.  */
+  warning_sentinel w (warn_ignored_qualifiers);
   r = cp_parser_type_id_1 (parser, CP_PARSER_FLAGS_NONE, true, false, NULL);
   parser->type_definition_forbidden_message = saved_message;
   if (cxx_dialect >= cxx14 && !flag_concepts && type_uses_auto (r))
