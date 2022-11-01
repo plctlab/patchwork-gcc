@@ -139,6 +139,9 @@ struct loongarch_address_info
    METHOD_LU52I:
      Load 52-63 bit of the immediate number.
 
+   METHOD_LD_HI32:
+     Load 32-63 bit of the immediate number.
+
    METHOD_INSV:
      immediate like 0xfff00000fffffxxx
    */
@@ -147,20 +150,26 @@ enum loongarch_load_imm_method
   METHOD_NORMAL,
   METHOD_LU32I,
   METHOD_LU52I,
+  METHOD_LD_HI32,
   METHOD_INSV
 };
 
 struct loongarch_integer_op
 {
   enum rtx_code code;
+  /* Current Immediate Count The immediate count of the load instruction.  */
   HOST_WIDE_INT value;
+  /* Represent the result of the immediate count of the load instruction at
+     each step.  */
+  HOST_WIDE_INT curr_value;
   enum loongarch_load_imm_method method;
 };
 
 /* The largest number of operations needed to load an integer constant.
-   The worst accepted case for 64-bit constants is LU12I.W,LU32I.D,LU52I.D,ORI
-   or LU12I.W,LU32I.D,LU52I.D,ADDI.D DECL_ASSEMBLER_NAME.  */
-#define LARCH_MAX_INTEGER_OPS 4
+   The worst accepted case for 64-bit constants is LU12I.W,
+   LOAD_HI32(LU32I.D,LU52I.D),ORI or LU12I.W,LOAD_HI32(LU32I.D,LU52I.D),
+   ADDI.D DECL_ASSEMBLER_NAME.  */
+#define LARCH_MAX_INTEGER_OPS 3
 
 /* Arrays that map GCC register numbers to debugger register numbers.  */
 int loongarch_dwarf_regno[FIRST_PSEUDO_REGISTER];
@@ -1474,24 +1483,27 @@ loongarch_build_integer (struct loongarch_integer_op *codes,
     {
       /* The value of the lower 32 bit be loaded with one instruction.
 	 lu12i.w.  */
-      codes[0].code = UNKNOWN;
-      codes[0].method = METHOD_NORMAL;
-      codes[0].value = low_part;
+      codes[cost].code = UNKNOWN;
+      codes[cost].method = METHOD_NORMAL;
+      codes[cost].value = low_part;
+      codes[cost].curr_value = low_part;
       cost++;
     }
   else
     {
       /* lu12i.w + ior.  */
-      codes[0].code = UNKNOWN;
-      codes[0].method = METHOD_NORMAL;
-      codes[0].value = low_part & ~(IMM_REACH - 1);
+      codes[cost].code = UNKNOWN;
+      codes[cost].method = METHOD_NORMAL;
+      codes[cost].value = low_part & ~(IMM_REACH - 1);
+      codes[cost].curr_value = codes[cost].value;
       cost++;
       HOST_WIDE_INT iorv = low_part & (IMM_REACH - 1);
       if (iorv != 0)
 	{
-	  codes[1].code = IOR;
-	  codes[1].method = METHOD_NORMAL;
-	  codes[1].value = iorv;
+	  codes[cost].code = IOR;
+	  codes[cost].method = METHOD_NORMAL;
+	  codes[cost].value = iorv;
+	  codes[cost].curr_value = low_part;
 	  cost++;
 	}
     }
@@ -1514,23 +1526,34 @@ loongarch_build_integer (struct loongarch_integer_op *codes,
 	{
 	  codes[cost].method = METHOD_LU52I;
 	  codes[cost].value = value & LU52I_B;
+	  codes[cost].curr_value = codes[cost].value
+	    | (codes[cost-1].curr_value & 0xfffffffffffff);
 	  return cost + 1;
 	}
 
-      codes[cost].method = METHOD_LU32I;
-      codes[cost].value = (value & LU32I_B) | (sign51 ? LU52I_B : 0);
-      cost++;
-
-      /* Determine whether the 52-61 bits are sign-extended from the low order,
-	 and if not, load the 52-61 bits.  */
-      if (!lu52i[(value & (HOST_WIDE_INT_1U << 51)) >> 51])
+      if (lu52i[sign51])
 	{
-	  codes[cost].method = METHOD_LU52I;
-	  codes[cost].value = value & LU52I_B;
+	  /* Determine whether the 52-63 bits are sign-extended from the low
+	     order.  If so, the 52-63 bits of the immediate number do not need
+	     to be loaded.  */
+	  codes[cost].method = METHOD_LU32I;
+	  codes[cost].value = (value & LU32I_B) | (sign51 ? LU52I_B : 0);
+	  codes[cost].curr_value = codes[cost].value
+	    | (codes[cost-1].curr_value & 0xffffffff);
+	  cost++;
+	}
+      else
+	{
+	  /* If the higher 32 bits of the 64bit immediate need to be loaded
+	     separately by two instructions, a false immediate load instruction
+	     load_hi32 is used to load them.  */
+	  codes[cost].method = METHOD_LD_HI32;
+	  codes[cost].value = value & 0xffffffff00000000;
+	  codes[cost].curr_value = codes[cost].value
+	    | (codes[cost-1].curr_value & 0xffffffff);
 	  cost++;
 	}
     }
-
   gcc_assert (cost <= LARCH_MAX_INTEGER_OPS);
 
   return cost;
@@ -2910,29 +2933,36 @@ loongarch_move_integer (rtx temp, rtx dest, unsigned HOST_WIDE_INT value)
       else
 	x = force_reg (mode, x);
 
+      set_unique_reg_note (get_last_insn (), REG_EQUAL,
+			   GEN_INT (codes[i-1].curr_value));
+
       switch (codes[i].method)
 	{
 	case METHOD_NORMAL:
+	  /* mov or ior.  */
 	  x = gen_rtx_fmt_ee (codes[i].code, mode, x,
 			      GEN_INT (codes[i].value));
 	  break;
 	case METHOD_LU32I:
-	  emit_insn (
-	    gen_rtx_SET (x,
-			 gen_rtx_IOR (DImode,
-				      gen_rtx_ZERO_EXTEND (
-					DImode, gen_rtx_SUBREG (SImode, x, 0)),
-				      GEN_INT (codes[i].value))));
+	  gcc_assert (mode == DImode);
+	  /* lu32i_d */
+	  x = gen_rtx_IOR (mode, gen_rtx_ZERO_EXTEND (mode,
+						gen_rtx_SUBREG (SImode, x, 0)),
+			   GEN_INT (codes[i].value));
 	  break;
 	case METHOD_LU52I:
-	  emit_insn (gen_lu52i_d (x, x, GEN_INT (0xfffffffffffff),
-				  GEN_INT (codes[i].value)));
+	  gcc_assert (mode == DImode);
+	  /* lu52i_d */
+	  x = gen_rtx_IOR (mode, gen_rtx_AND (mode, x,
+					      GEN_INT (0xfffffffffffff)),
+			   GEN_INT (codes[i].value));
 	  break;
-	case METHOD_INSV:
-	  emit_insn (
-	    gen_rtx_SET (gen_rtx_ZERO_EXTRACT (DImode, x, GEN_INT (20),
-					       GEN_INT (32)),
-			 gen_rtx_REG (DImode, 0)));
+	case METHOD_LD_HI32:
+	  /* Load the high 32 bits of the immediate number.  */
+	  gcc_assert (mode == DImode);
+	  /* load_hi32 */
+	  x = gen_rtx_IOR (mode, gen_rtx_AND (mode, x, GEN_INT (0xffffffff)),
+			   GEN_INT (codes[i].value));
 	  break;
 	default:
 	  gcc_unreachable ();
@@ -4890,7 +4920,7 @@ loongarch_print_operand_reloc (FILE *file, rtx op, bool hi64_part,
    'd'	Print CONST_INT OP in decimal.
    'F'	Print the FPU branch condition for comparison OP.
    'G'	Print a DBAR insn if the memory model requires a release.
-   'H'  Print address 52-61bit relocation associated with OP.
+   'H'  Print address 52-63bit relocation associated with OP.
    'h'  Print the high-part relocation associated with OP.
    'i'	Print i if the operand is not a register.
    'L'  Print the low-part relocation associated with OP.
