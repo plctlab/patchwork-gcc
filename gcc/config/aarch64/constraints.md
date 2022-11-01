@@ -107,6 +107,12 @@
 (define_constraint "N"
  "A constant that can be used with a 64-bit MOV immediate operation."
  (and (match_code "const_int")
+      (match_test "aarch64_move_imm (ival, DImode)")
+      (match_test "!aarch64_zeroextended_move_imm (ival)")))
+
+(define_constraint "O"
+ "A constant that can be used with a 32 or 64-bit MOV immediate operation."
+ (and (match_code "const_int")
       (match_test "aarch64_move_imm (ival, DImode)")))
 
 (define_constraint "Uti"
