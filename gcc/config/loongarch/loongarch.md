@@ -1882,6 +1882,39 @@
   DONE;
 })
 
+
+;; Load immediate to the 32-63 bits of the source register.
+(define_insn_and_split "load_hi32"
+  [(set (match_operand:DI 0 "register_operand" "=r")
+	(ior:DI
+	  (and:DI (match_operand:DI 1 "register_operand" "0")
+		  (match_operand 2 "hi32_mask_operand"))
+	(match_operand 3 "const_hi32_operand" "x")))]
+  "TARGET_64BIT"
+  "#"
+  ""
+  [(set (match_dup 0)
+	(ior:DI
+	  (zero_extend:DI
+	    (subreg:SI (match_dup 1) 0))
+	  (match_dup 4)))
+   (set (match_dup 0)
+	(ior:DI
+	  (and:DI (match_dup 0)
+		  (match_dup 6))
+	  (match_dup 5)))]
+{
+  HOST_WIDE_INT value = INTVAL (operands[3]);
+  int sign51 = (value & (HWIT_1U << 51)) >> 51;
+
+  operands[4] = GEN_INT ((value & LU32I_B) | (sign51 ? LU52I_B : 0));
+  operands[5] = GEN_INT (value & LU52I_B);
+  operands[6] = GEN_INT (0xfffffffffffff);
+}
+  [(set_attr "insn_count" "2")])
+
+;; Load immediately counts to 32-51 bits of the source register,
+;; with high bit symbol extensions.
 (define_insn "lu32i_d"
   [(set (match_operand:DI 0 "register_operand" "=r")
 	(ior:DI
@@ -1893,6 +1926,7 @@
   [(set_attr "type" "arith")
    (set_attr "mode" "DI")])
 
+;; Load immediately counts to bits 52-63 of the source register.
 (define_insn "lu52i_d"
   [(set (match_operand:DI 0 "register_operand" "=r")
 	(ior:DI
