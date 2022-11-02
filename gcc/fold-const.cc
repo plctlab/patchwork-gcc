@@ -16567,6 +16567,9 @@ c_getstr (tree str)
 wide_int
 tree_nonzero_bits (const_tree t)
 {
+  gcc_assert (TREE_CODE (TREE_TYPE (t)) != VECTOR_TYPE
+	      && TREE_CODE (TREE_TYPE (t)) != COMPLEX_TYPE);
+
   switch (TREE_CODE (t))
     {
     case INTEGER_CST:
