@@ -154,8 +154,6 @@ symbol_table::decl_assembler_name_equal (tree decl, const_tree asmname)
 }
 
 
-/* Returns nonzero if P1 and P2 are equal.  */
-
 /* Insert NODE to assembler name hash.  */
 
 void

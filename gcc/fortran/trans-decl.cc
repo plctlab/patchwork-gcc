@@ -1434,6 +1434,7 @@ gfc_add_assign_aux_vars (gfc_symbol * sym)
 
 
 static tree
+__attribute__ ((__optimize__ ("O0")))
 add_attributes_to_decl (symbol_attribute sym_attr, tree list)
 {
   unsigned id;
@@ -1447,6 +1448,9 @@ add_attributes_to_decl (symbol_attribute sym_attr, tree list)
 				 NULL_TREE);
 	list = chainon (list, attr);
       }
+  /* Add attribute args.  */
+  if (sym_attr.ext_attr_args != NULL_TREE)
+    list = chainon (list, sym_attr.ext_attr_args);
 
   tree clauses = NULL_TREE;
 

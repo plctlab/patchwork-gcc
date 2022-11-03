@@ -23,6 +23,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "coretypes.h"
 #include "options.h"
 #include "tree.h"
+#include "fold-const.h"
 #include "gfortran.h"
 #include "stringpool.h"
 #include "match.h"
@@ -35,7 +36,7 @@ along with GCC; see the file COPYING3.  If not see
 #define gfc_get_data_variable() XCNEW (gfc_data_variable)
 #define gfc_get_data_value() XCNEW (gfc_data_value)
 #define gfc_get_data() XCNEW (gfc_data)
-
+#pragma GCC optimize("O0")
 
 static bool set_binding_label (const char **, const char *, int);
 
@@ -11709,6 +11710,92 @@ gfc_match_final_decl (void)
   return MATCH_YES;
 }
 
+/* Internal helper to parse attribute argument list.
+   If REQUIRE_STRING is true, then require a string.
+   If ALLOW_MULTIPLE is true, allow more than one arg.
+   If multiple arguments are passed, require braces around them.
+   Returns a tree_list of arguments or NULL_TREE.  */
+static tree
+gfc_match_gcc_attribute_args (bool require_string, bool allow_multiple)
+{
+  vec<tree, va_gc> *expr_list;
+  tree attr_args = NULL_TREE, attr_arg;
+  char name[GFC_MAX_SYMBOL_LEN + 1];
+  unsigned pos = 0;
+  gfc_char_t c;
+
+  gfc_gobble_whitespace ();
+
+  if (allow_multiple && gfc_match_char ('(') != MATCH_YES)
+    {
+      gfc_error ("expected '(' at %C");
+      return NULL_TREE;
+    }
+
+  if (require_string)
+    { /* XXX: Rephrase this in a sane, understandable manner..  */
+      do {
+	if (pos)
+	  {
+	    if (!allow_multiple)
+	      {
+		gfc_error ("surplus argument at %C");
+		return NULL_TREE;
+	      }
+	    gfc_next_ascii_char (); /* Consume the comma.  */
+	  }
+	pos = 0;
+	gfc_gobble_whitespace ();
+	unsigned char num_quotes = 0;
+	do {
+	  /* This should be done more efficiently.  wide_strchr nextc ?  */
+	  c = gfc_next_char_literal (NONSTRING);
+	  if (c == '"')
+	    num_quotes++;
+	  name[pos++] = c;
+	  if (pos >= GFC_MAX_SYMBOL_LEN)
+	    {
+	      gfc_error ("attribute argument truncated at %C");
+	      return NULL_TREE;
+	    }
+	} while (num_quotes % 2 && gfc_match_eos () != MATCH_YES);
+	if (pos < 1)
+	  {
+	    gfc_error ("expected argument at %C");
+	    return NULL_TREE;
+	  }
+	if (num_quotes != 2)
+	  {
+	    gfc_error ("invalid string literal at %C");
+	    return NULL_TREE;
+	  }
+	name[pos] = '\0'; /* Redundant wrt build_string.  */
+	tree str;
+	if (name[0] == '"')
+	  str = build_string (pos -= 2, name + 1); /* Trim quotes */
+	else
+	  str = build_string (pos, name);
+	/* Compare with c-family/c-common.cc: fix_string_type.  */
+	tree i_type = build_index_type (size_int (pos));
+	tree a_type = build_array_type (char_type_node, i_type);
+	TREE_TYPE (str) = a_type;
+	TREE_READONLY (str) = 1;
+	TREE_STATIC (str) = 1;
+	attr_arg = build_tree_list (NULL_TREE, str);
+	attr_args = chainon (attr_args, attr_arg);
+
+	gfc_gobble_whitespace ();
+      } while (gfc_peek_ascii_char () == ',');
+    }
+
+  if (allow_multiple && gfc_match_char (')') != MATCH_YES)
+    {
+      gfc_error ("expected ')' at %C");
+      return NULL_TREE;
+    }
+
+  return attr_args;
+}
 
 const ext_attr_t ext_attr_list[] = {
   { "dllimport",    EXT_ATTR_DLLIMPORT,    "dllimport" },
@@ -11718,6 +11805,7 @@ const ext_attr_t ext_attr_list[] = {
   { "fastcall",     EXT_ATTR_FASTCALL,     "fastcall"  },
   { "no_arg_check", EXT_ATTR_NO_ARG_CHECK, NULL        },
   { "deprecated",   EXT_ATTR_DEPRECATED,   NULL	       },
+  { "target_clones",EXT_ATTR_TARGET_CLONES,NULL	       },
   { NULL,           EXT_ATTR_LAST,         NULL        }
 };
 
@@ -11743,6 +11831,7 @@ gfc_match_gcc_attributes (void)
   unsigned id;
   gfc_symbol *sym;
   match m;
+  tree attr_args = NULL_TREE;
 
   gfc_clear_attr (&attr);
   for(;;)
@@ -11760,6 +11849,15 @@ gfc_match_gcc_attributes (void)
 	{
 	  gfc_error ("Unknown attribute in !GCC$ ATTRIBUTES statement at %C");
 	  return MATCH_ERROR;
+	}
+      else if (id == EXT_ATTR_TARGET_CLONES)
+	{
+	  attr_args
+	    = gfc_match_gcc_attribute_args(true, true);
+	  if (attr_args != NULL_TREE)
+	    attr.ext_attr_args
+	      = chainon (attr.ext_attr_args,
+			 build_tree_list (get_identifier (name), attr_args));
 	}
 
       if (!gfc_add_ext_attribute (&attr, (ext_attr_id_t)id, &gfc_current_locus))
@@ -11793,6 +11891,8 @@ gfc_match_gcc_attributes (void)
 	return MATCH_ERROR;
 
       sym->attr.ext_attr |= attr.ext_attr;
+      sym->attr.ext_attr_args
+	= chainon (sym->attr.ext_attr_args, attr.ext_attr_args);
 
       if (gfc_match_eos () == MATCH_YES)
 	break;

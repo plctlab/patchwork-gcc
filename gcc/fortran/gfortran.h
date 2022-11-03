@@ -838,6 +838,7 @@ typedef enum
   EXT_ATTR_FASTCALL,
   EXT_ATTR_NO_ARG_CHECK,
   EXT_ATTR_DEPRECATED,
+  EXT_ATTR_TARGET_CLONES,
   EXT_ATTR_LAST, EXT_ATTR_NUM = EXT_ATTR_LAST
 }
 ext_attr_id_t;
@@ -1009,6 +1010,7 @@ typedef struct
 
   /* Attributes set by compiler extensions (!GCC$ ATTRIBUTES).  */
   unsigned ext_attr:EXT_ATTR_NUM;
+  tree ext_attr_args;
 
   /* The namespace where the attribute has been set.  */
   struct gfc_namespace *volatile_ns, *asynchronous_ns;
