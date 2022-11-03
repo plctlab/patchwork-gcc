@@ -949,6 +949,82 @@ location_get_source_line (const char *file_path, int line)
   return char_span (buffer, len);
 }
 
+/* Return a copy of the source text between two locations.  The caller is
+   responsible for freeing the return value.  */
+
+char *
+get_source_text_between (location_t start, location_t end)
+{
+  expanded_location expstart =
+    expand_location_to_spelling_point (start, LOCATION_ASPECT_START);
+  expanded_location expend =
+    expand_location_to_spelling_point (end, LOCATION_ASPECT_FINISH);
+
+  /* If the locations are in different files or the end comes before the
+     start, abort and return nothing.  */
+  if (!expstart.file || !expend.file)
+    return NULL;
+  if (strcmp (expstart.file, expend.file) != 0)
+    return NULL;
+  if (expstart.line > expend.line)
+    return NULL;
+  if (expstart.line == expend.line
+      && expstart.column > expend.column)
+    return NULL;
+
+  /* For a single line we need to trim both edges.  */
+  if (expstart.line == expend.line)
+    {
+      char_span line = location_get_source_line (expstart.file, expstart.line);
+      if (line.length () < 1)
+	return NULL;
+      int s = expstart.column - 1;
+      int l = expend.column - s;
+      if (line.length () < (size_t)expend.column)
+	return NULL;
+      return line.subspan (s, l).xstrdup ();
+    }
+
+  struct obstack buf_obstack;
+  obstack_init (&buf_obstack);
+
+  /* Loop through all lines in the range and append each to buf; may trim
+     parts of the start and end lines off depending on column values.  */
+  for (int l = expstart.line; l <= expend.line; ++l)
+    {
+      char_span line = location_get_source_line (expstart.file, l);
+      if (line.length () < 1 && (l != expstart.line && l != expend.line))
+	continue;
+
+      /* For the first line in the range, only start at expstart.column */
+      if (l == expstart.line)
+	{
+	  if (expstart.column == 0)
+	    return NULL;
+	  if (line.length () < (size_t)expstart.column - 1)
+	    return NULL;
+	  line = line.subspan (expstart.column - 1,
+			       line.length() - expstart.column + 1);
+	}
+      /* For the last line, don't go past expend.column */
+      else if (l == expend.line)
+	{
+	  if (line.length () < (size_t)expend.column)
+	    return NULL;
+	  line = line.subspan (0, expend.column);
+	}
+
+      obstack_grow (&buf_obstack, line.get_buffer (), line.length ());
+    }
+
+  /* NUL-terminate and finish the buf obstack.  */
+  obstack_1grow (&buf_obstack, 0);
+  const char *buf = (const char *) obstack_finish (&buf_obstack);
+
+  /* TODO should we collapse/trim newlines and runs of spaces?  */
+  return xstrdup (buf);
+}
+
 /* Determine if FILE_PATH missing a trailing newline on its final line.
    Only valid to call once all of the file has been loaded, by
    requesting a line number beyond the end of the file.  */
