@@ -446,23 +446,80 @@
   [(set_attr "type" "fadd")
    (set_attr "mode" "<UNITMODE>")])
 
-(define_insn "addsi3"
-  [(set (match_operand:SI          0 "register_operand" "=r,r")
-	(plus:SI (match_operand:SI 1 "register_operand" " r,r")
-		 (match_operand:SI 2 "arith_operand"    " r,I")))]
+(define_expand "add<mode>3"
+  [(parallel
+    [(set (match_operand:GPR          0 "register_operand" "")
+	  (plus:GPR (match_operand:GPR 1 "register_operand" "")
+		   (match_operand:GPR 2 "add_operand" "")))
+    (clobber (match_scratch:GPR 3 ""))])]
   ""
-  "add%i2%~\t%0,%1,%2"
-  [(set_attr "type" "arith")
-   (set_attr "mode" "SI")])
+{
+  if (riscv_eliminable_reg (operands[1]))
+  {
+    if (splittable_const_int_operand (operands[2], <MODE>mode))
+    {
+      /* The idea here is that we emit
+          add op0, op1, %hi(op2)
+          addi op0, op0, %lo(op2)
+        Then when op1, the eliminable reg, gets replaced with sp+offset,
+        we can simplify the constants.  */
+      HOST_WIDE_INT high_part = CONST_HIGH_PART (INTVAL (operands[2]));
+      emit_insn (gen_add<mode>3_internal (operands[0], operands[1],
+                  GEN_INT (high_part)));
+      operands[1] = operands[0];
+      operands[2] = GEN_INT (INTVAL (operands[2]) - high_part);
+    }
+    else if (! const_arith_operand (operands[2], <MODE>mode))
+      operands[2] = force_reg (<MODE>mode, operands[2]);
+  }
+})
 
-(define_insn "adddi3"
-  [(set (match_operand:DI          0 "register_operand" "=r,r")
-	(plus:DI (match_operand:DI 1 "register_operand" " r,r")
-		 (match_operand:DI 2 "arith_operand"    " r,I")))]
-  "TARGET_64BIT"
-  "add%i2\t%0,%1,%2"
+(define_insn_and_split "add<mode>3_internal"
+  [(set (match_operand:GPR          0 "register_operand" "=r,r,&r,!&r")
+	(plus:GPR (match_operand:GPR 1 "register_operand" " %r,r,r,0")
+		  (match_operand:GPR 2 "add_operand"      " r,I,L,L")))
+  (clobber (match_scratch:GPR 3 "=X,X,X,&r"))]
+  ""
+{
+  if ((which_alternative == 2) || (which_alternative == 3))
+    return "#";
+
+  if (TARGET_64BIT && <MODE>mode == SImode)
+    return "add%i2w\t%0,%1,%2";
+  else
+    return "add%i2\t%0,%1,%2";
+}
+  "&& reload_completed && const_lui_operand (operands[2], <MODE>mode)"
+  [(const_int 0)]
+{
+  if (REGNO (operands[0]) != REGNO (operands[1]))
+    {
+      emit_insn (gen_mov<mode> (operands[0], operands[2]));
+      emit_insn (gen_add<mode>3_internal (operands[0], operands[0], operands[1]));
+    }
+  else
+    {
+      emit_insn (gen_mov<mode> (operands[3], operands[2]));
+      emit_insn (gen_add<mode>3_internal (operands[0], operands[0], operands[3]));
+    }
+  DONE;
+}
   [(set_attr "type" "arith")
-   (set_attr "mode" "DI")])
+   (set_attr "mode" "<MODE>")])
+
+(define_insn "add<mode>3_internal2"
+  [(set (match_operand:GPR          0 "register_operand" "=r,r")
+	(plus:GPR (match_operand:GPR 1 "register_operand" " %r,r")
+		  (match_operand:GPR 2 "arith_operand"    " r,I")))]
+  ""
+ {
+   if (TARGET_64BIT && <MODE>mode == SImode)
+     return "add%i2w\t%0,%1,%2";
+   else
+     return "add%i2\t%0,%1,%2";
+ }
+  [(set_attr "type" "arith")
+   (set_attr "mode" "<MODE>")])
 
 (define_expand "addv<mode>4"
   [(set (match_operand:GPR           0 "register_operand" "=r,r")
@@ -507,6 +564,7 @@
     }
   DONE;
 })
+
 
 (define_expand "uaddv<mode>4"
   [(set (match_operand:GPR           0 "register_operand" "=r,r")

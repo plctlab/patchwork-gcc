@@ -116,6 +116,9 @@ calculate_x_in_sequence (rtx reg)
       rtx pat = PATTERN (insn);
       rtx dest = SET_DEST (pat);
 
+      if (GET_CODE (pat) == PARALLEL)
+	dest = SET_DEST (XVECEXP (pat, 0, 0));
+
       if (GET_CODE (pat) == CLOBBER)
 	continue;
 

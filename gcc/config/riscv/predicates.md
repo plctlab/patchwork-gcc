@@ -35,6 +35,14 @@
   (ior (match_operand 0 "arith_operand")
        (match_operand 0 "lui_operand")))
 
+(define_predicate "const_lui_operand"
+  (and (match_code "const_int")
+       (match_test "(INTVAL (op) & 0xFFF) == 0 && INTVAL (op) != 0")))
+
+(define_predicate "add_operand"
+  (ior (match_operand 0 "arith_operand")
+       (match_operand 0 "const_lui_operand")))
+
 (define_predicate "const_csr_operand"
   (and (match_code "const_int")
        (match_test "IN_RANGE (INTVAL (op), 0, 31)")))
@@ -57,6 +65,11 @@
 
 (define_predicate "reg_or_0_operand"
   (ior (match_operand 0 "const_0_operand")
+       (match_operand 0 "register_operand")))
+
+;; For use in adds, when adding to an eliminable register.
+(define_predicate "reg_or_const_int_operand"
+  (ior (match_code "const_int")
        (match_operand 0 "register_operand")))
 
 ;; Only use branch-on-bit sequences when the mask is not an ANDI immediate.
