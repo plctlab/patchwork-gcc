@@ -4175,13 +4175,14 @@ loongarch_emit_int_compare (enum rtx_code *code, rtx *op0, rtx *op1)
 	      HOST_WIDE_INT new_rhs;
 	      bool increment = *code == mag_comparisons[i][0];
 	      bool decrement = *code == mag_comparisons[i][1];
-	      if (!increment && !decrement)
+	      if ((!increment && !decrement)
+		  || (increment && rhs == HOST_WIDE_INT_MAX)
+		  || (decrement && rhs == HOST_WIDE_INT_MIN))
 		continue;
 
 	      new_rhs = rhs + (increment ? 1 : -1);
 	      if (loongarch_integer_cost (new_rhs)
-		    < loongarch_integer_cost (rhs)
-		  && (rhs < 0) == (new_rhs < 0))
+		    < loongarch_integer_cost (rhs))
 		{
 		  *op1 = GEN_INT (new_rhs);
 		  *code = mag_comparisons[i][increment];
