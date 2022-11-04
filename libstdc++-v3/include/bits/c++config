@@ -837,6 +837,18 @@ namespace __gnu_cxx
 
 #undef _GLIBCXX_HAS_BUILTIN
 
+#ifdef __has_attribute
+# define _GLIBCXX_HAS_ATTRIBUTE(B) __has_attribute(B)
+#else
+# define _GLIBCXX_HAS_ATTRIBUTE(B) 0
+#endif
+
+#if _GLIBCXX_HAS_ATTRIBUTE(init_priority)
+# define _GLIBCXX_HAVE_ATTRIBUTE_INIT_PRIORITY 1
+#endif
+
+#undef _GLIBCXX_HAS_ATTRIBUTE
+
 // Mark code that should be ignored by the compiler, but seen by Doxygen.
 #define _GLIBCXX_DOXYGEN_ONLY(X)
 
