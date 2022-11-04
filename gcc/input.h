@@ -34,6 +34,7 @@ extern GTY(()) class line_maps *saved_line_table;
 
 /* Returns the translated string referring to the special location.  */
 const char *special_fname_builtin ();
+const char *special_fname_generated ();
 
 /* line-map.cc reserves RESERVED_LOCATION_COUNT to the user.  Ensure
    both UNKNOWN_LOCATION and BUILTINS_LOCATION fit into that.  */
@@ -114,6 +115,10 @@ class char_span
 };
 
 extern char_span location_get_source_line (const char *file_path, int line);
+/* The version taking an exploc handles generated source too, and should be used
+   whenever possible.  */
+extern char_span location_get_source_line (expanded_location exploc);
+extern char_span location_get_source_line (expanded_location exploc, int line);
 
 extern bool location_missing_trailing_newline (const char *file_path);
 
@@ -136,7 +141,8 @@ class file_cache
   file_cache ();
   ~file_cache ();
 
-  file_cache_slot *lookup_or_add_file (const char *file_path);
+  file_cache_slot *lookup_or_add_file (const char *file_path,
+				       unsigned int generated_data_len);
   void forcibly_evict_file (const char *file_path);
 
   /* See comments in diagnostic.h about the input conversion context.  */
@@ -150,7 +156,8 @@ class file_cache
 
  private:
   file_cache_slot *evicted_cache_tab_entry (unsigned *highest_use_count);
-  file_cache_slot *add_file (const char *file_path);
+  file_cache_slot *add_file (const char *file_path,
+			     unsigned int generated_data_len);
   file_cache_slot *lookup_file (const char *file_path);
 
  private:
