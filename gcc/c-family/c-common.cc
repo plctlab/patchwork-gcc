@@ -9183,11 +9183,14 @@ try_to_locate_new_include_insertion_point (const char *file, location_t loc)
       const line_map_ordinary *ord_map
 	= LINEMAPS_ORDINARY_MAP_AT (line_table, i);
 
+      if (ord_map->reason == LC_GEN)
+	continue;
+
       if (const line_map_ordinary *from
 	  = linemap_included_from_linemap (line_table, ord_map))
 	/* We cannot use pointer equality, because with preprocessed
 	   input all filename strings are unique.  */
-	if (0 == strcmp (from->to_file, file))
+	if (from->reason != LC_GEN && 0 == strcmp (from->to_file, file))
 	  {
 	    last_include_ord_map = from;
 	    last_ord_map_after_include = NULL;

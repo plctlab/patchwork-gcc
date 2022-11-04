@@ -25,6 +25,8 @@ along with GCC; see the file COPYING3.  If not see
 
 #if CHECKING_P
 
+struct line_map_ordinary;
+
 namespace selftest {
 
 /* A struct describing the source-location of a selftest, to make it
@@ -96,10 +98,9 @@ extern void assert_str_startswith (const location &loc,
 class named_temp_file
 {
  public:
-  named_temp_file (const char *suffix);
+  explicit named_temp_file (const char *suffix);
   ~named_temp_file ();
   const char *get_filename () const { return m_filename; }
-
  private:
   char *m_filename;
 };
@@ -113,7 +114,13 @@ class temp_source_file : public named_temp_file
   temp_source_file (const location &loc, const char *suffix,
 		    const char *content);
   temp_source_file (const location &loc, const char *suffix,
-		    const char *content, size_t sz);
+		    const char *content, size_t sz,
+		    bool is_generated = false);
+  ~temp_source_file ();
+
+  char *const content_buf;
+  const size_t content_len;
+  const line_map_ordinary *do_linemap_add (int line); /* In input.cc */
 };
 
 /* RAII-style class for avoiding introducing locale-specific differences
@@ -171,6 +178,10 @@ class line_table_test
 
   /* Destructor.  Restore the saved line_table.  */
   ~line_table_test ();
+
+  /* When this is enabled in the line_table_case, test storing all the data
+     in memory rather than a file.  */
+  bool m_generated_data;
 };
 
 /* Helper function for selftests that need a function decl.  */
@@ -183,7 +194,8 @@ extern tree make_fndecl (tree return_type,
 /* Run TESTCASE multiple times, once for each case in our test matrix.  */
 
 extern void
-for_each_line_table_case (void (*testcase) (const line_table_case &));
+for_each_line_table_case (void (*testcase) (const line_table_case &),
+			  bool test_generated_data = false);
 
 /* Read the contents of PATH into memory, returning a 0-terminated buffer
    that must be freed by the caller.

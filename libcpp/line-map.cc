@@ -513,13 +513,18 @@ LAST_SOURCE_LINE_LOCATION (const line_map_ordinary *map)
    TO_FILE is NULL, then TO_FILE, TO_LINE and SYSP are given their
    natural values considering the file we are returning to.
 
+   If reason is LC_GEN, then to_file is not a file name, but is
+   rather the actual generated content, and TO_FILE_LEN > 0 is the number
+   of bytes it contains.  Otherwise TO_FILE_LEN should be set to 0.
+
    FROM_LINE should be monotonic increasing across calls to this
    function.  A call to this function can relocate the previous set of
    maps, so any stored line_map pointers should not be used.  */
 
 const struct line_map *
 linemap_add (line_maps *set, enum lc_reason reason,
-	     unsigned int sysp, const char *to_file, linenum_type to_line)
+	     unsigned int sysp, const char *to_file, linenum_type to_line,
+	     unsigned int to_file_len)
 {
   /* Generate a start_location above the current highest_location.
      If possible, make the low range bits be zero.  */
@@ -535,8 +540,20 @@ linemap_add (line_maps *set, enum lc_reason reason,
 		      >= MAP_START_LOCATION (LINEMAPS_LAST_ORDINARY_MAP (set))));
 
   /* When we enter the file for the first time reason cannot be
-     LC_RENAME.  */
-  linemap_assert (!(set->depth == 0 && reason == LC_RENAME));
+     LC_RENAME.  To keep things simple, don't track LC_RENAME for
+     LC_GEN maps, but just keep their reason as always LC_GEN.  */
+  if (reason == LC_RENAME)
+    {
+      linemap_assert (set->depth != 0);
+      const auto prev = LINEMAPS_LAST_ORDINARY_MAP (set);
+      linemap_assert (prev);
+      if (prev->reason == LC_GEN)
+	{
+	  reason = LC_GEN;
+	  to_file = prev->to_file;
+	  to_file_len = prev->to_file_len;
+	}
+    }
 
   /* If we are leaving the main file, return a NULL map.  */
   if (reason == LC_LEAVE
@@ -557,7 +574,8 @@ linemap_add (line_maps *set, enum lc_reason reason,
     = linemap_check_ordinary (new_linemap (set, start_location));
   map->reason = reason;
 
-  if (to_file && *to_file == '\0' && reason != LC_RENAME_VERBATIM)
+  if (to_file && *to_file == '\0' && reason != LC_RENAME_VERBATIM
+      && reason != LC_GEN)
     to_file = "<stdin>";
 
   if (reason == LC_RENAME_VERBATIM)
@@ -591,6 +609,15 @@ linemap_add (line_maps *set, enum lc_reason reason,
 
   map->sysp = sysp;
   map->to_file = to_file;
+
+  if (reason == LC_GEN)
+    {
+      gcc_assert (to_file_len);
+      map->to_file_len = to_file_len;
+    }
+  else
+    map->to_file_len = (to_file_len ? to_file_len :  strlen (to_file) + 1);
+
   map->to_line = to_line;
   LINEMAPS_ORDINARY_CACHE (set) = LINEMAPS_ORDINARY_USED (set) - 1;
   /* Do not store range_bits here.  That's readjusted in
@@ -606,7 +633,7 @@ linemap_add (line_maps *set, enum lc_reason reason,
      pure_location_p.  */
   linemap_assert (pure_location_p (set, start_location));
 
-  if (reason == LC_ENTER)
+  if (reason == LC_ENTER || reason == LC_GEN)
     {
       if (set->depth == 0)
 	map->included_from = 0;
@@ -617,7 +644,7 @@ linemap_add (line_maps *set, enum lc_reason reason,
 	      & ~((1 << map[-1].m_column_and_range_bits) - 1))
 	     + map[-1].start_location);
       set->depth++;
-      if (set->trace_includes)
+      if (set->trace_includes && reason == LC_ENTER)
 	trace_include (set, map);
     }
   else if (reason == LC_RENAME)
@@ -864,7 +891,7 @@ linemap_line_start (line_maps *set, linenum_type to_line,
 		  (linemap_add (set, LC_RENAME,
 				ORDINARY_MAP_IN_SYSTEM_HEADER_P (map),
 				ORDINARY_MAP_FILE_NAME (map),
-				to_line)));
+				to_line, map->to_file_len)));
       map->m_column_and_range_bits = column_bits;
       map->m_range_bits = range_bits;
       r = (MAP_START_LOCATION (map)
@@ -1853,8 +1880,14 @@ linemap_expand_location (line_maps *set,
 	abort ();
 
       const line_map_ordinary *ord_map = linemap_check_ordinary (map);
+      if (ord_map->reason == LC_GEN)
+	{
+	  xloc.generated_data = ord_map->to_file;
+	  xloc.generated_data_len = ord_map->to_file_len;
+	}
+      else
+	xloc.file = LINEMAP_FILE (ord_map);
 
-      xloc.file = LINEMAP_FILE (ord_map);
       xloc.line = SOURCE_LINE (ord_map, loc);
       xloc.column = SOURCE_COLUMN (ord_map, loc);
       xloc.sysp = LINEMAP_SYSP (ord_map) != 0;
@@ -1873,7 +1906,7 @@ linemap_dump (FILE *stream, class line_maps *set, unsigned ix, bool is_macro)
 {
   const char *const lc_reasons_v[LC_HWM]
       = { "LC_ENTER", "LC_LEAVE", "LC_RENAME", "LC_RENAME_VERBATIM",
-	  "LC_ENTER_MACRO", "LC_MODULE" };
+	  "LC_ENTER_MACRO", "LC_MODULE", "LC_GEN" };
   const line_map *map;
   unsigned reason;
 

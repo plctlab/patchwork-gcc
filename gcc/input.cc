@@ -35,6 +35,12 @@ special_fname_builtin ()
   return _("<built-in>");
 }
 
+const char *
+special_fname_generated ()
+{
+  return _("<generated>");
+}
+
 /* Input charset configuration.  */
 static const char *default_charset_callback (const char *)
 {
@@ -58,7 +64,7 @@ public:
   ~file_cache_slot ();
 
   bool read_line_num (size_t line_num,
-		      char ** line, ssize_t *line_len);
+		      const char **line, ssize_t *line_len);
 
   /* Accessors.  */
   const char *get_file_path () const { return m_file_path; }
@@ -71,7 +77,8 @@ public:
   void inc_use_count () { m_use_count++; }
 
   bool create (const file_cache::input_context &in_context,
-	       const char *file_path, FILE *fp, unsigned highest_use_count);
+	       const char *file_path, FILE *fp, unsigned highest_use_count,
+	       unsigned int generated_data_len);
   void evict ();
 
  private:
@@ -106,8 +113,8 @@ public:
   void maybe_grow ();
   bool read_data ();
   bool maybe_read_data ();
-  bool get_next_line (char **line, ssize_t *line_len);
-  bool read_next_line (char ** line, ssize_t *line_len);
+  bool get_next_line (const char **line, ssize_t *line_len);
+  bool read_next_line (const char **line, ssize_t *line_len);
   bool goto_next_line ();
 
   static const size_t buffer_size = 4 * 1024;
@@ -126,9 +133,15 @@ public:
 
   FILE *m_fp;
 
-  /* This points to the content of the file that we've read so
-     far.  */
+  /* This is a buffer owned by this object, holding the content of the file
+     that we've read so far.  */
   char *m_data;
+
+  /* This is the current buffer from which to obtain data.  It is usually
+     equal to m_data, except when we are handling internally generated
+     content that already lives in memory and does not require a separate
+     buffer here.  */
+  const char *m_data_active;
 
   /* The allocated buffer to be freed may start a little earlier than DATA,
      e.g. if a UTF8 BOM was skipped at the beginning.  */
@@ -179,6 +192,7 @@ public:
     gcc_assert (m_data);
     m_alloc_offset += offset;
     m_data += offset;
+    m_data_active = m_data;
     m_size -= offset;
   }
 
@@ -282,6 +296,8 @@ expand_location_1 (location_t loc,
   xloc.data = block;
   if (loc <= BUILTINS_LOCATION)
     xloc.file = loc == UNKNOWN_LOCATION ? NULL : special_fname_builtin ();
+  else if (xloc.generated_data_len)
+    xloc.file = special_fname_generated ();
 
   return xloc;
 }
@@ -445,16 +461,23 @@ file_cache::evicted_cache_tab_entry (unsigned *highest_use_count)
    num_file_slots files are cached.  */
 
 file_cache_slot*
-file_cache::add_file (const char *file_path)
+file_cache::add_file (const char *file_path, unsigned int generated_data_len)
 {
 
-  FILE *fp = fopen (file_path, "r");
-  if (fp == NULL)
-    return NULL;
+  FILE *fp;
+  if (generated_data_len)
+    fp = NULL;
+  else
+    {
+      fp = fopen (file_path, "r");
+      if (fp == NULL)
+	return NULL;
+    }
 
   unsigned highest_use_count = 0;
   file_cache_slot *r = evicted_cache_tab_entry (&highest_use_count);
-  if (!r->create (in_context, file_path, fp, highest_use_count))
+  if (!r->create (in_context, file_path, fp, highest_use_count,
+		  generated_data_len))
     return NULL;
   return r;
 }
@@ -465,14 +488,13 @@ file_cache::add_file (const char *file_path)
 bool
 file_cache_slot::create (const file_cache::input_context &in_context,
 			 const char *file_path, FILE *fp,
-			 unsigned highest_use_count)
+			 unsigned highest_use_count,
+			 unsigned int generated_data_len)
 {
   m_file_path = file_path;
   if (m_fp)
     fclose (m_fp);
   m_fp = fp;
-  if (m_alloc_offset)
-    offset_buffer (-m_alloc_offset);
   m_nb_read = 0;
   m_line_start_idx = 0;
   m_line_num = 0;
@@ -480,9 +502,23 @@ file_cache_slot::create (const file_cache::input_context &in_context,
   /* Ensure that this cache entry doesn't get evicted next time
      add_file_to_cache_tab is called.  */
   m_use_count = ++highest_use_count;
-  m_total_lines = total_lines_num (file_path);
   m_missing_trailing_newline = true;
 
+  /* If this is generated data, then file_path points to it and we temporarily
+     source from there rather than from our own m_data buffer.  */
+  if (!m_fp)
+    {
+      gcc_assert (generated_data_len);
+      m_data_active = file_path;
+      m_nb_read = generated_data_len;
+      m_total_lines = 0;
+      return true;
+    }
+
+  m_data_active = m_data;
+  m_total_lines = total_lines_num (file_path);
+  if (m_alloc_offset)
+    offset_buffer (-m_alloc_offset);
 
   /* Check the input configuration to determine if we need to do any
      transformations, such as charset conversion or BOM skipping.  */
@@ -497,7 +533,7 @@ file_cache_slot::create (const file_cache::input_context &in_context,
 	return false;
       if (m_data)
 	XDELETEVEC (m_data);
-      m_data = cs.data;
+      m_data_active = m_data = cs.data;
       m_nb_read = m_size = cs.len;
       m_alloc_offset = cs.data - cs.to_free;
     }
@@ -535,11 +571,12 @@ file_cache::~file_cache ()
    it.  */
 
 file_cache_slot*
-file_cache::lookup_or_add_file (const char *file_path)
+file_cache::lookup_or_add_file (const char *file_path,
+				unsigned int generated_data_len)
 {
   file_cache_slot *r = lookup_file (file_path);
   if (r == NULL)
-    r = add_file (file_path);
+    r = add_file (file_path, generated_data_len);
   return r;
 }
 
@@ -547,7 +584,8 @@ file_cache::lookup_or_add_file (const char *file_path)
    diagnostic.  */
 
 file_cache_slot::file_cache_slot ()
-: m_use_count (0), m_file_path (NULL), m_fp (NULL), m_data (0),
+: m_use_count (0), m_file_path (NULL), m_fp (NULL),
+  m_data (0), m_data_active (0),
   m_alloc_offset (0), m_size (0), m_nb_read (0), m_line_start_idx (0),
   m_line_num (0), m_total_lines (0), m_missing_trailing_newline (true)
 {
@@ -599,6 +637,8 @@ file_cache_slot::needs_grow_p () const
 void
 file_cache_slot::maybe_grow ()
 {
+  gcc_checking_assert (m_data_active == m_data);
+
   if (!needs_grow_p ())
     return;
 
@@ -616,6 +656,8 @@ file_cache_slot::maybe_grow ()
       m_data = XRESIZEVEC (char, m_data, m_size);
       offset_buffer (offset);
     }
+
+  m_data_active = m_data;
 }
 
 /*  Read more data into the cache.  Extends the cache if need be.
@@ -624,6 +666,8 @@ file_cache_slot::maybe_grow ()
 bool
 file_cache_slot::read_data ()
 {
+  gcc_checking_assert (m_data_active == m_data);
+
   if (feof (m_fp) || ferror (m_fp))
     return false;
 
@@ -657,8 +701,8 @@ file_cache_slot::maybe_read_data ()
    terminator was not found.  We need to determine line endings in the same
    manner that libcpp does: any of \n, \r\n, or \r is a line ending.  */
 
-static char *
-find_end_of_line (char *s, size_t len)
+static const char *
+find_end_of_line (const char *s, size_t len)
 {
   for (const auto end = s + len; s != end; ++s)
     {
@@ -694,7 +738,7 @@ find_end_of_line (char *s, size_t len)
    make the content of *LINE invalid.  */
 
 bool
-file_cache_slot::get_next_line (char **line, ssize_t *line_len)
+file_cache_slot::get_next_line (const char **line, ssize_t *line_len)
 {
   /* Fill the cache with data to process.  */
   maybe_read_data ();
@@ -704,18 +748,18 @@ file_cache_slot::get_next_line (char **line, ssize_t *line_len)
     /* There is no more data to process.  */
     return false;
 
-  char *line_start = m_data + m_line_start_idx;
+  const char *line_start = m_data_active + m_line_start_idx;
 
-  char *next_line_start = NULL;
+  const char *next_line_start = NULL;
   size_t len = 0;
-  char *line_end = find_end_of_line (line_start, remaining_size);
+  const char *line_end = find_end_of_line (line_start, remaining_size);
   if (line_end == NULL)
     {
       /* We haven't found an end-of-line delimiter in the cache.
 	 Fill the cache with more data from the file and look again.  */
       while (maybe_read_data ())
 	{
-	  line_start = m_data + m_line_start_idx;
+	  line_start = m_data_active + m_line_start_idx;
 	  remaining_size = m_nb_read - m_line_start_idx;
 	  line_end = find_end_of_line (line_start, remaining_size);
 	  if (line_end != NULL)
@@ -734,7 +778,7 @@ file_cache_slot::get_next_line (char **line, ssize_t *line_len)
 
 	     If the file ends in a \r, we didn't identify it as a line
 	     terminator above, so do that now instead.  */
-	  line_end = m_data + m_nb_read;
+	  line_end = m_data_active + m_nb_read;
 	  if (m_nb_read && line_end[-1] == '\r')
 	    {
 	      --line_end;
@@ -785,7 +829,7 @@ file_cache_slot::get_next_line (char **line, ssize_t *line_len)
 	m_line_record.safe_push
 	  (file_cache_slot::line_info (m_line_num,
 				       m_line_start_idx,
-				       line_end - m_data));
+				       line_end - m_data_active));
       else if (m_total_lines > line_record_size)
 	{
 	  /* ... otherwise, we just scale total_lines down to
@@ -796,14 +840,14 @@ file_cache_slot::get_next_line (char **line, ssize_t *line_len)
 	    m_line_record.safe_push
 	      (file_cache_slot::line_info (m_line_num,
 					   m_line_start_idx,
-					   line_end - m_data));
+					   line_end - m_data_active));
 	}
     }
 
   /* Update m_line_start_idx so that it points to the next line to be
      read.  */
   if (next_line_start)
-    m_line_start_idx = next_line_start - m_data;
+    m_line_start_idx = next_line_start - m_data_active;
   else
     /* We didn't find any terminal '\n'.  Let's consider that the end
        of line is the end of the data in the cache.  The next
@@ -826,7 +870,7 @@ file_cache_slot::get_next_line (char **line, ssize_t *line_len)
 bool
 file_cache_slot::goto_next_line ()
 {
-  char *l;
+  const char *l;
   ssize_t len;
 
   return get_next_line (&l, &len);
@@ -841,7 +885,7 @@ file_cache_slot::goto_next_line ()
 
 bool
 file_cache_slot::read_line_num (size_t line_num,
-		       char ** line, ssize_t *line_len)
+				const char **line, ssize_t *line_len)
 {
   gcc_assert (line_num > 0);
 
@@ -894,7 +938,7 @@ file_cache_slot::read_line_num (size_t line_num,
 	  if (i && i->line_num == line_num)
 	    {
 	      /* We have the start/end of the line.  */
-	      *line = m_data + i->start_pos;
+	      *line = m_data_active + i->start_pos;
 	      *line_len = i->end_pos - i->start_pos;
 	      return true;
 	    }
@@ -931,28 +975,47 @@ file_cache_slot::read_line_num (size_t line_num,
    If the function fails, a NULL char_span is returned.  */
 
 char_span
-location_get_source_line (const char *file_path, int line)
+location_get_source_line (expanded_location xloc, int line)
 {
-  char *buffer = NULL;
-  ssize_t len;
+  xloc.line = line;
 
-  if (line == 0)
+  if (xloc.line == 0)
     return char_span (NULL, 0);
 
-  if (file_path == NULL)
+  if (xloc.file == NULL)
     return char_span (NULL, 0);
 
   diagnostic_file_cache_init ();
 
-  file_cache_slot *c = global_dc->m_file_cache->lookup_or_add_file (file_path);
+  file_cache_slot *c = global_dc->m_file_cache->lookup_or_add_file
+    (xloc.generated_data ? xloc.generated_data : xloc.file,
+     xloc.generated_data_len);
+
   if (c == NULL)
     return char_span (NULL, 0);
 
-  bool read = c->read_line_num (line, &buffer, &len);
+  const char *buffer = NULL;
+  ssize_t len;
+  bool read = c->read_line_num (xloc.line, &buffer, &len);
   if (!read)
     return char_span (NULL, 0);
 
   return char_span (buffer, len);
+}
+
+char_span
+location_get_source_line (expanded_location xloc)
+{
+  return location_get_source_line (xloc, xloc.line);
+}
+
+char_span
+location_get_source_line (const char *file_path, int line)
+{
+  expanded_location xloc = {};
+  xloc.file = file_path;
+  xloc.line = line;
+  return location_get_source_line (xloc);
 }
 
 /* Determine if FILE_PATH missing a trailing newline on its final line.
@@ -964,7 +1027,8 @@ location_missing_trailing_newline (const char *file_path)
 {
   diagnostic_file_cache_init ();
 
-  file_cache_slot *c = global_dc->m_file_cache->lookup_or_add_file (file_path);
+  file_cache_slot *c
+    = global_dc->m_file_cache->lookup_or_add_file (file_path, 0);
   if (c == NULL)
     return false;
 
@@ -1110,9 +1174,10 @@ int
 location_compute_display_column (expanded_location exploc,
 				 const cpp_char_column_policy &policy)
 {
-  if (!(exploc.file && *exploc.file && exploc.line && exploc.column))
+  if (!(exploc.file && (exploc.generated_data_len || *exploc.file)
+	&& exploc.line && exploc.column))
     return exploc.column;
-  char_span line = location_get_source_line (exploc.file, exploc.line);
+  char_span line = location_get_source_line (exploc);
   /* If line is NULL, this function returns exploc.column which is the
      desired fallback.  */
   return cpp_byte_column_to_display_column (line.get_buffer (), line.length (),
@@ -1298,6 +1363,9 @@ dump_location_info (FILE *stream)
       case LC_ENTER_MACRO:
 	reason = "LC_RENAME_MACRO";
 	break;
+      case LC_GEN:
+	reason = "LC_GEN";
+	break;
       default:
 	reason = "Unknown";
       }
@@ -1327,8 +1395,7 @@ dump_location_info (FILE *stream)
 	    {
 	      /* Beginning of a new source line: draw the line.  */
 
-	      char_span line_text = location_get_source_line (exploc.file,
-							      exploc.line);
+	      char_span line_text = location_get_source_line (exploc);
 	      if (!line_text)
 		break;
 	      fprintf (stream,
@@ -1655,7 +1722,7 @@ get_substring_ranges_for_loc (cpp_reader *pfile,
       if (start.column > finish.column)
 	return "range endpoints are reversed";
 
-      char_span line = location_get_source_line (start.file, start.line);
+      char_span line = location_get_source_line (start);
       if (!line)
 	return "unable to read source line";
 
@@ -1871,6 +1938,20 @@ get_num_source_ranges_for_substring (cpp_reader *pfile,
 
 /* Selftests of location handling.  */
 
+/* Wrapper around linemap_add to handle transparently adding either a tmp file,
+   or in-memory generated content.  */
+const line_map_ordinary *
+temp_source_file::do_linemap_add (int line)
+{
+  const line_map *map;
+  if (content_buf)
+    map = linemap_add (line_table, LC_GEN, false, content_buf,
+		       line, content_len);
+  else
+    map = linemap_add (line_table, LC_ENTER, false, get_filename (), line);
+  return linemap_check_ordinary (map);
+}
+
 /* Verify that compare() on linenum_type handles comparisons over the full
    range of the type.  */
 
@@ -1949,13 +2030,16 @@ assert_loceq (const char *exp_filename, int exp_linenum, int exp_colnum,
 class line_table_case
 {
 public:
-  line_table_case (int default_range_bits, int base_location)
+  line_table_case (int default_range_bits, int base_location,
+		   bool generated_data)
   : m_default_range_bits (default_range_bits),
-    m_base_location (base_location)
+    m_base_location (base_location),
+    m_generated_data (generated_data)
   {}
 
   int m_default_range_bits;
   int m_base_location;
+  bool m_generated_data;
 };
 
 /* Constructor.  Store the old value of line_table, and create a new
@@ -1972,6 +2056,7 @@ line_table_test::line_table_test ()
   gcc_assert (saved_line_table->round_alloc_size);
   line_table->round_alloc_size = saved_line_table->round_alloc_size;
   line_table->default_range_bits = 0;
+  m_generated_data = false;
 }
 
 /* Constructor.  Store the old value of line_table, and create a new
@@ -1993,6 +2078,7 @@ line_table_test::line_table_test (const line_table_case &case_)
       line_table->highest_location = case_.m_base_location;
       line_table->highest_line = case_.m_base_location;
     }
+  m_generated_data = case_.m_generated_data;
 }
 
 /* Destructor.  Restore the old value of line_table.  */
@@ -2012,7 +2098,10 @@ test_accessing_ordinary_linemaps (const line_table_case &case_)
   line_table_test ltt (case_);
 
   /* Build a simple linemap describing some locations. */
-  linemap_add (line_table, LC_ENTER, false, "foo.c", 0);
+  if (ltt.m_generated_data)
+    linemap_add (line_table, LC_GEN, false, "some data", 0, 10);
+  else
+    linemap_add (line_table, LC_ENTER, false, "foo.c", 0);
 
   linemap_line_start (line_table, 1, 100);
   location_t loc_a = linemap_position_for_column (line_table, 1);
@@ -2062,21 +2151,23 @@ test_accessing_ordinary_linemaps (const line_table_case &case_)
   linemap_add (line_table, LC_LEAVE, false, NULL, 0);
 
   /* Verify that we can recover the location info.  */
-  assert_loceq ("foo.c", 1, 1, loc_a);
-  assert_loceq ("foo.c", 1, 23, loc_b);
-  assert_loceq ("foo.c", 2, 1, loc_c);
-  assert_loceq ("foo.c", 2, 17, loc_d);
-  assert_loceq ("foo.c", 3, 700, loc_e);
-  assert_loceq ("foo.c", 4, 100, loc_back_to_short);
+  const auto fname
+    = (ltt.m_generated_data ? special_fname_generated () : "foo.c");
+  assert_loceq (fname, 1, 1, loc_a);
+  assert_loceq (fname, 1, 23, loc_b);
+  assert_loceq (fname, 2, 1, loc_c);
+  assert_loceq (fname, 2, 17, loc_d);
+  assert_loceq (fname, 3, 700, loc_e);
+  assert_loceq (fname, 4, 100, loc_back_to_short);
 
   /* In the very wide line, the initial location should be fully tracked.  */
-  assert_loceq ("foo.c", 5, 2000, loc_start_of_very_long_line);
+  assert_loceq (fname, 5, 2000, loc_start_of_very_long_line);
   /* ...but once we exceed LINE_MAP_MAX_COLUMN_NUMBER column-tracking should
      be disabled.  */
-  assert_loceq ("foo.c", 5, 0, loc_too_wide);
-  assert_loceq ("foo.c", 5, 0, loc_too_wide_2);
+  assert_loceq (fname, 5, 0, loc_too_wide);
+  assert_loceq (fname, 5, 0, loc_too_wide_2);
   /*...and column-tracking should be re-enabled for subsequent lines.  */
-  assert_loceq ("foo.c", 6, 10, loc_sane_again);
+  assert_loceq (fname, 6, 10, loc_sane_again);
 
   assert_loceq ("bar.c", 1, 150, loc_f);
 
@@ -2123,10 +2214,11 @@ test_make_location_nonpure_range_endpoints (const line_table_case &case_)
      with C++ frontend.
      ....................0000000001111111111222.
      ....................1234567890123456789012.  */
-  const char *content = "     r += !aaa == bbb;\n";
-  temp_source_file tmp (SELFTEST_LOCATION, ".C", content);
   line_table_test ltt (case_);
-  linemap_add (line_table, LC_ENTER, false, tmp.get_filename (), 1);
+  const char *content = "     r += !aaa == bbb;\n";
+  temp_source_file tmp (SELFTEST_LOCATION, ".C", content, strlen (content),
+			ltt.m_generated_data);
+  tmp.do_linemap_add (1);
 
   const location_t c11 = linemap_position_for_column (line_table, 11);
   const location_t c12 = linemap_position_for_column (line_table, 12);
@@ -3783,7 +3875,8 @@ static const location_t boundary_locations[] = {
 /* Run TESTCASE multiple times, once for each case in our test matrix.  */
 
 void
-for_each_line_table_case (void (*testcase) (const line_table_case &))
+for_each_line_table_case (void (*testcase) (const line_table_case &),
+			  bool test_generated_data)
 {
   /* As noted above in the description of struct line_table_case,
      we want to explore a test matrix of interesting line_table
@@ -3802,16 +3895,19 @@ for_each_line_table_case (void (*testcase) (const line_table_case &))
       const int num_boundary_locations = ARRAY_SIZE (boundary_locations);
       for (int loc_idx = 0; loc_idx < num_boundary_locations; loc_idx++)
 	{
-	  line_table_case c (default_range_bits, boundary_locations[loc_idx]);
-
-	  testcase (c);
-
-	  num_cases_tested++;
+	  /* ...and try both normal files, and internally generated data.  */
+	  for (int gen = 0; gen != 1+test_generated_data; ++gen)
+	    {
+	      line_table_case c (default_range_bits,
+				 boundary_locations[loc_idx], gen);
+	      testcase (c);
+	      num_cases_tested++;
+	    }
 	}
     }
 
   /* Verify that we fully covered the test matrix.  */
-  ASSERT_EQ (num_cases_tested, 2 * 12);
+  ASSERT_EQ (num_cases_tested, 2 * 12 * (1+test_generated_data));
 }
 
 /* Verify that when presented with a consecutive pair of locations with
@@ -3822,7 +3918,7 @@ for_each_line_table_case (void (*testcase) (const line_table_case &))
 static void
 test_line_offset_overflow ()
 {
-  line_table_test ltt (line_table_case (5, 0));
+  line_table_test ltt (line_table_case (5, 0, false));
 
   linemap_add (line_table, LC_ENTER, false, "foo.c", 0);
   linemap_line_start (line_table, 1, 100);
@@ -3965,9 +4061,9 @@ input_cc_tests ()
   test_should_have_column_data_p ();
   test_unknown_location ();
   test_builtins ();
-  for_each_line_table_case (test_make_location_nonpure_range_endpoints);
+  for_each_line_table_case (test_make_location_nonpure_range_endpoints, true);
 
-  for_each_line_table_case (test_accessing_ordinary_linemaps);
+  for_each_line_table_case (test_accessing_ordinary_linemaps, true);
   for_each_line_table_case (test_lexer);
   for_each_line_table_case (test_lexer_string_locations_simple);
   for_each_line_table_case (test_lexer_string_locations_ebcdic);

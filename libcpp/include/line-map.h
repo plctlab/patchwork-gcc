@@ -75,6 +75,8 @@ enum lc_reason
   LC_RENAME_VERBATIM,	/* Likewise, but "" != stdin.  */
   LC_ENTER_MACRO,	/* Begin macro expansion.  */
   LC_MODULE,		/* A (C++) Module.  */
+  LC_GEN,		/* Internally generated source.  */
+
   /* FIXME: add support for stringize and paste.  */
   LC_HWM /* High Water Mark.  */
 };
@@ -437,7 +439,11 @@ struct GTY((tag ("1"))) line_map_ordinary : public line_map {
 
   /* Pointer alignment boundary on both 32 and 64-bit systems.  */
 
-  const char *to_file;
+  /* This GTY markup is in case this is an LC_GEN map, in which case
+     to_file actually points to the generated data, which we do not
+     want to require to be free of null bytes.  */
+  const char * GTY((string_length ("%h.to_file_len"))) to_file;
+  unsigned int to_file_len;
   linenum_type to_line;
 
   /* Location from whence this line map was included.  For regular
@@ -1101,13 +1107,15 @@ extern line_map *line_map_new_raw (line_maps *, bool, unsigned);
    at least as long as the lifetime of SET.  An empty
    TO_FILE means standard input.  If reason is LC_LEAVE, and
    TO_FILE is NULL, then TO_FILE, TO_LINE and SYSP are given their
-   natural values considering the file we are returning to.
+   natural values considering the file we are returning to.  If reason
+   is LC_GEN, then TO_FILE is not a file name, but rather the actual
+   content, and TO_FILE_LEN>0 is the length of it.
 
    A call to this function can relocate the previous set of
    maps, so any stored line_map pointers should not be used.  */
 extern const line_map *linemap_add
   (class line_maps *, enum lc_reason, unsigned int sysp,
-   const char *to_file, linenum_type to_line);
+   const char *to_file, linenum_type to_line, unsigned int to_file_len = 0);
 
 /* Create a macro map.  A macro map encodes source locations of tokens
    that are part of a macro replacement-list, at a macro expansion
@@ -1304,7 +1312,8 @@ linemap_location_before_p (class line_maps *set,
 
 typedef struct
 {
-  /* The name of the source file involved.  */
+  /* The name of the source file involved, or NULL if
+     generated_data is non-NULL.  */
   const char *file;
 
   /* The line-location in the source file.  */
@@ -1316,6 +1325,10 @@ typedef struct
 
   /* In a system header?. */
   bool sysp;
+
+  /* If generated data, the data and its length.  */
+  unsigned int generated_data_len;
+  const char *generated_data;
 } expanded_location;
 
 class range_label;
