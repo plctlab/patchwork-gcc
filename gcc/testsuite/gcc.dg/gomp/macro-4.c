@@ -1,6 +1,6 @@
 /* PR preprocessor/27746 */
 /* { dg-do compile } */
-/* { dg-options "-fopenmp -Wunknown-pragmas" } */
+/* { dg-options "-fopenmp -Wunknown-pragmas -ftrack-macro-expansion=0" } */
 
 #define p		_Pragma ("omp parallel")
 #define omp_p		_Pragma ("omp p")

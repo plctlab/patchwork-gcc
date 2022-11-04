@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-std=c99 -pedantic-errors" } */
+/* { dg-options "-std=c99 -pedantic-errors -ftrack-macro-expansion=0" } */
 
 /* N1312 7.1.1: The FLOAT_CONST_DECIMAL64 pragma.
    C99 6.4.4.2a (New).

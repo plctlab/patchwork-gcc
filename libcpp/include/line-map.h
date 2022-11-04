@@ -1715,6 +1715,7 @@ class rich_location
   location_range *get_range (unsigned int idx);
 
   expanded_location get_expanded_location (unsigned int idx);
+  void forget_cached_expanded_location () { m_have_expanded_location = false; }
 
   void
   override_column (int column);
