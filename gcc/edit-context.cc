@@ -301,7 +301,11 @@ edit_context::apply_fixit (const fixit_hint *hint)
     return false;
   if (start.column == 0)
     return false;
+  if (start.generated_data)
+    return false;
   if (next_loc.column == 0)
+    return false;
+  if (next_loc.generated_data)
     return false;
 
   edited_file &file = get_or_insert_file (start.file);

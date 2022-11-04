@@ -190,6 +190,15 @@ string::string (const char *utf8)
 {
   gcc_assert (utf8);
   m_utf8 = xstrdup (utf8);
+  m_len = strlen (utf8);
+}
+
+string::string (const char *utf8, size_t len)
+{
+  gcc_assert (utf8);
+  m_utf8 = XNEWVEC (char, len);
+  m_len = len;
+  memcpy (m_utf8, utf8, len);
 }
 
 /* Implementation of json::value::print for json::string.  */
@@ -198,9 +207,9 @@ void
 string::print (pretty_printer *pp) const
 {
   pp_character (pp, '"');
-  for (const char *ptr = m_utf8; *ptr; ptr++)
+  for (size_t i = 0; i != m_len; ++i)
     {
-      char ch = *ptr;
+      char ch = m_utf8[i];
       switch (ch)
 	{
 	case '"':
@@ -224,7 +233,9 @@ string::print (pretty_printer *pp) const
 	case '\t':
 	  pp_string (pp, "\\t");
 	  break;
-
+	case '\0':
+	  pp_string (pp, "\\0");
+	  break;
 	default:
 	  pp_character (pp, ch);
 	}
