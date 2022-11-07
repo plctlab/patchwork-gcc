@@ -1434,6 +1434,8 @@ update_costs_from_allocno (ira_allocno_t allocno, int hard_regno,
 
 	  if (another_allocno == from
 	      || (ALLOCNO_COLOR_DATA (another_allocno) != NULL
+		  && bitmap_bit_p (consideration_allocno_bitmap,
+				   ALLOCNO_NUM (allocno))
 		  && (ALLOCNO_COLOR_DATA (allocno)->first_thread_allocno
 		      != ALLOCNO_COLOR_DATA (another_allocno)->first_thread_allocno)))
 	    continue;
