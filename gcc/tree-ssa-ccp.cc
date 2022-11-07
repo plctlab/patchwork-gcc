@@ -4197,6 +4197,7 @@ const pass_data pass_data_fold_builtins =
   TODO_update_ssa, /* todo_flags_finish */
 };
 
+template <bool O0>
 class pass_fold_builtins : public gimple_opt_pass
 {
 public:
@@ -4204,14 +4205,17 @@ public:
     : gimple_opt_pass (pass_data_fold_builtins, ctxt)
   {}
 
+  bool gate (function *) final override { return O0 == !optimize; }
+
   /* opt_pass methods: */
   opt_pass * clone () final override { return new pass_fold_builtins (m_ctxt); }
   unsigned int execute (function *) final override;
 
 }; // class pass_fold_builtins
 
+template <bool O0>
 unsigned int
-pass_fold_builtins::execute (function *fun)
+pass_fold_builtins<O0>::execute (function *fun)
 {
   bool cfg_changed = false;
   basic_block bb;
@@ -4245,7 +4249,7 @@ pass_fold_builtins::execute (function *fun)
 		      continue;
 		    }
 		}
-	      else if (gimple_assign_load_p (stmt) && gimple_store_p (stmt))
+	      else if (!O0 && gimple_assign_load_p (stmt) && gimple_store_p (stmt))
 		optimize_memcpy (&i, gimple_assign_lhs (stmt),
 				 gimple_assign_rhs1 (stmt), NULL_TREE);
 	      gsi_next (&i);
@@ -4266,7 +4270,7 @@ pass_fold_builtins::execute (function *fun)
 	    }
 
 	  fcode = DECL_FUNCTION_CODE (callee);
-	  if (fold_stmt (&i))
+	  if (!O0 && fold_stmt (&i))
 	    ;
 	  else
 	    {
@@ -4281,7 +4285,29 @@ pass_fold_builtins::execute (function *fun)
 		  break;
 
 		case BUILT_IN_ASSUME_ALIGNED:
-		  /* Remove __builtin_assume_aligned.  */
+		  /* Remove __builtin_assume_aligned.  At -O0 preserve
+		     the alignment info in the result.  */
+		  if (O0)
+		    {
+		      tree align = gimple_call_arg (stmt, 1);
+		      tree misalign = (gimple_call_num_args (stmt) > 2
+				       ? gimple_call_arg (stmt, 2) : NULL_TREE);
+		      tree lhs = gimple_call_lhs (stmt);
+		      if (lhs
+			  && POINTER_TYPE_P (TREE_TYPE (lhs))
+			  && tree_fits_uhwi_p (align)
+			  && (!misalign || tree_fits_uhwi_p (misalign)))
+			{
+			  ptr_info_def *pi = get_ptr_info (lhs);
+			  unsigned aligni = TREE_INT_CST_LOW (align);
+			  unsigned misaligni
+			    = misalign ? TREE_INT_CST_LOW (misalign) : 0;
+			  if (aligni > 1
+			      && (aligni & (aligni - 1)) == 0
+			      && (misaligni & ~(aligni - 1)) == 0)
+			    set_ptr_info_alignment (pi, aligni, misaligni);
+			}
+		    }
 		  result = gimple_call_arg (stmt, 0);
 		  break;
 
@@ -4293,7 +4319,7 @@ pass_fold_builtins::execute (function *fun)
 		  continue;
 
 		case BUILT_IN_UNREACHABLE:
-		  if (optimize_unreachable (i))
+		  if (!O0 && optimize_unreachable (i))
 		    cfg_changed = true;
 		  break;
 
@@ -4454,7 +4480,8 @@ pass_fold_builtins::execute (function *fun)
 		  break;
 
 		case BUILT_IN_MEMCPY:
-		  if (gimple_call_builtin_p (stmt, BUILT_IN_NORMAL)
+		  if (!O0
+		      && gimple_call_builtin_p (stmt, BUILT_IN_NORMAL)
 		      && TREE_CODE (gimple_call_arg (stmt, 0)) == ADDR_EXPR
 		      && TREE_CODE (gimple_call_arg (stmt, 1)) == ADDR_EXPR
 		      && TREE_CODE (gimple_call_arg (stmt, 2)) == INTEGER_CST)
@@ -4470,7 +4497,8 @@ pass_fold_builtins::execute (function *fun)
 		case BUILT_IN_VA_END:
 		case BUILT_IN_VA_COPY:
 		  /* These shouldn't be folded before pass_stdarg.  */
-		  result = optimize_stdarg_builtin (stmt);
+		  if (!O0)
+		    result = optimize_stdarg_builtin (stmt);
 		  break;
 
 		default:;
@@ -4534,7 +4562,13 @@ pass_fold_builtins::execute (function *fun)
 gimple_opt_pass *
 make_pass_fold_builtins (gcc::context *ctxt)
 {
-  return new pass_fold_builtins (ctxt);
+  return new pass_fold_builtins<false> (ctxt);
+}
+
+gimple_opt_pass *
+make_pass_fold_builtins_O0 (gcc::context *ctxt)
+{
+  return new pass_fold_builtins<true> (ctxt);
 }
 
 /* A simple pass that emits some warnings post IPA.  */
@@ -4566,7 +4600,7 @@ public:
   bool gate (function *) final override { return warn_nonnull != 0; }
   unsigned int execute (function *) final override;
 
-}; // class pass_fold_builtins
+}; // class pass_post_ipa_warn
 
 unsigned int
 pass_post_ipa_warn::execute (function *fun)
