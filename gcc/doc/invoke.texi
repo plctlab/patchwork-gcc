@@ -28617,11 +28617,11 @@ Produce code conforming to version 20191213.
 The default is @option{-misa-spec=20191213} unless GCC has been configured
 with @option{--with-isa-spec=} specifying a different default version.
 
-@item -march=@var{ISA-string}
+@item -march=@var{target-string}
 @opindex march
-Generate code for given RISC-V ISA (e.g.@: @samp{rv64im}).  ISA strings must be
-lower-case.  Examples include @samp{rv64i}, @samp{rv32g}, @samp{rv32e}, and
-@samp{rv32imaf}.
+Generate code for given target (e.g.@: @samp{rv64im}).  Target strings are
+similar to ISA strings, but must be lower-case.  Examples include @samp{rv64i},
+@samp{rv32g}, @samp{rv32e}, and @samp{rv32imaf}.
 
 When @option{-march=} is not specified, use the setting from @option{-mcpu}.
 
