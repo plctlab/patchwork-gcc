@@ -251,6 +251,20 @@ struct builtin_info
   unsigned HOST_WIDE_INT dst_base_offset;
 };
 
+/* Data dependences within the partition.  */
+enum partition_deps {
+    /* Dependences not computed. */
+    PDEPS_UNKNOWN = 0,
+    /* No dependences.  */
+    PDEPS_NONE,
+    /* Dependences are OK for vectorization with arbitrary VF.  */
+    PDEPS_VECT_OK,
+    /* There are dependences.  */
+    PDEPS_SOME,
+    /* There are dependences that inhibit vectorization with any VF > 1.  */
+    PDEPS_VECT_BAD
+};
+
 /* Partition for loop distribution.  */
 struct partition
 {
@@ -261,6 +275,7 @@ struct partition
   location_t loc;
   enum partition_kind kind;
   enum partition_type type;
+  enum partition_deps deps;
   /* Data references in the partition.  */
   bitmap datarefs;
   /* Information of builtin parition.  */
@@ -602,6 +617,11 @@ class loop_distribution
   bool share_memory_accesses (struct graph *rdg,
 			      partition *partition1, partition *partition2);
 
+  partition_deps classify_dependences (struct graph *rdg, bitmap);
+  partition_deps classify_and_merge_dependences (struct graph *rdg,
+						 partition *partition1,
+						 partition *partition2);
+
   /* For each seed statement in STARTING_STMTS, this function builds
      partition for it by adding depended statements according to RDG.
      All partitions are recorded in PARTITIONS.  */
@@ -644,7 +664,7 @@ class loop_distribution
   /* Fuse PARTITIONS of LOOP if necessary before finalizing distribution.
      ALIAS_DDRS contains ddrs which need runtime alias check.  */
   void finalize_partitions (class loop *loop, vec<struct partition *>
-			    *partitions, vec<ddr_p> *alias_ddrs);
+			    *partitions, vec<ddr_p> *alias_ddrs, bool);
 
   /* Distributes the code from LOOP in such a way that producer statements
      are placed before consumer statements.  Tries to separate only the
@@ -835,6 +855,7 @@ partition_alloc (void)
   partition->loc = UNKNOWN_LOCATION;
   partition->kind = PKIND_NORMAL;
   partition->type = PTYPE_PARALLEL;
+  partition->deps = PDEPS_UNKNOWN;
   partition->datarefs = BITMAP_ALLOC (NULL);
   return partition;
 }
@@ -893,6 +914,15 @@ loop_distribution::partition_merge_into (struct graph *rdg,
      new partition parallelly.  */
   if (dest->type == PTYPE_PARALLEL && rdg != NULL)
     update_type_for_merge (rdg, dest, partition);
+
+  /* PDEPS_VECT_BAD dependence prevails, but anything else requires
+     recomputation.  */
+  if (dest->deps == PDEPS_VECT_BAD)
+    ;
+  else if (partition->deps == PDEPS_VECT_BAD)
+    dest->deps = PDEPS_VECT_BAD;
+  else
+    dest->deps = PDEPS_UNKNOWN;
 
   bitmap_ior_into (dest->datarefs, partition->datarefs);
 }
@@ -1950,6 +1980,66 @@ loop_distribution::share_memory_accesses (struct graph *rdg,
   return false;
 }
 
+partition_deps
+loop_distribution::classify_dependences (struct graph *rdg, bitmap datarefs)
+{
+  if (loop_nest.length () != 1)
+    return PDEPS_VECT_BAD;
+
+  unsigned i, j;
+  bitmap_iterator bi, bj;
+  data_reference_p dr1, dr2;
+  partition_deps deps = PDEPS_NONE;
+  EXECUTE_IF_SET_IN_BITMAP (datarefs, 0, i, bi)
+    {
+      dr1 = datarefs_vec[i];
+      EXECUTE_IF_SET_IN_BITMAP (datarefs, i + 1, j, bj)
+	{
+	  dr2 = datarefs_vec[j];
+	  if (DR_IS_READ (dr1) && DR_IS_READ (dr2))
+	    continue;
+
+	  data_reference_p saved_dr1 = dr1;
+	  /* Re-shuffle data-refs to be in topological order.  */
+	  if (rdg_vertex_for_stmt (rdg, DR_STMT (dr1))
+	      > rdg_vertex_for_stmt (rdg, DR_STMT (dr2)))
+	    std::swap (dr1, dr2);
+
+	  data_dependence_relation *ddr = get_data_dependence (rdg, dr1, dr2);
+	  if (DDR_ARE_DEPENDENT (ddr) == chrec_known)
+	    ;
+	  else if (DDR_ARE_DEPENDENT (ddr) == chrec_dont_know
+		   || DDR_NUM_DIST_VECTS (ddr) == 0)
+	    deps = deps <= PDEPS_SOME ? PDEPS_SOME : deps;
+	  else if (DDR_DIST_VECTS (ddr)[0][0] == 1
+		   && !DDR_REVERSED_P (ddr))
+	    deps = PDEPS_VECT_BAD;
+	  else
+	    deps = deps <= PDEPS_VECT_OK ? PDEPS_VECT_OK : deps;
+	  dr1 = saved_dr1;
+	}
+    }
+  return deps;
+}
+
+partition_deps
+loop_distribution::classify_and_merge_dependences (struct graph *rdg,
+		       partition *partition1, partition *partition2)
+{
+  if (partition1->deps == PDEPS_UNKNOWN)
+    partition1->deps = classify_dependences (rdg, partition1->datarefs);
+
+  if (partition2->deps == PDEPS_UNKNOWN)
+    partition2->deps = classify_dependences (rdg, partition2->datarefs);
+
+  if (partition1->deps == PDEPS_VECT_BAD || partition2->deps == PDEPS_VECT_BAD)
+    return PDEPS_VECT_BAD;
+
+  auto_bitmap tem;
+  bitmap_ior (tem, partition1->datarefs, partition2->datarefs);
+  return classify_dependences (rdg, tem);
+}
+
 /* For each seed statement in STARTING_STMTS, this function builds
    partition for it by adding depended statements according to RDG.
    All partitions are recorded in PARTITIONS.  */
@@ -2930,7 +3020,8 @@ fuse_memset_builtins (vec<struct partition *> *partitions)
 void
 loop_distribution::finalize_partitions (class loop *loop,
 					vec<struct partition *> *partitions,
-					vec<ddr_p> *alias_ddrs)
+					vec<ddr_p> *alias_ddrs,
+					bool any_merge_vect_bad)
 {
   unsigned i;
   struct partition *partition, *a;
@@ -2942,6 +3033,8 @@ loop_distribution::finalize_partitions (class loop *loop,
   unsigned num_builtin = 0, num_normal = 0, num_partial_memset = 0;
   bool same_type_p = true;
   enum partition_type type = ((*partitions)[0])->type;
+  bool any_deps_vect_ok_or_none = false;
+  bool any_deps_vect_bad = any_merge_vect_bad;
   for (i = 0; partitions->iterate (i, &partition); ++i)
     {
       same_type_p &= (type == partition->type);
@@ -2953,13 +3046,22 @@ loop_distribution::finalize_partitions (class loop *loop,
       num_normal++;
       if (partition->kind == PKIND_PARTIAL_MEMSET)
 	num_partial_memset++;
+      if (partition->deps == PDEPS_VECT_BAD)
+	any_deps_vect_bad = true;
+      else if (partition->deps == PDEPS_NONE
+	       || partition->deps == PDEPS_VECT_OK)
+	any_deps_vect_ok_or_none = true;
     }
 
   /* Don't distribute current loop into too many loops given we don't have
      memory stream cost model.  Be even more conservative in case of loop
      nest distribution.  */
   if ((same_type_p && num_builtin == 0
-       && (loop->inner == NULL || num_normal != 2 || num_partial_memset != 1))
+       /* bwaves  */
+       && !(loop->inner != NULL && num_normal == 2 && num_partial_memset == 1)
+       /* PR99416  */
+       && !(loop->inner == NULL
+	    && i == 2 && any_deps_vect_bad && any_deps_vect_ok_or_none))
       || (loop->inner != NULL
 	  && i >= NUM_PARTITION_THRESHOLD && num_normal > 1)
       || (loop->inner == NULL
@@ -3056,6 +3158,7 @@ loop_distribution::distribute_loop (class loop *loop,
   bool any_builtin = false;
   bool reduction_in_all = false;
   int reduction_partition_num = -1;
+  bool any_merge_vect_bad = false;
   FOR_EACH_VEC_ELT (partitions, i, partition)
     {
       reduction_in_all
@@ -3114,14 +3217,24 @@ loop_distribution::distribute_loop (class loop *loop,
       bool changed = false;
       for (int j = i + 1; partitions.iterate (j, &partition); ++j)
 	{
-	  if (share_memory_accesses (rdg, into, partition))
+	  partition_deps merged_dep = PDEPS_UNKNOWN;
+	  if (share_memory_accesses (rdg, into, partition)
+	      && ((merged_dep = classify_and_merge_dependences
+		     (rdg, into, partition)) != PDEPS_VECT_BAD
+		  || (into->deps == PDEPS_VECT_BAD
+		      && partition->deps == PDEPS_VECT_BAD)))
 	    {
 	      partition_merge_into (rdg, into, partition, FUSE_SHARE_REF);
+	      into->deps = merged_dep;
 	      partitions.unordered_remove (j);
 	      partition_free (partition);
 	      j--;
 	      changed = true;
 	    }
+	  else if (merged_dep == PDEPS_VECT_BAD)
+	    /* ???  We only compute that if share_memory_accesses
+	       returns true.  */
+	    any_merge_vect_bad = true;
 	}
       /* If we fused 0 1 2 in step 1 to 0,2 1 as 0 and 2 have similar
          accesses when 1 and 2 have similar accesses but not 0 and 1
@@ -3167,7 +3280,7 @@ loop_distribution::distribute_loop (class loop *loop,
 	}
     }
 
-  finalize_partitions (loop, &partitions, &alias_ddrs);
+  finalize_partitions (loop, &partitions, &alias_ddrs, any_merge_vect_bad);
 
   /* If there is a reduction in all partitions make sure the last
      non-builtin partition provides the LC PHI defs.  */
