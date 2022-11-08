@@ -2451,6 +2451,19 @@ riscv_rtx_costs (rtx x, machine_mode mode, int outer_code, int opno ATTRIBUTE_UN
 	  *total = COSTS_N_INSNS (1);
 	  return true;
 	}
+      /* Before strength-reduction, the shNadd can be expressed as the addition
+	 of a multiplication with a power-of-two.  If this case is not handled,
+	 the strength-reduction in expmed.c will calculate an inflated cost. */
+      if (TARGET_ZBA
+	  && mode == word_mode
+	  && GET_CODE (XEXP (x, 0)) == MULT
+	  && REG_P (XEXP (XEXP (x, 0), 0))
+	  && CONST_INT_P (XEXP (XEXP (x, 0), 1))
+	  && IN_RANGE (pow2p_hwi (INTVAL (XEXP (XEXP (x, 0), 1))), 1, 3))
+	{
+	  *total = COSTS_N_INSNS (1);
+	  return true;
+	}
       /* shNadd.uw pattern for zba.
 	 [(set (match_operand:DI 0 "register_operand" "=r")
 	       (plus:DI
