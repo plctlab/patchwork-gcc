@@ -233,9 +233,11 @@
 ;; -------------------------------------------------------------------
 
 ;; Iterator and attributes for floating-point rounding instructions.
-(define_int_iterator RINT [UNSPEC_LRINT UNSPEC_LROUND])
-(define_int_attr rint_pattern [(UNSPEC_LRINT "rint") (UNSPEC_LROUND "round")])
-(define_int_attr rint_rm [(UNSPEC_LRINT "dyn") (UNSPEC_LROUND "rmm")])
+(define_int_iterator RINT [UNSPEC_LRINT UNSPEC_LROUND UNSPEC_LCEIL UNSPEC_LFLOOR])
+(define_int_attr rint_pattern [(UNSPEC_LRINT "rint") (UNSPEC_LROUND "round")
+                             (UNSPEC_LCEIL "ceil") (UNSPEC_LFLOOR "floor")])
+(define_int_attr rint_rm [(UNSPEC_LRINT "dyn") (UNSPEC_LROUND "rmm")
+                        (UNSPEC_LCEIL "rup") (UNSPEC_LFLOOR "rdn")])
 
 ;; Iterator and attributes for quiet comparisons.
 (define_int_iterator QUIET_COMPARISON [UNSPEC_FLT_QUIET UNSPEC_FLE_QUIET])

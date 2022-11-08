@@ -60,6 +60,9 @@
   UNSPEC_FMIN
   UNSPEC_FMAX
 
+  UNSPEC_LCEIL
+  UNSPEC_LFLOOR
+
   ;; Stack tie
   UNSPEC_TIE
 ])
