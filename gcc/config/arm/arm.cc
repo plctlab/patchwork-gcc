@@ -6740,7 +6740,11 @@ aapcs_vfp_allocate_return_reg (enum arm_pcs pcs_variant ATTRIBUTE_UNUSED,
 	      count *= 2;
 	    }
 	}
-      shift = GET_MODE_SIZE(ag_mode) / GET_MODE_SIZE(SFmode);
+
+      /* Aggregates can contain FP16 or BF16 values which would need to
+	 be passed in via FP registers.  */
+      shift = (MAX(GET_MODE_SIZE(ag_mode), GET_MODE_SIZE(SFmode))
+	       / GET_MODE_SIZE(SFmode));
       par = gen_rtx_PARALLEL (mode, rtvec_alloc (count));
       for (i = 0; i < count; i++)
 	{
