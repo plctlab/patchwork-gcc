@@ -10,7 +10,7 @@ const A a = 42;
 
 constexpr int f()
 {
-  const int j = a.i;		// { dg-error "'a'" }
+  const int j = a.i;		// { dg-error "'a'" "" { target c++20_down }  }
   return j;
 }
 

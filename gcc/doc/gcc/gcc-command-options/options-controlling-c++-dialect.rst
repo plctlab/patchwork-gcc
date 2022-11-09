@@ -989,6 +989,34 @@ In addition, these warning options have meanings only for C++ programs:
 
   Default setting; overrides :option:`-Wno-init-list-lifetime`.
 
+.. option:: -Winvalid-constexpr
+
+  .. note::
+
+    C++ and Objective-C++ only
+
+  Warn when a function never produces a constant expression.  In C++20
+  and earlier, for every ``constexpr`` function and function template,
+  there must be at least one set of function arguments in at least one
+  instantiation such that an invocation of the function or constructor
+  could be an evaluated subexpression of a core constant expression.
+  C++23 removed this restriction, so it's possible to have a function
+  or a function template marked ``constexpr`` for which no invocation
+  satisfies the requirements of a core constant expression.
+
+  This warning is enabled as a pedantic warning by default in C++20 and
+  earlier.  In C++23, :option:`-Winvalid-constexpr` can be turned on, in
+  which case it will be an ordinary warning.  For example:
+
+  .. code-block:: c++
+
+    void f (int& i);
+    constexpr void
+    g (int& i)
+    {
+      f(i); // warns by default in C++20, in C++23 only with -Winvalid-constexpr
+    }
+
 .. option:: -Winvalid-imported-macros
 
   Verify all imported macro definitions are valid at the end of

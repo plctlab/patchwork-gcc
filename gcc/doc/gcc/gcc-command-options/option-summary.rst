@@ -89,7 +89,7 @@ in the following sections.
   :option:`-Wno-deprecated-enum-enum-conversion` :option:`-Wno-deprecated-enum-float-conversion` |gol|
   :option:`-Weffc++`  :option:`-Wno-exceptions` :option:`-Wextra-semi`  :option:`-Wno-inaccessible-base` |gol|
   :option:`-Wno-inherited-variadic-ctor`  :option:`-Wno-init-list-lifetime` |gol|
-  :option:`-Winvalid-imported-macros` |gol|
+  :option:`-Winvalid-constexpr`  :option:`-Winvalid-imported-macros` |gol|
   :option:`-Wno-invalid-offsetof`  :option:`-Wno-literal-suffix` |gol|
   :option:`-Wmismatched-new-delete` :option:`-Wmismatched-tags` |gol|
   :option:`-Wmultiple-inheritance`  :option:`-Wnamespaces`  :option:`-Wnarrowing` |gol|

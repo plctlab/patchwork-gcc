@@ -139,6 +139,42 @@ ensure_literal_type_for_constexpr_object (tree decl)
   return decl;
 }
 
+/* Issue a diagnostic with text GMSGID for constructs that are invalid in
+   constexpr functions.  CONSTEXPR_FUNDEF_P is true if we're checking
+   a constexpr function body; if so, don't report hard errors and issue
+   a pedwarn pre-C++23, or a warning in C++23, if requested by
+   -Winvalid-constexpr.  Otherwise, we're not in the context where we are
+   checking if a function can be marked 'constexpr', so give a hard error.  */
+
+ATTRIBUTE_GCC_DIAG(3,4)
+static bool
+constexpr_error (location_t location, bool constexpr_fundef_p,
+		 const char *gmsgid, ...)
+{
+  diagnostic_info diagnostic;
+  va_list ap;
+  rich_location richloc (line_table, location);
+  va_start (ap, gmsgid);
+  bool ret;
+  if (!constexpr_fundef_p)
+    {
+      /* Report an error that cannot be suppressed.  */
+      diagnostic_set_info (&diagnostic, gmsgid, &ap, &richloc, DK_ERROR);
+      ret = diagnostic_report_diagnostic (global_dc, &diagnostic);
+    }
+  else if (warn_invalid_constexpr)
+    {
+      diagnostic_set_info (&diagnostic, gmsgid, &ap, &richloc,
+			   cxx_dialect < cxx23 ? DK_PEDWARN : DK_WARNING);
+      diagnostic.option_index = OPT_Winvalid_constexpr;
+      ret = diagnostic_report_diagnostic (global_dc, &diagnostic);
+    }
+  else
+    ret = false;
+  va_end (ap);
+  return ret;
+}
+
 struct constexpr_fundef_hasher : ggc_ptr_hash<constexpr_fundef>
 {
   static hashval_t hash (const constexpr_fundef *);
@@ -208,9 +244,11 @@ is_valid_constexpr_fn (tree fun, bool complain)
 	    if (complain)
 	      {
 		auto_diagnostic_group d;
-		error ("invalid type for parameter %d of %<constexpr%> "
-		       "function %q+#D", DECL_PARM_INDEX (parm), fun);
-		explain_non_literal_class (TREE_TYPE (parm));
+		if (constexpr_error (input_location, /*constexpr_fundef_p*/true,
+				     "invalid type for parameter %d of "
+				     "%<constexpr%> function %q+#D",
+				     DECL_PARM_INDEX (parm), fun))
+		  explain_non_literal_class (TREE_TYPE (parm));
 	      }
 	  }
     }
@@ -242,9 +280,10 @@ is_valid_constexpr_fn (tree fun, bool complain)
 	  if (complain)
 	    {
 	      auto_diagnostic_group d;
-	      error ("invalid return type %qT of %<constexpr%> function %q+D",
-		     rettype, fun);
-	      explain_non_literal_class (rettype);
+	      if (constexpr_error (input_location, /*constexpr_fundef_p*/true,
+				   "invalid return type %qT of %<constexpr%> "
+				   "function %q+D", rettype, fun))
+		explain_non_literal_class (rettype);
 	    }
 	}
 
@@ -918,7 +957,7 @@ maybe_save_constexpr_fundef (tree fun)
 
   bool potential = potential_rvalue_constant_expression (massaged);
   if (!potential && complain)
-    require_potential_rvalue_constant_expression (massaged);
+    require_potential_rvalue_constant_expression_fncheck (massaged);
 
   if (DECL_CONSTRUCTOR_P (fun) && potential
       && !DECL_DEFAULTED_FN (fun))
@@ -933,7 +972,7 @@ maybe_save_constexpr_fundef (tree fun)
 	  massaged = DECL_SAVED_TREE (fun);
 	  potential = potential_rvalue_constant_expression (massaged);
 	  if (!potential && complain)
-	    require_potential_rvalue_constant_expression (massaged);
+	    require_potential_rvalue_constant_expression_fncheck (massaged);
 	}
     }
 
@@ -5612,11 +5651,12 @@ cxx_eval_indirect_ref (const constexpr_ctx *ctx, tree t,
 }
 
 /* Complain about R, a VAR_DECL, not being usable in a constant expression.
+   FUNDEF_P is true if we're checking a constexpr function body.
    Shared between potential_constant_expression and
    cxx_eval_constant_expression.  */
 
 static void
-non_const_var_error (location_t loc, tree r)
+non_const_var_error (location_t loc, tree r, bool fundef_p)
 {
   auto_diagnostic_group d;
   tree type = TREE_TYPE (r);
@@ -5625,20 +5665,21 @@ non_const_var_error (location_t loc, tree r)
       || DECL_NAME (r) == heap_vec_uninit_identifier
       || DECL_NAME (r) == heap_vec_identifier)
     {
-      error_at (loc, "the content of uninitialized storage is not usable "
-		"in a constant expression");
-      inform (DECL_SOURCE_LOCATION (r), "allocated here");
+      if (constexpr_error (loc, fundef_p, "the content of uninitialized "
+			   "storage is not usable in a constant expression"))
+	inform (DECL_SOURCE_LOCATION (r), "allocated here");
       return;
     }
   if (DECL_NAME (r) == heap_deleted_identifier)
     {
-      error_at (loc, "use of allocated storage after deallocation in a "
-		"constant expression");
-      inform (DECL_SOURCE_LOCATION (r), "allocated here");
+      if (constexpr_error (loc, fundef_p, "use of allocated storage after "
+			   "deallocation in a constant expression"))
+	inform (DECL_SOURCE_LOCATION (r), "allocated here");
       return;
     }
-  error_at (loc, "the value of %qD is not usable in a constant "
-	    "expression", r);
+  if (!constexpr_error (loc, fundef_p, "the value of %qD is not usable in "
+			"a constant expression", r))
+    return;
   /* Avoid error cascade.  */
   if (DECL_INITIAL (r) == error_mark_node)
     return;
@@ -6697,15 +6738,17 @@ lookup_placeholder (const constexpr_ctx *ctx, value_cat lval, tree type)
   return ob;
 }
 
-/* Complain about an attempt to evaluate inline assembly.  */
+/* Complain about an attempt to evaluate inline assembly.  If FUNDEF_P is
+   true, we're checking a constexpr function body.  */
 
 static void
-inline_asm_in_constexpr_error (location_t loc)
+inline_asm_in_constexpr_error (location_t loc, bool fundef_p)
 {
   auto_diagnostic_group d;
-  error_at (loc, "inline assembly is not a constant expression");
-  inform (loc, "only unevaluated inline assembly is allowed in a "
-	  "%<constexpr%> function in C++20");
+  if (constexpr_error (loc, fundef_p, "inline assembly is not a "
+		       "constant expression"))
+    inform (loc, "only unevaluated inline assembly is allowed in a "
+	    "%<constexpr%> function in C++20");
 }
 
 /* We're getting the constant value of DECL in a manifestly constant-evaluated
@@ -6983,7 +7026,7 @@ cxx_eval_constant_expression (const constexpr_ctx *ctx, tree t,
       if (DECL_P (r))
 	{
 	  if (!ctx->quiet)
-	    non_const_var_error (loc, r);
+	    non_const_var_error (loc, r, /*fundef_p*/false);
 	  *non_constant_p = true;
 	}
       break;
@@ -7874,7 +7917,7 @@ cxx_eval_constant_expression (const constexpr_ctx *ctx, tree t,
 
     case ASM_EXPR:
       if (!ctx->quiet)
-	inline_asm_in_constexpr_error (loc);
+	inline_asm_in_constexpr_error (loc, /*constexpr_fundef_p*/false);
       *non_constant_p = true;
       return t;
 
@@ -8759,7 +8802,8 @@ check_for_return_continue (tree *tp, int *walk_subtrees, void *data)
    diagnostic as appropriate under control of FLAGS.  If WANT_RVAL is true,
    an lvalue-rvalue conversion is implied.  If NOW is true, we want to
    consider the expression in the current context, independent of constexpr
-   substitution.
+   substitution.  If FUNDEF_P is true, we're checking a constexpr function body
+   and hard errors should not be reported by constexpr_error.
 
    C++0x [expr.const] used to say
 
@@ -8776,10 +8820,12 @@ check_for_return_continue (tree *tp, int *walk_subtrees, void *data)
 
 static bool
 potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
-				 tsubst_flags_t flags, tree *jump_target)
+				 bool fundef_p, tsubst_flags_t flags,
+				 tree *jump_target)
 {
 #define RECUR(T,RV) \
-  potential_constant_expression_1 ((T), (RV), strict, now, flags, jump_target)
+  potential_constant_expression_1 ((T), (RV), strict, now, fundef_p, flags, \
+				   jump_target)
 
   enum { any = false, rval = true };
   int i;
@@ -8801,8 +8847,9 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
   if (TREE_THIS_VOLATILE (t) && want_rval)
     {
       if (flags & tf_error)
-	error_at (loc, "lvalue-to-rvalue conversion of a volatile lvalue "
-		  "%qE with type %qT", t, TREE_TYPE (t));
+	constexpr_error (loc, fundef_p, "lvalue-to-rvalue conversion of "
+			 "a volatile lvalue %qE with type %qT", t,
+			 TREE_TYPE (t));
       return false;
     }
   if (CONSTANT_CLASS_P (t))
@@ -8861,7 +8908,8 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
 	    /* An empty class has no data to read.  */
 	    return true;
 	  if (flags & tf_error)
-	    error ("%qE is not a constant expression", t);
+	    constexpr_error (input_location, fundef_p,
+			     "%qE is not a constant expression", t);
 	  return false;
 	}
       return true;
@@ -8910,7 +8958,8 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
 	      {
 		/* fold_call_expr can't do anything with IFN calls.  */
 		if (flags & tf_error)
-		  error_at (loc, "call to internal function %qE", t);
+		  constexpr_error (loc, fundef_p,
+				   "call to internal function %qE", t);
 		return false;
 	      }
 	  }
@@ -8940,12 +8989,11 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
 			|| !is_std_construct_at (current_function_decl))
 		    && !cxx_dynamic_cast_fn_p (fun))
 		  {
-		    if (flags & tf_error)
-		      {
-			error_at (loc, "call to non-%<constexpr%> function %qD",
-				  fun);
-			explain_invalid_constexpr_fn (fun);
-		      }
+		    if ((flags & tf_error)
+			&& constexpr_error (loc, fundef_p,
+					    "call to non-%<constexpr%> "
+					    "function %qD", fun))
+		      explain_invalid_constexpr_fn (fun);
 		    return false;
 		  }
 		/* A call to a non-static member function takes the address
@@ -8962,8 +9010,8 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
 		       constexpr substitution might not use the value.  */
 		    bool sub_now = false;
 		    if (!potential_constant_expression_1 (x, rval, strict,
-							  sub_now, flags,
-							  jump_target))
+							  sub_now, fundef_p,
+							  flags, jump_target))
 		      return false;
 		    i = 1;
 		  }
@@ -8997,7 +9045,8 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
 	       substitution might not use the value of the argument.  */
 	    bool sub_now = false;
 	    if (!potential_constant_expression_1 (x, rv, strict,
-						  sub_now, flags, jump_target))
+						  sub_now, fundef_p, flags,
+						  jump_target))
 	      return false;
           }
         return true;
@@ -9035,9 +9084,10 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
 	      if (flags & tf_error)
 		{
 		  tree cap = DECL_CAPTURED_VARIABLE (t);
-		  error ("lambda capture of %qE is not a constant expression",
-			 cap);
-		  if (decl_constant_var_p (cap))
+		  if (constexpr_error (input_location, fundef_p,
+				       "lambda capture of %qE is not a "
+				       "constant expression", cap)
+		      && decl_constant_var_p (cap))
 		    inform (input_location, "because it is used as a glvalue");
 		}
 	      return false;
@@ -9060,8 +9110,8 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
 	  && COMPLETE_TYPE_P (TREE_TYPE (t))
 	  && !is_really_empty_class (TREE_TYPE (t), /*ignore_vptr*/false))
         {
-          if (flags & tf_error)
-	    non_const_var_error (loc, t);
+	  if (flags & tf_error)
+	    non_const_var_error (loc, t, fundef_p);
           return false;
         }
       return true;
@@ -9070,7 +9120,8 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
       if (REINTERPRET_CAST_P (t))
 	{
 	  if (flags & tf_error)
-	    error_at (loc, "%<reinterpret_cast%> is not a constant expression");
+	    constexpr_error (loc, fundef_p, "%<reinterpret_cast%> is not a "
+			     "constant expression");
 	  return false;
 	}
       /* FALLTHRU */
@@ -9092,8 +9143,9 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
 		&& !integer_zerop (from))
 	      {
 		if (flags & tf_error)
-		  error_at (loc,
-			    "%<reinterpret_cast%> from integer to pointer");
+		  constexpr_error (loc, fundef_p,
+				   "%<reinterpret_cast%> from integer to "
+				   "pointer");
 		return false;
 	      }
 	  }
@@ -9165,7 +9217,8 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
 	    if (!var_in_maybe_constexpr_fn (x))
 	      {
 		if (flags & tf_error)
-		  error_at (loc, "use of %<this%> in a constant expression");
+		  constexpr_error (loc, fundef_p, "use of %<this%> in a "
+				   "constant expression");
 		return false;
 	      }
 	    return true;
@@ -9313,8 +9366,8 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
 	/* In C++17 lambdas can be constexpr, don't give up yet.  */
 	return true;
       else if (flags & tf_error)
-	error_at (loc, "lambda-expression is not a constant expression "
-		  "before C++17");
+	constexpr_error (loc, fundef_p, "lambda-expression is not a "
+			 "constant expression before C++17");
       return false;
 
     case NEW_EXPR:
@@ -9325,8 +9378,8 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
 	/* In C++20, new-expressions are potentially constant.  */
 	return true;
       else if (flags & tf_error)
-	error_at (loc, "new-expression is not a constant expression "
-		  "before C++20");
+	constexpr_error (loc, fundef_p, "new-expression is not a "
+			 "constant expression before C++20");
       return false;
 
     case DYNAMIC_CAST_EXPR:
@@ -9375,12 +9428,13 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
     case AT_ENCODE_EXPR:
     fail:
       if (flags & tf_error)
-	error_at (loc, "expression %qE is not a constant expression", t);
+	 constexpr_error (loc, fundef_p, "expression %qE is not a constant "
+			  "expression", t);
       return false;
 
     case ASM_EXPR:
       if (flags & tf_error)
-	inline_asm_in_constexpr_error (loc);
+	inline_asm_in_constexpr_error (loc, fundef_p);
       return false;
 
     case OBJ_TYPE_REF:
@@ -9388,8 +9442,8 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
 	/* In C++20 virtual calls can be constexpr, don't give up yet.  */
 	return true;
       else if (flags & tf_error)
-	error_at (loc,
-		  "virtual functions cannot be %<constexpr%> before C++20");
+	constexpr_error (loc, fundef_p, "virtual functions cannot be "
+			 "%<constexpr%> before C++20");
       return false;
 
     case TYPEID_EXPR:
@@ -9404,8 +9458,9 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
 	    && TYPE_POLYMORPHIC_P (TREE_TYPE (e)))
           {
             if (flags & tf_error)
-	      error_at (loc, "%<typeid%> is not a constant expression "
-			"because %qE is of polymorphic type", e);
+	      constexpr_error (loc, fundef_p, "%<typeid%> is not a "
+			       "constant expression because %qE is "
+			       "of polymorphic type", e);
             return false;
           }
         return true;
@@ -9467,9 +9522,9 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
 	   constant expression.  */
 	{
 	  if (flags & tf_error)
-	    error_at (loc,
-		      "cast to non-integral type %qT in a constant expression",
-		      TREE_TYPE (t));
+	    constexpr_error (loc, fundef_p,
+			     "cast to non-integral type %qT in a constant "
+			     "expression", TREE_TYPE (t));
 	  return false;
 	}
       /* This might be a conversion from a class to a (potentially) literal
@@ -9525,15 +9580,17 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
 	  if (CP_DECL_THREAD_LOCAL_P (tmp) && !DECL_REALLY_EXTERN (tmp))
 	    {
 	      if (flags & tf_error)
-		error_at (DECL_SOURCE_LOCATION (tmp), "%qD defined "
-			  "%<thread_local%> in %<constexpr%> context", tmp);
+		constexpr_error (DECL_SOURCE_LOCATION (tmp), fundef_p,
+				 "%qD defined %<thread_local%> in "
+				 "%<constexpr%> context", tmp);
 	      return false;
 	    }
 	  else if (TREE_STATIC (tmp))
 	    {
 	      if (flags & tf_error)
-		error_at (DECL_SOURCE_LOCATION (tmp), "%qD defined "
-			  "%<static%> in %<constexpr%> context", tmp);
+		constexpr_error (DECL_SOURCE_LOCATION (tmp), fundef_p,
+				 "%qD defined %<static%> in %<constexpr%> "
+				 "context", tmp);
 	      return false;
 	    }
 	  else if (!check_for_uninitialized_const_var
@@ -9556,9 +9613,10 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
 	  if (flags & tf_error)
 	    {
 	      auto_diagnostic_group d;
-	      error_at (loc, "temporary of non-literal type %qT in a "
-			"constant expression", TREE_TYPE (t));
-	      explain_non_literal_class (TREE_TYPE (t));
+	      if (constexpr_error (loc, fundef_p,
+				   "temporary of non-literal type %qT in a "
+				   "constant expression", TREE_TYPE (t)))
+		explain_non_literal_class (TREE_TYPE (t));
 	    }
 	  return false;
 	}
@@ -9605,7 +9663,8 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
 	if (integer_zerop (denom))
 	  {
 	    if (flags & tf_error)
-	      error ("division by zero is not a constant expression");
+	      constexpr_error (input_location, fundef_p,
+			       "division by zero is not a constant expression");
 	    return false;
 	  }
 	else
@@ -9706,7 +9765,8 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
       if (COND_EXPR_IS_VEC_DELETE (t) && cxx_dialect < cxx20)
 	{
 	  if (flags & tf_error)
-	    error_at (loc, "%<delete[]%> is not a constant expression");
+	    constexpr_error (loc, fundef_p, "%<delete[]%> is not a "
+			     "constant expression");
 	  return false;
 	}
       /* Fall through.  */
@@ -9736,7 +9796,7 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
 	{
 	  tree this_jump_target = tmp;
 	  if (potential_constant_expression_1 (TREE_OPERAND (t, i),
-					       want_rval, strict, now,
+					       want_rval, strict, now, fundef_p,
 					       tf_none, &this_jump_target))
 	    {
 	      if (returns (&this_jump_target))
@@ -9774,9 +9834,11 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
       if (flags & tf_error)
 	{
 	  if (TREE_CODE (t) == IF_STMT)
-	    error_at (loc, "neither branch of %<if%> is a constant expression");
+	    constexpr_error (loc, fundef_p, "neither branch of %<if%> is a "
+			     "constant expression");
 	  else
-	    error_at (loc, "expression %qE is not a constant expression", t);
+	    constexpr_error (loc, fundef_p, "expression %qE is not a "
+			     "constant expression", t);
 	}
       return false;
 
@@ -9785,8 +9847,9 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
 	return true;
       if (flags & tf_error)
 	{
-	  error_at (loc, "non-constant array initialization");
-	  diagnose_non_constexpr_vec_init (t);
+	  if (constexpr_error (loc, fundef_p, "non-constant array "
+			       "initialization"))
+	    diagnose_non_constexpr_vec_init (t);
 	}
       return false;
 
@@ -9815,7 +9878,8 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
 	    return true;
 	  }
 	if (flags & tf_error)
-	  error_at (loc, "%<goto%> is not a constant expression");
+	  constexpr_error (loc, fundef_p, "%<goto%> is not a constant "
+			   "expression");
 	return false;
       }
 
@@ -9824,8 +9888,9 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
       if (DECL_ARTIFICIAL (t) || cxx_dialect >= cxx23)
 	return true;
       else if (flags & tf_error)
-	error_at (loc, "label definition in %<constexpr%> function only "
-		       "available with %<-std=c++2b%> or %<-std=gnu++2b%>");
+	constexpr_error (loc, fundef_p, "label definition in %<constexpr%> "
+			 "function only available with %<-std=c++2b%> or "
+			 "%<-std=gnu++2b%>");
       return false;
 
     case ANNOTATE_EXPR:
@@ -9863,7 +9928,7 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
 
 bool
 potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
-				 tsubst_flags_t flags)
+				 bool fundef_p, tsubst_flags_t flags)
 {
   if (flags & tf_error)
     {
@@ -9871,13 +9936,14 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
 	 efficiently in some cases (currently only for TRUTH_*_EXPR).  If
 	 that fails, replay the check noisily to give errors.  */
       flags &= ~tf_error;
-      if (potential_constant_expression_1 (t, want_rval, strict, now, flags))
+      if (potential_constant_expression_1 (t, want_rval, strict, now, fundef_p,
+					   flags))
 	return true;
       flags |= tf_error;
     }
 
   tree target = NULL_TREE;
-  return potential_constant_expression_1 (t, want_rval, strict, now,
+  return potential_constant_expression_1 (t, want_rval, strict, now, fundef_p,
 					  flags, &target);
 }
 
@@ -9886,7 +9952,9 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
 bool
 potential_constant_expression (tree t)
 {
-  return potential_constant_expression_1 (t, false, true, false, tf_none);
+  return potential_constant_expression_1 (t, /*want_rval*/false, /*strict*/true,
+					  /*now*/false, /*fundef_p*/false,
+					  tf_none);
 }
 
 /* As above, but require a constant rvalue.  */
@@ -9894,7 +9962,9 @@ potential_constant_expression (tree t)
 bool
 potential_rvalue_constant_expression (tree t)
 {
-  return potential_constant_expression_1 (t, true, true, false, tf_none);
+  return potential_constant_expression_1 (t, /*want_rval*/true, /*strict*/true,
+					  /*now*/false, /*fundef_p*/false,
+					  tf_none);
 }
 
 /* Like above, but complain about non-constant expressions.  */
@@ -9902,7 +9972,8 @@ potential_rvalue_constant_expression (tree t)
 bool
 require_potential_constant_expression (tree t)
 {
-  return potential_constant_expression_1 (t, false, true, false,
+  return potential_constant_expression_1 (t, /*want_rval*/false, /*strict*/true,
+					  /*now*/false, /*fundef_p*/false,
 					  tf_warning_or_error);
 }
 
@@ -9911,7 +9982,18 @@ require_potential_constant_expression (tree t)
 bool
 require_potential_rvalue_constant_expression (tree t)
 {
-  return potential_constant_expression_1 (t, true, true, false,
+  return potential_constant_expression_1 (t, /*want_rval*/true, /*strict*/true,
+					  /*now*/false, /*fundef_p*/false,
+					  tf_warning_or_error);
+}
+
+/* Like require_potential_rvalue_constant_expression, but fundef_p is true.  */
+
+bool
+require_potential_rvalue_constant_expression_fncheck (tree t)
+{
+  return potential_constant_expression_1 (t, /*want_rval*/true, /*strict*/true,
+					  /*now*/false, /*fundef_p*/true,
 					  tf_warning_or_error);
 }
 
@@ -9920,7 +10002,8 @@ require_potential_rvalue_constant_expression (tree t)
 bool
 require_rvalue_constant_expression (tree t)
 {
-  return potential_constant_expression_1 (t, true, true, true,
+  return potential_constant_expression_1 (t, /*want_rval*/true, /*strict*/true,
+					  /*now*/true, /*fundef_p*/false,
 					  tf_warning_or_error);
 }
 
@@ -9934,7 +10017,9 @@ require_rvalue_constant_expression (tree t)
 bool
 is_constant_expression (tree t)
 {
-  return potential_constant_expression_1 (t, false, true, true, tf_none);
+  return potential_constant_expression_1 (t, /*want_rval*/false, /*strict*/true,
+					  /*now*/true, /*fundef_p*/false,
+					  tf_none);
 }
 
 /* As above, but expect an rvalue.  */
@@ -9942,7 +10027,9 @@ is_constant_expression (tree t)
 bool
 is_rvalue_constant_expression (tree t)
 {
-  return potential_constant_expression_1 (t, true, true, true, tf_none);
+  return potential_constant_expression_1 (t, /*want_rval*/true, /*strict*/true,
+					  /*now*/true, /*fundef_p*/false,
+					  tf_none);
 }
 
 /* Like above, but complain about non-constant expressions.  */
@@ -9950,7 +10037,8 @@ is_rvalue_constant_expression (tree t)
 bool
 require_constant_expression (tree t)
 {
-  return potential_constant_expression_1 (t, false, true, true,
+  return potential_constant_expression_1 (t, /*want_rval*/false, /*strict*/true,
+					  /*now*/true, /*fundef_p*/false,
 					  tf_warning_or_error);
 }
 
@@ -9960,7 +10048,9 @@ require_constant_expression (tree t)
 bool
 is_static_init_expression (tree t)
 {
-  return potential_constant_expression_1 (t, false, false, true, tf_none);
+  return potential_constant_expression_1 (t, /*want_rval*/false,
+					  /*strict*/false, /*now*/true,
+					  /*fundef_p*/false, tf_none);
 }
 
 /* Returns true if T is a potential constant expression that is not
