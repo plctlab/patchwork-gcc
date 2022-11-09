@@ -154,8 +154,6 @@ symbol_table::decl_assembler_name_equal (tree decl, const_tree asmname)
 }
 
 
-/* Returns nonzero if P1 and P2 are equal.  */
-
 /* Insert NODE to assembler name hash.  */
 
 void
@@ -303,6 +301,10 @@ symbol_table::change_decl_assembler_name (tree decl, tree name)
 	warning (0, "%qD renamed after being referenced in assembly", decl);
 
       SET_DECL_ASSEMBLER_NAME (decl, name);
+      /* Set the new name in rtl.  */
+      if (DECL_RTL_SET_P (decl))
+	XSTR (XEXP (DECL_RTL (decl), 0), 0) = IDENTIFIER_POINTER (name);
+
       if (alias)
 	{
 	  IDENTIFIER_TRANSPARENT_ALIAS (name) = 1;
