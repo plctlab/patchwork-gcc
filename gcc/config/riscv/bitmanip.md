@@ -363,6 +363,25 @@
   "binvi\t%0,%1,%S2"
   [(set_attr "type" "bitmanip")])
 
+; Catch those cases where we can use a binvi + xori or binvi + binvi
+; instead of a lui + addi + xor sequence.
+(define_insn_and_split "*binvi<mode>_extrabit"
+  [(set (match_operand:X 0 "register_operand" "=r")
+	(xor:X (match_operand:X 1 "register_operand" "r")
+	       (match_operand:X 2 "uimm_extra_bit_operand" "i")))]
+  "TARGET_ZBS"
+  "#"
+  "&& reload_completed"
+  [(set (match_dup 0) (xor:X (match_dup 1) (match_dup 3)))
+   (set (match_dup 0) (xor:X (match_dup 0) (match_dup 4)))]
+{
+	unsigned HOST_WIDE_INT bits = UINTVAL (operands[2]);
+	unsigned HOST_WIDE_INT topbit = HOST_WIDE_INT_1U << floor_log2 (bits);
+
+	operands[3] = GEN_INT (bits &~ topbit);
+	operands[4] = GEN_INT (topbit);
+})
+
 (define_insn "*bext<mode>"
   [(set (match_operand:X 0 "register_operand" "=r")
 	(zero_extract:X (match_operand:X 1 "register_operand" "r")
