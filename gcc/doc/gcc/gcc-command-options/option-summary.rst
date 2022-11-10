@@ -1208,10 +1208,8 @@ in the following sections.
   :option:`-malign-data=type` |gol|
   :option:`-mbig-endian`  :option:`-mlittle-endian` |gol|
   :option:`-mstack-protector-guard=guard`  :option:`-mstack-protector-guard-reg=reg` |gol|
-  :option:`-mstack-protector-guard-offset=offset`
-  -mcsr-check -mno-csr-check
-
-  .. program:: -mcsr-check -mno-csr-check
+  :option:`-mstack-protector-guard-offset=offset` |gol|
+  :option:`-mcsr-check`  :option:`-mno-csr-check`
 
   *RL78 Options*
 
@@ -1523,5 +1521,3 @@ in the following sections.
   *zSeries Options*
 
   See :ref:`s-390-and-zseries-options`.
-
-  .. program:: None
