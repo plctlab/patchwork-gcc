@@ -437,9 +437,9 @@ the following and their inverses no :samp:`{feature}` :
   floating-point instructions. This option is enabled by default for :option:`-march=armv8.4-a`. Use of this option with architectures prior to Armv8.2-A is not supported.
 
 :samp:`rcpc`
-  Enable the RcPc extension.  This does not change code generation from GCC,
-  but is passed on to the assembler, enabling inline asm statements to use
-  instructions from the RcPc extension.
+  Enable the RcPc extension.  This enables the use of the LDAPR instructions for
+  load-acquire atomic semantics, and passes it on to the assembler, enabling
+  inline asm statements to use instructions from the RcPc extension.
 
 :samp:`dotprod`
   Enable the Dot Product extension.  This also enables Advanced SIMD instructions.
