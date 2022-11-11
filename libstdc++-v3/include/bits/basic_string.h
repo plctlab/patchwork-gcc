@@ -352,8 +352,8 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
       {
 #if __cpp_lib_is_constant_evaluated
 	if (std::is_constant_evaluated())
-	  for (_CharT& __c : _M_local_buf)
-	    __c = _CharT();
+	  for (size_type i = 0; i <= _S_local_capacity; ++i)
+	    _M_local_buf[i] = _CharT();
 #endif
 	return _M_local_data();
       }
