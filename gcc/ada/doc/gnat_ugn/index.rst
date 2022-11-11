@@ -59,5 +59,5 @@ GNAT User's Guide for Native Platforms
    C. Elaboration Order Handling in GNAT <elaboration_order_handling_in_gnat>
    D. Inline Assembler <inline_assembler>
    E. GNU Free Documentation License <gnu_free_documentation_license>
-
+   F. Indices and Tables <indices-and-tables>
 

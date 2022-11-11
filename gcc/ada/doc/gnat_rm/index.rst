@@ -68,3 +68,4 @@ GNAT Reference Manual
    :maxdepth: 3
 
    gnu_free_documentation_license
+   indices-and-tables

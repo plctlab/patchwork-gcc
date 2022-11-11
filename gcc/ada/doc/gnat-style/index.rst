@@ -689,3 +689,4 @@ Program Structure and Compilation Issues
 
 .. toctree::
    gnu_free_documentation_license
+   indices-and-tables
