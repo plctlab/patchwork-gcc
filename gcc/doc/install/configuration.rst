@@ -425,13 +425,26 @@ corresponding :option:`--without` option.
 .. option:: --enable-host-shared
 
   Specify that the *host* code should be built into position-independent
-  machine code (with -fPIC), allowing it to be used within shared libraries,
-  but yielding a slightly slower compiler.
+  machine code (with :option:`-fPIC`), allowing it to be used within shared
+  libraries, but yielding a slightly slower compiler.
 
   This option is required when building the libgccjit.so library.
 
   Contrast with :option:`--enable-shared`, which affects *target*
   libraries.
+
+.. option:: --enable-host-pie
+
+  Specify that the *host* executables should be built into position-independent
+  executables (with :option:`-fPIE` and :option:`-pie`), yielding a slightly
+  slower compiler (but faster than :option:`--enable-host-shared`).
+  Position-independent executables are loaded at random addresses each time
+  they are executed, therefore provide additional protection against Return
+  Oriented Programming (ROP) attacks.
+
+  :option:`--enable-host-pie` may be used with :option:`--enable-host-shared`,
+  in which case :option:`-fPIC` is used when compiling, and :option:`-pie`
+  when linking.
 
 .. option:: --with-gnu-as
 
