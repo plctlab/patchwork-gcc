@@ -389,6 +389,20 @@ These options are defined for AArch64 implementations:
   The default is :samp:`-msve-vector-bits=scalable`, which produces
   vector-length agnostic code.
 
+.. option:: -mdirect-extern-access, -mno-direct-extern-access
+
+  Use direct accesses for external data symbols.  It avoids a GOT indirection
+  on all external data symbols with :option:`-fpie` or :option:`-fPIE`.  This is
+  useful for executables linked with :option:`-static` or :option:`-static-pie`.
+  With :option:`-fpic` or :option:`-fPIC`, it only affects accesses to protected
+  data symbols.  It has no effect on non-position independent code.  The default
+  is :option:`-mno-direct-extern-access`.
+
+  .. warning::
+
+    Use :option:`-mdirect-extern-access` either in shared libraries or in
+    executables, but not in both.  Protected symbols used both in a shared
+    library and executable may cause linker errors or fail to work correctly.
 
 .. _aarch64-feature-modifiers:
 

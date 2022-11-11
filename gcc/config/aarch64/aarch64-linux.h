@@ -70,7 +70,7 @@
    strong definitions in dependent shared libraries, will resolve
    to COPY relocated symbol in the executable.  See PR65780.  */
 #undef TARGET_BINDS_LOCAL_P
-#define TARGET_BINDS_LOCAL_P default_binds_local_p_2
+#define TARGET_BINDS_LOCAL_P aarch64_binds_local_p
 
 /* Define this to be nonzero if static stack checking is supported.  */
 #define STACK_CHECK_STATIC_BUILTIN 1

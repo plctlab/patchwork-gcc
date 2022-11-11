@@ -299,3 +299,7 @@ Constant memset size in bytes from which to start using MOPS sequence.
 -param=aarch64-vect-unroll-limit=
 Target Joined UInteger Var(aarch64_vect_unroll_limit) Init(4) Param
 Limit how much the autovectorizer may unroll a loop.
+
+mdirect-extern-access
+Target Var(aarch64_direct_extern_access) Init(0)
+Do not indirect accesses to external symbols via the GOT.

@@ -71,7 +71,7 @@
    strong definitions in dependent shared libraries, will resolve
    to COPY relocated symbol in the executable.  See PR65780.  */
 #undef TARGET_BINDS_LOCAL_P
-#define TARGET_BINDS_LOCAL_P default_binds_local_p_2
+#define TARGET_BINDS_LOCAL_P aarch64_binds_local_p
 
 /* Use the AAPCS type for wchar_t, override the one from
    config/freebsd.h.  */

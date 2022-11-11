@@ -19185,9 +19185,29 @@ aarch64_tlsdesc_abi_id ()
 static bool
 aarch64_symbol_binds_local_p (const_rtx x)
 {
-  return (SYMBOL_REF_DECL (x)
-	  ? targetm.binds_local_p (SYMBOL_REF_DECL (x))
-	  : SYMBOL_REF_LOCAL_P (x));
+  if (!SYMBOL_REF_DECL (x))
+    return SYMBOL_REF_LOCAL_P (x);
+
+  if (targetm.binds_local_p (SYMBOL_REF_DECL (x)))
+    return true;
+
+  /* In PIE binaries avoid a GOT indirection on non-weak data symbols if
+     aarch64_direct_extern_access is true.  */
+  if (flag_pie && aarch64_direct_extern_access && !SYMBOL_REF_WEAK (x)
+      && !SYMBOL_REF_FUNCTION_P (x))
+    return true;
+
+  return false;
+}
+
+/* Implement TARGET_BINDS_LOCAL_P hook.  */
+
+bool
+aarch64_binds_local_p (const_tree exp)
+{
+  /* Protected symbols are local if aarch64_direct_extern_access is true.  */
+  return default_binds_local_p_3 (exp, flag_shlib != 0, true,
+				  !aarch64_direct_extern_access, !flag_pic);
 }
 
 /* Return true if SYMBOL_REF X is thread local */

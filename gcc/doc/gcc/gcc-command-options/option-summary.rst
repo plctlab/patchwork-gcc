@@ -634,7 +634,8 @@ in the following sections.
   :option:`-moverride=string`  :option:`-mverbose-cost-dump` |gol|
   :option:`-mstack-protector-guard=guard` :option:`-mstack-protector-guard-reg=sysreg` |gol|
   :option:`-mstack-protector-guard-offset=offset` :option:`-mtrack-speculation` |gol|
-  :option:`-moutline-atomics`
+  :option:`-moutline-atomics` |gol|
+  :option:`-mdirect-extern-access`
 
   *Adapteva Epiphany Options*
 

@@ -1072,5 +1072,6 @@ const char *aarch64_sls_barrier (int);
 const char *aarch64_indirect_call_asm (rtx);
 extern bool aarch64_harden_sls_retbr_p (void);
 extern bool aarch64_harden_sls_blr_p (void);
+extern bool aarch64_binds_local_p (const_tree);
 
 #endif /* GCC_AARCH64_PROTOS_H */
