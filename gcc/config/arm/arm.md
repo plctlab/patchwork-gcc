@@ -123,6 +123,8 @@
 ; and not all ARM insns do.
 (define_attr "predicated" "yes,no" (const_string "no"))
 
+(define_attr "mve_unpredicated_insn" "" (const_int 0))
+
 ; LENGTH of an instruction (in bytes)
 (define_attr "length" ""
   (const_int 4))
