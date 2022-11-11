@@ -552,6 +552,11 @@ Here are several miscellaneous parameters.
   to by :samp:`{ce_info}`.
 
 .. include:: tm.rst.in
+  :start-after: [TARGET_USE_LATE_PROLOGUE_EPILOGUE]
+  :end-before: [TARGET_USE_LATE_PROLOGUE_EPILOGUE]
+
+
+.. include:: tm.rst.in
   :start-after: [TARGET_MACHINE_DEPENDENT_REORG]
   :end-before: [TARGET_MACHINE_DEPENDENT_REORG]
 

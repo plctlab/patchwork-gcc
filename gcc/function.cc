@@ -6631,6 +6631,11 @@ public:
   {}
 
   /* opt_pass methods: */
+  bool gate (function *) final override
+    {
+      return !targetm.use_late_prologue_epilogue ();
+    }
+
   unsigned int execute (function *) final override
     {
       return rest_of_handle_thread_prologue_and_epilogue ();
@@ -6638,12 +6643,50 @@ public:
 
 }; // class pass_thread_prologue_and_epilogue
 
+const pass_data pass_data_late_thread_prologue_and_epilogue =
+{
+  RTL_PASS, /* type */
+  "late_pro_and_epilogue", /* name */
+  OPTGROUP_NONE, /* optinfo_flags */
+  TV_THREAD_PROLOGUE_AND_EPILOGUE, /* tv_id */
+  0, /* properties_required */
+  0, /* properties_provided */
+  0, /* properties_destroyed */
+  0, /* todo_flags_start */
+  ( TODO_df_verify | TODO_df_finish ), /* todo_flags_finish */
+};
+
+class pass_late_thread_prologue_and_epilogue : public rtl_opt_pass
+{
+public:
+  pass_late_thread_prologue_and_epilogue (gcc::context *ctxt)
+    : rtl_opt_pass (pass_data_late_thread_prologue_and_epilogue, ctxt)
+  {}
+
+  /* opt_pass methods: */
+  bool gate (function *) final override
+    {
+      return targetm.use_late_prologue_epilogue ();
+    }
+
+  unsigned int execute (function *) final override
+    {
+      return rest_of_handle_thread_prologue_and_epilogue ();
+    }
+}; // class pass_late_thread_prologue_and_epilogue
+
 } // anon namespace
 
 rtl_opt_pass *
 make_pass_thread_prologue_and_epilogue (gcc::context *ctxt)
 {
   return new pass_thread_prologue_and_epilogue (ctxt);
+}
+
+rtl_opt_pass *
+make_pass_late_thread_prologue_and_epilogue (gcc::context *ctxt)
+{
+  return new pass_late_thread_prologue_and_epilogue (ctxt);
 }
 
 namespace {

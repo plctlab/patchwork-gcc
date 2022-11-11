@@ -3702,6 +3702,28 @@
 
 [TARGET_CC_MODES_COMPATIBLE]
 
+[TARGET_USE_LATE_PROLOGUE_EPILOGUE]
+.. function:: bool TARGET_USE_LATE_PROLOGUE_EPILOGUE ()
+
+  Return true if the current function's prologue and epilogue should
+  be emitted late in the pass pipeline, instead of at the usual point.
+  
+  Normally, the prologue and epilogue sequences are introduced soon after
+  register allocation is complete.  The advantage of this approach is that
+  it allows the prologue and epilogue instructions to be optimized and
+  scheduled with other code in the function.  However, some targets
+  require the prologue and epilogue to be the first and last sequences
+  executed by the function, with no variation allowed.  This hook should
+  return true on such targets.
+  
+  The default implementation returns false, which is correct for most
+  targets.  The hook should only return true if there is a specific
+  target limitation that cannot be described in RTL.  For example,
+  the hook might return true if the prologue and epilogue need to switch
+  between instruction sets.
+
+[TARGET_USE_LATE_PROLOGUE_EPILOGUE]
+
 [TARGET_MACHINE_DEPENDENT_REORG]
 .. function:: void TARGET_MACHINE_DEPENDENT_REORG (void)
 
