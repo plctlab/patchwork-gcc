@@ -1075,6 +1075,24 @@ Other hardware attributes
 ``cell_hw``
   Test system can execute AltiVec and Cell PPU instructions.
 
+``clz``
+  Target supports a clz optab on int.
+
+``clzl``
+  Target supports a clz optab on long.
+
+``clzll``
+  Target supports a clz optab on long long.
+
+``ctz``
+  Target supports a ctz optab on int.
+
+``ctzl``
+  Target supports a ctz optab on long.
+
+``ctzll``
+  Target supports a ctz optab on long long.
+
 ``cmpccxadd``
   Target supports the execution of ``cmpccxadd`` instructions.
 
@@ -1095,6 +1113,15 @@ Other hardware attributes
 
 ``pie_copyreloc``
   The x86-64 target linker supports PIE with copy reloc.
+
+``popcount``
+  Target supports a popcount optab on int.
+
+``popcountl``
+  Target supports a popcount optab on long.
+
+``popcountll``
+  Target supports a popcount optab on long long.
 
 ``prefetchi``
   Target supports the execution of ``prefetchi`` instructions.
