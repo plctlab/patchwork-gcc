@@ -4221,9 +4221,10 @@ DEFHOOK
 (md_asm_adjust,
  "This target hook may add :dfn:`clobbers` to :samp:`{clobbers}` and\n\
 :samp:`{clobbered_regs}` for any hard regs the port wishes to automatically\n\
-clobber for an asm.  The :samp:`{outputs}` and :samp:`{inputs}` may be inspected\n\
-to avoid clobbering a register that is already used by the asm.  :samp:`{loc}`\n\
-is the source location of the asm.\n\
+clobber for an asm.  It can also add hard registers that are used by the\n\
+asm to :samp:`uses`.  The :samp:`{outputs}` and :samp:`{inputs}` may be\n\
+inspected to avoid clobbering a register that is already used by the asm.\n\
+:samp:`{loc}` is the source location of the asm.\n\
 \n\
 It may modify the :samp:`{outputs}`, :samp:`{inputs}`, :samp:`{input_modes}`, and\n\
 :samp:`{constraints}` as necessary for other pre-processing.  In this case the\n\
@@ -4232,7 +4233,7 @@ changes to :samp:`{inputs}` must be accompanied by the corresponding changes\n\
 to :samp:`{input_modes}`.",
  rtx_insn *,
  (vec<rtx>& outputs, vec<rtx>& inputs, vec<machine_mode>& input_modes,
-  vec<const char *>& constraints, vec<rtx>& clobbers,
+  vec<const char *>& constraints, vec<rtx>& usess, vec<rtx>& clobbers,
   HARD_REG_SET& clobbered_regs, location_t loc),
  NULL)
 

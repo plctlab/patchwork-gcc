@@ -3844,13 +3844,14 @@
 [TARGET_BUILTIN_SETJMP_FRAME_VALUE]
 
 [TARGET_MD_ASM_ADJUST]
-.. function:: rtx_insn * TARGET_MD_ASM_ADJUST (vec<rtx>& outputs, vec<rtx>& inputs, vec<machine_mode>& input_modes, vec<const char *>& constraints, vec<rtx>& clobbers, HARD_REG_SET& clobbered_regs, location_t loc)
+.. function:: rtx_insn * TARGET_MD_ASM_ADJUST (vec<rtx>& outputs, vec<rtx>& inputs, vec<machine_mode>& input_modes, vec<const char *>& constraints, vec<rtx>& usess, vec<rtx>& clobbers, HARD_REG_SET& clobbered_regs, location_t loc)
 
   This target hook may add :dfn:`clobbers` to :samp:`{clobbers}` and
   :samp:`{clobbered_regs}` for any hard regs the port wishes to automatically
-  clobber for an asm.  The :samp:`{outputs}` and :samp:`{inputs}` may be inspected
-  to avoid clobbering a register that is already used by the asm.  :samp:`{loc}`
-  is the source location of the asm.
+  clobber for an asm.  It can also add hard registers that are used by the
+  asm to :samp:`uses`.  The :samp:`{outputs}` and :samp:`{inputs}` may be
+  inspected to avoid clobbering a register that is already used by the asm.
+  :samp:`{loc}` is the source location of the asm.
   
   It may modify the :samp:`{outputs}`, :samp:`{inputs}`, :samp:`{input_modes}`, and
   :samp:`{constraints}` as necessary for other pre-processing.  In this case the
