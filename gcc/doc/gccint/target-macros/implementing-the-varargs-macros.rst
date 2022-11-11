@@ -92,6 +92,11 @@ These machine description macros help implement varargs:
 
 
 .. include:: tm.rst.in
+  :start-after: [TARGET_START_CALL_ARGS]
+  :end-before: [TARGET_START_CALL_ARGS]
+
+
+.. include:: tm.rst.in
   :start-after: [TARGET_CALL_ARGS]
   :end-before: [TARGET_CALL_ARGS]
 
