@@ -33,8 +33,8 @@ void gfc_set_model (mpfr_t);
 arith gfc_range_check (gfc_expr *);
 
 int gfc_compare_expr (gfc_expr *, gfc_expr *, gfc_intrinsic_op);
-int gfc_compare_string (gfc_expr *, gfc_expr *);
-int gfc_compare_with_Cstring (gfc_expr *, const char *, bool);
+signed char gfc_compare_string (gfc_expr *, gfc_expr *);
+signed char gfc_compare_with_Cstring (gfc_expr *, const char *, bool);
 
 
 /* Constant folding for gfc_expr trees.  */

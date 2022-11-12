@@ -36,14 +36,14 @@ along with GCC; see the file COPYING3.  If not see
 /* Calculate the size of an expression.  */
 
 
-static size_t
+static short unsigned int
 size_integer (int kind)
 {
   return GET_MODE_SIZE (SCALAR_INT_TYPE_MODE (gfc_get_int_type (kind)));
 }
 
 
-static size_t
+static short unsigned int
 size_float (int kind)
 {
   return GET_MODE_SIZE (SCALAR_FLOAT_TYPE_MODE (gfc_get_real_type (kind)));
@@ -57,7 +57,7 @@ size_complex (int kind)
 }
 
 
-static size_t
+static short unsigned int
 size_logical (int kind)
 {
   return GET_MODE_SIZE (SCALAR_INT_TYPE_MODE (gfc_get_logical_type (kind)));
