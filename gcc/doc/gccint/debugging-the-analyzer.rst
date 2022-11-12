@@ -90,6 +90,23 @@ With a non-zero argument
 
 it will also dump all of the states within the 'processed' nodes.
 
+The builtin ``__analyzer_dump_named_constant`` will emit a warning
+during analysis describing what is known about the value of a given
+named constant, for parts of the analyzer that interact with target
+headers.
+
+For example:
+
+.. code-block:: c
+
+   __analyzer_dump_named_constant ("O_RDONLY");
+
+might emit the warning:
+
+.. code-block::
+
+   warning: named constant 'O_RDONLY' has value '1'
+
 .. code-block:: c++
 
      __analyzer_dump_region_model ();
