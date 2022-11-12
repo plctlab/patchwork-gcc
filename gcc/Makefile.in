@@ -1421,6 +1421,7 @@ OBJS = \
 	gimple-streamer-out.o \
 	gimple-walk.o \
 	gimple-warn-recursion.o \
+	gimple-warn-types.o \
 	gimplify.o \
 	gimplify-me.o \
 	godump.o \

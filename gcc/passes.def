@@ -202,6 +202,7 @@ along with GCC; see the file COPYING3.  If not see
 	 form if possible.  */
       NEXT_PASS (pass_object_sizes);
       NEXT_PASS (pass_post_ipa_warn);
+      NEXT_PASS (pass_warn_type_demotion);
       /* Must run before loop unrolling.  */
       NEXT_PASS (pass_warn_access, /*early=*/true);
       NEXT_PASS (pass_complete_unrolli);
