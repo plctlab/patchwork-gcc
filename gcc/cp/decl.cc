@@ -17515,6 +17515,8 @@ start_function (cp_decl_specifier_seq *declspecs,
 		tree attrs)
 {
   tree decl1;
+  tree result;
+  bool ret;
 
   decl1 = grokdeclarator (declarator, declspecs, FUNCDEF, 1, &attrs);
   invoke_plugin_callbacks (PLUGIN_START_PARSE_FUNCTION, decl1);
@@ -17527,7 +17529,18 @@ start_function (cp_decl_specifier_seq *declspecs,
     gcc_assert (same_type_p (TREE_TYPE (TREE_TYPE (decl1)),
 			     integer_type_node));
 
-  return start_preparsed_function (decl1, attrs, /*flags=*/SF_DEFAULT);
+  ret = start_preparsed_function (decl1, attrs, /*flags=*/SF_DEFAULT);
+
+  /* decl1 might be ggc_freed here.  */
+  decl1 = current_function_decl;
+
+  /* Set the result decl source location to the location of the typespec.  */
+  if (TREE_CODE (decl1) == FUNCTION_DECL
+      && declspecs->locations[ds_type_spec] != UNKNOWN_LOCATION
+      && (result = DECL_RESULT (decl1)) != NULL_TREE
+      && DECL_SOURCE_LOCATION (result) == input_location)
+    DECL_SOURCE_LOCATION (result) = declspecs->locations[ds_type_spec];
+  return ret;
 }
 
 /* Returns true iff an EH_SPEC_BLOCK should be created in the body of
