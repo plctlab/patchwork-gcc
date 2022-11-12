@@ -14577,6 +14577,44 @@ tree_simple_nonnegative_warnv_p (enum tree_code code, tree type)
   return false;
 }
 
+/* Return true if T is of type floating point and has a known sign.
+   If so, set the sign in SIGN.  */
+
+static bool
+known_float_sign_p (bool &sign, tree t)
+{
+  if (!frange::supports_p (TREE_TYPE (t)))
+    return false;
+
+  frange r;
+  return (get_global_range_query ()->range_of_expr (r, t)
+	  && r.signbit_p (sign));
+}
+
+/* Return true if TYPE is a floating-point type and (CODE OP0 OP1) has
+   a known sign.  If so, set the sign in SIGN.  */
+
+static bool
+known_float_sign_p (bool &sign, enum tree_code code, tree type, tree op0,
+		    tree op1 = NULL_TREE)
+{
+  if (!frange::supports_p (type))
+    return false;
+
+  range_op_handler handler (code, type);
+  if (handler)
+    {
+      frange res, r0, r1;
+      get_global_range_query ()->range_of_expr (r0, op0);
+      if (op1)
+	get_global_range_query ()->range_of_expr (r1, op1);
+      else
+	r1.set_varying (type);
+      return handler.fold_range (res, type, r0, r1) && res.signbit_p (sign);
+    }
+  return false;
+}
+
 /* Return true if (CODE OP0) is known to be non-negative.  If the return
    value is based on the assumption that signed overflow is undefined,
    set *STRICT_OVERFLOW_P to true; otherwise, don't change
@@ -14588,6 +14626,10 @@ tree_unary_nonnegative_warnv_p (enum tree_code code, tree type, tree op0,
 {
   if (TYPE_UNSIGNED (type))
     return true;
+
+  bool sign;
+  if (known_float_sign_p (sign, code, type, op0))
+    return !sign;
 
   switch (code)
     {
@@ -14655,6 +14697,10 @@ tree_binary_nonnegative_warnv_p (enum tree_code code, tree type, tree op0,
 {
   if (TYPE_UNSIGNED (type))
     return true;
+
+  bool sign;
+  if (known_float_sign_p (sign, code, type, op0, op1))
+    return !sign;
 
   switch (code)
     {
@@ -14778,6 +14824,8 @@ tree_binary_nonnegative_warnv_p (enum tree_code code, tree type, tree op0,
 bool
 tree_single_nonnegative_warnv_p (tree t, bool *strict_overflow_p, int depth)
 {
+  bool sign;
+
   if (TYPE_UNSIGNED (TREE_TYPE (t)))
     return true;
 
@@ -14796,6 +14844,9 @@ tree_single_nonnegative_warnv_p (tree t, bool *strict_overflow_p, int depth)
       return RECURSE (TREE_OPERAND (t, 1)) && RECURSE (TREE_OPERAND (t, 2));
 
     case SSA_NAME:
+      if (known_float_sign_p (sign, t))
+	return !sign;
+
       /* Limit the depth of recursion to avoid quadratic behavior.
 	 This is expected to catch almost all occurrences in practice.
 	 If this code misses important cases that unbounded recursion
