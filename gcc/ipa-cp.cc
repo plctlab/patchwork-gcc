@@ -5783,7 +5783,8 @@ push_agg_values_from_edge (struct cgraph_edge *cs,
 	}
 
       ipcp_param_lattices *plats = ipa_get_parm_lattices (dest_info, index);
-      if (plats->aggs_bottom)
+      if (!ipa_is_param_used (dest_info, index)
+	  || plats->aggs_bottom)
 	continue;
       push_agg_values_for_index_from_edge (cs, index, res, interim);
     }
