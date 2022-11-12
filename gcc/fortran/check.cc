@@ -1156,7 +1156,7 @@ dim_rank_check (gfc_expr *dim, gfc_expr *array, int allow_assumed)
    dimension bi, returning 0 if they are known not to be identical,
    and 1 if they are identical, or if this cannot be determined.  */
 
-static int
+static bool
 identical_dimen_shape (gfc_expr *a, int ai, gfc_expr *b, int bi)
 {
   mpz_t a_size, b_size;
