@@ -86,6 +86,14 @@
 ;;    "ZB"
 ;;      "An address that is held in a general-purpose register.
 ;;      The offset is zero"
+;;    "ZD"
+;;	"An address operand whose address is formed by a base register
+;;	 and offset that is suitable for use in instructions with the same
+;;	 addressing mode as @code{preld}."
+;;    "ZE"
+;;	"An address operand whose address is formed by a base register
+;;	 and index register that is suitable for use in instructions
+;;	 with the same addressing mode as @code{preldx}."
 ;; "<" "Matches a pre-dec or post-dec operand." (Global non-architectural)
 ;; ">" "Matches a pre-inc or post-inc operand." (Global non-architectural)
 
@@ -190,3 +198,15 @@
   The offset is zero"
   (and (match_code "mem")
        (match_test "REG_P (XEXP (op, 0))")))
+
+(define_address_constraint "ZD"
+  "An address operand whose address is formed by a base register
+   and offset that is suitable for use in instructions with the same
+   addressing mode as @code{preld}."
+   (match_test "loongarch_12bit_offset_address_p (op, mode)"))
+
+(define_address_constraint "ZE"
+  "An address operand whose address is formed by a base register
+   and index register that is suitable for use in instructions
+   with the same addressing mode as @code{preldx}."
+   (match_test "loongarch_base_index_address_p (op, mode)"))
