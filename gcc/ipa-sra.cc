@@ -1748,6 +1748,11 @@ scan_expr_access (tree expr, gimple *stmt, isra_scan_context ctx,
       || TREE_CODE (expr) == REALPART_EXPR)
     expr = TREE_OPERAND (expr, 0);
 
+  if (!handled_component_p (expr)
+      && !DECL_P (expr)
+      && TREE_CODE (expr) != MEM_REF)
+    return;
+
   base = get_ref_base_and_extent (expr, &poffset, &psize, &pmax_size, &reverse);
 
   if (TREE_CODE (base) == MEM_REF)
