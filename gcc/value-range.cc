@@ -3103,6 +3103,62 @@ debug (const value_range &vr)
   fprintf (stderr, "\n");
 }
 
+/* Helper for irange::as_string().  Print a bound to an allocated buffer.  */
+static char *
+get_bound_with_infinite_markers (tree bound)
+{
+  tree type = TREE_TYPE (bound);
+  wide_int type_min = wi::min_value (TYPE_PRECISION (type), TYPE_SIGN (type));
+  wide_int type_max = wi::max_value (TYPE_PRECISION (type), TYPE_SIGN (type));
+
+  if (INTEGRAL_TYPE_P (type)
+      && !TYPE_UNSIGNED (type)
+      && TREE_CODE (bound) == INTEGER_CST
+      && wi::to_wide (bound) == type_min
+      && TYPE_PRECISION (type) != 1)
+    return xstrdup ("-INF");
+  else if (TREE_CODE (bound) == INTEGER_CST
+	   && wi::to_wide (bound) == type_max
+	   && TYPE_PRECISION (type) != 1)
+    return xstrdup ("+INF");
+  else
+    return print_generic_expr_to_str (bound);
+}
+
+
+/* Return an irange as string. Return NULL on failure, an allocated
+   string on success.  */
+char *
+irange::as_string ()
+{
+  char *ret = NULL;
+  if (undefined_p() || varying_p () || m_num_ranges == 0)
+    return ret;
+
+  for (unsigned i = 0; i < m_num_ranges; ++i)
+    {
+      tree lb = m_base[i * 2];
+      tree ub = m_base[i * 2 + 1];
+      /* Construct [lower_bound,upper_bound].  */
+      char *lbs = get_bound_with_infinite_markers (lb);
+      char *ubs = get_bound_with_infinite_markers (ub);
+      /* Paranoia mode */
+      if (!lbs)
+	lbs = xstrdup ("");
+      if (!ubs)
+	ubs = xstrdup ("");
+
+      if (ret)
+	ret = reconcat (ret, ret, "[", lbs, ",", ubs, "]", NULL);
+      else
+	ret = concat ("[", lbs, ",", ubs, "]", NULL);
+
+      free (lbs);
+      free (ubs);
+    }
+  return ret;
+}
+
 /* Create two value-ranges in *VR0 and *VR1 from the anti-range *AR
    so that *VR0 U *VR1 == *AR.  Returns true if that is possible,
    false otherwise.  If *AR can be represented with a single range

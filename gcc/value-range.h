@@ -160,6 +160,9 @@ public:
   wide_int get_nonzero_bits () const;
   void set_nonzero_bits (const wide_int_ref &bits);
 
+  // For diagnostics.
+  char *as_string ();
+
   // Deprecated legacy public methods.
   tree min () const;				// DEPRECATED
   tree max () const;				// DEPRECATED
