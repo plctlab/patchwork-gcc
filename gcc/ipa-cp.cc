@@ -3722,7 +3722,10 @@ estimate_local_effects (struct cgraph_node *node)
 						    &removable_params_cost);
   int devirt_bonus = devirtualization_time_bonus (node, &avals);
   if (always_const || devirt_bonus
-      || (removable_params_cost && node->can_change_signature))
+      || (removable_params_cost
+	  && node->can_change_signature
+	  /* If IPA-SRA can do it, it can do it better.  */
+	  && !node->can_be_local_p ()))
     {
       struct caller_statistics stats;
       ipa_call_estimates estimates;
