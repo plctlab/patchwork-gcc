@@ -387,7 +387,7 @@ gfc_done_2 (void)
 /* Returns the index into the table of C interoperable kinds where the
    kind with the given name (c_kind_name) was found.  */
 
-int
+signed char
 get_c_kind(const char *c_kind_name, CInteropKind_t kinds_table[])
 {
   int index = 0;

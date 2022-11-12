@@ -1135,7 +1135,7 @@ compare_complex (gfc_expr *op1, gfc_expr *op2)
    strings.  We return -1 for a < b, 0 for a == b and 1 for a > b.
    We use the processor's default collating sequence.  */
 
-int
+signed char
 gfc_compare_string (gfc_expr *a, gfc_expr *b)
 {
   size_t len, alen, blen, i;
@@ -1162,7 +1162,7 @@ gfc_compare_string (gfc_expr *a, gfc_expr *b)
 }
 
 
-int
+signed char
 gfc_compare_with_Cstring (gfc_expr *a, const char *b, bool case_sensitive)
 {
   size_t len, alen, blen, i;
