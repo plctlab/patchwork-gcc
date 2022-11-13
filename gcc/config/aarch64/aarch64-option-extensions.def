@@ -129,6 +129,8 @@ AARCH64_OPT_EXTENSION("sve2-sha3", SVE2_SHA3, (SVE2, SHA3), (), (), "svesha3")
 AARCH64_OPT_EXTENSION("sve2-bitperm", SVE2_BITPERM, (SVE2), (), (),
 		      "svebitperm")
 
+AARCH64_OPT_EXTENSION("sme", SME, (SVE2), (), (), "sme")
+
 AARCH64_OPT_EXTENSION("tme", TME, (), (), (), "")
 
 AARCH64_OPT_EXTENSION("i8mm", I8MM, (SIMD), (), (), "i8mm")

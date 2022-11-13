@@ -886,6 +886,9 @@ AArch64-specific attributes
   AArch64 target that is able to generate and execute armv8.3-a FJCVTZS
   instruction.
 
+``aarch64_sme``
+  AArch64 target that generates instructions for SME.
+
 MIPS-specific attributes
 ~~~~~~~~~~~~~~~~~~~~~~~~
 

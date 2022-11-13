@@ -545,6 +545,9 @@ the following and their inverses no :samp:`{feature}` :
 :samp:`pauth`
   Enable the Pointer Authentication Extension.
 
+:samp:`sme`
+  Enable the Scalable Matrix Extension.
+
 Feature ``crypto`` implies ``aes``, ``sha2``, and ``simd``,
 which implies ``fp``.
 Conversely, ``nofp`` implies ``nosimd``, which implies
