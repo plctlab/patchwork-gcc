@@ -222,6 +222,16 @@ static const struct riscv_ext_version riscv_ext_version_table[] =
   {"svinval", ISA_SPEC_CLASS_NONE, 1, 0},
   {"svnapot", ISA_SPEC_CLASS_NONE, 1, 0},
 
+  {"xtheadba", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"xtheadbb", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"xtheadbs", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"xtheadcmo", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"xtheadcondmov", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"xtheadfmemidx", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"xtheadmac", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"xtheadmemidx", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"xtheadsync", ISA_SPEC_CLASS_NONE, 1, 0},
+
   /* Terminate the list.  */
   {NULL, ISA_SPEC_CLASS_NONE, 0, 0}
 };
@@ -1246,6 +1256,16 @@ static const riscv_ext_flag_table_t riscv_ext_flag_table[] =
 
   {"svinval", &gcc_options::x_riscv_sv_subext, MASK_SVINVAL},
   {"svnapot", &gcc_options::x_riscv_sv_subext, MASK_SVNAPOT},
+
+  {"xtheadba",      &gcc_options::x_riscv_xthead_subext, MASK_XTHEADBA},
+  {"xtheadbb",      &gcc_options::x_riscv_xthead_subext, MASK_XTHEADBB},
+  {"xtheadbs",      &gcc_options::x_riscv_xthead_subext, MASK_XTHEADBS},
+  {"xtheadcmo",     &gcc_options::x_riscv_xthead_subext, MASK_XTHEADCMO},
+  {"xtheadcondmov", &gcc_options::x_riscv_xthead_subext, MASK_XTHEADCONDMOV},
+  {"xtheadfmemidx", &gcc_options::x_riscv_xthead_subext, MASK_XTHEADFMEMIDX},
+  {"xtheadmac",     &gcc_options::x_riscv_xthead_subext, MASK_XTHEADMAC},
+  {"xtheadmemidx",  &gcc_options::x_riscv_xthead_subext, MASK_XTHEADMEMIDX},
+  {"xtheadsync",    &gcc_options::x_riscv_xthead_subext, MASK_XTHEADSYNC},
 
   {NULL, NULL, 0}
 };
