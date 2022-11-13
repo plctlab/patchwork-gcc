@@ -201,11 +201,15 @@ enum stack_protector_guard {
 #define TARGET_XTHEADCONDMOV	((riscv_xthead_subext & MASK_XTHEADCONDMOV) != 0)
 #define MASK_XTHEADFMEMIDX	(1 << 5)
 #define TARGET_XTHEADFMEMIDX	((riscv_xthead_subext & MASK_XTHEADFMEMIDX) != 0)
-#define MASK_XTHEADMAC		(1 << 6)
+#define MASK_XTHEADFMV		(1 << 6)
+#define TARGET_XTHEADFMV	((riscv_xthead_subext & MASK_XTHEADFMV) != 0)
+#define MASK_XTHEADINT		(1 << 7)
+#define TARGET_XTHEADINT	((riscv_xthead_subext & MASK_XTHEADINT) != 0)
+#define MASK_XTHEADMAC		(1 << 8)
 #define TARGET_XTHEADMAC	((riscv_xthead_subext & MASK_XTHEADMAC) != 0)
-#define MASK_XTHEADMEMIDX	(1 << 7)
+#define MASK_XTHEADMEMIDX	(1 << 9)
 #define TARGET_XTHEADMEMIDX	((riscv_xthead_subext & MASK_XTHEADMEMIDX) != 0)
-#define MASK_XTHEADSYNC		(1 << 8)
+#define MASK_XTHEADSYNC		(1 << 10)
 #define TARGET_XTHEADSYNC	((riscv_xthead_subext & MASK_XTHEADSYNC) != 0)
 
 #endif /* ! GCC_RISCV_OPTS_H */
