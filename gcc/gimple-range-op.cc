@@ -43,6 +43,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "range.h"
 #include "value-query.h"
 #include "gimple-range.h"
+#include "fold-const-call.h"
 
 // Given stmt S, fill VEC, up to VEC_SIZE elements, with relevant ssa-names
 // on the statement.  For efficiency, it is an error to not pass in enough
@@ -300,6 +301,41 @@ public:
     return false;
   }
 } op_cfn_constant_p;
+
+// Implement range operator for SQRT.
+class cfn_sqrt : public range_operator_float
+{
+  using range_operator_float::fold_range;
+private:
+  REAL_VALUE_TYPE real_sqrt (const REAL_VALUE_TYPE &arg, tree type) const
+  {
+    tree targ = build_real (type, arg);
+    tree res = fold_const_call (as_combined_fn (BUILT_IN_SQRT), type, targ);
+    return *TREE_REAL_CST_PTR (res);
+  }
+  void rv_fold (REAL_VALUE_TYPE &lb, REAL_VALUE_TYPE &ub, bool &maybe_nan,
+		tree type,
+		const REAL_VALUE_TYPE &lh_lb,
+		const REAL_VALUE_TYPE &lh_ub,
+		const REAL_VALUE_TYPE &,
+		const REAL_VALUE_TYPE &,
+		relation_kind) const final override
+  {
+    if (real_compare (LT_EXPR, &lh_ub, &dconst0))
+      {
+	real_nan (&lb, "", 0, TYPE_MODE (type));
+	ub = lb;
+	maybe_nan = true;
+	return;
+      }
+    lb = real_sqrt (lh_lb, type);
+    ub = real_sqrt (lh_ub, type);
+    if (real_compare (GE_EXPR, &lh_lb, &dconst0))
+      maybe_nan = false;
+    else
+      maybe_nan = true;
+  }
+} fop_cfn_sqrt;
 
 // Implement range operator for CFN_BUILT_IN_SIGNBIT.
 class cfn_signbit : public range_operator_float
@@ -905,6 +941,12 @@ gimple_range_op_handler::maybe_builtin_call ()
     CASE_CFN_PARITY:
       m_valid = true;
       m_int = &op_cfn_parity;
+      break;
+
+    CASE_CFN_SQRT:
+    CASE_CFN_SQRT_FN:
+      m_valid = true;
+      m_float = &fop_cfn_sqrt;
       break;
 
     default:
