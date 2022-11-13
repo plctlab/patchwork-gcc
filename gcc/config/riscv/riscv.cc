@@ -2269,8 +2269,8 @@ riscv_rtx_costs (rtx x, machine_mode mode, int outer_code, int opno ATTRIBUTE_UN
       return false;
 
     case IF_THEN_ELSE:
-      if (TARGET_SFB_ALU
-	  && register_operand (XEXP (x, 1), mode)
+      if ((TARGET_SFB_ALU || TARGET_XTHEADCONDMOV)
+	  && reg_or_0_operand (XEXP (x, 1), mode)
 	  && sfb_alu_operand (XEXP (x, 2), mode)
 	  && comparison_operator (XEXP (x, 0), VOIDmode))
 	{
@@ -3250,16 +3250,57 @@ riscv_expand_conditional_branch (rtx label, rtx_code code, rtx op0, rtx op1)
   emit_jump_insn (gen_condjump (condition, label));
 }
 
+/* Helper to emit two one-sided conditional moves for the movecc.  */
+
+static void
+riscv_expand_conditional_move_onesided (rtx dest, rtx cons, rtx alt,
+					rtx_code code, rtx op0, rtx op1)
+{
+  machine_mode mode = GET_MODE (dest);
+
+  gcc_assert (GET_MODE_CLASS (mode) == MODE_INT);
+  gcc_assert (reg_or_0_operand (cons, mode));
+  gcc_assert (reg_or_0_operand (alt, mode));
+
+  riscv_emit_int_compare (&code, &op0, &op1);
+  rtx cond = gen_rtx_fmt_ee (code, GET_MODE (op0), op0, op1);
+
+  rtx tmp1 = gen_reg_rtx (mode);
+  rtx tmp2 = gen_reg_rtx (mode);
+
+  emit_insn (gen_rtx_SET (tmp1, gen_rtx_IF_THEN_ELSE (mode, cond,
+						      cons, const0_rtx)));
+
+  /* We need to expand a sequence for both blocks and we do that such,
+     that the second conditional move will use the inverted condition.
+     We use temporaries that are or'd to the dest register.  */
+  cond = gen_rtx_fmt_ee ((code == EQ) ? NE : EQ, GET_MODE (op0), op0, op1);
+  emit_insn (gen_rtx_SET (tmp2, gen_rtx_IF_THEN_ELSE (mode, cond,
+						      alt, const0_rtx)));
+
+  emit_insn (gen_rtx_SET (dest, gen_rtx_IOR (mode, tmp1, tmp2)));
+ }
+
 /* If (CODE OP0 OP1) holds, move CONS to DEST; else move ALT to DEST.  */
 
 void
 riscv_expand_conditional_move (rtx dest, rtx cons, rtx alt, rtx_code code,
 			       rtx op0, rtx op1)
 {
-  riscv_emit_int_compare (&code, &op0, &op1);
-  rtx cond = gen_rtx_fmt_ee (code, GET_MODE (op0), op0, op1);
-  emit_insn (gen_rtx_SET (dest, gen_rtx_IF_THEN_ELSE (GET_MODE (dest), cond,
-						      cons, alt)));
+  machine_mode mode = GET_MODE (dest);
+
+  if (TARGET_XTHEADCONDMOV
+      && GET_MODE_CLASS (mode) == MODE_INT
+      && reg_or_0_operand (cons, mode)
+      && reg_or_0_operand (alt, mode))
+    riscv_expand_conditional_move_onesided (dest, cons, alt, code, op0, op1);
+  else
+    {
+      riscv_emit_int_compare (&code, &op0, &op1);
+      rtx cond = gen_rtx_fmt_ee (code, GET_MODE (op0), op0, op1);
+      emit_insn (gen_rtx_SET (dest, gen_rtx_IF_THEN_ELSE (GET_MODE (dest),
+							  cond, cons, alt)));
+    }
 }
 
 /* Implement TARGET_FUNCTION_ARG_BOUNDARY.  Every parameter gets at
