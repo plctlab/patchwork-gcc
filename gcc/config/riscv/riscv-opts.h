@@ -189,4 +189,23 @@ enum stack_protector_guard {
    ? 0 \
    : 32 << (__builtin_popcount (riscv_zvl_flags) - 1))
 
+#define MASK_XTHEADBA		(1 << 0)
+#define TARGET_XTHEADBA		((riscv_xthead_subext & MASK_XTHEADBA) != 0)
+#define MASK_XTHEADBB		(1 << 1)
+#define TARGET_XTHEADBB		((riscv_xthead_subext & MASK_XTHEADBB) != 0)
+#define MASK_XTHEADBS		(1 << 2)
+#define TARGET_XTHEADBS		((riscv_xthead_subext & MASK_XTHEADBS) != 0)
+#define MASK_XTHEADCMO		(1 << 3)
+#define TARGET_XTHEADCMO	((riscv_xthead_subext & MASK_XTHEADCMO) != 0)
+#define MASK_XTHEADCONDMOV	(1 << 4)
+#define TARGET_XTHEADCONDMOV	((riscv_xthead_subext & MASK_XTHEADCONDMOV) != 0)
+#define MASK_XTHEADFMEMIDX	(1 << 5)
+#define TARGET_XTHEADFMEMIDX	((riscv_xthead_subext & MASK_XTHEADFMEMIDX) != 0)
+#define MASK_XTHEADMAC		(1 << 6)
+#define TARGET_XTHEADMAC	((riscv_xthead_subext & MASK_XTHEADMAC) != 0)
+#define MASK_XTHEADMEMIDX	(1 << 7)
+#define TARGET_XTHEADMEMIDX	((riscv_xthead_subext & MASK_XTHEADMEMIDX) != 0)
+#define MASK_XTHEADSYNC		(1 << 8)
+#define TARGET_XTHEADSYNC	((riscv_xthead_subext & MASK_XTHEADSYNC) != 0)
+
 #endif /* ! GCC_RISCV_OPTS_H */
