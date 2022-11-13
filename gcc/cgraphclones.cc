@@ -141,6 +141,20 @@ cgraph_edge::clone (cgraph_node *n, gcall *call_stmt, unsigned stmt_uid,
   new_edge->can_throw_external = can_throw_external;
   new_edge->call_stmt_cannot_inline_p = call_stmt_cannot_inline_p;
   new_edge->speculative = speculative;
+
+  new_edge->specialized = specialized;
+  new_edge->spec_args = NULL;
+
+  if (spec_args)
+    {
+      unsigned i;
+      cgraph_specialization_info* spec_info;
+      vec_alloc (new_edge->spec_args, spec_args->length ());
+
+      FOR_EACH_VEC_ELT (*spec_args, i, spec_info)
+	new_edge->spec_args->quick_push (*spec_info);
+    }
+
   new_edge->in_polymorphic_cdtor = in_polymorphic_cdtor;
 
   /* Update IPA profile.  Local profiles need no updating in original.  */
@@ -791,6 +805,22 @@ cgraph_node::set_call_stmt_including_clones (gimple *old_stmt,
 		  }
 		indirect->speculative = false;
 	      }
+
+	    if (edge->specialized && !update_speculative)
+	      {
+		cgraph_edge *base = edge->specialized_call_base_edge ();
+
+		for (cgraph_edge *next, *specialized
+			= edge->first_specialized_call_target ();
+		     specialized;
+		     specialized = next)
+		  {
+		    next = specialized->next_specialized_call_target ();
+		    specialized->specialized = false;
+		  }
+		base->specialized = false;
+	      }
+
 	  }
 	if (node->clones)
 	  node = node->clones;

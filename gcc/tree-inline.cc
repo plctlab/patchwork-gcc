@@ -2307,6 +2307,60 @@ copy_bb (copy_body_data *id, basic_block bb,
 			  indirect->count
 			     = copy_basic_block->count.apply_probability (prob);
 			}
+		      /* A specialized call is consist of multiple
+			 edges - a base edge and one or more specialized edges.
+			 Duplicate and distribute frequencies in a way similar
+			 to the speculative edges.  */
+		      else if (edge->specialized)
+			{
+			  int n = 0;
+			  cgraph_edge *first
+				 = old_edge->first_specialized_call_target ();
+			  profile_count spec_cnt
+				 = profile_count::zero ();
+
+			  /* First figure out the distribution of counts
+			     so we can re-scale BB profile accordingly.  */
+			  for (cgraph_edge *e = first; e;
+			       e = e->next_specialized_call_target ())
+			    spec_cnt = spec_cnt + e->count;
+
+			  cgraph_edge *base
+				 = old_edge->specialized_call_base_edge ();
+			  profile_count base_cnt = base->count;
+
+			  /* Next iterate all specializations, clone them
+			     and update the profile.  */
+			  for (cgraph_edge *e = first; e;
+			       e = e->next_specialized_call_target ())
+			    {
+			      profile_count cnt = e->count;
+
+			      edge = e->clone (id->dst_node, call_stmt,
+					       gimple_uid (stmt), num, den,
+					       true);
+			      profile_probability prob
+				 = cnt.probability_in (spec_cnt
+						       + base_cnt);
+			      edge->count
+				 = copy_basic_block->count.apply_probability
+					 (prob);
+			      n++;
+			    }
+
+			  /* Duplicate the base edge after all specialized
+			     edges cloned.  */
+			  base = base->clone (id->dst_node, call_stmt,
+						      gimple_uid (stmt),
+						      num, den,
+						      true);
+
+			  profile_probability prob
+			     = base_cnt.probability_in (spec_cnt
+							 + base_cnt);
+			  base->count
+			     = copy_basic_block->count.apply_probability (prob);
+			}
 		      else
 			{
 			  edge = edge->clone (id->dst_node, call_stmt,

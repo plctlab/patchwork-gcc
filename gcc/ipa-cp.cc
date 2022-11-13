@@ -119,6 +119,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "symbol-summary.h"
 #include "tree-vrp.h"
 #include "ipa-prop.h"
+#include "gimple-pretty-print.h"
 #include "tree-pretty-print.h"
 #include "tree-inline.h"
 #include "ipa-fnsummary.h"
@@ -5239,6 +5240,8 @@ want_remove_some_param_p (cgraph_node *node, vec<tree> known_csts)
   return false;
 }
 
+static hash_map<cgraph_node*, vec<cgraph_node*>> *available_specializations;
+
 /* Create a specialized version of NODE with known constants in KNOWN_CSTS,
    known contexts in KNOWN_CONTEXTS and known aggregate values in AGGVALS and
    redirect all edges in CALLERS to it.  */
@@ -5408,6 +5411,13 @@ create_specialized_node (struct cgraph_node *node,
   new_node->ipcp_clone = true;
   new_info->known_csts = known_csts;
   new_info->known_contexts = known_contexts;
+
+  if (!info->ipcp_orig_node)
+    {
+      vec<cgraph_node*> &spec_nodes
+	= available_specializations->get_or_insert (node);
+      spec_nodes.safe_push (new_node);
+    }
 
   ipcp_discover_new_direct_edges (new_node, known_csts, known_contexts,
 				  aggvals);
@@ -6538,6 +6548,96 @@ ipcp_store_vr_results (void)
     }
 }
 
+/* Add new edges to the call graph to represent the available specializations
+   of each specialized function.  */
+static void
+add_specialized_edges (void)
+{
+  cgraph_edge *e;
+  cgraph_node *n, *spec_n;
+  tree spec_v;
+  unsigned i, j;
+
+  FOR_EACH_DEFINED_FUNCTION (n)
+    {
+      if (dump_file && n->callees)
+	fprintf (dump_file,
+		 "Procesing function %s for specialization of edges.\n",
+		 n->dump_name ());
+
+      if (n->ipcp_clone)
+	continue;
+
+      bool update = false;
+      for (e = n->callees; e; e = e->next_callee)
+	{
+	  if (!e->callee || e->recursive_p ())
+	    continue;
+
+	  vec<cgraph_node*> *specialization_nodes
+	    = available_specializations->get (e->callee);
+
+	  if (!specialization_nodes)
+	    continue;
+
+	  FOR_EACH_VEC_ELT (*specialization_nodes, i, spec_n)
+	    {
+	      if (dump_file)
+		fprintf (dump_file,
+			 "Edge has available specialization %s.\n",
+			 spec_n->dump_name ());
+
+	      ipa_node_params *spec_params = ipa_node_params_sum->get (spec_n);
+	      vec<cgraph_specialization_info> replaced_args = vNULL;
+	      bool failed = false;
+
+	      FOR_EACH_VEC_ELT (spec_params->known_csts, j, spec_v)
+		{
+		  if (spec_v != NULL_TREE)
+		    {
+		      if (TREE_CODE (spec_v) == INTEGER_CST
+			  && TYPE_UNSIGNED (TREE_TYPE (spec_v))
+			  && tree_fits_uhwi_p (spec_v))
+			{
+			      cgraph_specialization_info spec_info;
+			      spec_info.arg_idx = j;
+			      spec_info.is_unsigned = 1;
+			      spec_info.cst.uval = tree_to_uhwi (spec_v);
+			      replaced_args.safe_push (spec_info);
+			}
+		      else if (TREE_CODE (spec_v) == INTEGER_CST
+			       && !TYPE_UNSIGNED (TREE_TYPE (spec_v))
+			       && tree_fits_shwi_p (spec_v))
+			{
+			      cgraph_specialization_info spec_info;
+			      spec_info.arg_idx = j;
+			      spec_info.is_unsigned = 0;
+			      spec_info.cst.uval = tree_to_shwi (spec_v);
+			      replaced_args.safe_push (spec_info);
+			}
+		      else
+			{
+			  failed = true;
+			  break;
+			}
+		    }
+		}
+
+	      if (!failed && replaced_args.length () > 0)
+		{
+		  if (e->make_specialized (spec_n,
+					   &replaced_args,
+					   e->count.apply_scale (1, 10)))
+		    update = true;
+		}
+	    }
+	}
+
+      if (update)
+	ipa_update_overall_fn_summary (n);
+    }
+}
+
 /* The IPCP driver.  */
 
 static unsigned int
@@ -6551,6 +6651,7 @@ ipcp_driver (void)
   ipa_check_create_node_params ();
   ipa_check_create_edge_args ();
   clone_num_suffixes = new hash_map<const char *, unsigned>;
+  available_specializations = new hash_map<cgraph_node*, vec<cgraph_node*>>;
 
   if (dump_file)
     {
@@ -6570,8 +6671,12 @@ ipcp_driver (void)
   ipcp_store_bits_results ();
   /* Store results of value range propagation.  */
   ipcp_store_vr_results ();
+  /* Add new edges for specializations.  */
+  if (flag_ipa_guarded_specialization)
+    add_specialized_edges ();
 
   /* Free all IPCP structures.  */
+  delete available_specializations;
   delete clone_num_suffixes;
   free_toporder_info (&topo);
   delete edge_clone_summaries;
