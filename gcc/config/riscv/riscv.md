@@ -3003,6 +3003,32 @@
   "prefetch.i\t%a0"
 )
 
+(define_expand "extv<mode>"
+  [(set (match_operand:GPR 0 "register_operand" "=r")
+	(sign_extract:GPR (match_operand:GPR 1 "register_operand" "r")
+			 (match_operand 2 "const_int_operand")
+			 (match_operand 3 "const_int_operand")))]
+  "TARGET_XTHEADBB"
+{
+  if (TARGET_XTHEADBB
+      && ((INTVAL (operands[2]) + INTVAL (operands[3]))
+	  >= GET_MODE_BITSIZE (GET_MODE (operands[1])).to_constant ()))
+    FAIL;
+})
+
+(define_expand "extzv<mode>"
+  [(set (match_operand:GPR 0 "register_operand" "=r")
+	(zero_extract:GPR (match_operand:GPR 1 "register_operand" "r")
+			 (match_operand 2 "const_int_operand")
+			 (match_operand 3 "const_int_operand")))]
+  "TARGET_XTHEADBB"
+{
+  if (TARGET_XTHEADBB
+      && ((INTVAL (operands[2]) + INTVAL (operands[3]))
+	  >= GET_MODE_BITSIZE (GET_MODE (operands[1])).to_constant ()))
+    FAIL;
+})
+
 (include "bitmanip.md")
 (include "sync.md")
 (include "peephole.md")
