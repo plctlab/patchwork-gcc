@@ -1450,6 +1450,7 @@ OBJS = \
 	ipa-sra.o \
 	ipa-devirt.o \
 	ipa-fnsummary.o \
+	ipa-guarded-deref.o \
 	ipa-polymorphic-call.o \
 	ipa-split.o \
 	ipa-inline.o \

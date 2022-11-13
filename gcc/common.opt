@@ -1933,6 +1933,10 @@ fipa-bit-cp
 Common Var(flag_ipa_bit_cp) Optimization
 Perform interprocedural bitwise constant propagation.
 
+fipa-guarded-deref
+Common Var(flag_ipa_guarded_deref) Optimization
+Perform guarded function pointer derferencing.
+
 fipa-modref
 Common Var(flag_ipa_modref) Optimization
 Perform interprocedural modref analysis.
