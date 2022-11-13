@@ -905,6 +905,7 @@ from the machine description file `md'.  */\n\n");
   printf ("#include \"tm-constrs.h\"\n");
   printf ("#include \"ggc.h\"\n");
   printf ("#include \"target.h\"\n\n");
+  printf ("#include \"builtins.h\"\n\n");
 
   /* Read the machine description.  */
 

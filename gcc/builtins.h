@@ -150,6 +150,7 @@ extern char target_percent_c[3];
 extern char target_percent_s_newline[4];
 extern bool target_char_cst_p (tree t, char *p);
 extern rtx get_memory_rtx (tree exp, tree len);
+extern void emit_standard_nonlocal_goto (rtx, rtx, rtx, rtx);
 
 extern internal_fn associated_internal_fn (combined_fn, tree);
 extern internal_fn associated_internal_fn (tree);

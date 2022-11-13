@@ -998,6 +998,49 @@ expand_builtin_setjmp_receiver (rtx receiver_label)
   emit_insn (gen_blockage ());
 }
 
+/* Emit the standard sequence for a nonlocal_goto.  The arguments are
+   the operands to the .md pattern.  */
+
+void
+emit_standard_nonlocal_goto (rtx value, rtx label, rtx stack, rtx fp)
+{
+  emit_clobber (gen_rtx_MEM (BLKmode, gen_rtx_SCRATCH (VOIDmode)));
+  emit_clobber (gen_rtx_MEM (BLKmode, hard_frame_pointer_rtx));
+
+  label = copy_to_reg (label);
+
+  /* Restore the frame pointer and stack pointer.  We must use a
+     temporary since the setjmp buffer may be a local.  */
+  fp = copy_to_reg (fp);
+  emit_stack_restore (SAVE_NONLOCAL, stack);
+
+  /* Ensure the frame pointer move is not optimized.  */
+  emit_insn (gen_blockage ());
+  emit_clobber (hard_frame_pointer_rtx);
+  emit_clobber (frame_pointer_rtx);
+  emit_move_insn (hard_frame_pointer_rtx, fp);
+
+  /* USE of hard_frame_pointer_rtx added for consistency;
+     not clear if really needed.  */
+  emit_use (hard_frame_pointer_rtx);
+  emit_use (stack_pointer_rtx);
+
+  /* If the architecture is using a GP register, we must
+     conservatively assume that the target function makes use of it.
+     The prologue of functions with nonlocal gotos must therefore
+     initialize the GP register to the appropriate value, and we
+     must then make sure that this value is live at the point
+     of the jump.  (Note that this doesn't necessarily apply
+     to targets with a nonlocal_goto pattern; they are free
+     to implement it in their own way.  Note also that this is
+     a no-op if the GP register is a global invariant.)  */
+  unsigned regnum = PIC_OFFSET_TABLE_REGNUM;
+  if (value == const0_rtx && regnum != INVALID_REGNUM && fixed_regs[regnum])
+    emit_use (pic_offset_table_rtx);
+
+  emit_indirect_jump (label);
+}
+
 /* __builtin_longjmp is passed a pointer to an array of five words (not
    all will be used on all machines).  It operates similarly to the C
    library function of the same name, but is more efficient.  Much of
@@ -1049,27 +1092,7 @@ expand_builtin_longjmp (rtx buf_addr, rtx value)
 	   what that value is, because builtin_setjmp does not use it.  */
 	emit_insn (targetm.gen_nonlocal_goto (value, lab, stack, fp));
       else
-	{
-	  emit_clobber (gen_rtx_MEM (BLKmode, gen_rtx_SCRATCH (VOIDmode)));
-	  emit_clobber (gen_rtx_MEM (BLKmode, hard_frame_pointer_rtx));
-
-	  lab = copy_to_reg (lab);
-
-	  /* Restore the frame pointer and stack pointer.  We must use a
-	     temporary since the setjmp buffer may be a local.  */
-	  fp = copy_to_reg (fp);
-	  emit_stack_restore (SAVE_NONLOCAL, stack);
-
-	  /* Ensure the frame pointer move is not optimized.  */
-	  emit_insn (gen_blockage ());
-	  emit_clobber (hard_frame_pointer_rtx);
-	  emit_clobber (frame_pointer_rtx);
-	  emit_move_insn (hard_frame_pointer_rtx, fp);
-
-	  emit_use (hard_frame_pointer_rtx);
-	  emit_use (stack_pointer_rtx);
-	  emit_indirect_jump (lab);
-	}
+	emit_standard_nonlocal_goto (value, lab, stack, fp);
     }
 
   /* Search backwards and mark the jump insn as a non-local goto.
@@ -1201,43 +1224,7 @@ expand_builtin_nonlocal_goto (tree exp)
   if (targetm.have_nonlocal_goto ())
     emit_insn (targetm.gen_nonlocal_goto (const0_rtx, r_label, r_sp, r_fp));
   else
-    {
-      emit_clobber (gen_rtx_MEM (BLKmode, gen_rtx_SCRATCH (VOIDmode)));
-      emit_clobber (gen_rtx_MEM (BLKmode, hard_frame_pointer_rtx));
-
-      r_label = copy_to_reg (r_label);
-
-      /* Restore the frame pointer and stack pointer.  We must use a
-	 temporary since the setjmp buffer may be a local.  */
-      r_fp = copy_to_reg (r_fp);
-      emit_stack_restore (SAVE_NONLOCAL, r_sp);
-
-      /* Ensure the frame pointer move is not optimized.  */
-      emit_insn (gen_blockage ());
-      emit_clobber (hard_frame_pointer_rtx);
-      emit_clobber (frame_pointer_rtx);
-      emit_move_insn (hard_frame_pointer_rtx, r_fp);
-
-      /* USE of hard_frame_pointer_rtx added for consistency;
-	 not clear if really needed.  */
-      emit_use (hard_frame_pointer_rtx);
-      emit_use (stack_pointer_rtx);
-
-      /* If the architecture is using a GP register, we must
-	 conservatively assume that the target function makes use of it.
-	 The prologue of functions with nonlocal gotos must therefore
-	 initialize the GP register to the appropriate value, and we
-	 must then make sure that this value is live at the point
-	 of the jump.  (Note that this doesn't necessarily apply
-	 to targets with a nonlocal_goto pattern; they are free
-	 to implement it in their own way.  Note also that this is
-	 a no-op if the GP register is a global invariant.)  */
-      unsigned regnum = PIC_OFFSET_TABLE_REGNUM;
-      if (regnum != INVALID_REGNUM && fixed_regs[regnum])
-	emit_use (pic_offset_table_rtx);
-
-      emit_indirect_jump (r_label);
-    }
+    emit_standard_nonlocal_goto (const0_rtx, r_label, r_sp, r_fp);
 
   /* Search backwards to the jump insn and mark it as a
      non-local goto.  */
