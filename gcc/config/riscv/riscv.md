@@ -3009,3 +3009,4 @@
 (include "generic.md")
 (include "sifive-7.md")
 (include "vector.md")
+(include "thead.md")
