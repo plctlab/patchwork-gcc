@@ -14,3 +14,7 @@ processors.
 .. function:: void * __builtin_thread_pointer (void)
 
   Returns the value that is currently set in the :samp:`tp` register.
+
+.. function:: void __builtin_riscv_pause (void)
+
+  Generates the :samp:`pause` (hint) machine instruction

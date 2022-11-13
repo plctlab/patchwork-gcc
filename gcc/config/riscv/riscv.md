@@ -94,6 +94,9 @@
   UNSPECV_INVAL
   UNSPECV_ZERO
   UNSPECV_PREI
+
+  ;; Zihintpause unspec
+  UNSPECV_PAUSE
 ])
 
 (define_constants
@@ -1909,6 +1912,11 @@
   [(unspec_volatile [(const_int 0)] UNSPECV_FENCE_I)]
   "TARGET_ZIFENCEI"
   "fence.i")
+
+(define_insn "riscv_pause"
+  [(unspec_volatile [(const_int 0)] UNSPECV_PAUSE)]
+  ""
+  "pause")
 
 ;;
 ;;  ....................
