@@ -15663,10 +15663,6 @@ rs6000_emit_vector_compare_inner (enum rtx_code code, rtx op0, rtx op1)
     case EQ:
     case GT:
     case GTU:
-    case ORDERED:
-    case UNORDERED:
-    case UNEQ:
-    case LTGT:
       mask = gen_reg_rtx (mode);
       emit_insn (gen_rtx_SET (mask, gen_rtx_fmt_ee (code, mode, op0, op1)));
       return mask;
@@ -15684,11 +15680,23 @@ rs6000_emit_vector_compare (enum rtx_code rcode,
 			    machine_mode dmode)
 {
   rtx mask;
-  bool swap_operands = false;
-  bool try_again = false;
-
   gcc_assert (VECTOR_UNIT_ALTIVEC_OR_VSX_P (dmode));
   gcc_assert (GET_MODE (op0) == GET_MODE (op1));
+
+  /* In vector.md, we support all kinds of vector float point
+     comparison operators in a comparison rtl pattern, we can
+     just emit the comparison rtx insn directly here.  Besides,
+     we should have a centralized place to handle the possibility
+     of raising invalid exception.  */
+  if (GET_MODE_CLASS (dmode) == MODE_VECTOR_FLOAT)
+    {
+      mask = gen_reg_rtx (dmode);
+      emit_insn (gen_rtx_SET (mask, gen_rtx_fmt_ee (rcode, dmode, op0, op1)));
+      return mask;
+    }
+
+  bool swap_operands = false;
+  bool try_again = false;
 
   /* See if the comparison works as is.  */
   mask = rs6000_emit_vector_compare_inner (rcode, op0, op1);
@@ -15708,10 +15716,6 @@ rs6000_emit_vector_compare (enum rtx_code rcode,
       try_again = true;
       break;
     case NE:
-    case UNLE:
-    case UNLT:
-    case UNGE:
-    case UNGT:
       /* Invert condition and try again.
 	 e.g., A != B becomes ~(A==B).  */
       {
