@@ -3392,22 +3392,6 @@ rs6000_md_asm_adjust (vec<rtx> & /*outputs*/, vec<rtx> & /*inputs*/,
 static void
 rs6000_override_options_after_change (void)
 {
-  /* Explicit -funroll-loops turns -munroll-only-small-loops off, and
-     turns -frename-registers on.  */
-  if ((OPTION_SET_P (flag_unroll_loops) && flag_unroll_loops)
-       || (OPTION_SET_P (flag_unroll_all_loops)
-	   && flag_unroll_all_loops))
-    {
-      if (!OPTION_SET_P (unroll_only_small_loops))
-	unroll_only_small_loops = 0;
-      if (!OPTION_SET_P (flag_rename_registers))
-	flag_rename_registers = 1;
-      if (!OPTION_SET_P (flag_cunroll_grow_size))
-	flag_cunroll_grow_size = 1;
-    }
-  else if (!OPTION_SET_P (flag_cunroll_grow_size))
-    flag_cunroll_grow_size = flag_peel_loops || optimize >= 3;
-
   /* If we are inserting ROP-protect instructions, disable shrink wrap.  */
   if (rs6000_rop_protect)
     flag_shrink_wrap = 0;
@@ -5540,17 +5524,26 @@ rs6000_cost_data::finish_cost (const vector_costs *scalar_costs)
 static unsigned
 rs6000_loop_unroll_adjust (unsigned nunroll, struct loop *loop)
 {
-   if (unroll_only_small_loops)
-    {
-      /* TODO: These are hardcoded values right now.  We probably should use
-	 a PARAM here.  */
-      if (loop->ninsns <= 6)
-	return MIN (4, nunroll);
-      if (loop->ninsns <= 10)
-	return MIN (2, nunroll);
+  if (!(flag_unroll_loops || flag_unroll_all_loops
+	|| loop->unroll))
+  {
+    unsigned nunroll_orig = nunroll;
+    nunroll = 1;
+    /* Any explicit -f{no-}unroll-{all-}loops turns off
+       -munroll-only-small-loops.  */
+    if (unroll_only_small_loops
+	&& !OPTION_SET_P (flag_unroll_loops))
+      {
+	/* TODO: These are hardcoded values right now.  We probably should use
+	   a PARAM here.  */
+	if (loop->ninsns <= 6)
+	  return MIN (4, nunroll_orig);
+	if (loop->ninsns <= 10)
+	  return MIN (2, nunroll_orig);
 
-      return 0;
-    }
+	return 0;
+      }
+  }
 
   return nunroll;
 }
