@@ -6045,6 +6045,46 @@ expand_assignment (tree to, tree from, bool nontemporal)
       return;
     }
 
+  if (TREE_CODE (from) == PARM_DECL && DECL_INCOMING_RTL (from)
+      && TYPE_MODE (TREE_TYPE (from)) == BLKmode
+      && (GET_CODE (DECL_INCOMING_RTL (from)) == PARALLEL
+	  || REG_P (DECL_INCOMING_RTL (from))))
+    {
+      rtx parm = DECL_INCOMING_RTL (from);
+
+      push_temp_slots ();
+      machine_mode mode;
+      mode = GET_CODE (parm) == PARALLEL
+	       ? GET_MODE (XEXP (XVECEXP (parm, 0, 0), 0))
+	       : word_mode;
+      int mode_size = GET_MODE_SIZE (mode).to_constant ();
+      int size = INTVAL (expr_size (from));
+
+      /* If/How the parameter using submode, it dependes on the size and
+	 position of the parameter.  Here using heurisitic number.  */
+      int hurstc_num = 8;
+      if (size < mode_size || (size % mode_size) != 0
+	  || size > (mode_size * hurstc_num))
+	result = store_expr (from, to_rtx, 0, nontemporal, false);
+      else
+	{
+	  rtx from_rtx
+	    = expand_expr (from, NULL_RTX, GET_MODE (to_rtx), EXPAND_NORMAL);
+	  for (int i = 0; i < size / mode_size; i++)
+	    {
+	      rtx temp = gen_reg_rtx (mode);
+	      rtx src = adjust_address (from_rtx, mode, mode_size * i);
+	      rtx dest = adjust_address (to_rtx, mode, mode_size * i);
+	      emit_move_insn (temp, src);
+	      emit_move_insn (dest, temp);
+	    }
+	  result = to_rtx;
+	}
+      preserve_temp_slots (result);
+      pop_temp_slots ();
+      return;
+    }
+
   /* Compute FROM and store the value in the rtx we got.  */
 
   push_temp_slots ();
