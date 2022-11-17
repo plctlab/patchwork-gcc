@@ -1308,6 +1308,7 @@
 
 ;; Return 1 if OP is a comparison operation that is valid for a branch
 ;; instruction.  We check the opcode against the mode of the CC value.
+
 ;; validate_condition_mode is an assertion.
 (define_predicate "branch_comparison_operator"
    (and (match_operand 0 "comparison_operator")
@@ -1330,6 +1331,11 @@
 	(match_test "validate_condition_mode (GET_CODE (op),
 					      GET_MODE (XEXP (op, 0))),
 		     1")))
+
+;; Return 1 if OP is a comparison operation that is valid for a branch.
+(define_predicate "all_branch_comparison_operator"
+   (ior (match_operand 0 "branch_comparison_operator")
+	(match_operand 0 "extra_insn_branch_comparison_operator")))
 
 ;; Return 1 if OP is an unsigned comparison operator.
 (define_predicate "unsigned_comparison_operator"
