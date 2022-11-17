@@ -2,7 +2,8 @@
    sections.
 
    { dg-require-effective-target elf }
-   { dg-do compile } */
+   { dg-do compile }
+   { dg-options "-msmall-data-limit=0" { target { riscv*-*-* } } } */
 
 const volatile int foo = 30;
 
