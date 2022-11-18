@@ -698,6 +698,40 @@ normalize_logical_operation (tree t, tree args, tree_code c, norm_info info)
   return build2 (c, ci, t0, t1);
 }
 
+/* Data types and hash functions for caching the normal form of a concept-id.
+   This essentially memoizes calls to normalize_concept_check.  */
+
+struct GTY((for_user)) norm_entry
+{
+  /* The CONCEPT_DECL of the concept-id.  */
+  tree tmpl;
+  /* The arguments of the concept-id.  */
+  tree args;
+  /* The normal form of the concept-id.  */
+  tree norm;
+};
+
+struct norm_hasher : ggc_ptr_hash<norm_entry>
+{
+  static hashval_t hash (norm_entry *t)
+  {
+    hashval_t hash = iterative_hash_template_arg (t->tmpl, 0);
+    hash = iterative_hash_template_arg (t->args, hash);
+    return hash;
+  }
+
+  static bool equal (norm_entry *t1, norm_entry *t2)
+  {
+    return t1->tmpl == t2->tmpl
+      && template_args_equal (t1->args, t2->args);
+  }
+};
+
+static GTY((deletable)) hash_table<norm_hasher> *norm_cache;
+
+/* Normalize the concept check CHECK where ARGS are the
+   arguments to be substituted into CHECK's arguments.  */
+
 static tree
 normalize_concept_check (tree check, tree args, norm_info info)
 {
@@ -720,16 +754,34 @@ normalize_concept_check (tree check, tree args, norm_info info)
     targs = tsubst_template_args (targs, args, info.complain, info.in_decl);
   if (targs == error_mark_node)
     return error_mark_node;
+  if (template_args_equal (targs, generic_targs_for (tmpl)))
+    /* Canonicalize generic arguments as NULL_TREE, as an optimization.  */
+    targs = NULL_TREE;
 
   /* Build the substitution for the concept definition.  */
   tree parms = TREE_VALUE (DECL_TEMPLATE_PARMS (tmpl));
-  /* Turn on template processing; coercing non-type template arguments
-     will automatically assume they're non-dependent.  */
   ++processing_template_decl;
-  tree subst = coerce_template_parms (parms, targs, tmpl, tf_none);
+  if (targs && args)
+    /* If substitution occurred, coerce the resulting arguments.  */
+    targs = coerce_template_parms (parms, targs, tmpl, tf_none);
   --processing_template_decl;
-  if (subst == error_mark_node)
+  if (targs == error_mark_node)
     return error_mark_node;
+
+  if (!norm_cache)
+    norm_cache = hash_table<norm_hasher>::create_ggc (31);
+  norm_entry entry = {tmpl, targs, NULL_TREE};
+  norm_entry **slot = nullptr;
+  hashval_t hash = 0;
+  if (!info.generate_diagnostics ())
+    {
+      /* If we're not diagnosing, cache the normal form of the
+	 substituted concept-id.  */
+      hash = norm_hasher::hash (&entry);
+      slot = norm_cache->find_slot_with_hash (&entry, hash, INSERT);
+      if (*slot)
+	return (*slot)->norm;
+    }
 
   /* The concept may have been ill-formed.  */
   tree def = get_concept_definition (DECL_TEMPLATE_RESULT (tmpl));
@@ -737,7 +789,18 @@ normalize_concept_check (tree check, tree args, norm_info info)
     return error_mark_node;
 
   info.update_context (check, args);
-  return normalize_expression (def, subst, info);
+  tree norm = normalize_expression (def, targs, info);
+  if (slot)
+    {
+      /* Recompute SLOT, as norm_cache may have been expanded during
+	 a recursive call.  */
+      slot = norm_cache->find_slot_with_hash (&entry, hash, INSERT);
+      gcc_checking_assert (!*slot);
+      entry.norm = norm;
+      *slot = ggc_alloc<norm_entry> ();
+      **slot = entry;
+    }
+  return norm;
 }
 
 /* Used by normalize_atom to cache ATOMIC_CONSTRs.  */
@@ -941,15 +1004,17 @@ get_normalized_constraints_from_decl (tree d, bool diag = false)
 /* Returns the normal form of TMPL's definition.  */
 
 static tree
-normalize_concept_definition (tree tmpl, bool diag = false)
+normalize_concept_definition (tree tmpl, bool diag)
 {
-  if (!diag)
-    if (tree *p = hash_map_safe_get (normalized_map, tmpl))
-      return *p;
+  if (!norm_cache)
+    norm_cache = hash_table<norm_hasher>::create_ggc (31);
 
-  gcc_assert (concept_definition_p (tmpl));
-  if (OVL_P (tmpl))
-    tmpl = OVL_FIRST (tmpl);
+  norm_entry entry = {tmpl, NULL_TREE, NULL_TREE};
+
+  if (!diag)
+    if (norm_entry *found = norm_cache->find (&entry))
+      return found->norm;
+
   gcc_assert (TREE_CODE (tmpl) == TEMPLATE_DECL);
   tree def = get_concept_definition (DECL_TEMPLATE_RESULT (tmpl));
   ++processing_template_decl;
@@ -958,7 +1023,12 @@ normalize_concept_definition (tree tmpl, bool diag = false)
   --processing_template_decl;
 
   if (!diag)
-    hash_map_safe_put<hm_ggc> (normalized_map, tmpl, norm);
+    {
+      norm_entry **slot = norm_cache->find_slot (&entry, INSERT);
+      entry.norm = norm;
+      *slot = ggc_alloc<norm_entry> ();
+      **slot = entry;
+    }
 
   return norm;
 }
