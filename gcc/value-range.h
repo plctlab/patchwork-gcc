@@ -163,7 +163,6 @@ public:
   // Deprecated legacy public methods.
   tree min () const;				// DEPRECATED
   tree max () const;				// DEPRECATED
-  bool symbolic_p () const;			// DEPRECATED
   bool constant_p () const;			// DEPRECATED
   void normalize_symbolics ();			// DEPRECATED
   void normalize_addresses ();			// DEPRECATED

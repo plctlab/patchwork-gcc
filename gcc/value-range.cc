@@ -1197,12 +1197,6 @@ wide_int
 irange::legacy_lower_bound (unsigned pair) const
 {
   gcc_checking_assert (legacy_mode_p ());
-  if (symbolic_p ())
-    {
-      value_range numeric_range (*this);
-      numeric_range.normalize_symbolics ();
-      return numeric_range.legacy_lower_bound (pair);
-    }
   gcc_checking_assert (m_num_ranges > 0);
   gcc_checking_assert (pair + 1 <= num_pairs ());
   if (m_kind == VR_ANTI_RANGE)
@@ -1224,12 +1218,6 @@ wide_int
 irange::legacy_upper_bound (unsigned pair) const
 {
   gcc_checking_assert (legacy_mode_p ());
-  if (symbolic_p ())
-    {
-      value_range numeric_range (*this);
-      numeric_range.normalize_symbolics ();
-      return numeric_range.legacy_upper_bound (pair);
-    }
   gcc_checking_assert (m_num_ranges > 0);
   gcc_checking_assert (pair + 1 <= num_pairs ());
   if (m_kind == VR_ANTI_RANGE)
@@ -1295,16 +1283,6 @@ irange::operator== (const irange &other) const
 	return false;
     }
   return get_nonzero_bits () == other.get_nonzero_bits ();
-}
-
-/* Return TRUE if this is a symbolic range.  */
-
-bool
-irange::symbolic_p () const
-{
-  return (m_num_ranges > 0
-	  && (!is_gimple_min_invariant (min ())
-	      || !is_gimple_min_invariant (max ())));
 }
 
 /* Return TRUE if this is a constant range.  */
@@ -1426,12 +1404,6 @@ irange::contains_p (tree cst) const
   if (legacy_mode_p ())
     {
       gcc_checking_assert (TREE_CODE (cst) == INTEGER_CST);
-      if (symbolic_p ())
-	{
-	  value_range numeric_range (*this);
-	  numeric_range.normalize_symbolics ();
-	  return numeric_range.contains_p (cst);
-	}
       return value_inside_range (cst) == 1;
     }
 
