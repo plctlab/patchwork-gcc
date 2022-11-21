@@ -19725,7 +19725,8 @@ ix86_can_change_mode_class (machine_mode from, machine_mode to,
 	 the vec_dupv4hi pattern.
 	 NB: SSE2 can load 16bit data to sse register via pinsrw.  */
       int mov_size = MAYBE_SSE_CLASS_P (regclass) && TARGET_SSE2 ? 2 : 4;
-      if (GET_MODE_SIZE (from) < mov_size)
+      if (GET_MODE_SIZE (from) < mov_size
+	  || GET_MODE_SIZE (to) < mov_size)
 	return false;
     }
 
@@ -20087,12 +20088,6 @@ ix86_hard_regno_mode_ok (unsigned int regno, machine_mode mode)
       if (TARGET_AVX512F
 	  && (VALID_AVX512F_REG_OR_XI_MODE (mode)
 	      || VALID_AVX512F_SCALAR_MODE (mode)))
-	return true;
-
-      /* For AVX512FP16, vmovw supports movement of HImode
-	 and HFmode between GPR and SSE registers.  */
-      if (TARGET_AVX512FP16
-	  && VALID_AVX512FP16_SCALAR_MODE (mode))
 	return true;
 
       /* For AVX-5124FMAPS or AVX-5124VNNIW
