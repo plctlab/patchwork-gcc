@@ -1126,6 +1126,13 @@
 #endif
 
 
+/* Define to 1 if we found a declaration for 'strchrnul', otherwise define to 0.
+   */
+#ifndef USED_FOR_TARGET
+#undef HAVE_DECL_STRCHRNUL
+#endif
+
+
 /* Define to 1 if we found a declaration for 'strnlen', otherwise define to 0.
    */
 #ifndef USED_FOR_TARGET

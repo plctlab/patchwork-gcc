@@ -1581,7 +1581,7 @@ CXXFLAGS="$CXXFLAGS -I${srcdir} -I${srcdir}/../include $GMPINC"
 # normal autoconf function for these.  But force definition of
 # HAVE_DECL_BASENAME like gcc_AC_CHECK_DECLS does, to suppress the bizarre
 # basename handling in libiberty.h.
-AC_CHECK_DECLS([basename(const char*), strstr(const char*,const char*)], , ,[
+AC_CHECK_DECLS([basename(const char*), strchrnul(const char*, int), strstr(const char*,const char*)], , ,[
 #undef HAVE_DECL_BASENAME
 #define HAVE_DECL_BASENAME 1
 #include "ansidecl.h"

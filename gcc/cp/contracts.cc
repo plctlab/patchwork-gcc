@@ -204,6 +204,18 @@ lookup_concrete_semantic (const char *name)
   return CCS_INVALID;
 }
 
+#if !HAVE_DECL_STRCHRNUL
+/* strchrnul is a glibc extension.  */
+
+static const char *
+strchrnul (const char *s, char c)
+{
+  if (auto p = strchr (s, c))
+    return p;
+  return strchr (s, '\0');
+}
+#endif
+
 /* Compare role and name up to either the NUL terminator or the first
    occurrence of colon.  */
 
