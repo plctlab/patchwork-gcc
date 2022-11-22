@@ -2413,10 +2413,9 @@ register_edge_assert_for (tree name, edge e,
    <bb 6>:
    __builtin_unreachable ();
    <bb 7>:
-   x_5 = ASSERT_EXPR <x_3, ...>;
-   If x_3 has no other immediate uses (checked by caller),
-   var is the x_3 var from ASSERT_EXPR, we can clear low 5 bits
-   from the non-zero bitmask.  */
+
+   If x_3 has no other immediate uses (checked by caller), var is the
+   x_3 var, we can clear low 5 bits from the non-zero bitmask.  */
 
 void
 maybe_set_nonzero_bits (edge e, tree var)
