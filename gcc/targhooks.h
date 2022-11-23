@@ -300,5 +300,7 @@ extern rtx default_memtag_extract_tag (rtx, rtx);
 extern rtx default_memtag_untagged_pointer (rtx, rtx);
 
 extern HOST_WIDE_INT default_gcov_type_size (void);
+extern bool default_noce_ternary_cset_p (struct noce_if_info *, rtx *, rtx *,
+					 int *, int *, int *);
 
 #endif /* GCC_TARGHOOKS_H */

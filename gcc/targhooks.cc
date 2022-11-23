@@ -2714,4 +2714,17 @@ default_gcov_type_size (void)
   return TYPE_PRECISION (long_long_integer_type_node) > 32 ? 64 : 32;
 }
 
+/* The default implementation of TARGET_NOCE_TERNARY_CSET_P.  */
+
+bool
+default_noce_ternary_cset_p (struct noce_if_info *if_info ATTRIBUTE_UNUSED,
+			     rtx *outer_cond ATTRIBUTE_UNUSED,
+			     rtx *inner_cond ATTRIBUTE_UNUSED,
+			     int *int1 ATTRIBUTE_UNUSED,
+			     int *int2 ATTRIBUTE_UNUSED,
+			     int *int3 ATTRIBUTE_UNUSED)
+{
+  return false;
+}
+
 #include "gt-targhooks.h"

@@ -1830,6 +1830,42 @@ noce_emit_cmove (struct noce_if_info *if_info, rtx x, enum rtx_code code,
     return NULL_RTX;
 }
 
+/*  Emit a nested if-then-else insn.  */
+
+static rtx
+noce_emit_ternary_cset (rtx x, rtx outer_cond, rtx inner_cond,
+			int a, int b, int c)
+{
+  rtx target;
+  machine_mode mode;
+  machine_mode orig_mode = GET_MODE (x);
+
+  FOR_EACH_MODE_FROM (mode, orig_mode)
+    {
+      rtx inner_if_then_else = gen_rtx_IF_THEN_ELSE (mode, inner_cond,
+						     GEN_INT (b), GEN_INT (c));
+      rtx outer_if_then_else = gen_rtx_IF_THEN_ELSE (mode, outer_cond,
+						     GEN_INT (a),
+						     inner_if_then_else);
+      target = (mode == orig_mode) ? x : gen_reg_rtx (mode);
+      rtx set = gen_rtx_SET (target, outer_if_then_else);
+      start_sequence ();
+      rtx_insn *insn = emit_insn (set);
+
+      if (recog_memoized (insn) >= 0)
+	{
+	  rtx_insn *seq = get_insns ();
+	  end_sequence ();
+	  emit_insn (seq);
+
+	  return target;
+	}
+    }
+
+  end_sequence ();
+  return NULL_RTX;
+}
+
 /* Try only simple constants and registers here.  More complex cases
    are handled in noce_try_cmove_arith after noce_try_store_flag_arith
    has had a go at it.  */
@@ -2987,6 +3023,43 @@ noce_try_bitop (struct noce_if_info *if_info)
   return TRUE;
 }
 
+/* Try to find pattern "a < b ? -1 : (a > b ? 1 : 0);" and convert it to
+   a nested if-then-else insn.  */
+
+static int
+noce_try_ternary_cset (struct noce_if_info *if_info)
+{
+  rtx outer_cond = NULL_RTX, inner_cond = NULL_RTX;
+  int int1 = 0, int2 = 0, int3 = 0;
+
+  if (targetm.noce_ternary_cset_p (if_info, &outer_cond, &inner_cond,
+				   &int1, &int2, &int3))
+    {
+      start_sequence ();
+      rtx target = noce_emit_ternary_cset (if_info->x, outer_cond, inner_cond,
+					   int1, int2, int3);
+      if (target)
+	{
+	  rtx_insn *ifcvt_seq;
+
+	  if (target != if_info->x)
+	    noce_emit_move_insn (if_info->x, target);
+
+	  ifcvt_seq = end_ifcvt_sequence (if_info);
+	  if (!ifcvt_seq)
+	    return false;
+
+	  emit_insn_before_setloc (ifcvt_seq, if_info->jump,
+				   INSN_LOCATION (if_info->insn_a));
+	  if_info->transform_name = "noce_try_ternary_cset";
+	  return true;
+	}
+
+      end_sequence ();
+    }
+
+  return false;
+}
 
 /* Similar to get_condition, only the resulting condition must be
    valid at JUMP, instead of at EARLIEST.
@@ -3962,6 +4035,9 @@ noce_process_if_block (struct noce_if_info *if_info)
     goto success;
   if (HAVE_conditional_move
       && noce_try_cmove (if_info))
+    goto success;
+  if (HAVE_ternary_conditional_set
+      && noce_try_ternary_cset (if_info))
     goto success;
   if (! targetm.have_conditional_execution ())
     {

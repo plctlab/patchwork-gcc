@@ -7138,6 +7138,15 @@ the @code{POLY_VALUE_MIN}, @code{POLY_VALUE_MAX} and
 implementation returns the lowest possible value of @var{val}.
 @end deftypefn
 
+@deftypefn {Target Hook} bool TARGET_NOCE_TERNARY_CSET_P (struct noce_if_info *@var{if_info}, rtx *@var{outer_cond}, rtx *@var{inner_cond}, int *@var{int1}, int *@var{int2}, int *@var{int3})
+This hook returns true if the if-then-else-join blocks describled in
+@code{if_info} can be converted to a ternary conditional set implemented by
+a nested if-then-else insn.  The @code{int1}, @code{int2} and @code{int3}
+are three possible results of the nested if-then-else insn.
+@code{outer_cond} and @code{inner_cond} are the conditions for outer and
+if-then-else.
+@end deftypefn
+
 @node Scheduling
 @section Adjusting the Instruction Scheduler
 

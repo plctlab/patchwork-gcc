@@ -33,6 +33,7 @@ static int max_recog_operands;  /* Largest operand number seen.  */
 static int max_dup_operands;    /* Largest number of match_dup in any insn.  */
 static int max_clobbers_per_insn;
 static int have_cmove_flag;
+static int have_ternary_cset_flag;
 static int have_cond_exec_flag;
 static int have_lo_sum_flag;
 static int have_rotate_flag;
@@ -136,6 +137,12 @@ walk_insn_part (rtx part, int recog_p, int non_pc_set_src)
 	  && GET_CODE (XEXP (part, 1)) == MATCH_OPERAND
 	  && GET_CODE (XEXP (part, 2)) == MATCH_OPERAND)
 	have_cmove_flag = 1;
+      else if (recog_p && non_pc_set_src
+	       && GET_CODE (XEXP (part, 1)) == CONST_INT
+	       && GET_CODE (XEXP (part, 2)) == IF_THEN_ELSE
+	       && GET_CODE (XEXP (XEXP (part, 2), 1)) == CONST_INT
+	       && GET_CODE (XEXP (XEXP (part, 2), 2)) == CONST_INT)
+	have_ternary_cset_flag = 1;
       break;
 
     case COND_EXEC:
@@ -327,6 +334,11 @@ main (int argc, const char **argv)
     printf ("#define HAVE_conditional_move 1\n");
   else
     printf ("#define HAVE_conditional_move 0\n");
+
+  if (have_ternary_cset_flag)
+    printf ("#define HAVE_ternary_conditional_set 1\n");
+  else
+    printf ("#define HAVE_ternary_conditional_set 0\n");
 
   if (have_cond_exec_flag)
     printf ("#define HAVE_conditional_execution 1\n");
