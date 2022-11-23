@@ -4489,8 +4489,9 @@ prepare_cmp_insn (rtx x, rtx y, enum rtx_code comparison, rtx size,
     {
       enum insn_code icode = optab_handler (cbranch_optab, CCmode);
       test = gen_rtx_fmt_ee (comparison, VOIDmode, x, y);
-      gcc_assert (icode != CODE_FOR_nothing
-                  && insn_operand_matches (icode, 0, test));
+      gcc_assert (icode != CODE_FOR_nothing);
+      if (!insn_operand_matches (icode, 0, test))
+	goto fail;
       *ptest = test;
       return;
     }
