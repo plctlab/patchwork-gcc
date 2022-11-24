@@ -5559,6 +5559,49 @@ mem_ref_refers_to_non_mem_p (tree ref)
   return non_mem_decl_p (base);
 }
 
+/* Expand the assignment from parameter or to returns if it needs
+   "block move" on struct type.  */
+
+void
+expand_special_struct_assignment (tree to, tree from)
+{
+  rtx result;
+
+  push_temp_slots ();
+  rtx par_ret = TREE_CODE (from) == PARM_DECL
+		  ? DECL_INCOMING_RTL (from)
+		  : DECL_RTL (DECL_RESULT (current_function_decl));
+  machine_mode mode = GET_CODE (par_ret) == PARALLEL
+			? GET_MODE (XEXP (XVECEXP (par_ret, 0, 0), 0))
+			: word_mode;
+  int mode_size = GET_MODE_SIZE (mode).to_constant ();
+  int size = INTVAL (expr_size (from));
+  rtx to_rtx = expand_expr (to, NULL_RTX, VOIDmode, EXPAND_WRITE);
+
+  /* Here using a heurisitic number for how many words may pass via gprs.  */
+  int hurstc_num = 8;
+  if (size < mode_size || (size % mode_size) != 0
+      || (GET_CODE (par_ret) != PARALLEL && size > (mode_size * hurstc_num)))
+    result = store_expr (from, to_rtx, 0, false, false);
+  else
+    {
+      rtx from_rtx
+	= expand_expr (from, NULL_RTX, GET_MODE (to_rtx), EXPAND_NORMAL);
+      for (int i = 0; i < size / mode_size; i++)
+	{
+	  rtx temp = gen_reg_rtx (mode);
+	  rtx src = adjust_address (from_rtx, mode, mode_size * i);
+	  rtx dest = adjust_address (to_rtx, mode, mode_size * i);
+	  emit_move_insn (temp, src);
+	  emit_move_insn (dest, temp);
+	}
+      result = to_rtx;
+    }
+
+  preserve_temp_slots (result);
+  pop_temp_slots ();
+}
+
 /* Expand an assignment that stores the value of FROM into TO.  If NONTEMPORAL
    is true, try generating a nontemporal store.  */
 

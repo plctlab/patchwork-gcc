@@ -341,6 +341,9 @@ static hash_map<tree, size_t> *decl_to_stack_part;
    all of them in one big sweep.  */
 static bitmap_obstack stack_var_bitmap_obstack;
 
+/* Those VARs on returns.  */
+static bitmap return_vars;
+
 /* An array of indices such that stack_vars[stack_vars_sorted[i]].size
    is non-decreasing.  */
 static size_t *stack_vars_sorted;
@@ -2158,6 +2161,24 @@ expand_used_vars (bitmap forced_stack_vars)
     frame_phase = off ? align - off : 0;
   }
 
+  /* Collect VARs on returns.  */
+  return_vars = NULL;
+  if (DECL_RESULT (current_function_decl)
+      && TYPE_MODE (TREE_TYPE (DECL_RESULT (current_function_decl))) == BLKmode)
+    {
+      return_vars = BITMAP_ALLOC (NULL);
+
+      edge_iterator ei;
+      edge e;
+      FOR_EACH_EDGE (e, ei, EXIT_BLOCK_PTR_FOR_FN (cfun)->preds)
+	if (greturn *ret = safe_dyn_cast<greturn *> (last_stmt (e->src)))
+	  {
+	    tree val = gimple_return_retval (ret);
+	    if (val && VAR_P (val))
+	      bitmap_set_bit (return_vars, DECL_UID (val));
+	  }
+    }
+
   /* Set TREE_USED on all variables in the local_decls.  */
   FOR_EACH_LOCAL_DECL (cfun, i, var)
     TREE_USED (var) = 1;
@@ -3942,6 +3963,17 @@ expand_gimple_stmt_1 (gimple *stmt)
 	      /* This is a clobber to mark the going out of scope for
 		 this LHS.  */
 	      expand_clobber (lhs);
+	    else if ((TREE_CODE (rhs) == PARM_DECL && DECL_INCOMING_RTL (rhs)
+		      && TYPE_MODE (TREE_TYPE (rhs)) == BLKmode
+		      && (GET_CODE (DECL_INCOMING_RTL (rhs)) == PARALLEL
+			  || REG_P (DECL_INCOMING_RTL (rhs))))
+		     || (VAR_P (lhs) && return_vars
+			 && DECL_RTL_SET_P (DECL_RESULT (current_function_decl))
+			 && GET_CODE (
+			      DECL_RTL (DECL_RESULT (current_function_decl)))
+			      == PARALLEL
+			 && bitmap_bit_p (return_vars, DECL_UID (lhs))))
+	      expand_special_struct_assignment (lhs, rhs);
 	    else
 	      expand_assignment (lhs, rhs,
 				 gimple_assign_nontemporal_move_p (
@@ -7025,6 +7057,11 @@ pass_expand::execute (function *fun)
   /* After expanding, the return labels are no longer needed. */
   return_label = NULL;
   naked_return_label = NULL;
+  if (return_vars)
+    {
+      BITMAP_FREE (return_vars);
+      return_vars = NULL;
+    }
 
   /* After expanding, the tm_restart map is no longer needed.  */
   if (fun->gimple_df->tm_restart)

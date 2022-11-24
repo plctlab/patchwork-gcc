@@ -281,6 +281,9 @@ extern void get_bit_range (poly_uint64_pod *, poly_uint64_pod *, tree,
 /* Expand an assignment that stores the value of FROM into TO.  */
 extern void expand_assignment (tree, tree, bool);
 
+/* Expand an assignment from parameters or to returns.  */
+extern void expand_special_struct_assignment (tree, tree);
+
 /* Generate code for computing expression EXP,
    and storing the value into TARGET.
    If SUGGEST_REG is nonzero, copy the value through a register
