@@ -814,9 +814,6 @@ tree_profiling (void)
 	/* Don't profile functions produced for builtin stuff.  */
 	if (DECL_SOURCE_LOCATION (node->decl) == BUILTINS_LOCATION)
 	  continue;
-
-	node->set_const_flag (false, false);
-	node->set_pure_flag (false, false);
       }
 
   /* Update call statements and rebuild the cgraph.  */
