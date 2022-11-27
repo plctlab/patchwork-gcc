@@ -28683,6 +28683,10 @@ If both @option{-march} and @option{-mcpu=} are not specified, the default for
 this argument is system dependent, users who want a specific architecture
 extensions should specify one explicitly.
 
+Note, that AIA support (@samp{Smaia} and @samp{Ssaia}) is based on an AIA
+specification, which is frozen but contains draft chapters ("Duo-PLIC" and
+"IOMMU Support").
+
 @item -mcpu=@var{processor-string}
 @opindex mcpu
 Use architecture of and optimize the output for the given processor, specified

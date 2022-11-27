@@ -108,6 +108,8 @@ static const riscv_implied_info_t riscv_implied_info[] =
   {"zhinx", "zhinxmin"},
   {"zhinxmin", "zfinx"},
 
+  {"smaia", "ssaia"},
+
   {NULL, NULL}
 };
 
@@ -219,6 +221,8 @@ static const struct riscv_ext_version riscv_ext_version_table[] =
 
   {"zmmul", ISA_SPEC_CLASS_NONE, 1, 0},
 
+  {"smaia", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"ssaia", ISA_SPEC_CLASS_NONE, 1, 0},
   {"svinval", ISA_SPEC_CLASS_NONE, 1, 0},
   {"svnapot", ISA_SPEC_CLASS_NONE, 1, 0},
 
