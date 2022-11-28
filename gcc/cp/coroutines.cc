@@ -2684,6 +2684,8 @@ find_interesting_subtree (tree *expr_p, int *dosub, void *d)
 	  return expr;
 	}
     }
+  else if (TREE_CODE(expr) == CONSTRUCTOR)
+    *dosub = 0; /* We don't need to consider this any further.  */
   else if (tmp_target_expr_p (expr)
 	   && !p->temps_used->contains (expr))
     {
