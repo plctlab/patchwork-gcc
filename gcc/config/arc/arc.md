@@ -4985,12 +4985,13 @@ archs4x, archs4xd"
 		    (pc)))
 	      (set (match_dup 0) (plus:SI (match_dup 0) (const_int -1)))
 	      (unspec:SI [(const_int 0)] UNSPEC_ARC_LP)
-	      (clobber (match_dup 2))])]
+	      (clobber (match_dup 3))
+	      (match_operand 2 "" "")])]
   ""
 {
  if (GET_MODE (operands[0]) != SImode)
    FAIL;
- operands[2] = gen_rtx_SCRATCH (SImode);
+ operands[3] = gen_rtx_SCRATCH (SImode);
 })
 
 (define_insn "arc_lp"

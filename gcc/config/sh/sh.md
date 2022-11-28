@@ -6404,7 +6404,8 @@
 				 (pc)))
 	      (set (match_dup 0)
 		   (plus:SI (match_dup 0) (const_int -1)))
-	      (clobber (reg:SI T_REG))])]
+	      (clobber (reg:SI T_REG))
+	      (match_operand 2 "" "")])]
   "TARGET_SH2"
 {
   if (GET_MODE (operands[0]) != SImode)

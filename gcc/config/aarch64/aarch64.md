@@ -7423,7 +7423,8 @@
 ;; knows what to generate.
 (define_expand "doloop_end"
   [(use (match_operand 0 "" ""))      ; loop pseudo
-   (use (match_operand 1 "" ""))]     ; label
+   (use (match_operand 1 "" ""))      ; label
+   (use (match_operand 2 "" ""))]     ; decrement constant
   "optimize > 0 && flag_modulo_sched"
 {
   rtx s0;

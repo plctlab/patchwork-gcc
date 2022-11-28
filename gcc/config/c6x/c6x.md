@@ -1429,13 +1429,14 @@
 	      (set (match_dup 0)
 		   (plus:SI (match_dup 0)
 			    (const_int -1)))
-	      (clobber (match_dup 2))])] ; match_scratch
+	      (clobber (match_dup 3)) ; match_scratch
+	      (match_operand 2 "" "")])]
   "TARGET_INSNS_64PLUS && optimize"
 {
   /* The loop optimizer doesn't check the predicates... */
   if (GET_MODE (operands[0]) != SImode)
     FAIL;
-  operands[2] = gen_rtx_SCRATCH (SImode);
+  operands[3] = gen_rtx_SCRATCH (SImode);
 })
 
 (define_insn "mvilc"

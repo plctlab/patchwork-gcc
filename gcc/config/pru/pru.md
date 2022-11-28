@@ -1636,7 +1636,8 @@
 
 (define_expand "doloop_end"
   [(use (match_operand 0 "nonimmediate_operand"))
-   (use (label_ref (match_operand 1 "")))]
+   (use (label_ref (match_operand 1 "")))
+   (use (match_operand 2 "" ""))]     ; decrement constant
   "TARGET_OPT_LOOP"
 {
   if (GET_CODE (operands[0]) == REG && GET_MODE (operands[0]) == QImode)

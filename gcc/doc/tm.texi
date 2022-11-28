@@ -11796,6 +11796,14 @@ loops, and will help ivopts to make some decisions.
 The default version of this hook returns false.
 @end deftypefn
 
+@deftypefn {Target Hook} rtx TARGET_ALLOW_ELEMENTWISE_DOLOOP_P (rtx @var{count}, rtx @var{label}, rtx @var{doloop})
+This target hook allows the target to support loop-doloop optimisations
+where the value that gets put into the loop counter register is not a
+pre-calculation of the number of iteration of the loop.  For instance,
+the value used can be the number of elements that the loop will process.
+The default version of this hook returns the same rtx it was given.
+@end deftypefn
+
 @deftypevr {Target Hook} bool TARGET_HAVE_COUNT_REG_DECR_P
 Return true if the target supports hardware count register for decrement
 and branch.

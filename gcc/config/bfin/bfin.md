@@ -1959,7 +1959,8 @@
 		   (plus:SI (match_dup 0)
 			    (const_int -1)))
 	      (unspec [(const_int 0)] UNSPEC_LSETUP_END)
-	      (clobber (match_dup 2))
+	      (clobber (match_dup 3))
+	      (match_operand 2 "" "")
 	      (clobber (reg:BI REG_CC))])] ; match_scratch
   ""
 {
@@ -1967,7 +1968,7 @@
   if (GET_MODE (operands[0]) != SImode)
     FAIL;
   bfin_hardware_loop ();
-  operands[2] = gen_rtx_SCRATCH (SImode);
+  operands[3] = gen_rtx_SCRATCH (SImode);
 })
 
 (define_insn "loop_end"

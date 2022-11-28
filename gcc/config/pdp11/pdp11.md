@@ -332,7 +332,8 @@
 		    (pc)))
 	      (set (match_dup 0)
 		   (plus:HI (match_dup 0)
-			 (const_int -1)))])]
+			 (const_int -1)))
+	      (match_operand 2 "" "")])]
   "TARGET_40_PLUS"
   "{
     if (GET_MODE (operands[0]) != HImode)
