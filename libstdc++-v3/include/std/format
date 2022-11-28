@@ -1248,27 +1248,51 @@ namespace __format
   // Make them available as std::__format::to_chars.
   to_chars_result
   to_chars(char*, char*, __ibm128) noexcept
+#  if !_GLIBCXX_INLINE_VERSION
     __asm("_ZSt8to_charsPcS_e");
+#  else
+    __asm("_ZNSt3__88to_charsEPcS0_e");
+#  endif
 
   to_chars_result
   to_chars(char*, char*, __ibm128, chars_format) noexcept
+#  if !_GLIBCXX_INLINE_VERSION
     __asm("_ZSt8to_charsPcS_eSt12chars_format");
+#  else
+    __asm("_ZNSt3__88to_charsEPcS0_eNS_12chars_formatE");
+#  endif
 
   to_chars_result
   to_chars(char*, char*, __ibm128, chars_format, int) noexcept
+#  if !_GLIBCXX_INLINE_VERSION
     __asm("_ZSt8to_charsPcS_eSt12chars_formati");
+#  else
+    __asm("_ZNSt3__88to_charsEPcS0_eNS_12chars_formatEi");
+#  endif
 #elif __cplusplus == 202002L
   to_chars_result
   to_chars(char*, char*, __ieee128) noexcept
+#  if !_GLIBCXX_INLINE_VERSION
     __asm("_ZSt8to_charsPcS_u9__ieee128");
+#  else
+    __asm("_ZNSt3__88to_charsEPcS0_DF128_");
+#  endif
 
   to_chars_result
   to_chars(char*, char*, __ieee128, chars_format) noexcept
+#  if !_GLIBCXX_INLINE_VERSION
     __asm("_ZSt8to_charsPcS_u9__ieee128St12chars_format");
+#  else
+    __asm("_ZNSt3__88to_charsEPcS0_u9__ieee128NS_12chars_formatE");
+#  endif
 
   to_chars_result
   to_chars(char*, char*, __ieee128, chars_format, int) noexcept
+#  if !_GLIBCXX_INLINE_VERSION
     __asm("_ZSt8to_charsPcS_u9__ieee128St12chars_formati");
+#  else
+    __asm("_ZNSt3__88to_charsEPcS0_u9__ieee128NS_12chars_formatEi");
+#  endif
 #endif
 
 #elif defined _GLIBCXX_LDOUBLE_IS_IEEE_BINARY128
@@ -1288,15 +1312,27 @@ namespace __format
   // Make them available as std::__format::to_chars.
   to_chars_result
   to_chars(char*, char*, _Float128) noexcept
+#  if !_GLIBCXX_INLINE_VERSION
     __asm("_ZSt8to_charsPcS_DF128_");
+#  else
+    __asm("_ZNSt3__88to_charsEPcS0_DF128_");
+#  endif
 
   to_chars_result
   to_chars(char*, char*, _Float128, chars_format) noexcept
+#  if !_GLIBCXX_INLINE_VERSION
     __asm("_ZSt8to_charsPcS_DF128_St12chars_format");
+#  else
+    __asm("_ZNSt3__88to_charsEPcS0_DF128_NS_12chars_formatE");
+#  endif
 
   to_chars_result
   to_chars(char*, char*, _Float128, chars_format, int) noexcept
+#  if !_GLIBCXX_INLINE_VERSION
     __asm("_ZSt8to_charsPcS_DF128_St12chars_formati");
+#  else
+    __asm("_ZNSt3__88to_charsEPcS0_DF128_NS_12chars_formatEi");
+#  endif
 # endif
 #endif
 
