@@ -783,14 +783,6 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #endif
 #endif
 
-/* By default, the preprocessor should be invoked the same way in C++
-   as in C.  */
-#ifndef CPLUSPLUS_CPP_SPEC
-#ifdef CPP_SPEC
-#define CPLUSPLUS_CPP_SPEC CPP_SPEC
-#endif
-#endif
-
 #ifndef ACCUMULATE_OUTGOING_ARGS
 #define ACCUMULATE_OUTGOING_ARGS 0
 #endif
