@@ -3153,9 +3153,9 @@ elif test x$gcc_cv_as != x -a x$gcc_cv_ld != x -a x$gcc_cv_objdump != x ; then
   if $gcc_cv_as -o conftest1.o conftest1.s > /dev/null 2>&1 \
      && $gcc_cv_as -o conftest2.o conftest2.s > /dev/null 2>&1 \
      && $gcc_cv_as -o conftest3.o conftest3.s > /dev/null 2>&1 \
-     && $gcc_cv_ld -shared -o conftest1.so conftest1.o \
+     && $gcc_cv_ld -r -o conftest.o conftest1.o \
 	conftest2.o conftest3.o > /dev/null 2>&1; then
-    gcc_cv_ld_ro_rw_mix=`$gcc_cv_objdump -h conftest1.so \
+    gcc_cv_ld_ro_rw_mix=`$gcc_cv_objdump -h conftest.o \
 			 | sed -e '/myfoosect/!d' -e N`
     if echo "$gcc_cv_ld_ro_rw_mix" | grep CONTENTS > /dev/null; then
       if echo "$gcc_cv_ld_ro_rw_mix" | grep READONLY > /dev/null; then
