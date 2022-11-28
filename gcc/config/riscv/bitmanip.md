@@ -300,25 +300,49 @@
 (define_insn "rotlsi3"
   [(set (match_operand:SI 0 "register_operand" "=r")
 	(rotate:SI (match_operand:SI 1 "register_operand" "r")
-		   (match_operand:QI 2 "register_operand" "r")))]
+		   (match_operand:QI 2 "arith_operand" "rI")))]
   "TARGET_ZBB"
-  "rol%~\t%0,%1,%2"
+  {
+    if (immediate_operand(operands[2], QImode))
+    {
+      operands[2] = GEN_INT(GET_MODE_BITSIZE (SImode) - INTVAL(operands[2]));
+	    return "rori\t%0,%1,%2";
+    }
+    else
+      return "rol\t%0,%1,%2";
+  }
   [(set_attr "type" "bitmanip")])
 
 (define_insn "rotldi3"
   [(set (match_operand:DI 0 "register_operand" "=r")
 	(rotate:DI (match_operand:DI 1 "register_operand" "r")
-		   (match_operand:QI 2 "register_operand" "r")))]
+		   (match_operand:QI 2 "arith_operand" "rI")))]
   "TARGET_64BIT && TARGET_ZBB"
-  "rol\t%0,%1,%2"
+  {
+    if (immediate_operand(operands[2], QImode))
+    {
+      operands[2] = GEN_INT(GET_MODE_BITSIZE (DImode) - INTVAL(operands[2]));
+	    return "rori\t%0,%1,%2";
+    }
+    else
+      return "rol\t%0,%1,%2";
+  }
   [(set_attr "type" "bitmanip")])
 
 (define_insn "rotlsi3_sext"
   [(set (match_operand:DI 0 "register_operand" "=r")
 	(sign_extend:DI (rotate:SI (match_operand:SI 1 "register_operand" "r")
-				   (match_operand:QI 2 "register_operand" "r"))))]
+				   (match_operand:QI 2 "arith_operand" "rI"))))]
   "TARGET_64BIT && TARGET_ZBB"
-  "rolw\t%0,%1,%2"
+  {
+    if (immediate_operand(operands[2], QImode))
+    {
+      operands[2] = GEN_INT(GET_MODE_BITSIZE (SImode) - INTVAL(operands[2]));
+	    return "roriw\t%0,%1,%2";
+    }
+    else
+      return "rolw\t%0,%1,%2";
+  }
   [(set_attr "type" "bitmanip")])
 
 ;; orc.b (or-combine) is added as an unspec for the benefit of the support
