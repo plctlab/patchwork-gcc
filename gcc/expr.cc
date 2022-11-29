@@ -6115,6 +6115,19 @@ expand_assignment (tree to, tree from, bool nontemporal)
       return;
     }
 
+  /* If it is assigning to a struct var which will be returned, and the
+   function is returning via registers, it would be better to use the
+   register's mode to move sub-blocks for the assignment.  */
+  if (VAR_P (to) && DECL_USEDBY_RETURN_P (to) && mode == BLKmode
+      && TREE_CODE (from) != CONSTRUCTOR
+      && GET_CODE (DECL_RTL (DECL_RESULT (current_function_decl))) == PARALLEL)
+    {
+      rtx ret = DECL_RTL (DECL_RESULT (current_function_decl));
+      machine_mode sub_mode = GET_MODE (XEXP (XVECEXP (ret, 0, 0), 0));
+      move_sub_blocks (to_rtx, from, sub_mode, nontemporal);
+      return;
+    }
+
   /* Compute FROM and store the value in the rtx we got.  */
 
   push_temp_slots ();
