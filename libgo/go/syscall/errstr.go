@@ -4,18 +4,15 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-//go:build !hurd && !linux
-// +build !hurd,!linux
-
 package syscall
 
-//sysnb	strerror_r(errnum int, buf []byte) (err Errno)
-//strerror_r(errnum _C_int, buf *byte, buflen Size_t) _C_int
+//sysnb	strerror_go(errnum int, buf []byte) (err Errno)
+//strerror_go(errnum _C_int, buf *byte, buflen Size_t) _C_int
 
 func Errstr(errnum int) string {
 	for len := 128; ; len *= 2 {
 		b := make([]byte, len)
-		errno := strerror_r(errnum, b)
+		errno := strerror_go(errnum, b)
 		if errno == 0 {
 			i := 0
 			for b[i] != 0 {
