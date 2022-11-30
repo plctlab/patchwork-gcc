@@ -167,7 +167,7 @@ sub gen_logical_addsubf
 	$inner_comp, $inner_inv, $inner_rtl, $inner_op, $both_commute, $c4,
 	$bc, $inner_arg0, $inner_arg1, $inner_exp, $outer_arg2, $outer_exp,
 	$ftype, $insn, $is_subf, $is_rsubf, $outer_32, $outer_42,$outer_name,
-	$fuse_type);
+	$fuse_type, $constraint_cond);
   KIND: foreach $kind ('scalar','vector') {
       @outer_ops = @logicals;
       if ( $kind eq 'vector' ) {
@@ -176,12 +176,14 @@ sub gen_logical_addsubf
 	  $pred = "altivec_register_operand";
 	  $constraint = "v";
 	  $fuse_type = "fused_vector";
+	  $constraint_cond = "VECTOR_UNIT_ALTIVEC_OR_VSX_P (<MODE>mode) && ";
       } else {
 	  $vchr = "";
 	  $mode = "GPR";
 	  $pred = "gpc_reg_operand";
 	  $constraint = "r";
 	  $fuse_type = "fused_arith_logical";
+	  $constraint_cond = "";
 	  push (@outer_ops, @addsub);
 	  push (@outer_ops, ( "rsubf" ));
       }
@@ -263,7 +265,7 @@ sub gen_logical_addsubf
   [(set (match_operand:${mode} 3 "${pred}" "=&0,&1,&${constraint},${constraint}")
         ${outer_exp})
    (clobber (match_scratch:${mode} 4 "=X,X,X,&${constraint}"))]
-  "(TARGET_P10_FUSION)"
+  "(${constraint_cond}TARGET_P10_FUSION)"
   "@
    ${inner_op} %3,%1,%0\\;${outer_op} %3,${outer_32}
    ${inner_op} %3,%1,%0\\;${outer_op} %3,${outer_32}
@@ -282,7 +284,7 @@ EOF
 
 sub gen_addadd
 {
-    my ($kind, $vchr, $op, $type, $mode, $pred, $constraint);
+    my ($kind, $vchr, $op, $type, $mode, $pred, $constraint, $constraint_cond);
     foreach $kind ('scalar','vector') {
       if ( $kind eq 'vector' ) {
 	  $vchr = "v";
@@ -291,6 +293,7 @@ sub gen_addadd
 	  $mode = "V2DI";
 	  $pred = "altivec_register_operand";
 	  $constraint = "v";
+	  $constraint_cond = "VECTOR_UNIT_ALTIVEC_OR_VSX_P (V2DImode) && ";
       } else {
 	  $vchr = "";
 	  $op = "add";
@@ -298,6 +301,7 @@ sub gen_addadd
 	  $mode = "GPR";
 	  $pred = "gpc_reg_operand";
 	  $constraint = "r";
+	  $constraint_cond = "";
       }
     my $c4 = "${constraint},${constraint},${constraint},${constraint}";
     print <<"EOF";
@@ -310,7 +314,7 @@ sub gen_addadd
                      (match_operand:${mode} 1 "${pred}" "%${c4}"))
            (match_operand:${mode} 2 "${pred}" "${c4}")))
    (clobber (match_scratch:${mode} 4 "=X,X,X,&${constraint}"))]
-  "(TARGET_P10_FUSION)"
+  "(${constraint_cond}TARGET_P10_FUSION)"
   "@
    ${op} %3,%1,%0\\;${op} %3,%3,%2
    ${op} %3,%1,%0\\;${op} %3,%3,%2
