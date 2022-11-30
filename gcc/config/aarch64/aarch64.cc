@@ -22684,7 +22684,29 @@ aarch64_print_patchable_function_entry (FILE *file,
       asm_fprintf (file, "\thint\t34 // bti c\n");
     }
 
-  default_print_patchable_function_entry (file, patch_area_size, record_p);
+  if (cfun->machine->label_is_assembled)
+    {
+      rtx pa = gen_patchable_area (GEN_INT (patch_area_size),
+				   GEN_INT (record_p));
+      basic_block bb = ENTRY_BLOCK_PTR_FOR_FN (cfun)->next_bb;
+      rtx_insn *insn = emit_insn_before (pa, BB_HEAD (bb));
+      INSN_ADDRESSES_NEW (insn, -1);
+    }
+  else
+    {
+      default_print_patchable_function_entry (file, patch_area_size,
+					      record_p);
+    }
+}
+
+/* Output patchable area.  */
+
+void
+aarch64_output_patchable_area (unsigned int patch_area_size, bool record_p)
+{
+  default_print_patchable_function_entry (asm_out_file,
+					  patch_area_size,
+					  record_p);
 }
 
 /* Implement ASM_OUTPUT_DEF_FROM_DECLS.  Output .variant_pcs for aliases.  */
