@@ -1,3 +1,63 @@
+2022-11-30  Adhemerval Zanella  <adhemerval.zanella@linaro.org>
+
+	* include/longlong.h: Modified.
+	[(__GNUC__) && ! NO_ASM][( (__i386__) ||  (__i486__)) && W_TYPE_SIZE == 32](add_ssaaaa): Modified.
+	[(__GNUC__) && ! NO_ASM][( (__i386__) ||  (__i486__)) && W_TYPE_SIZE == 32](sub_ddmmss): Modified.
+	[(__GNUC__) && ! NO_ASM][( (__i386__) ||  (__i486__)) && W_TYPE_SIZE == 32](umul_ppmm): Modified.
+	[(__GNUC__) && ! NO_ASM][( (__i386__) ||  (__i486__)) && W_TYPE_SIZE == 32](udiv_qrnnd): Modified.
+	[(__GNUC__) && ! NO_ASM][(( (__sparc__) &&  (__arch64__)) ||  (__sparcv9))  && W_TYPE_SIZE == 64](add_ssaaaa): Modified.
+	[(__GNUC__) && ! NO_ASM][(( (__sparc__) &&  (__arch64__)) ||  (__sparcv9))  && W_TYPE_SIZE == 64](sub_ddmmss): Modified.
+	[(__GNUC__) && ! NO_ASM][(( (__sparc__) &&  (__arch64__)) ||  (__sparcv9))  && W_TYPE_SIZE == 64](umul_ppmm): Modified.
+	[(__GNUC__) && ! NO_ASM][(__M32R__) && W_TYPE_SIZE == 32](add_ssaaaa): Modified.
+	[(__GNUC__) && ! NO_ASM][(__M32R__) && W_TYPE_SIZE == 32](sub_ddmmss): Modified.
+	[(__GNUC__) && ! NO_ASM][(__arc__) && W_TYPE_SIZE == 32](add_ssaaaa): Modified.
+	[(__GNUC__) && ! NO_ASM][(__arc__) && W_TYPE_SIZE == 32](sub_ddmmss): Modified.
+	[(__GNUC__) && ! NO_ASM][(__arm__) && ( (__thumb2__) || ! __thumb__)  && W_TYPE_SIZE == 32][(__ARM_ARCH_2__) || (__ARM_ARCH_2A__)  || (__ARM_ARCH_3__)](umul_ppmm): Modified.
+	[(__GNUC__) && ! NO_ASM][(__arm__) && ( (__thumb2__) || ! __thumb__)  && W_TYPE_SIZE == 32](add_ssaaaa): Modified.
+	[(__GNUC__) && ! NO_ASM][(__arm__) && ( (__thumb2__) || ! __thumb__)  && W_TYPE_SIZE == 32](sub_ddmmss): Modified.
+	[(__GNUC__) && ! NO_ASM][(__hppa) && W_TYPE_SIZE == 32](add_ssaaaa): Modified.
+	[(__GNUC__) && ! NO_ASM][(__hppa) && W_TYPE_SIZE == 32](sub_ddmmss): Modified.
+	[(__GNUC__) && ! NO_ASM][(__i960__) && W_TYPE_SIZE == 32](umul_ppmm): Modified.
+	[(__GNUC__) && ! NO_ASM][(__i960__) && W_TYPE_SIZE == 32](__umulsidi3): Modified.
+	[(__GNUC__) && ! NO_ASM][(__ibm032__)  && W_TYPE_SIZE == 32](add_ssaaaa): Modified.
+	[(__GNUC__) && ! NO_ASM][(__ibm032__)  && W_TYPE_SIZE == 32](sub_ddmmss): Modified.
+	[(__GNUC__) && ! NO_ASM][(__ibm032__)  && W_TYPE_SIZE == 32](umul_ppmm): Modified.
+	[(__GNUC__) && ! NO_ASM][(__ibm032__)  && W_TYPE_SIZE == 32](count_leading_zeros): Modified.
+	[(__GNUC__) && ! NO_ASM][(__m88000__) && W_TYPE_SIZE == 32][(__mc88110__)](umul_ppmm): Modified.
+	[(__GNUC__) && ! NO_ASM][(__m88000__) && W_TYPE_SIZE == 32][(__mc88110__)](udiv_qrnnd): Modified.
+	[(__GNUC__) && ! NO_ASM][(__m88000__) && W_TYPE_SIZE == 32](add_ssaaaa): Modified.
+	[(__GNUC__) && ! NO_ASM][(__m88000__) && W_TYPE_SIZE == 32](sub_ddmmss): Modified.
+	[(__GNUC__) && ! NO_ASM][(__m88000__) && W_TYPE_SIZE == 32](count_leading_zeros): Modified.
+	[(__GNUC__) && ! NO_ASM][(__mc68000__) && W_TYPE_SIZE == 32][!((__mcoldfire__))](umul_ppmm): Modified.
+	[(__GNUC__) && ! NO_ASM][(__mc68000__) && W_TYPE_SIZE == 32][( (__mc68020__) && ! __mc68060__)](umul_ppmm): Modified.
+	[(__GNUC__) && ! NO_ASM][(__mc68000__) && W_TYPE_SIZE == 32][( (__mc68020__) && ! __mc68060__)](udiv_qrnnd): Modified.
+	[(__GNUC__) && ! NO_ASM][(__mc68000__) && W_TYPE_SIZE == 32][( (__mc68020__) && ! __mc68060__)](sdiv_qrnnd): Modified.
+	[(__GNUC__) && ! NO_ASM][(__mc68000__) && W_TYPE_SIZE == 32][(__mcoldfire__)](umul_ppmm): Modified.
+	[(__GNUC__) && ! NO_ASM][(__mc68000__) && W_TYPE_SIZE == 32](add_ssaaaa): Modified.
+	[(__GNUC__) && ! NO_ASM][(__mc68000__) && W_TYPE_SIZE == 32](sub_ddmmss): Modified.
+	[(__GNUC__) && ! NO_ASM][(__sh__) && W_TYPE_SIZE == 32][! __sh1__](umul_ppmm): Modified.
+	[(__GNUC__) && ! NO_ASM][(__sparc__) && ! __arch64__ && ! __sparcv9  && W_TYPE_SIZE == 32][!((__sparc_v9__))][!((__sparc_v8__))][!((__sparclite__))](umul_ppmm): Modified.
+	[(__GNUC__) && ! NO_ASM][(__sparc__) && ! __arch64__ && ! __sparcv9  && W_TYPE_SIZE == 32][!((__sparc_v9__))][!((__sparc_v8__))][!((__sparclite__))](udiv_qrnnd): Modified.
+	[(__GNUC__) && ! NO_ASM][(__sparc__) && ! __arch64__ && ! __sparcv9  && W_TYPE_SIZE == 32][!((__sparc_v9__))][!((__sparc_v8__))][(__sparclite__)](umul_ppmm): Modified.
+	[(__GNUC__) && ! NO_ASM][(__sparc__) && ! __arch64__ && ! __sparcv9  && W_TYPE_SIZE == 32][!((__sparc_v9__))][!((__sparc_v8__))][(__sparclite__)](udiv_qrnnd): Modified.
+	[(__GNUC__) && ! NO_ASM][(__sparc__) && ! __arch64__ && ! __sparcv9  && W_TYPE_SIZE == 32][!((__sparc_v9__))][!((__sparc_v8__))][(__sparclite__)](count_leading_zeros): Modified.
+	[(__GNUC__) && ! NO_ASM][(__sparc__) && ! __arch64__ && ! __sparcv9  && W_TYPE_SIZE == 32][!((__sparc_v9__))][(__sparc_v8__)](umul_ppmm): Modified.
+	[(__GNUC__) && ! NO_ASM][(__sparc__) && ! __arch64__ && ! __sparcv9  && W_TYPE_SIZE == 32][!((__sparc_v9__))][(__sparc_v8__)](udiv_qrnnd): Modified.
+	[(__GNUC__) && ! NO_ASM][(__sparc__) && ! __arch64__ && ! __sparcv9  && W_TYPE_SIZE == 32][(__sparc_v9__)](umul_ppmm): Modified.
+	[(__GNUC__) && ! NO_ASM][(__sparc__) && ! __arch64__ && ! __sparcv9  && W_TYPE_SIZE == 32][(__sparc_v9__)](udiv_qrnnd): Modified.
+	[(__GNUC__) && ! NO_ASM][(__sparc__) && ! __arch64__ && ! __sparcv9  && W_TYPE_SIZE == 32](add_ssaaaa): Modified.
+	[(__GNUC__) && ! NO_ASM][(__sparc__) && ! __arch64__ && ! __sparcv9  && W_TYPE_SIZE == 32](sub_ddmmss): Modified.
+	[(__GNUC__) && ! NO_ASM][(__vax__) && W_TYPE_SIZE == 32](add_ssaaaa): Modified.
+	[(__GNUC__) && ! NO_ASM][(__vax__) && W_TYPE_SIZE == 32](sub_ddmmss): Modified.
+	[(__GNUC__) && ! NO_ASM][(__x86_64__) && W_TYPE_SIZE == 64](add_ssaaaa): Modified.
+	[(__GNUC__) && ! NO_ASM][(__x86_64__) && W_TYPE_SIZE == 64](sub_ddmmss): Modified.
+	[(__GNUC__) && ! NO_ASM][(__x86_64__) && W_TYPE_SIZE == 64](umul_ppmm): Modified.
+	[(__GNUC__) && ! NO_ASM][(__x86_64__) && W_TYPE_SIZE == 64](udiv_qrnnd): Modified.
+	[(__GNUC__) && ! NO_ASM][(__z8000__) && W_TYPE_SIZE == 16](add_ssaaaa): Modified.
+	[(__GNUC__) && ! NO_ASM][(__z8000__) && W_TYPE_SIZE == 16](sub_ddmmss): Modified.
+	[! __clang__](__asm_arg_cast): New.
+	[__clang__](__asm_arg_cast): New.
+
 2022-11-15  Nathan Sidwell  <nathan@acm.org>
 
 	* demangle.h (enum demangle_component_type): Add
