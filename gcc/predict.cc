@@ -268,7 +268,8 @@ optimize_function_for_size_p (struct function *fun)
   cgraph_node *n = cgraph_node::get (fun->decl);
   if (n)
     return n->optimize_for_size_p ();
-  return OPTIMIZE_SIZE_NO;
+  return opt_for_fn (fun->decl, optimize_size) ? OPTIMIZE_SIZE_MAX
+					       : OPTIMIZE_SIZE_NO;
 }
 
 /* Return true if function FUN should always be optimized for speed.  */
