@@ -71,21 +71,15 @@ aarch64_demangle_return_addr (struct _Unwind_Context *context,
 }
 
 /* Do AArch64 private initialization on CONTEXT based on frame info FS.  Mark
-   CONTEXT as return address signed if bit 0 of DWARF_REGNUM_AARCH64_RA_STATE is
-   set.  */
+   CONTEXT as having a signed return address if DWARF_REGNUM_AARCH64_RA_STATE
+   is initialized (REG_SAVED_OFFSET state) and the offset has bit 0 set.  */
 
 static inline void
 aarch64_frob_update_context (struct _Unwind_Context *context,
 			     _Unwind_FrameState *fs)
 {
-  const int reg = DWARF_REGNUM_AARCH64_RA_STATE;
-  int ra_signed;
-  if (fs->regs.how[reg] == REG_UNSAVED)
-    ra_signed = fs->regs.reg[reg].loc.offset & 0x1;
-  else
-    ra_signed = _Unwind_GetGR (context, reg) & 0x1;
-  if (ra_signed)
-    /* The flag is used for re-authenticating EH handler's address.  */
+  if (fs->regs.how[DWARF_REGNUM_AARCH64_RA_STATE] == REG_SAVED_OFFSET
+      && (fs->regs.reg[DWARF_REGNUM_AARCH64_RA_STATE].loc.offset & 1) != 0)
     context->flags |= RA_SIGNED_BIT;
   else
     context->flags &= ~RA_SIGNED_BIT;
