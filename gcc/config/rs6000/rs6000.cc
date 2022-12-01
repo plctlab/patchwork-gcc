@@ -10267,10 +10267,7 @@ rs6000_emit_set_long_const (rtx dest, HOST_WIDE_INT c)
 	emit_move_insn (copy_rtx (temp),
 			gen_rtx_IOR (DImode, copy_rtx (temp),
 				     GEN_INT (ud1)));
-      emit_move_insn (dest,
-		      gen_rtx_ZERO_EXTEND (DImode,
-					   gen_lowpart (SImode,
-							copy_rtx (temp))));
+      emit_move_insn (dest, gen_rtx_AND (DImode, temp, GEN_INT (0xffffffff)));
     }
   else if (ud1 == ud3 && ud2 == ud4)
     {
