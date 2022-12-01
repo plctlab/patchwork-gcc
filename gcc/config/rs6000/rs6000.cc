@@ -6021,7 +6021,7 @@ num_insns_constant_gpr (HOST_WIDE_INT value)
 
   else if (TARGET_POWERPC64)
     {
-      HOST_WIDE_INT low  = ((value & 0xffffffff) ^ 0x80000000) - 0x80000000;
+      HOST_WIDE_INT low = sext_hwi (value, 32);
       HOST_WIDE_INT high = value >> 31;
 
       if (high == 0 || high == -1)
@@ -8456,7 +8456,7 @@ darwin_rs6000_legitimate_lo_sum_const_p (rtx x, machine_mode mode)
     }
 
   /* We only care if the access(es) would cause a change to the high part.  */
-  offset = ((offset & 0xffff) ^ 0x8000) - 0x8000;
+  offset = sext_hwi (offset, 16);
   return SIGNED_16BIT_OFFSET_EXTRA_P (offset, extra);
 }
 
@@ -8522,7 +8522,7 @@ mem_operand_gpr (rtx op, machine_mode mode)
   if (GET_CODE (addr) == LO_SUM)
     /* For lo_sum addresses, we must allow any offset except one that
        causes a wrap, so test only the low 16 bits.  */
-    offset = ((offset & 0xffff) ^ 0x8000) - 0x8000;
+    offset = sext_hwi (offset, 16);
 
   return SIGNED_16BIT_OFFSET_EXTRA_P (offset, extra);
 }
@@ -8562,7 +8562,7 @@ mem_operand_ds_form (rtx op, machine_mode mode)
   if (GET_CODE (addr) == LO_SUM)
     /* For lo_sum addresses, we must allow any offset except one that
        causes a wrap, so test only the low 16 bits.  */
-    offset = ((offset & 0xffff) ^ 0x8000) - 0x8000;
+    offset = sext_hwi (offset, 16);
 
   return SIGNED_16BIT_OFFSET_EXTRA_P (offset, extra);
 }
@@ -9136,7 +9136,7 @@ rs6000_legitimize_address (rtx x, rtx oldx ATTRIBUTE_UNUSED,
     {
       HOST_WIDE_INT high_int, low_int;
       rtx sum;
-      low_int = ((INTVAL (XEXP (x, 1)) & 0xffff) ^ 0x8000) - 0x8000;
+      low_int = sext_hwi (INTVAL (XEXP (x, 1)), 16);
       if (low_int >= 0x8000 - extra)
 	low_int = 0;
       high_int = INTVAL (XEXP (x, 1)) - low_int;
@@ -10203,7 +10203,7 @@ rs6000_emit_set_const (rtx dest, rtx source)
 	  lo = operand_subword_force (dest, WORDS_BIG_ENDIAN != 0,
 				      DImode);
 	  emit_move_insn (hi, GEN_INT (c >> 32));
-	  c = ((c & 0xffffffff) ^ 0x80000000) - 0x80000000;
+	  c = sext_hwi (c, 32);
 	  emit_move_insn (lo, GEN_INT (c));
 	}
       else
@@ -10242,7 +10242,7 @@ rs6000_emit_set_long_const (rtx dest, HOST_WIDE_INT c)
 
   if ((ud4 == 0xffff && ud3 == 0xffff && ud2 == 0xffff && (ud1 & 0x8000))
       || (ud4 == 0 && ud3 == 0 && ud2 == 0 && ! (ud1 & 0x8000)))
-    emit_move_insn (dest, GEN_INT ((ud1 ^ 0x8000) - 0x8000));
+    emit_move_insn (dest, GEN_INT (sext_hwi (ud1, 16)));
 
   else if ((ud4 == 0xffff && ud3 == 0xffff && (ud2 & 0x8000))
 	   || (ud4 == 0 && ud3 == 0 && ! (ud2 & 0x8000)))
@@ -10250,7 +10250,7 @@ rs6000_emit_set_long_const (rtx dest, HOST_WIDE_INT c)
       temp = !can_create_pseudo_p () ? dest : gen_reg_rtx (DImode);
 
       emit_move_insn (ud1 != 0 ? copy_rtx (temp) : dest,
-		      GEN_INT (((ud2 << 16) ^ 0x80000000) - 0x80000000));
+		      GEN_INT (sext_hwi (ud2 << 16, 32)));
       if (ud1 != 0)
 	emit_move_insn (dest,
 			gen_rtx_IOR (DImode, copy_rtx (temp),
@@ -10261,8 +10261,7 @@ rs6000_emit_set_long_const (rtx dest, HOST_WIDE_INT c)
       temp = !can_create_pseudo_p () ? dest : gen_reg_rtx (DImode);
 
       gcc_assert (ud2 & 0x8000);
-      emit_move_insn (copy_rtx (temp),
-		      GEN_INT (((ud2 << 16) ^ 0x80000000) - 0x80000000));
+      emit_move_insn (copy_rtx (temp), GEN_INT (sext_hwi (ud2 << 16, 32)));
       if (ud1 != 0)
 	emit_move_insn (copy_rtx (temp),
 			gen_rtx_IOR (DImode, copy_rtx (temp),
@@ -10273,7 +10272,7 @@ rs6000_emit_set_long_const (rtx dest, HOST_WIDE_INT c)
     {
       temp = !can_create_pseudo_p () ? dest : gen_reg_rtx (DImode);
       HOST_WIDE_INT num = (ud2 << 16) | ud1;
-      rs6000_emit_set_long_const (temp, (num ^ 0x80000000) - 0x80000000);
+      rs6000_emit_set_long_const (temp, sext_hwi (num, 32));
       rtx one = gen_rtx_AND (DImode, temp, GEN_INT (0xffffffff));
       rtx two = gen_rtx_ASHIFT (DImode, temp, GEN_INT (32));
       emit_move_insn (dest, gen_rtx_IOR (DImode, one, two));
@@ -10283,8 +10282,7 @@ rs6000_emit_set_long_const (rtx dest, HOST_WIDE_INT c)
     {
       temp = !can_create_pseudo_p () ? dest : gen_reg_rtx (DImode);
 
-      emit_move_insn (copy_rtx (temp),
-		      GEN_INT (((ud3 << 16) ^ 0x80000000) - 0x80000000));
+      emit_move_insn (copy_rtx (temp), GEN_INT (sext_hwi (ud3 << 16, 32)));
       if (ud2 != 0)
 	emit_move_insn (copy_rtx (temp),
 			gen_rtx_IOR (DImode, copy_rtx (temp),
@@ -10336,8 +10334,7 @@ rs6000_emit_set_long_const (rtx dest, HOST_WIDE_INT c)
     {
       temp = !can_create_pseudo_p () ? dest : gen_reg_rtx (DImode);
 
-      emit_move_insn (copy_rtx (temp),
-		      GEN_INT (((ud4 << 16) ^ 0x80000000) - 0x80000000));
+      emit_move_insn (copy_rtx (temp), GEN_INT (sext_hwi (ud4 << 16, 32)));
       if (ud3 != 0)
 	emit_move_insn (copy_rtx (temp),
 			gen_rtx_IOR (DImode, copy_rtx (temp),
@@ -14167,8 +14164,7 @@ print_operand (FILE *file, rtx x, int code)
       /* If constant, low-order 16 bits of constant, signed.  Otherwise, write
 	 normally.  */
       if (INT_P (x))
-	fprintf (file, HOST_WIDE_INT_PRINT_DEC,
-		 ((INTVAL (x) & 0xffff) ^ 0x8000) - 0x8000);
+	fprintf (file, HOST_WIDE_INT_PRINT_DEC, sext_hwi (INTVAL (x), 16));
       else
 	print_operand (file, x, 0);
       return;
