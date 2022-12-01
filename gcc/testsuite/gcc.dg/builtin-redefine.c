@@ -71,7 +71,6 @@
 /* { dg-bogus "Expected built-in is not defined" "" { target *-*-* } .-1 } */
 #endif
 
-#define __LINE__ 0           /* { dg-warning "-:\"__LINE__\" redef" } */
 #define __INCLUDE_LEVEL__ 0  /* { dg-warning "-:\"__INCLUDE_LEVEL__\" redef" } */
 #define __COUNTER__ 0        /* { dg-warning "-:\"__COUNTER__\" redef" } */
 
