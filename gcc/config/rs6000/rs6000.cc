@@ -10256,6 +10256,13 @@ rs6000_emit_set_long_const (rtx dest, HOST_WIDE_INT c)
 			gen_rtx_IOR (DImode, copy_rtx (temp),
 				     GEN_INT (ud1)));
     }
+  else if (ud4 == 0xffff && ud3 == 0xffff && !(ud2 & 0x8000) && ud1 == 0)
+    {
+      /* lis; xoris */
+      temp = !can_create_pseudo_p () ? dest : gen_reg_rtx (DImode);
+      emit_move_insn (temp, GEN_INT (sext_hwi ((ud2 | 0x8000) << 16, 32)));
+      emit_move_insn (dest, gen_rtx_XOR (DImode, temp, GEN_INT (0x80000000)));
+    }
   else if (ud3 == 0 && ud4 == 0)
     {
       temp = !can_create_pseudo_p () ? dest : gen_reg_rtx (DImode);
