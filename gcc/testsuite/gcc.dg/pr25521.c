@@ -6,5 +6,4 @@
 
 const volatile int foo = 30;
 
-
-/* { dg-final { scan-assembler "\\.s\?rodata" } } */
+/* { dg-final { scan-assembler-symbol-section {^_?foo$} {^\.(const|s?rodata)} { xfail { ! const_volatile_readonly_section } } } } */
