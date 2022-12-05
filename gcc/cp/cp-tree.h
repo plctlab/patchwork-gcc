@@ -49,7 +49,7 @@ c-common.h, not after.
    but not all node kinds do (e.g. constants, and references to
    params, locals, etc), so we stash a copy here.  */
 
-extern location_t cp_expr_location		(const_tree);
+inline location_t cp_expr_location		(const_tree);
 
 class cp_expr
 {
@@ -8100,7 +8100,6 @@ extern bool error_type_p			(const_tree);
 extern bool ptr_reasonably_similar		(const_tree, const_tree);
 extern tree build_ptrmemfunc			(tree, tree, int, bool,
 						 tsubst_flags_t);
-extern int cp_type_quals			(const_tree);
 extern int type_memfn_quals			(const_tree);
 extern cp_ref_qualifier type_memfn_rqual	(const_tree);
 extern tree apply_memfn_quals			(tree, cp_cv_quals,
@@ -8151,6 +8150,29 @@ extern void maybe_warn_about_useless_cast       (location_t, tree, tree,
 						 tsubst_flags_t);
 extern tree cp_perform_integral_promotions      (tree, tsubst_flags_t);
 
+/* Returns the type qualifiers for this type, including the qualifiers on the
+   elements for an array type.  */
+
+inline int
+cp_type_quals (const_tree type)
+{
+  int quals;
+  /* This CONST_CAST is okay because strip_array_types returns its
+     argument unmodified and we assign it to a const_tree.  */
+  type = strip_array_types (CONST_CAST_TREE (type));
+  if (type == error_mark_node
+      /* Quals on a FUNCTION_TYPE are memfn quals.  */
+      || TREE_CODE (type) == FUNCTION_TYPE)
+    return TYPE_UNQUALIFIED;
+  quals = TYPE_QUALS (type);
+  /* METHOD and REFERENCE_TYPEs should never have quals.  */
+  gcc_checking_assert ((TREE_CODE (type) != METHOD_TYPE
+			&& !TYPE_REF_P (type))
+		       || ((quals & (TYPE_QUAL_CONST|TYPE_QUAL_VOLATILE))
+			   == TYPE_UNQUALIFIED));
+  return quals;
+}
+
 extern tree finish_left_unary_fold_expr      (tree, int);
 extern tree finish_right_unary_fold_expr     (tree, int);
 extern tree finish_binary_fold_expr          (tree, tree, int);
@@ -8166,6 +8188,30 @@ inline location_t
 loc_or_input_loc (location_t loc)
 {
   return loc == UNKNOWN_LOCATION ? input_location : loc;
+}
+
+/* Like EXPR_LOCATION, but also handle some tcc_exceptional that have
+   locations.  */
+
+inline location_t
+cp_expr_location (const_tree t_)
+{
+  tree t = CONST_CAST_TREE (t_);
+  if (t == NULL_TREE)
+    return UNKNOWN_LOCATION;
+  switch (TREE_CODE (t))
+    {
+    case LAMBDA_EXPR:
+      return LAMBDA_EXPR_LOCATION (t);
+    case STATIC_ASSERT:
+      return STATIC_ASSERT_SOURCE_LOCATION (t);
+    case TRAIT_EXPR:
+      return TRAIT_EXPR_LOCATION (t);
+    case PTRMEM_CST:
+      return PTRMEM_CST_LOCATION (t);
+    default:
+      return EXPR_LOCATION (t);
+    }
 }
 
 inline location_t

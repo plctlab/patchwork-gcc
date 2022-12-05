@@ -11460,29 +11460,6 @@ comp_ptr_ttypes_const (tree to, tree from, compare_bounds_t cb)
     }
 }
 
-/* Returns the type qualifiers for this type, including the qualifiers on the
-   elements for an array type.  */
-
-int
-cp_type_quals (const_tree type)
-{
-  int quals;
-  /* This CONST_CAST is okay because strip_array_types returns its
-     argument unmodified and we assign it to a const_tree.  */
-  type = strip_array_types (CONST_CAST_TREE (type));
-  if (type == error_mark_node
-      /* Quals on a FUNCTION_TYPE are memfn quals.  */
-      || TREE_CODE (type) == FUNCTION_TYPE)
-    return TYPE_UNQUALIFIED;
-  quals = TYPE_QUALS (type);
-  /* METHOD and REFERENCE_TYPEs should never have quals.  */
-  gcc_assert ((TREE_CODE (type) != METHOD_TYPE
-	       && !TYPE_REF_P (type))
-	      || ((quals & (TYPE_QUAL_CONST|TYPE_QUAL_VOLATILE))
-		  == TYPE_UNQUALIFIED));
-  return quals;
-}
-
 /* Returns the function-ref-qualifier for TYPE */
 
 cp_ref_qualifier
