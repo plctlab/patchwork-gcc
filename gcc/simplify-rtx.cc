@@ -2726,6 +2726,32 @@ simplify_context::simplify_distributive_operation (rtx_code code,
   return NULL_RTX;
 }
 
+/* Reverse if the below two conditions are met at the same time,
+   1. The current insn_code doesn't exist or it's operand doesn't match,
+      or the shift amount is beyond the half size of the machine mode;
+   2. The reversed insn_code exists and it's operand matches. */
+
+bool reverse_rotate_by_imm_p (machine_mode mode, unsigned int left, rtx op1)
+{
+  if (!CONST_INT_P (op1))
+    return false;
+
+  optab binoptab = left ? rotl_optab : rotr_optab;
+  optab re_binoptab = left ? rotr_optab : rotl_optab;
+
+  enum insn_code icode = optab_handler (binoptab, mode);
+  enum insn_code re_icode = optab_handler (re_binoptab, mode);
+  if (((icode == CODE_FOR_nothing)
+       || (!insn_operand_matches (icode, 2, op1))
+       || (IN_RANGE (INTVAL (op1),
+                     GET_MODE_UNIT_PRECISION (mode) / 2 + left,
+                     GET_MODE_UNIT_PRECISION (mode) - 1)))
+      && (re_icode != CODE_FOR_nothing)
+      && (insn_operand_matches (re_icode, 2, op1)))
+    return true;
+  return false;
+}
+
 /* Subroutine of simplify_binary_operation.  Simplify a binary operation
    CODE with result mode MODE, operating on OP0 and OP1.  If OP0 and/or
    OP1 are constant pool references, TRUEOP0 and TRUEOP1 represent the
@@ -4077,21 +4103,16 @@ simplify_context::simplify_binary_operation_1 (rtx_code code,
     case ROTATE:
       if (trueop1 == CONST0_RTX (mode))
 	return op0;
-      /* Canonicalize rotates by constant amount.  If op1 is bitsize / 2,
-	 prefer left rotation, if op1 is from bitsize / 2 + 1 to
-	 bitsize - 1, use other direction of rotate with 1 .. bitsize / 2 - 1
-	 amount instead.  */
+      /* Canonicalize rotates by constant amount.  If the condition of
+         reversing direction is met, then reverse the direction. */
 #if defined(HAVE_rotate) && defined(HAVE_rotatert)
-      if (CONST_INT_P (trueop1)
-	  && IN_RANGE (INTVAL (trueop1),
-		       GET_MODE_UNIT_PRECISION (mode) / 2 + (code == ROTATE),
-		       GET_MODE_UNIT_PRECISION (mode) - 1))
-	{
-	  int new_amount = GET_MODE_UNIT_PRECISION (mode) - INTVAL (trueop1);
-	  rtx new_amount_rtx = gen_int_shift_amount (mode, new_amount);
-	  return simplify_gen_binary (code == ROTATE ? ROTATERT : ROTATE,
-				      mode, op0, new_amount_rtx);
-	}
+      if (reverse_rotate_by_imm_p (mode, (code == ROTATE), trueop1))
+      {
+        int new_amount = GET_MODE_UNIT_PRECISION (mode) - INTVAL (trueop1);
+        rtx new_amount_rtx = gen_int_shift_amount (mode, new_amount);
+        return simplify_gen_binary (code == ROTATE ? ROTATERT : ROTATE,
+                                    mode, op0, new_amount_rtx);
+      }
 #endif
       /* FALLTHRU */
     case ASHIFTRT:
