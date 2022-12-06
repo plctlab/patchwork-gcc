@@ -49,6 +49,7 @@ POSSIBILITY OF SUCH DAMAGE.  */
 #endif
 
 #include <windows.h>
+#include <psapi.h>
 #endif
 
 /* Coff file header.  */
@@ -592,7 +593,8 @@ coff_syminfo (struct backtrace_state *state, uintptr_t addr,
 static int
 coff_add (struct backtrace_state *state, int descriptor,
 	  backtrace_error_callback error_callback, void *data,
-	  fileline *fileline_fn, int *found_sym, int *found_dwarf)
+	  fileline *fileline_fn, int *found_sym, int *found_dwarf,
+	  uintptr_t module_handle ATTRIBUTE_UNUSED)
 {
   struct backtrace_view fhdr_view;
   off_t fhdr_off;
@@ -623,7 +625,6 @@ coff_add (struct backtrace_state *state, int descriptor,
   int is_64;
   uintptr_t image_base;
   uintptr_t base_address = 0;
-  uintptr_t module_handle;
   struct dwarf_sections dwarf_sections;
 
   *found_sym = 0;
@@ -871,7 +872,6 @@ coff_add (struct backtrace_state *state, int descriptor,
     }
 
 #ifdef HAVE_WINDOWS_H
-    module_handle = (uintptr_t) GetModuleHandleW (NULL);
     base_address = module_handle - image_base;
 #endif
 
@@ -914,11 +914,79 @@ backtrace_initialize (struct backtrace_state *state,
   int found_sym;
   int found_dwarf;
   fileline coff_fileline_fn;
+  uintptr_t module_handle = 0;
+
+#ifdef HAVE_WINDOWS_H
+  DWORD i;
+  DWORD module_count;
+  DWORD bytes_needed_for_modules;
+  HMODULE *modules;
+  char module_name[MAX_PATH];
+  int module_found_sym;
+  fileline module_fileline_fn;
+
+  module_handle = (uintptr_t) GetModuleHandleW (NULL);
+#endif
 
   ret = coff_add (state, descriptor, error_callback, data,
-		  &coff_fileline_fn, &found_sym, &found_dwarf);
+		  &coff_fileline_fn, &found_sym, &found_dwarf, module_handle);
   if (!ret)
     return 0;
+
+#ifdef HAVE_WINDOWS_H
+  module_count = 1000;
+ alloc_modules:
+  modules = backtrace_alloc (state, module_count * sizeof(HMODULE),
+			     error_callback, data);
+  if (modules == NULL)
+    goto skip_modules;
+  if (!EnumProcessModules (GetCurrentProcess (), modules, module_count,
+			   &bytes_needed_for_modules))
+    {
+      error_callback(data, "Could not enumerate process modules",
+		     (int) GetLastError ());
+      goto free_modules;
+    }
+  if (bytes_needed_for_modules > module_count * sizeof(HMODULE))
+    {
+      backtrace_free (state, modules, module_count * sizeof(HMODULE),
+		      error_callback, data);
+      // Add an extra of 2, if some module is loaded in another thread.
+      module_count = bytes_needed_for_modules / sizeof(HMODULE) + 2;
+      modules = NULL;
+      goto alloc_modules;
+    }
+
+  for (i = 0; i < bytes_needed_for_modules / sizeof(HMODULE); ++i)
+    {
+      if (GetModuleFileNameA (modules[i], module_name, MAX_PATH - 1))
+	{
+	  if (strcmp (filename, module_name) == 0)
+	    continue;
+
+	  module_handle = (uintptr_t) GetModuleHandleA (module_name);
+	  if (module_handle == 0)
+	    continue;
+
+	  descriptor = backtrace_open (module_name, error_callback, data, NULL);
+	  if (descriptor < 0)
+	    continue;
+
+	  coff_add (state, descriptor, error_callback, data,
+		    &module_fileline_fn, &module_found_sym, &found_dwarf,
+		    module_handle);
+	  if (module_found_sym)
+	    found_sym = 1;
+	}
+    }
+
+ free_modules:
+  if (modules)
+    backtrace_free(state, modules, module_count * sizeof(HMODULE),
+		   error_callback, data);
+  modules = NULL;
+ skip_modules:
+#endif
 
   if (!state->threaded)
     {
