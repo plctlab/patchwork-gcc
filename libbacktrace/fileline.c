@@ -47,6 +47,18 @@ POSSIBILITY OF SUCH DAMAGE.  */
 #include <mach-o/dyld.h>
 #endif
 
+#ifdef HAVE_WINDOWS_H
+#ifndef WIN32_MEAN_AND_LEAN
+#define WIN32_MEAN_AND_LEAN
+#endif
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
+#include <windows.h>
+#endif
+
 #include "backtrace.h"
 #include "internal.h"
 
@@ -155,6 +167,28 @@ macho_get_executable_path (struct backtrace_state *state,
 
 #endif /* !defined (HAVE_MACH_O_DYLD_H) */
 
+#ifdef HAVE_WINDOWS_H
+
+static char *
+windows_get_executable_path (char *buf, backtrace_error_callback error_callback,
+			     void *data)
+{
+  if (GetModuleFileNameA (NULL, buf, MAX_PATH - 1) == 0)
+    {
+      error_callback (data,
+		      "could not get the filename of the current executable",
+		      (int) GetLastError ());
+      return NULL;
+    }
+  return buf;
+}
+
+#else /* !defined (HAVE_WINDOWS_H) */
+
+#define windows_get_executable_path(buf, error_callback, data) NULL
+
+#endif /* !defined (HAVE_WINDOWS_H) */
+
 /* Initialize the fileline information from the executable.  Returns 1
    on success, 0 on failure.  */
 
@@ -168,7 +202,11 @@ fileline_initialize (struct backtrace_state *state,
   int called_error_callback;
   int descriptor;
   const char *filename;
+#ifdef HAVE_WINDOWS_H
+  char buf[MAX_PATH];
+#else
   char buf[64];
+#endif
 
   if (!state->threaded)
     failed = state->fileline_initialization_failed;
@@ -192,7 +230,7 @@ fileline_initialize (struct backtrace_state *state,
 
   descriptor = -1;
   called_error_callback = 0;
-  for (pass = 0; pass < 8; ++pass)
+  for (pass = 0; pass < 9; ++pass)
     {
       int does_not_exist;
 
@@ -223,6 +261,9 @@ fileline_initialize (struct backtrace_state *state,
 	  break;
 	case 7:
 	  filename = macho_get_executable_path (state, error_callback, data);
+	  break;
+	case 8:
+	  filename = windows_get_executable_path (buf, error_callback, data);
 	  break;
 	default:
 	  abort ();
