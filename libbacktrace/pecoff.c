@@ -39,6 +39,18 @@ POSSIBILITY OF SUCH DAMAGE.  */
 #include "backtrace.h"
 #include "internal.h"
 
+#ifdef HAVE_WINDOWS_H
+#ifndef WIN32_MEAN_AND_LEAN
+#define WIN32_MEAN_AND_LEAN
+#endif
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
+#include <windows.h>
+#endif
+
 /* Coff file header.  */
 
 typedef struct {
@@ -610,6 +622,8 @@ coff_add (struct backtrace_state *state, int descriptor,
   int debug_view_valid;
   int is_64;
   uintptr_t image_base;
+  uintptr_t base_address = 0;
+  uintptr_t module_handle;
   struct dwarf_sections dwarf_sections;
 
   *found_sym = 0;
@@ -856,7 +870,12 @@ coff_add (struct backtrace_state *state, int descriptor,
 				  + (sections[i].offset - min_offset));
     }
 
-  if (!backtrace_dwarf_add (state, /* base_address */ 0, &dwarf_sections,
+#ifdef HAVE_WINDOWS_H
+    module_handle = (uintptr_t) GetModuleHandleW (NULL);
+    base_address = module_handle - image_base;
+#endif
+
+  if (!backtrace_dwarf_add (state, base_address, &dwarf_sections,
 			    0, /* FIXME: is_bigendian */
 			    NULL, /* altlink */
 			    error_callback, data, fileline_fn,
