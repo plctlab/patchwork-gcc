@@ -17242,59 +17242,6 @@ tsubst_copy (tree t, tree args, tsubst_flags_t complain, tree in_decl)
 	/* Ordinary template template argument.  */
 	return t;
 
-    case NON_LVALUE_EXPR:
-    case VIEW_CONVERT_EXPR:
-	{
-	  /* Handle location wrappers by substituting the wrapped node
-	     first, *then* reusing the resulting type.  Doing the type
-	     first ensures that we handle template parameters and
-	     parameter pack expansions.  */
-	  if (location_wrapper_p (t))
-	    {
-	      tree op0 = tsubst_copy (TREE_OPERAND (t, 0), args,
-				      complain, in_decl);
-	      return maybe_wrap_with_location (op0, EXPR_LOCATION (t));
-	    }
-	  tree op = TREE_OPERAND (t, 0);
-	  if (code == VIEW_CONVERT_EXPR
-	      && TREE_CODE (op) == TEMPLATE_PARM_INDEX)
-	    {
-	      /* Wrapper to make a C++20 template parameter object const.  */
-	      op = tsubst_copy (op, args, complain, in_decl);
-	      if (!CP_TYPE_CONST_P (TREE_TYPE (op)))
-		{
-		  /* The template argument is not const, presumably because
-		     it is still dependent, and so not the const template parm
-		     object.  */
-		  tree type = tsubst (TREE_TYPE (t), args, complain, in_decl);
-		  gcc_checking_assert (same_type_ignoring_top_level_qualifiers_p
-				       (type, TREE_TYPE (op)));
-		  if (TREE_CODE (op) == CONSTRUCTOR
-		      || TREE_CODE (op) == IMPLICIT_CONV_EXPR)
-		    {
-		      /* Don't add a wrapper to these.  */
-		      op = copy_node (op);
-		      TREE_TYPE (op) = type;
-		    }
-		  else
-		    /* Do add a wrapper otherwise (in particular, if op is
-		       another TEMPLATE_PARM_INDEX).  */
-		    op = build1 (code, type, op);
-		}
-	      return op;
-	    }
-	  /* force_paren_expr can also create a VIEW_CONVERT_EXPR.  */
-	  else if (code == VIEW_CONVERT_EXPR && REF_PARENTHESIZED_P (t))
-	    {
-	      op = tsubst_copy (op, args, complain, in_decl);
-	      op = build1 (code, TREE_TYPE (op), op);
-	      REF_PARENTHESIZED_P (op) = true;
-	      return op;
-	    }
-	  /* We shouldn't see any other uses of these in templates.  */
-	  gcc_unreachable ();
-	}
-
     case CAST_EXPR:
     case REINTERPRET_CAST_EXPR:
     case CONST_CAST_EXPR:
@@ -21553,13 +21500,48 @@ tsubst_copy_and_build (tree t,
       RETURN (t);
 
     case NON_LVALUE_EXPR:
+      gcc_checking_assert (location_wrapper_p (t));
+      RETURN (maybe_wrap_with_location (RECUR (TREE_OPERAND (t, 0)),
+					EXPR_LOCATION (t)));
+
     case VIEW_CONVERT_EXPR:
-      if (location_wrapper_p (t))
-	/* We need to do this here as well as in tsubst_copy so we get the
-	   other tsubst_copy_and_build semantics for a PARM_DECL operand.  */
-	RETURN (maybe_wrap_with_location (RECUR (TREE_OPERAND (t, 0)),
-					  EXPR_LOCATION (t)));
-      /* fallthrough.  */
+      {
+	if (location_wrapper_p (t))
+	  RETURN (maybe_wrap_with_location (RECUR (TREE_OPERAND (t, 0)),
+					    EXPR_LOCATION (t)));
+	tree op = TREE_OPERAND (t, 0);
+	if (REF_PARENTHESIZED_P (t))
+	  {
+	    /* force_paren_expr can also create a VIEW_CONVERT_EXPR.  */
+	    op = RECUR (op);
+	    op = build1 (VIEW_CONVERT_EXPR, TREE_TYPE (op), op);
+	    REF_PARENTHESIZED_P (op) = true;
+	    RETURN (op);
+	  }
+	/* We're dealing with a wrapper to make a C++20 template parameter
+	   object const.  */
+	op = RECUR (op);
+	if (TREE_TYPE (op) == NULL_TREE
+	    || !CP_TYPE_CONST_P (TREE_TYPE (op)))
+	  {
+	    /* The template argument is not const, presumably because
+	       it is still dependent, and so not the const template parm
+	       object.  */
+	    tree type = tsubst (TREE_TYPE (t), args, complain, in_decl);
+	    if (TREE_CODE (op) == CONSTRUCTOR
+		|| TREE_CODE (op) == IMPLICIT_CONV_EXPR)
+	      {
+		/* Don't add a wrapper to these.  */
+		op = copy_node (op);
+		TREE_TYPE (op) = type;
+	      }
+	    else
+	      /* Do add a wrapper otherwise (in particular, if op is
+		 another TEMPLATE_PARM_INDEX).  */
+	      op = build1 (VIEW_CONVERT_EXPR, type, op);
+	  }
+	  RETURN (op);
+      }
 
     default:
       /* Handle Objective-C++ constructs, if appropriate.  */
