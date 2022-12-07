@@ -15308,8 +15308,10 @@ tree_single_nonzero_warnv_p (tree t, bool *strict_overflow_p)
 
     case ADDR_EXPR:
       {
-	tree base = TREE_OPERAND (t, 0);
+	if (ADDR_NONZERO (t))
+	  return true;
 
+	tree base = TREE_OPERAND (t, 0);
 	if (!DECL_P (base))
 	  base = get_base_address (base);
 

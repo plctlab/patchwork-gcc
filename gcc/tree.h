@@ -876,6 +876,10 @@ extern void omp_clause_range_check_failed (const_tree, const char *, int,
   (TREE_CHECK5 (NODE, INDIRECT_REF, MEM_REF, TARGET_MEM_REF, ARRAY_REF,	\
 		ARRAY_RANGE_REF)->base.nothrow_flag)
 
+/* Nozero means this ADDR_EXPR is not equal to NULL.  */
+#define ADDR_NONZERO(NODE) \
+  (TREE_CHECK (NODE, ADDR_EXPR)->base.nothrow_flag)
+
 /* In a VAR_DECL, PARM_DECL or FIELD_DECL, or any kind of ..._REF node,
    nonzero means it may not be the lhs of an assignment.
    Nonzero in a FUNCTION_DECL means this function should be treated

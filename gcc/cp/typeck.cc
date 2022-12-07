@@ -7232,6 +7232,9 @@ cp_build_addr_expr_1 (tree arg, bool strict_lvalue, tsubst_flags_t complain)
       gcc_assert (same_type_ignoring_top_level_qualifiers_p
 		  (TREE_TYPE (object), decl_type_context (field)));
       val = build_address (arg);
+      if (TREE_CODE (val) == ADDR_EXPR
+	  && TREE_CODE (TREE_OPERAND (val, 0)) == COMPONENT_REF)
+	ADDR_NONZERO (val) = 1;
     }
 
   if (TYPE_PTR_P (argtype)

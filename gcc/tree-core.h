@@ -1376,6 +1376,9 @@ struct GTY(()) tree_base {
        TREE_THIS_NOTRAP in
           INDIRECT_REF, MEM_REF, TARGET_MEM_REF, ARRAY_REF, ARRAY_RANGE_REF
 
+       ADDR_NONZERO in
+	  ADDR_EXPR
+
        SSA_NAME_IN_FREE_LIST in
           SSA_NAME
 
