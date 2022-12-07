@@ -1042,7 +1042,7 @@ search_path_head (cpp_reader *pfile, const char *fname, int angle_brackets,
      path use the normal search logic.  */
   if (type == IT_INCLUDE_NEXT && file->dir
       && file->dir != &pfile->no_search_path)
-    dir = file->dir->next;
+    return file->dir->next;
   else if (angle_brackets)
     dir = pfile->bracket_include;
   else if (type == IT_CMDLINE)
@@ -2145,6 +2145,8 @@ _cpp_has_header (cpp_reader *pfile, const char *fname, int angle_brackets,
 		 enum include_type type)
 {
   cpp_dir *start_dir = search_path_head (pfile, fname, angle_brackets, type);
+  if (!start_dir)
+    return false;
   _cpp_file *file = _cpp_find_file (pfile, fname, start_dir, angle_brackets,
 				    _cpp_FFK_HAS_INCLUDE, 0);
   return file->err_no != ENOENT;
