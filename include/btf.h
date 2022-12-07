@@ -182,7 +182,7 @@ struct btf_param
    information about the variable.  */
 struct btf_var
 {
-  uint32_t linkage;	/* Currently only 0=static or 1=global.  */
+  uint32_t linkage;	/* 0=static, 1=global, 2=extern.  */
 };
 
 /* BTF_KIND_DATASEC is followed by VLEN struct btf_var_secinfo entries,

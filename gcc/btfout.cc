@@ -66,6 +66,10 @@ static char btf_info_section_label[MAX_BTF_LABEL_BYTES];
 
 #define BTF_INVALID_TYPEID 0xFFFFFFFF
 
+#define BTF_LINKAGE_STATIC 0
+#define BTF_LINKAGE_GLOBAL 1
+#define BTF_LINKAGE_EXTERN 2
+
 /* Mapping of CTF variables to the IDs they will be assigned when they are
    converted to BTF_KIND_VAR type records. Strictly accounts for the index
    from the start of the variable type entries, does not include the number
@@ -314,6 +318,9 @@ btf_collect_datasec (ctf_container_ref ctfc)
 	continue;
 
       const char *section_name = node->get_section ();
+      /* Mark extern variables.  */
+      if (DECL_EXTERNAL (node->decl))
+	dvd->dvd_visibility = BTF_LINKAGE_EXTERN;
 
       if (section_name == NULL)
 	{
@@ -676,7 +683,7 @@ btf_asm_varent (ctf_dvdef_ref var)
   dw2_asm_output_data (4, var->dvd_name_offset, "btv_name");
   dw2_asm_output_data (4, BTF_TYPE_INFO (BTF_KIND_VAR, 0, 0), "btv_info");
   dw2_asm_output_data (4, get_btf_id (var->dvd_type), "btv_type");
-  dw2_asm_output_data (4, (var->dvd_visibility ? 1 : 0), "btv_linkage");
+  dw2_asm_output_data (4, var->dvd_visibility, "btv_linkage");
 }
 
 /* Asm'out a member description following a BTF_KIND_STRUCT or
