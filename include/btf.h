@@ -186,12 +186,13 @@ struct btf_var
 };
 
 /* BTF_KIND_DATASEC is followed by VLEN struct btf_var_secinfo entries,
-   which describe all BTF_KIND_VAR types contained in the section.  */
+   which describe all BTF_KIND_VAR or extern BTF_KIND_FUNC types contained
+   in the section.  */
 struct btf_var_secinfo
 {
-  uint32_t type;	/* Type of variable.  */
-  uint32_t offset;	/* In-section offset of variable (in bytes).  */
-  uint32_t size;	/* Size (in bytes) of variable.  */
+  uint32_t type;	/* Type of BTF_KIND_VAR or BTF_KIND_FUNC item.  */
+  uint32_t offset;	/* In-section offset (in bytes) of item.  */
+  uint32_t size;	/* Size (in bytes) of item.  */
 };
 
 /* BTF_KIND_ENUM64 is followed by VLEN struct btf_enum64 entries,
