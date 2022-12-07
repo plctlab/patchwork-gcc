@@ -1830,6 +1830,44 @@ noce_emit_cmove (struct noce_if_info *if_info, rtx x, enum rtx_code code,
     return NULL_RTX;
 }
 
+/*  Emit a conditional ternary set insn by its optab.  */
+
+static rtx
+noce_emit_ternary_set (rtx target, enum rtx_code outer_code,
+		       enum rtx_code inner_code, rtx cc, int a, int b, int c)
+{
+  rtx outer_comp, inner_comp;
+  machine_mode mode;
+  machine_mode orig_mode = GET_MODE (target);
+  outer_comp = gen_rtx_fmt_ee (outer_code, VOIDmode, cc, const0_rtx);
+  inner_comp = gen_rtx_fmt_ee (inner_code, VOIDmode, cc, const0_rtx);
+
+  class expand_operand ops[7];
+  create_fixed_operand (&ops[1], outer_comp);
+  create_fixed_operand (&ops[3], inner_comp);
+  create_fixed_operand (&ops[2], cc);
+  create_integer_operand (&ops[4], a);
+  create_integer_operand (&ops[5], b);
+  create_integer_operand (&ops[6], c);
+
+  FOR_EACH_MODE_FROM (mode, orig_mode)
+    {
+      enum insn_code icode;
+      icode = optab_handler (ternary_set_optab, mode);
+      if (icode != CODE_FOR_nothing)
+	{
+	  create_output_operand (&ops[0], target, mode);
+	  if (maybe_expand_insn (icode, 7, ops))
+	    {
+	      if (ops[0].value != target)
+		convert_move (target, ops[0].value, false);
+	      return target;
+	    }
+	}
+    }
+  return NULL_RTX;
+}
+
 /* Try only simple constants and registers here.  More complex cases
    are handled in noce_try_cmove_arith after noce_try_store_flag_arith
    has had a go at it.  */
@@ -2987,6 +3025,160 @@ noce_try_bitop (struct noce_if_info *if_info)
   return TRUE;
 }
 
+/* Try to find pattern "a < b ? -1 : (a > b ? 1 : 0)" and convert it to
+   a conditional ternary set insn.  It commonly has following pattern.
+   cond_jump
+   setcc
+   (neg/subreg)
+   label: const_set
+   cond_jump and setcc use the same CC reg.  There may be a neg insn after
+   the setcc insn to negative the result of setcc, and a subreg insn after
+   the setcc insn to convert the mode.
+
+   The pattern can't be optimized by combine pass due to the branch and
+   limitation on the number of insns.
+*/
+
+static int
+noce_try_ternary_set (struct noce_if_info *if_info)
+{
+  machine_mode orig_mode = GET_MODE (if_info->x);
+  machine_mode mode;
+  int have_ternary_set = 0;
+
+  FOR_EACH_MODE_FROM (mode, orig_mode)
+    {
+      if (direct_optab_handler (ternary_set_optab, mode) != CODE_FOR_nothing)
+	{
+	  have_ternary_set = 1;
+	  break;
+	}
+    }
+
+  if (!have_ternary_set)
+    return FALSE;
+
+  if (!if_info->then_bb || !if_info->else_bb)
+    return FALSE;
+
+  if (!if_info->then_simple && !if_info->else_simple)
+    return FALSE;
+
+  rtx cc;
+  basic_block target_bb;
+  int int1, int2, int3;
+
+  cc = SET_DEST (PATTERN (if_info->cond_earliest));
+  if (GET_MODE_CLASS (GET_MODE (cc)) != MODE_CC)
+    return FALSE;
+
+  /* One arm should be a constant set.  */
+
+  if (CONST_INT_P (if_info->a))
+    {
+      int1 = INTVAL (if_info->a);
+      target_bb = if_info->else_bb;
+    }
+  else if (CONST_INT_P (if_info->b))
+    {
+      int1 = INTVAL (if_info->b);
+      target_bb = if_info->then_bb;
+    }
+  else
+    return FALSE;
+
+  enum rtx_code code, inner_code, outer_code;
+  rtx_insn *insn;
+  rtx sset, sset_src_op0, setcc_dest;
+  outer_code = GET_CODE (if_info->cond);
+  setcc_dest = NULL_RTX;
+
+  /* Check another arm.
+     The first insn in target BB should be a setcc insn.  */
+
+  insn = BB_HEAD (target_bb);
+
+  if (! active_insn_p (insn))
+    insn = next_active_insn (insn);
+
+  if (!insn || BLOCK_FOR_INSN (insn) != target_bb)
+    return FALSE;
+
+  sset = single_set (insn);
+  if (!sset || GET_CODE (PATTERN (insn)) == PARALLEL)
+    return FALSE;
+
+  code = GET_CODE (SET_SRC (sset));
+  sset_src_op0 = XEXP (SET_SRC (sset), 0);
+
+  if (GET_RTX_CLASS (code) == RTX_COMPARE
+      && GET_MODE_CLASS (GET_MODE (sset_src_op0)) == MODE_CC
+      && XEXP (SET_SRC (sset), 1) == const0_rtx
+      && rtx_equal_p (sset_src_op0, cc))
+    {
+      inner_code = code;
+      int2 = 1;
+      int3 = 0;
+      setcc_dest = SET_DEST (sset);
+    }
+  else
+    return FALSE;
+
+  /* The second insn if existing should be a neg/subreg insn.  */
+
+  insn = next_active_insn (insn);
+
+  if (!insn || BLOCK_FOR_INSN (insn) != target_bb)
+    ;
+  else if (next_active_insn (insn)
+	   && BLOCK_FOR_INSN (next_active_insn (insn)) != target_bb)
+    {
+      sset = single_set (insn);
+      if (!sset || GET_CODE (PATTERN (insn)) == PARALLEL)
+	return FALSE;
+
+      code = GET_CODE (SET_SRC (sset));
+      sset_src_op0 = XEXP (SET_SRC (sset), 0);
+
+      if (code == NEG
+	  && (rtx_equal_p (sset_src_op0, setcc_dest)
+	      || (GET_CODE (sset_src_op0) == SUBREG
+		  && !paradoxical_subreg_p (sset_src_op0)
+		  && rtx_equal_p (XEXP (sset_src_op0, 0), setcc_dest))))
+	int2 = -int2;
+      else if (code == SUBREG
+	       && !paradoxical_subreg_p (SET_SRC (sset))
+	       && rtx_equal_p (sset_src_op0, setcc_dest))
+	;
+      else
+	return FALSE;
+    }
+  else
+    return FALSE;
+
+  start_sequence ();
+  rtx target = noce_emit_ternary_set (if_info->x, outer_code, inner_code,
+				      cc, int1, int2, int3);
+  if (target)
+    {
+      rtx_insn *ifcvt_seq;
+
+      if (target != if_info->x)
+	noce_emit_move_insn (if_info->x, target);
+
+      ifcvt_seq = end_ifcvt_sequence (if_info);
+	if (!ifcvt_seq)
+	  return FALSE;
+
+      emit_insn_before_setloc (ifcvt_seq, if_info->jump,
+			       INSN_LOCATION (if_info->insn_a));
+      if_info->transform_name = "noce_try_ternary_set";
+	return TRUE;
+    }
+
+  end_sequence ();
+  return FALSE;
+}
 
 /* Similar to get_condition, only the resulting condition must be
    valid at JUMP, instead of at EARLIEST.
@@ -3962,6 +4154,8 @@ noce_process_if_block (struct noce_if_info *if_info)
     goto success;
   if (HAVE_conditional_move
       && noce_try_cmove (if_info))
+    goto success;
+  if (noce_try_ternary_set (if_info))
     goto success;
   if (! targetm.have_conditional_execution ())
     {
