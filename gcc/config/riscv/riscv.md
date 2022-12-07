@@ -1667,6 +1667,22 @@
 		      MAX_MACHINE_MODE, &operands[3], TRUE);
 })
 
+;; Pretend to have the ability to load complex const_int in order to get
+;; better code generation around them.
+(define_insn_and_split ""
+  [(set (match_operand:GPR 0 "register_operand" "=r")
+    (match_operand:GPR 1 "splittable_const_int_operand" "i"))]
+  "cse_not_expected"
+  "#"
+  "&& 1"
+  [(const_int 0)]
+
+{
+  riscv_move_integer (operands[0], operands[0], INTVAL (operands[1]),
+		      <GPR:MODE>mode, TRUE);
+  DONE;
+})
+
 ;; 64-bit integer moves
 
 (define_expand "movdi"
