@@ -5559,6 +5559,55 @@ mem_ref_refers_to_non_mem_p (tree ref)
   return non_mem_decl_p (base);
 }
 
+/* Sub routine of expand_assignment, invoked when assigning from a
+   parameter or assigning to a return val on struct type which may
+   be passed through registers.  The mode of register is used to
+   move the content for the assignment.
+
+   This routine generates code for expression FROM which is BLKmode,
+   and move the generated content to TO_RTX by su-blocks in SUB_MODE.  */
+
+static void
+move_sub_blocks (rtx to_rtx, tree from, machine_mode sub_mode, bool nontemporal)
+{
+  HOST_WIDE_INT size, sub_size;
+  int len;
+
+  gcc_assert (MEM_P (to_rtx));
+
+  size = MEM_SIZE (to_rtx).to_constant ();
+  sub_size = GET_MODE_SIZE (sub_mode).to_constant ();
+  len = size / sub_size;
+
+  /* It would be not profitable to move through sub-modes, if the size does
+     not meet register mode.  */
+  if ((size % sub_size) != 0)
+    {
+      push_temp_slots ();
+      rtx result = store_expr (from, to_rtx, 0, nontemporal, false);
+      preserve_temp_slots (result);
+      pop_temp_slots ();
+      return;
+    }
+
+  push_temp_slots ();
+
+  rtx from_rtx;
+  from_rtx = expand_expr (from, NULL_RTX, GET_MODE (to_rtx), EXPAND_NORMAL);
+  for (int i = 0; i < len; i++)
+    {
+      rtx temp = gen_reg_rtx (sub_mode);
+      rtx src = adjust_address (from_rtx, sub_mode, sub_size * i);
+      rtx dest = adjust_address (to_rtx, sub_mode, sub_size * i);
+      emit_move_insn (temp, src);
+      emit_move_insn (dest, temp);
+    }
+
+  preserve_temp_slots (to_rtx);
+  pop_temp_slots ();
+  return;
+}
+
 /* Expand an assignment that stores the value of FROM into TO.  If NONTEMPORAL
    is true, try generating a nontemporal store.  */
 
@@ -6042,6 +6091,38 @@ expand_assignment (tree to, tree from, bool nontemporal)
 
       preserve_temp_slots (to_rtx);
       pop_temp_slots ();
+      return;
+    }
+
+  /* If it is assigning from a struct param which may be passed via registers,
+     It would be better to use the register's mode to move sub-blocks for the
+     assignment.  */
+  if (TREE_CODE (from) == PARM_DECL && mode == BLKmode
+      && DECL_STACK_REGS_P (from))
+    {
+      rtx parm = DECL_INCOMING_RTL (from);
+      gcc_assert (REG_P (parm) || GET_CODE (parm) == PARALLEL);
+
+      machine_mode sub_mode;
+      if (REG_P (parm))
+	sub_mode = word_mode;
+      else
+	sub_mode = GET_MODE (XEXP (XVECEXP (parm, 0, 0), 0));
+
+      move_sub_blocks (to_rtx, from, sub_mode, nontemporal);
+      return;
+    }
+
+  /* If it is assigning to a struct var which will be returned, and the
+     function is returning via registers, it would be better to use the
+     register's mode to move sub-blocks for the assignment.  */
+  if (VAR_P (to) && DECL_USEDBY_RETURN_P (to) && mode == BLKmode
+      && TREE_CODE (from) != CONSTRUCTOR
+      && GET_CODE (DECL_RTL (DECL_RESULT (current_function_decl))) == PARALLEL)
+    {
+      rtx ret = DECL_RTL (DECL_RESULT (current_function_decl));
+      machine_mode sub_mode = GET_MODE (XEXP (XVECEXP (ret, 0, 0), 0));
+      move_sub_blocks (to_rtx, from, sub_mode, nontemporal);
       return;
     }
 
