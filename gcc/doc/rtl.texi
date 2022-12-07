@@ -2142,7 +2142,7 @@ stores the lower 2 bytes of @var{y} in @var{x} and discards the upper
 (set @var{z} (subreg:SI (reg:HI @var{x}) 0))
 @end smallexample
 
-would set the lower two bytes of @var{z} to @var{y} and set the upper
+would set the lower two bytes of @var{z} to @var{x} and set the upper
 two bytes to an unknown value assuming @code{SUBREG_PROMOTED_VAR_P} is
 false.
 
