@@ -21670,6 +21670,11 @@ cp_parser_using_declaration (cp_parser* parser,
 
   cp_warn_deprecated_use_scopes (qscope);
 
+  if (access_declaration_p && !MAYBE_CLASS_TYPE_P (qscope))
+    /* If the qualifying scope of an access-declaration isn't possibly
+       a class type then it must be invalid.  */
+    cp_parser_simulate_error (parser);
+
   if (access_declaration_p && cp_parser_error_occurred (parser))
     /* Something has already gone wrong; there's no need to parse
        further.  Since an error has occurred, the return value of
