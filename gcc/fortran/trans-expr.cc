@@ -11654,9 +11654,11 @@ gfc_trans_assignment_1 (gfc_expr * expr1, gfc_expr * expr2, bool init_flag,
 
   /* Only analyze the expressions for coarray properties, when in coarray-lib
      mode.  */
+  bool lhs_codimension = false;
   if (flag_coarray == GFC_FCOARRAY_LIB)
     {
       lhs_caf_attr = gfc_caf_attr (expr1, false, &lhs_refs_comp);
+      lhs_codimension = lhs_caf_attr.codimension;
       rhs_caf_attr = gfc_caf_attr (expr2, false, &rhs_refs_comp);
     }
 
@@ -11738,7 +11740,7 @@ gfc_trans_assignment_1 (gfc_expr * expr1, gfc_expr * expr2, bool init_flag,
 
   /* Translate the expression.  */
   rse.want_coarray = flag_coarray == GFC_FCOARRAY_LIB && init_flag
-      && lhs_caf_attr.codimension;
+      && lhs_codimension;
   gfc_conv_expr (&rse, expr2);
 
   /* Deal with the case of a scalar class function assigned to a derived type.  */
@@ -11913,7 +11915,7 @@ gfc_trans_assignment_1 (gfc_expr * expr1, gfc_expr * expr2, bool init_flag,
 	}
     }
   else if (flag_coarray == GFC_FCOARRAY_LIB
-	   && lhs_caf_attr.codimension && rhs_caf_attr.codimension
+	   && lhs_codimension && rhs_caf_attr.codimension
 	   && ((lhs_caf_attr.allocatable && lhs_refs_comp)
 	       || (rhs_caf_attr.allocatable && rhs_refs_comp)))
     {

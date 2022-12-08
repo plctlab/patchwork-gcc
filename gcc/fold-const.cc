@@ -4559,7 +4559,6 @@ optimize_bit_field_compare (location_t loc, enum tree_code code,
 {
   poly_int64 plbitpos, plbitsize, rbitpos, rbitsize;
   HOST_WIDE_INT lbitpos, lbitsize, nbitpos, nbitsize;
-  tree type = TREE_TYPE (lhs);
   tree unsigned_type;
   int const_p = TREE_CODE (rhs) == INTEGER_CST;
   machine_mode lmode, rmode;
@@ -4667,13 +4666,7 @@ optimize_bit_field_compare (location_t loc, enum tree_code code,
     }
 
   /* Otherwise, we are handling the constant case.  See if the constant is too
-     big for the field.  Warn and return a tree for 0 (false) if so.  We do
-     this not only for its own sake, but to avoid having to test for this
-     error case below.  If we didn't, we might generate wrong code.
-
-     For unsigned fields, the constant shifted right by the field length should
-     be all zero.  For signed fields, the high-order bits should agree with
-     the sign bit.  */
+     big for the field.  Warn and return a tree for 0 (false) if so.  */
 
   if (lunsignedp)
     {
@@ -4695,31 +4688,9 @@ optimize_bit_field_compare (location_t loc, enum tree_code code,
 	}
     }
 
-  if (nbitpos < 0)
-    return 0;
-
-  /* Single-bit compares should always be against zero.  */
-  if (lbitsize == 1 && ! integer_zerop (rhs))
-    {
-      code = code == EQ_EXPR ? NE_EXPR : EQ_EXPR;
-      rhs = build_int_cst (type, 0);
-    }
-
-  /* Make a new bitfield reference, shift the constant over the
-     appropriate number of bits and mask it with the computed mask
-     (in case this was a signed field).  If we changed it, make a new one.  */
-  lhs = make_bit_field_ref (loc, linner, lhs, unsigned_type,
-			    nbitsize, nbitpos, 1, lreversep);
-
-  rhs = const_binop (BIT_AND_EXPR,
-		     const_binop (LSHIFT_EXPR,
-				  fold_convert_loc (loc, unsigned_type, rhs),
-				  size_int (lbitpos)),
-		     mask);
-
-  lhs = build2_loc (loc, code, compare_type,
-		    build2 (BIT_AND_EXPR, unsigned_type, lhs, mask), rhs);
-  return lhs;
+  /* Otherwise do not prematurely optimize compares of bitfield members
+     to constants.  */
+  return 0;
 }
 
 /* Subroutine for fold_truth_andor_1: decode a field reference.
