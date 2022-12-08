@@ -4,6 +4,7 @@
 
 // Check that we call the basic_string constructor once (and define it once).
 // { dg-final { scan-tree-dump-times {>::basic_string} 2 "gimple" } }
+// { dg-final { scan-tree-dump {static const char.*72} "gimple" } }
 
 #include <string>
 

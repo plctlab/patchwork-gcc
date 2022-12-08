@@ -3221,6 +3221,11 @@ extern void decl_fini_priority_insert (tree, priority_type);
 #define DECL_NONALIASED(NODE) \
   (VAR_DECL_CHECK (NODE)->base.nothrow_flag)
 
+/* In a VAR_DECL, nonzero if this variable is not observable by user code (and
+   so e.g. it can be promoted to static even if it's addressable).  */
+#define DECL_NOT_OBSERVABLE(NODE) \
+  (VAR_DECL_CHECK (NODE)->decl_common.decl_flag_3)
+
 /* This field is used to reference anything in decl.result and is meant only
    for use by the garbage collector.  */
 #define DECL_RESULT_FLD(NODE) \

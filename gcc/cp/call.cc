@@ -4247,7 +4247,9 @@ maybe_init_list_as_array (tree elttype, tree init)
 
   init_elttype = cp_build_qualified_type (init_elttype, TYPE_QUAL_CONST);
   tree arr = build_array_of_n_type (init_elttype, CONSTRUCTOR_NELTS (init));
-  return finish_compound_literal (arr, init, tf_none);
+  arr = finish_compound_literal (arr, init, tf_none);
+  DECL_NOT_OBSERVABLE (TARGET_EXPR_SLOT (arr)) = true;
+  return arr;
 }
 
 /* If we were going to call e.g. vector(initializer_list<string>) starting
