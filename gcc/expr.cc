@@ -9168,32 +9168,38 @@ expand_expr_divmod (tree_code code, machine_mode mode, tree treeop0,
       do_pending_stack_adjust ();
       start_sequence ();
       rtx uns_ret = expand_divmod (mod_p, code, mode, treeop0, treeop1,
-				   op0, op1, target, 1);
+				   op0, op1, target, 1, OPTAB_WIDEN);
       rtx_insn *uns_insns = get_insns ();
       end_sequence ();
       start_sequence ();
       rtx sgn_ret = expand_divmod (mod_p, code, mode, treeop0, treeop1,
-				   op0, op1, target, 0);
+				   op0, op1, target, 0, OPTAB_WIDEN);
       rtx_insn *sgn_insns = get_insns ();
       end_sequence ();
-      unsigned uns_cost = seq_cost (uns_insns, speed_p);
-      unsigned sgn_cost = seq_cost (sgn_insns, speed_p);
 
-      /* If costs are the same then use as tie breaker the other other
-	 factor.  */
-      if (uns_cost == sgn_cost)
-	{
-	  uns_cost = seq_cost (uns_insns, !speed_p);
-	  sgn_cost = seq_cost (sgn_insns, !speed_p);
-	}
+      /* Do not try to optimize if any of the sequences tried above
+         resulted in a funcall.  */
+      if (uns_ret && sgn_ret)
+        {
+          unsigned uns_cost = seq_cost (uns_insns, speed_p);
+          unsigned sgn_cost = seq_cost (sgn_insns, speed_p);
 
-      if (uns_cost < sgn_cost || (uns_cost == sgn_cost && unsignedp))
-	{
-	  emit_insn (uns_insns);
-	  return uns_ret;
-	}
-      emit_insn (sgn_insns);
-      return sgn_ret;
+          /* If costs are the same then use as tie breaker the other
+             other factor.  */
+          if (uns_cost == sgn_cost)
+            {
+              uns_cost = seq_cost (uns_insns, !speed_p);
+              sgn_cost = seq_cost (sgn_insns, !speed_p);
+            }
+
+          if (uns_cost < sgn_cost || (uns_cost == sgn_cost && unsignedp))
+            {
+              emit_insn (uns_insns);
+              return uns_ret;
+            }
+          emit_insn (sgn_insns);
+          return sgn_ret;
+        }
     }
   return expand_divmod (mod_p, code, mode, treeop0, treeop1,
 			op0, op1, target, unsignedp);
