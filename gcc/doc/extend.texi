@@ -11374,6 +11374,22 @@ constant.  Used to select the specified bit position.
 @item @code{x} @tab Equivialent to @code{X}, but only for pointers.
 @end multitable
 
+@anchor{loongarchOperandmodifiers}
+@subsubsection LoongArch Operand Modifiers
+
+The list below describes the supported modifiers and their effects for LoongArch.
+
+@multitable @columnfractions .10 .90
+@headitem Modifier @tab Description
+@item @code{c} @tab Print a constant integer operand in decimal.
+@item @code{d} @tab Same as @code{c}.
+@item @code{i} @tab Print the character ''@code{i}'' if the operand is not a register.
+@item @code{m} @tab Same as @code{c}, but the printed value is @code{operand - 1}.
+@item @code{X} @tab Print a constant integer operand in hexadecimal.
+@item @code{z} @tab Print the operand in its unmodified form, followed by a comma.
+@end multitable
+
+
 @lowersections
 @include md.texi
 @raisesections
