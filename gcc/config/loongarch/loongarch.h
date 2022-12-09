@@ -50,6 +50,17 @@ along with GCC; see the file COPYING3.  If not see
 /* Driver native functions for SPEC processing in the GCC driver.  */
 #include "loongarch-driver.h"
 
+/* Support for a compile-time default CPU, et cetera.  The rules are:
+   --with-arch is ignored if -march is specified.
+   --with-tune is ignored if -mtune is specified.
+   --with-abi is ignored if -mabi is specified.
+   --with-fpu is ignored if -mfpu is specified. */
+#define OPTION_DEFAULT_SPECS \
+  {"arch", "%{!march=*:-march=%(VALUE)}" }, \
+  {"tune", "%{!mtune=*:-mtune=%(VALUE)}" }, \
+  {"abi", "%{!mabi=*:-mabi=%(VALUE)}" }, \
+  {"fpu", "%{!mfpu=*:-mfpu=%(VALUE)}" }, \
+
 /* This definition replaces the formerly used 'm' constraint with a
    different constraint letter in order to avoid changing semantics of
    the 'm' constraint when accepting new address formats in
