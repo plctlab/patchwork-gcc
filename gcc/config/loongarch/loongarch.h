@@ -47,8 +47,14 @@ along with GCC; see the file COPYING3.  If not see
 
 #define TARGET_LIBGCC_SDATA_SECTION ".sdata"
 
-/* Driver native functions for SPEC processing in the GCC driver.  */
-#include "loongarch-driver.h"
+/* ABI spec strings.  */
+#define ABI_GRLEN_SPEC \
+  "%{mabi=lp64*:64}"   \
+
+#define ABI_SPEC \
+  "%{mabi=lp64d:lp64d}" \
+  "%{mabi=lp64f:lp64f}" \
+  "%{mabi=lp64s:lp64s}" \
 
 /* Support for a compile-time default CPU, et cetera.  The rules are:
    --with-arch is ignored if -march is specified.
