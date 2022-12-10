@@ -1864,6 +1864,26 @@ _cpp_valid_utf8 (cpp_reader *pfile,
   return true;
 }
 
+/*  Detect whether a C-string is a valid UTF-8-encoded set of bytes. Returns
+    `false` if any contained byte sequence encodes an invalid Unicode codepoint
+    or is not a valid UTF-8 sequence. Returns `true` otherwise. */
+
+extern bool
+_cpp_valid_utf8_str (const char *name)
+{
+  const uchar* in = (const uchar*)name;
+  size_t len = strlen (name);
+  cppchar_t cp;
+
+  while (*in)
+    {
+      if (one_utf8_to_cppchar (&in, &len, &cp))
+	return false;
+    }
+
+  return true;
+}
+
 /* Subroutine of convert_hex and convert_oct.  N is the representation
    in the execution character set of a numeric escape; write it into the
    string buffer TBUF and update the end-of-string pointer therein.  WIDE
