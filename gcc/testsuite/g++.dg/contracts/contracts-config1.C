@@ -24,13 +24,13 @@ int main(int, char **)
   return 0;
 }
 
-// { dg-output "default std::handle_contract_violation called: .*main false default default 1.*(\n|\r\n|\r)*" }
-// { dg-output "default std::handle_contract_violation called: .*main false default default 1.*(\n|\r\n|\r)*" }
-// { dg-output "default std::handle_contract_violation called: .*main false audit default 1.*(\n|\r\n|\r)*" }
-// { dg-output "default std::handle_contract_violation called: .*main false default new_role 1.*(\n|\r\n|\r)*" }
-// { dg-output "default std::handle_contract_violation called: .*main false default new_role 1.*(\n|\r\n|\r)*" }
-// { dg-output "default std::handle_contract_violation called: .*main false audit new_role 1.*(\n|\r\n|\r)*" }
-// { dg-output "default std::handle_contract_violation called: .*main false   1.*(\n|\r\n|\r)*" }
-// { dg-output "default std::handle_contract_violation called: .*main false default default 1.*(\n|\r\n|\r)*" }
-// { dg-output "default std::handle_contract_violation called: .*main false audit default 1.*(\n|\r\n|\r)*" }
-
+// { dg-output "contract violation in function main at .*C:14: false(\n|\r\n|\r)*\\\[level:default, role:default, continuation mode:maybe\\\](\n|\r\n|\r)*" }
+// { dg-output "contract violation in function main at .*C:15: false(\n|\r\n|\r)*\\\[level:default, role:default, continuation mode:maybe\\\](\n|\r\n|\r)*" }
+// { dg-output "contract violation in function main at .*C:16: false(\n|\r\n|\r)*\\\[level:audit, role:default, continuation mode:maybe\\\](\n|\r\n|\r)*" }
+// { dg-output "contract violation in function main at .*C:17: false(\n|\r\n|\r)*\\\[level:default, role:new_role, continuation mode:maybe\\\](\n|\r\n|\r)*" }
+// { dg-output "contract violation in function main at .*C:18: false(\n|\r\n|\r)*\\\[level:default, role:new_role, continuation mode:maybe\\\](\n|\r\n|\r)*" }
+// { dg-output "contract violation in function main at .*C:19: false(\n|\r\n|\r)*\\\[level:audit, role:new_role, continuation mode:maybe\\\](\n|\r\n|\r)*" }
+// { dg-output "contract violation in function main at .*C:20: false(\n|\r\n|\r)*\\\[level:, role:, continuation mode:maybe\\\](\n|\r\n|\r)*" }
+// { dg-output "contract violation in function main at .*C:21: false(\n|\r\n|\r)*\\\[level:default, role:default, continuation mode:maybe\\\](\n|\r\n|\r)*" }
+// { dg-output "contract violation in function main at .*C:22: false(\n|\r\n|\r)*\\\[level:audit, role:default, continuation mode:maybe\\\](\n|\r\n|\r)*" }
+// { dg-output "contract violation in function fun at .*C:7: r > 0(\n|\r\n|\r)*\\\[level:default, role:default, continuation mode:maybe\\\](\n|\r\n|\r)*" }
