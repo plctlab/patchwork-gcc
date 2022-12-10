@@ -161,6 +161,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "tree-iterator.h"
 #include "print-tree.h"
 #include "stor-layout.h"
+#include "cgraph.h"
 
 const int max_custom_roles = 32;
 static contract_role contract_build_roles[max_custom_roles] = {
@@ -1451,6 +1452,8 @@ build_contract_condition_function (tree fndecl, bool pre)
     TREE_TYPE (fn) = build_method_type (class_type, TREE_TYPE (fn));
 
   DECL_NAME (fn) = copy_node (DECL_NAME (fn));
+  auto suffix = pre ? "pre" : "post";
+  SET_DECL_ASSEMBLER_NAME (fn, clone_function_name (fn, suffix));
   DECL_INITIAL (fn) = error_mark_node;
   DECL_ABSTRACT_ORIGIN (fn) = fndecl;
 
