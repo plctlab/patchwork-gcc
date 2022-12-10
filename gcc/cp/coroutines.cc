@@ -32,6 +32,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "tree.h"
 #include "gcc-rich-location.h"
 #include "hash-map.h"
+#include "cgraph.h"
 
 static bool coro_promise_type_found_p (tree, location_t);
 
@@ -4059,6 +4060,17 @@ coro_build_actor_or_destroy_function (tree orig, tree fn_type,
 	info->actor_decl = fn;
       else
 	info->destroy_decl = fn;
+    }
+  /* If the function is extern "C" the mangler will not be called.  */
+  if (DECL_EXTERN_C_P (orig))
+    {
+      /* clone_function_name () picks up the name from DECL_ASSEMBLER_NAME
+	 which is not yet set here.  */
+      SET_DECL_ASSEMBLER_NAME (fn, DECL_NAME (orig));
+      if (actor_p)
+	SET_DECL_ASSEMBLER_NAME (fn, clone_function_name (fn, "actor"));
+      else
+	SET_DECL_ASSEMBLER_NAME (fn, clone_function_name (fn, "destroy"));
     }
   return fn;
 }
