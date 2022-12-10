@@ -34,12 +34,17 @@ int main(int, char**) {
 
 // { dg-output "G5 full double double, f gen R(\n|\r\n|\r)*" }
 // { dg-output "G5 full double double, f gen R(\n|\r\n|\r)*" }
-// { dg-output "default std::handle_contract_violation called: .*.C 10 G5<int, .* t > 0 .*(\n|\r\n|\r)*" }
-// { dg-output "default std::handle_contract_violation called: .*.C 10 G5<int, .* s > 0 .*(\n|\r\n|\r)*" }
-// { dg-output "default std::handle_contract_violation called: .*.C 10 G5<int, .* r > 0 .*(\n|\r\n|\r)*" }
+// { dg-output "contract violation in function G5<int, double>::f<int> at g\\+\\+.dg/contracts/contracts-tmpl-spec3.C:10: t > 0(\n|\r\n|\r)*" }
+// { dg-output "\\\[level:default, role:default, continuation mode:maybe\\\](\n|\r\n|\r)*" }
+// { dg-output "contract violation in function G5<int, double>::f<int> at g\\+\\+.dg/contracts/contracts-tmpl-spec3.C:10: s > 0(\n|\r\n|\r)*" }
+// { dg-output "\\\[level:default, role:default, continuation mode:maybe\\\](\n|\r\n|\r)*" }
+// { dg-output "contract violation in function G5<int, double>::f<int> at g\\+\\+.dg/contracts/contracts-tmpl-spec3.C:10: r > 0(\n|\r\n|\r)*" }
+// { dg-output "\\\[level:default, role:default, continuation mode:maybe\\\](\n|\r\n|\r)*" }
 // { dg-output "G5 gen T S, f gen R(\n|\r\n|\r)*" }
-// { dg-output "default std::handle_contract_violation called: .*.C 10 G5<int, .* t > 0 .*(\n|\r\n|\r)*" }
-// { dg-output "default std::handle_contract_violation called: .*.C 10 G5<int, .* s > 0 .*(\n|\r\n|\r)*" }
-// { dg-output "default std::handle_contract_violation called: .*.C 10 G5<int, .* r > 0 .*(\n|\r\n|\r)*" }
+// { dg-output "contract violation in function G5<int, double>::f<double> at g\\+\\+.dg/contracts/contracts-tmpl-spec3.C:10: t > 0(\n|\r\n|\r)*" }
+// { dg-output "\\\[level:default, role:default, continuation mode:maybe\\\](\n|\r\n|\r)*" }
+// { dg-output "contract violation in function G5<int, double>::f<double> at g\\+\\+.dg/contracts/contracts-tmpl-spec3.C:10: s > 0(\n|\r\n|\r)*" }
+// { dg-output "\\\[level:default, role:default, continuation mode:maybe\\\](\n|\r\n|\r)*" }
+// { dg-output "contract violation in function G5<int, double>::f<double> at g\\+\\+.dg/contracts/contracts-tmpl-spec3.C:10: r > 0(\n|\r\n|\r)*" }
+// { dg-output "\\\[level:default, role:default, continuation mode:maybe\\\](\n|\r\n|\r)*" }
 // { dg-output "G5 gen T S, f gen R(\n|\r\n|\r)*" }
-
