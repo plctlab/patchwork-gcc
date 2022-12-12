@@ -1352,6 +1352,14 @@ maybe_substitute_reqs_for (tree reqs, const_tree decl)
       tree tmpl = DECL_TI_TEMPLATE (decl);
       tree gargs = generic_targs_for (tmpl);
       processing_template_decl_sentinel s;
+      if (PRIMARY_TEMPLATE_P (tmpl))
+	{
+	  if (TEMPLATE_ARGS_DEPTH (gargs) == 1)
+	    return reqs;
+	  ++processing_template_decl;
+	  gargs = copy_node (gargs);
+	  --TREE_VEC_LENGTH (gargs);
+	}
       if (uses_template_parms (gargs))
 	++processing_template_decl;
       reqs = tsubst_constraint (reqs, gargs,
