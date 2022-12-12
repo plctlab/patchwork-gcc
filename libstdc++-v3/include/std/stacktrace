@@ -217,8 +217,15 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       int __status;
       char* __str = __cxxabiv1::__cxa_demangle(__name, nullptr, nullptr,
 					       &__status);
-      if (__status == 0)
+      switch (__status)
+      {
+      case 0:
 	__s = __str;
+	break;
+      case -2:
+	__s = __name;
+	break;
+      }
       __builtin_free(__str);
       return __s;
     }
