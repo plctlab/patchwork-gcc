@@ -41398,36 +41398,64 @@ static void
 cp_parser_omp_allocate (cp_parser *parser, cp_token *pragma_tok)
 {
   tree allocator = NULL_TREE;
+  tree alignment = NULL_TREE;
   location_t loc = pragma_tok->location;
   tree nl = cp_parser_omp_var_list (parser, OMP_CLAUSE_ALLOCATE, NULL_TREE);
 
-  if (cp_lexer_next_token_is (parser->lexer, CPP_COMMA)
-      && cp_lexer_nth_token_is (parser->lexer, 2, CPP_NAME))
-    cp_lexer_consume_token (parser->lexer);
-
-  if (cp_lexer_next_token_is (parser->lexer, CPP_NAME))
+  do
     {
+      if (cp_lexer_next_token_is (parser->lexer, CPP_COMMA)
+	  && cp_lexer_nth_token_is (parser->lexer, 2, CPP_NAME))
+	cp_lexer_consume_token (parser->lexer);
+
+      if (!cp_lexer_next_token_is (parser->lexer, CPP_NAME))
+	break;
       matching_parens parens;
       tree id = cp_lexer_peek_token (parser->lexer)->u.value;
       const char *p = IDENTIFIER_POINTER (id);
       location_t cloc = cp_lexer_peek_token (parser->lexer)->location;
       cp_lexer_consume_token (parser->lexer);
-      if (strcmp (p, "allocator") != 0)
-	error_at (cloc, "expected %<allocator%>");
-      else if (parens.require_open (parser))
+      if (strcmp (p, "allocator") != 0 && strcmp (p, "align") != 0)
 	{
-	  allocator = cp_parser_assignment_expression (parser);
-	  if (allocator == error_mark_node)
-	    allocator = NULL_TREE;
-	  parens.require_close (parser);
+	  error_at (cloc, "expected %<allocator%> or %<align%>");
+	  break;
 	}
-    }
+      if (!parens.require_open (parser))
+	break;
+      tree expr = cp_parser_assignment_expression (parser);
+      if (p[2] == 'i' && alignment)
+	{
+	  error_at (cloc, "too many %qs clauses", "align");
+	  break;
+	}
+      else if (p[2] == 'i')
+	{
+	  if (expr != error_mark_node)
+	    alignment = expr;
+	}
+      else if (allocator)
+	{
+	  error_at (cloc, "too many %qs clauses", "allocator");
+	  break;
+	}
+      else
+	{
+	  if (expr != error_mark_node)
+	    allocator = expr;
+	}
+      parens.require_close (parser);
+    } while (true);
   cp_parser_require_pragma_eol (parser, pragma_tok);
 
-  if (allocator)
+  if (allocator || alignment)
     for (tree c = nl; c != NULL_TREE; c = OMP_CLAUSE_CHAIN (c))
-      OMP_CLAUSE_ALLOCATE_ALLOCATOR (c) = allocator;
+      {
+	OMP_CLAUSE_ALLOCATE_ALLOCATOR (c) = allocator;
+	OMP_CLAUSE_ALLOCATE_ALIGN (c) = alignment;
+      }
 
+  /* align/allocator needs same check as the modifiers to the
+     'allocator' clause in semantics.cc's finish_omp_clauses.  */
   sorry_at (loc, "%<#pragma omp allocate%> not yet supported");
 }
 
