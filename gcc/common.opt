@@ -2552,6 +2552,12 @@ frounding-math
 Common Var(flag_rounding_math) Optimization SetByCombined
 Disable optimizations that assume default FP rounding behavior.
 
+; This option applies to Rust only, but is defined 'Common' here, so that it's
+; generally accepted without "is valid for Rust but not for [...]" diagnostic.
+frust-incomplete-and-experimental-compiler-do-not-use
+Common Var(flag_rust_experimental)
+Enable experimental compilation of Rust files at your own risk.
+
 fsched-interblock
 Common Var(flag_schedule_interblock) Init(1) Optimization
 Enable scheduling across basic blocks.
