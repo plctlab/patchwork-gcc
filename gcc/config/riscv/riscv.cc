@@ -1003,6 +1003,46 @@ riscv_v_adjust_nunits (machine_mode mode, int scale)
   return scale;
 }
 
+/* Call from ADJUST_BYTESIZE in riscv-modes.def. Return the correct
+   BYTES for corresponding MODE_VECTOR_BOOL machine_mode.  */
+
+poly_int64
+riscv_v_adjust_bytesize (machine_mode mode, int scale)
+{
+  /* According to RVV ISA, each BOOL element occupy 1-bit.
+     However, GCC assume each BOOL element occupy at least
+     1-bytes. ??? TODO: Maybe we can adjust it and support
+     1-bit BOOL in the future ????
+
+     One solution is to adjust all MODE_VECTOR_BOOL with
+     the same size which is LMUL = 1. However, for VNx1BImode
+     which only occupy a small fractional bytes of a single
+     LMUL = 1 size that is wasting memory usage and increasing
+     memory access traffic.
+
+     Ideally, a RVV mask datatype like 'vbool64_t' for example
+     which is VNx1BI when TARGET_MIN_VLEN > 32 should be the
+     BYTESIZE of 1/8 of vint8mf8_t (VNx1QImode) according to RVV
+     ISA. However, GCC can not support 1-bit bool value, we can
+     only adjust the BYTESIZE to the smallest size which the
+     BYTESIZE of vint8mf8_t (VNx1QImode).
+
+     Base on this circumstance, we can model MODE_VECOR_BOOL
+     as small bytesize as possible so that we could reduce
+     memory traffic and memory consuming.  */
+
+  /* Only adjust BYTESIZE of RVV mask mode.  */
+  gcc_assert (GET_MODE_CLASS (mode) == MODE_VECTOR_BOOL);
+  if (riscv_v_ext_vector_mode_p (mode))
+    {
+      if (known_lt (GET_MODE_SIZE (mode), BYTES_PER_RISCV_VECTOR))
+	return GET_MODE_SIZE (mode);
+      else
+	return BYTES_PER_RISCV_VECTOR;
+    }
+  return scale;
+}
+
 /* Return true if X is a valid address for machine mode MODE.  If it is,
    fill in INFO appropriately.  STRICT_P is true if REG_OK_STRICT is in
    effect.  */
@@ -5759,6 +5799,27 @@ riscv_hard_regno_mode_ok (unsigned int regno, machine_mode mode)
 static bool
 riscv_modes_tieable_p (machine_mode mode1, machine_mode mode2)
 {
+  if (riscv_v_ext_vector_mode_p (mode1) && riscv_v_ext_vector_mode_p (mode2))
+    {
+      /* Base on the riscv_v_adjust_bytesize, RVV mask mode is not
+	 accurately modeled. For example, we model VNx1BI as the
+	 BYTESIZE of VNx1QImode even though VNx1BI should be the
+	 1/8 of VNx1QImode BYTESIZE. We shouldn't allow them to be
+	 tieable each other since it produce incorrect codegen.
+
+	 For example:
+	   if (cond == 0) {
+	    vint8mf8_t v = *(vint8mf8_t*)in;
+	   } else {
+	    vbool64_t v = *(vbool64_t*)in;
+	   }
+	 GCC will tie them together which is incorrect since they
+	 are the same BYTESIZE.  */
+      if (GET_MODE_CLASS (mode1) == MODE_VECTOR_BOOL
+	  || GET_MODE_CLASS (mode2) == MODE_VECTOR_BOOL)
+	return mode1 == mode2;
+      return known_eq (GET_MODE_SIZE (mode1), GET_MODE_SIZE (mode2));
+    }
   return (mode1 == mode2
 	  || !(GET_MODE_CLASS (mode1) == MODE_FLOAT
 	       && GET_MODE_CLASS (mode2) == MODE_FLOAT));
