@@ -73,6 +73,17 @@ static GTY(()) tree ic_tuple_var;
 static GTY(()) tree ic_tuple_counters_field;
 static GTY(()) tree ic_tuple_callee_field;
 
+/* If the user selected atomic profile counter updates
+   (-fprofile-update=atomic), then the counter updates will be done atomically.
+   Ideally, this is done through atomic operations in hardware.  If the
+   hardware supports only 32-bit atomic increments and gcov_type_node is a
+   64-bit integer type, then for the profile edge counters the increment is
+   performed through two separate 32-bit atomic increments.  This case is
+   indicated by the split_atomic_increment variable begin true.  If the
+   hardware does not support atomic operations at all, then a library call to
+   libatomic is emitted.  */
+static bool split_atomic_increment;
+
 /* Do initialization work for the edge profiler.  */
 
 /* Add code:
@@ -242,30 +253,59 @@ gimple_init_gcov_profiler (void)
 void
 gimple_gen_edge_profiler (int edgeno, edge e)
 {
-  tree one;
-
-  one = build_int_cst (gcov_type_node, 1);
+  const char *name = "PROF_edge_counter";
+  tree ref = tree_coverage_counter_ref (GCOV_COUNTER_ARCS, edgeno);
+  tree one = build_int_cst (gcov_type_node, 1);
 
   if (flag_profile_update == PROFILE_UPDATE_ATOMIC)
     {
-      /* __atomic_fetch_add (&counter, 1, MEMMODEL_RELAXED); */
-      tree addr = tree_coverage_counter_addr (GCOV_COUNTER_ARCS, edgeno);
-      tree f = builtin_decl_explicit (TYPE_PRECISION (gcov_type_node) > 32
-				      ? BUILT_IN_ATOMIC_FETCH_ADD_8:
-				      BUILT_IN_ATOMIC_FETCH_ADD_4);
-      gcall *stmt = gimple_build_call (f, 3, addr, one,
-				       build_int_cst (integer_type_node,
-						      MEMMODEL_RELAXED));
-      gsi_insert_on_edge (e, stmt);
+      tree addr = build_fold_addr_expr (ref);
+      tree relaxed = build_int_cst (integer_type_node, MEMMODEL_RELAXED);
+      if (!split_atomic_increment)
+	{
+	  /* __atomic_fetch_add (&counter, 1, MEMMODEL_RELAXED); */
+	  tree f = builtin_decl_explicit (TYPE_PRECISION (gcov_type_node) > 32
+					  ? BUILT_IN_ATOMIC_FETCH_ADD_8:
+					  BUILT_IN_ATOMIC_FETCH_ADD_4);
+	  gcall *stmt = gimple_build_call (f, 3, addr, one, relaxed);
+	  gsi_insert_on_edge (e, stmt);
+	}
+      else
+	{
+	  /* low = __atomic_add_fetch_4 (addr, 1, MEMMODEL_RELAXED);
+	     high_inc = low == 0 ? 1 : 0;
+	     __atomic_add_fetch_4 (addr_high, high_inc, MEMMODEL_RELAXED); */
+	  tree zero32 = build_zero_cst (uint32_type_node);
+	  tree one32 = build_one_cst (uint32_type_node);
+	  tree addr_high = make_temp_ssa_name (TREE_TYPE (addr), NULL, name);
+	  gimple *stmt = gimple_build_assign (addr_high, POINTER_PLUS_EXPR,
+					      addr,
+					      build_int_cst (size_type_node,
+							     4));
+	  gsi_insert_on_edge (e, stmt);
+	  if (WORDS_BIG_ENDIAN)
+	    std::swap (addr, addr_high);
+	  tree f = builtin_decl_explicit (BUILT_IN_ATOMIC_ADD_FETCH_4);
+	  stmt = gimple_build_call (f, 3, addr, one, relaxed);
+	  tree low = make_temp_ssa_name (uint32_type_node, NULL, name);
+	  gimple_call_set_lhs (stmt, low);
+	  gsi_insert_on_edge (e, stmt);
+	  tree is_zero = make_temp_ssa_name (boolean_type_node, NULL, name);
+	  stmt = gimple_build_assign (is_zero, EQ_EXPR, low, zero32);
+	  gsi_insert_on_edge (e, stmt);
+	  tree high_inc = make_temp_ssa_name (uint32_type_node, NULL, name);
+	  stmt = gimple_build_assign (high_inc, COND_EXPR, is_zero, one32,
+				      zero32);
+	  gsi_insert_on_edge (e, stmt);
+	  stmt = gimple_build_call (f, 3, addr_high, high_inc, relaxed);
+	  gsi_insert_on_edge (e, stmt);
+	}
     }
   else
     {
-      tree ref = tree_coverage_counter_ref (GCOV_COUNTER_ARCS, edgeno);
-      tree gcov_type_tmp_var = make_temp_ssa_name (gcov_type_node,
-						   NULL, "PROF_edge_counter");
+      tree gcov_type_tmp_var = make_temp_ssa_name (gcov_type_node, NULL, name);
       gassign *stmt1 = gimple_build_assign (gcov_type_tmp_var, ref);
-      gcov_type_tmp_var = make_temp_ssa_name (gcov_type_node,
-					      NULL, "PROF_edge_counter");
+      gcov_type_tmp_var = make_temp_ssa_name (gcov_type_node, NULL, name);
       gassign *stmt2 = gimple_build_assign (gcov_type_tmp_var, PLUS_EXPR,
 					    gimple_assign_lhs (stmt1), one);
       gassign *stmt3 = gimple_build_assign (unshare_expr (ref),
@@ -710,11 +750,8 @@ tree_profiling (void)
 
   if (flag_profile_update == PROFILE_UPDATE_ATOMIC
       && !can_support_atomic)
-    {
-      warning (0, "target does not support atomic profile update, "
-	       "single mode is selected");
-      flag_profile_update = PROFILE_UPDATE_SINGLE;
-    }
+    split_atomic_increment = gcov_type_size == 8
+      && (HAVE_sync_compare_and_swapsi || HAVE_atomic_compare_and_swapsi);
   else if (flag_profile_update == PROFILE_UPDATE_PREFER_ATOMIC)
     flag_profile_update = can_support_atomic
       ? PROFILE_UPDATE_ATOMIC : PROFILE_UPDATE_SINGLE;
