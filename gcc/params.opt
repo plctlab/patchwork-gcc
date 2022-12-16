@@ -218,6 +218,14 @@ The upper bound for sharing integer constants.
 Common Joined UInteger Var(param_ipa_cp_eval_threshold) Init(500) Param Optimization
 Threshold ipa-cp opportunity evaluation that is still considered beneficial to clone.
 
+-param=ipa-guarded-specialization-guard-complexity=
+Common Joined UInteger Var(param_ipa_spec_guard_complexity) Init(2) Param Optimization
+Maximum number of required comparisons for a single specialization guard.
+
+-param=ipa-guarded-specializations-per-edge=
+Common Joined UInteger Var(param_ipa_spec_max_per_edge) Init(3) Param Optimization
+Maximum number of guarded specializations for a single function call.
+
 -param=ipa-cp-loop-hint-bonus=
 Common Joined UInteger Var(param_ipa_cp_loop_hint_bonus) Init(64) Param Optimization
 Compile-time bonus IPA-CP assigns to candidates which make loop bounds or strides known.

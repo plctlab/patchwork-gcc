@@ -271,6 +271,8 @@ lto_output_edge (struct lto_simple_output_block *ob, struct cgraph_edge *edge,
   bp_pack_value (&bp, edge->speculative_id, 16);
   bp_pack_value (&bp, edge->indirect_inlining_edge, 1);
   bp_pack_value (&bp, edge->speculative, 1);
+  bp_pack_value (&bp, edge->specialized, 1);
+  bp_pack_value (&bp, edge->spec_args != NULL, 1);
   bp_pack_value (&bp, edge->call_stmt_cannot_inline_p, 1);
   gcc_assert (!edge->call_stmt_cannot_inline_p
 	      || edge->inline_failed != CIF_BODY_NOT_AVAILABLE);
@@ -295,7 +297,27 @@ lto_output_edge (struct lto_simple_output_block *ob, struct cgraph_edge *edge,
       bp_pack_value (&bp, edge->indirect_info->num_speculative_call_targets,
 		     16);
     }
+
   streamer_write_bitpack (&bp);
+
+  if (edge->spec_args != NULL)
+    {
+      cgraph_specialization_info *spec_info;
+      unsigned len = edge->spec_args->length (), i;
+      streamer_write_uhwi_stream (ob->main_stream, len);
+
+      FOR_EACH_VEC_ELT (*edge->spec_args, i, spec_info)
+	{
+	  unsigned idx = spec_info->arg_idx;
+	  streamer_write_uhwi_stream (ob->main_stream, idx);
+	  streamer_write_hwi_stream (ob->main_stream, spec_info->is_unsigned);
+
+	  if (spec_info->is_unsigned)
+	    streamer_write_uhwi_stream (ob->main_stream, spec_info->cst.uval);
+	  else
+	    streamer_write_hwi_stream (ob->main_stream, spec_info->cst.sval);
+	}
+    }
 }
 
 /* Return if NODE contain references from other partitions.  */
@@ -1517,6 +1539,8 @@ input_edge (class lto_input_block *ib, vec<symtab_node *> nodes,
 
   edge->indirect_inlining_edge = bp_unpack_value (&bp, 1);
   edge->speculative = bp_unpack_value (&bp, 1);
+  edge->specialized = bp_unpack_value (&bp, 1);
+  bool has_edge_spec_args = bp_unpack_value (&bp, 1);
   edge->lto_stmt_uid = stmt_id;
   edge->speculative_id = speculative_id;
   edge->inline_failed = inline_failed;
@@ -1542,6 +1566,28 @@ input_edge (class lto_input_block *ib, vec<symtab_node *> nodes,
       edge->indirect_info->num_speculative_call_targets
 	= bp_unpack_value (&bp, 16);
     }
+
+  if (has_edge_spec_args)
+    {
+      unsigned len = streamer_read_uhwi (ib);
+      vec_alloc (edge->spec_args, len);
+
+      for (unsigned i = 0; i < len; i++)
+	{
+	  cgraph_specialization_info spec_info;
+	  spec_info.arg_idx = streamer_read_uhwi (ib);
+	  spec_info.is_unsigned = streamer_read_hwi (ib);
+
+	  if (spec_info.is_unsigned)
+	    spec_info.cst.uval = streamer_read_uhwi (ib);
+	  else
+	    spec_info.cst.sval = streamer_read_hwi (ib);
+
+	  edge->spec_args->quick_push (spec_info);
+      }
+    }
+  else
+    edge->spec_args = NULL;
 }
 
 
