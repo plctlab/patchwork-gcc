@@ -442,6 +442,12 @@ m2.stage3: stage3-start
 m2.stage4: stage4-start
 	-mv m2/*$(objext) stage4/m2
 
+m2.stageprofile: stageprofile-start
+	-mv m2/*$(objext) stageprofile/m2
+
+m2.stagefeedback: stagefeedback-start
+	-mv m2/*$(objext) stagefeedback/m2
+
 quit: force
 	echo "calling exit"
 	exit 1
