@@ -7318,7 +7318,9 @@ convert_nontype_argument (tree type, tree expr, tsubst_flags_t complain)
       && has_value_dependent_address (expr))
     /* If we want the address and it's value-dependent, don't fold.  */;
   else if (processing_template_decl
-	   && is_nondependent_constant_expression (expr))
+	   && (TYPE_REF_P (type)
+	       ? is_nondependent_constant_expression (expr)
+	       : is_nondependent_rvalue_constant_expression (expr)))
     non_dep = true;
   if (error_operand_p (expr))
     return error_mark_node;

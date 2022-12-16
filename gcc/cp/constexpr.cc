@@ -10139,6 +10139,16 @@ is_nondependent_constant_expression (tree t)
 	  && !instantiation_dependent_expression_p (t));
 }
 
+/* As above, but expect an rvalue.  */
+
+bool
+is_nondependent_rvalue_constant_expression (tree t)
+{
+  return (!type_unknown_p (t)
+	  && is_rvalue_constant_expression (t)
+	  && !instantiation_dependent_expression_p (t));
+}
+
 /* Returns true if T is a potential static initializer expression that is not
    instantiation-dependent.  */
 
