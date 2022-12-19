@@ -22,6 +22,8 @@
 #  see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
+sinclude(../config/gthr.m4)
+
 AC_INIT([GNU Atomic Library], 1.0,,[libatomic])
 AC_CONFIG_HEADER(auto-config.h)
 
@@ -165,6 +167,10 @@ AC_MSG_CHECKING([for thread model used by GCC])
 target_thread_file=`$CC -v 2>&1 | sed -n 's/^Thread model: //p'`
 AC_MSG_RESULT([$target_thread_file])
 
+# Map from thread model to thread header.
+GCC_AC_THREAD_HEADER([$target_thread_file])
+AC_SUBST(thread_header)
+
 case "$target" in
  *aarch64*)
     ACX_PROG_CC_WARNING_OPTS([-march=armv8-a+lse],[enable_aarch64_lse])
@@ -173,9 +179,7 @@ esac
 
 # Get target configury.
 . ${srcdir}/configure.tgt
-if test -n "$UNSUPPORTED"; then
-  AC_MSG_ERROR([Configuration ${target} is unsupported.])
-fi
+AM_CONDITIONAL(USE_CONFIG_GTHR, test -n "$USE_CONFIG_GTHR")
 
 # Write out the ifunc resolver arg type.
 AC_DEFINE_UNQUOTED(IFUNC_RESOLVER_ARGS, $IFUNC_RESOLVER_ARGS,

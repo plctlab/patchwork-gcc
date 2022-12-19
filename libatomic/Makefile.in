@@ -89,15 +89,16 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
-@ARCH_AARCH64_LINUX_TRUE@@HAVE_IFUNC_TRUE@am__append_1 = $(foreach s,$(SIZES),$(addsuffix _$(s)_1_.lo,$(SIZEOBJS)))
-@ARCH_AARCH64_LINUX_TRUE@@HAVE_IFUNC_TRUE@am__append_2 = atomic_16.S
-@ARCH_ARM_LINUX_TRUE@@HAVE_IFUNC_TRUE@am__append_3 = $(foreach \
+@USE_CONFIG_GTHR_TRUE@am__append_1 = gthr.h gthr-default.h
+@ARCH_AARCH64_LINUX_TRUE@@HAVE_IFUNC_TRUE@am__append_2 = $(foreach s,$(SIZES),$(addsuffix _$(s)_1_.lo,$(SIZEOBJS)))
+@ARCH_AARCH64_LINUX_TRUE@@HAVE_IFUNC_TRUE@am__append_3 = atomic_16.S
+@ARCH_ARM_LINUX_TRUE@@HAVE_IFUNC_TRUE@am__append_4 = $(foreach \
 @ARCH_ARM_LINUX_TRUE@@HAVE_IFUNC_TRUE@	s,$(SIZES),$(addsuffix \
 @ARCH_ARM_LINUX_TRUE@@HAVE_IFUNC_TRUE@	_$(s)_1_.lo,$(SIZEOBJS))) \
 @ARCH_ARM_LINUX_TRUE@@HAVE_IFUNC_TRUE@	$(addsuffix \
 @ARCH_ARM_LINUX_TRUE@@HAVE_IFUNC_TRUE@	_8_2_.lo,$(SIZEOBJS))
-@ARCH_I386_TRUE@@HAVE_IFUNC_TRUE@am__append_4 = $(addsuffix _8_1_.lo,$(SIZEOBJS))
-@ARCH_X86_64_TRUE@@HAVE_IFUNC_TRUE@am__append_5 = $(addsuffix _16_1_.lo,$(SIZEOBJS)) \
+@ARCH_I386_TRUE@@HAVE_IFUNC_TRUE@am__append_5 = $(addsuffix _8_1_.lo,$(SIZEOBJS))
+@ARCH_X86_64_TRUE@@HAVE_IFUNC_TRUE@am__append_6 = $(addsuffix _16_1_.lo,$(SIZEOBJS)) \
 @ARCH_X86_64_TRUE@@HAVE_IFUNC_TRUE@		       $(addsuffix _16_2_.lo,$(SIZEOBJS))
 
 subdir = .
@@ -115,7 +116,8 @@ am__aclocal_m4_deps = $(top_srcdir)/../config/acx.m4 \
 	$(top_srcdir)/../ltversion.m4 $(top_srcdir)/../lt~obsolete.m4 \
 	$(top_srcdir)/acinclude.m4 $(top_srcdir)/../libtool.m4 \
 	$(top_srcdir)/../config/enable.m4 \
-	$(top_srcdir)/../config/cet.m4 $(top_srcdir)/configure.ac
+	$(top_srcdir)/../config/cet.m4 $(top_srcdir)/../config/gthr.m4 \
+	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 DIST_COMMON = $(srcdir)/Makefile.am $(top_srcdir)/configure \
@@ -392,6 +394,7 @@ target_alias = @target_alias@
 target_cpu = @target_cpu@
 target_os = @target_os@
 target_vendor = @target_vendor@
+thread_header = @thread_header@
 tmake_file = @tmake_file@
 toolexecdir = @toolexecdir@
 toolexeclibdir = @toolexeclibdir@
@@ -404,6 +407,7 @@ gcc_version := $(shell @get_gcc_base_ver@ $(top_srcdir)/../gcc/BASE-VER)
 search_path = $(addprefix $(top_srcdir)/config/, $(config_path)) \
 	$(top_srcdir) $(top_builddir)
 
+BUILT_SOURCES = $(am__append_1)
 DEFAULT_INCLUDES = $(addprefix -I, $(search_path))
 AM_CFLAGS = $(XCFLAGS)
 AM_CCASFLAGS = $(XCFLAGS)
@@ -419,7 +423,7 @@ noinst_LTLIBRARIES = libatomic_convenience.la
 libatomic_version_info = -version-info $(libtool_VERSION)
 libatomic_la_LDFLAGS = $(libatomic_version_info) $(libatomic_version_script) $(lt_host_flags)
 libatomic_la_SOURCES = gload.c gstore.c gcas.c gexch.c glfree.c lock.c \
-	init.c fenv.c fence.c flag.c $(am__append_2)
+	init.c fenv.c fence.c flag.c $(am__append_3)
 SIZEOBJS = load store cas exch fadd fsub fand fior fxor fnand tas
 EXTRA_libatomic_la_SOURCES = $(addsuffix _n.c,$(SIZEOBJS))
 libatomic_la_DEPENDENCIES = $(libatomic_la_LIBADD) $(libatomic_version_dep)
@@ -445,8 +449,8 @@ all_c_files := $(foreach dir,$(search_path),$(wildcard $(dir)/*.c))
 # Then sort through them to find the one we want, and select the first.
 M_SRC = $(firstword $(filter %/$(M_FILE), $(all_c_files)))
 libatomic_la_LIBADD = $(foreach s,$(SIZES),$(addsuffix \
-	_$(s)_.lo,$(SIZEOBJS))) $(am__append_1) $(am__append_3) \
-	$(am__append_4) $(am__append_5)
+	_$(s)_.lo,$(SIZEOBJS))) $(am__append_2) $(am__append_4) \
+	$(am__append_5) $(am__append_6)
 @ARCH_AARCH64_LINUX_TRUE@@HAVE_IFUNC_TRUE@IFUNC_OPTIONS = -march=armv8-a+lse
 @ARCH_ARM_LINUX_TRUE@@HAVE_IFUNC_TRUE@IFUNC_OPTIONS = -march=armv7-a+fp -DHAVE_KERNEL64
 @ARCH_I386_TRUE@@HAVE_IFUNC_TRUE@IFUNC_OPTIONS = -march=i586
@@ -459,7 +463,7 @@ MULTIDIRS =
 MULTISUBDIR = 
 MULTIDO = true
 MULTICLEAN = true
-all: auto-config.h
+all: $(BUILT_SOURCES) auto-config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 
 .SUFFIXES:
@@ -741,14 +745,16 @@ distclean-tags:
 	-rm -f TAGS ID GTAGS GRTAGS GSYMS GPATH tags
 	-rm -f cscope.out cscope.in.out cscope.po.out cscope.files
 check-am: all-am
-check: check-recursive
+check: $(BUILT_SOURCES)
+	$(MAKE) $(AM_MAKEFLAGS) check-recursive
 all-am: Makefile $(LTLIBRARIES) auto-config.h all-local
 installdirs: installdirs-recursive
 installdirs-am:
 	for dir in "$(DESTDIR)$(toolexeclibdir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
-install: install-recursive
+install: $(BUILT_SOURCES)
+	$(MAKE) $(AM_MAKEFLAGS) install-recursive
 install-exec: install-exec-recursive
 install-data: install-data-recursive
 uninstall: uninstall-recursive
@@ -778,6 +784,7 @@ distclean-generic:
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
+	-test -z "$(BUILT_SOURCES)" || rm -f $(BUILT_SOURCES)
 clean: clean-recursive
 
 clean-am: clean-generic clean-libtool clean-local \
@@ -854,7 +861,8 @@ ps-am:
 
 uninstall-am: uninstall-toolexeclibLTLIBRARIES
 
-.MAKE: $(am__recursive_targets) all install-am install-strip
+.MAKE: $(am__recursive_targets) all check install install-am \
+	install-strip
 
 .PHONY: $(am__recursive_targets) CTAGS GTAGS TAGS all all-am all-local \
 	am--refresh check check-am clean clean-cscope clean-generic \
@@ -878,6 +886,12 @@ uninstall-am: uninstall-toolexeclibLTLIBRARIES
 
 
 vpath % $(strip $(search_path))
+
+@USE_CONFIG_GTHR_TRUE@gthr.h: $(top_srcdir)/../libgcc/gthr.h
+@USE_CONFIG_GTHR_TRUE@	-$(LN_S) $< $@
+
+@USE_CONFIG_GTHR_TRUE@gthr-default.h: $(top_srcdir)/../libgcc/$(thread_header)
+@USE_CONFIG_GTHR_TRUE@	-$(LN_S) $< $@
 @LIBAT_BUILD_VERSIONED_SHLIB_SUN_TRUE@@LIBAT_BUILD_VERSIONED_SHLIB_TRUE@libatomic.map-sun : $(top_srcdir)/libatomic.map \
 @LIBAT_BUILD_VERSIONED_SHLIB_SUN_TRUE@@LIBAT_BUILD_VERSIONED_SHLIB_TRUE@		$(top_srcdir)/../contrib/make_sunver.pl \
 @LIBAT_BUILD_VERSIONED_SHLIB_SUN_TRUE@@LIBAT_BUILD_VERSIONED_SHLIB_TRUE@		$(libatomic_la_OBJECTS) $(libatomic_la_LIBADD)

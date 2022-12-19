@@ -174,21 +174,15 @@ case "${target}" in
 	config_path="rtems"
 	;;
 
-  *-*-elf*)
-	# ??? No target OS.  We could be targeting bare-metal kernel-mode,
-	# or user-mode for some custom OS.  If the target supports TAS,
-	# we can build our own spinlocks, given there are no signals.
-	# If the target supports disabling interrupts, we can work in
-	# kernel-mode, given the system is not multi-processor.
-	UNSUPPORTED=1
-	;;
-
   nvptx*-*-*)
 	;;
 
   *)
-	# Who are you?
-	UNSUPPORTED=1
+	# Use gthr.h by default.  If the thread model is "single", then this
+	# implementation will not work if for example atomic operations are
+	# used for thread/interrupt synchronization.
+	config_path="${config_path} gthr"
+	USE_CONFIG_GTHR=1
 	;;
 esac
 

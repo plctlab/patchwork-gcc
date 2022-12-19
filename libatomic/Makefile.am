@@ -34,6 +34,18 @@ search_path = $(addprefix $(top_srcdir)/config/, $(config_path)) \
 
 vpath % $(strip $(search_path))
 
+BUILT_SOURCES =
+
+if USE_CONFIG_GTHR
+gthr.h: $(top_srcdir)/../libgcc/gthr.h
+	-$(LN_S) $< $@
+
+gthr-default.h: $(top_srcdir)/../libgcc/$(thread_header)
+	-$(LN_S) $< $@
+
+BUILT_SOURCES += gthr.h gthr-default.h
+endif
+
 DEFAULT_INCLUDES = $(addprefix -I, $(search_path))
 AM_CFLAGS = $(XCFLAGS)
 AM_CCASFLAGS = $(XCFLAGS)
