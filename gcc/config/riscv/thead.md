@@ -297,3 +297,89 @@
   [(set_attr "type" "imul")
    (set_attr "mode" "SI")]
 )
+
+;; XTheadMemPair
+
+;; MEMPAIR load/store 64/32 bit
+(define_insn "th_mov_mempair_<GPR:MODE>"
+  [(set (match_operand:GPR 0 "nonimmediate_operand" "=r, m, m")
+	(match_operand:GPR 1 "move_operand" "m, r, T"))
+   (set (match_operand:GPR 2 "nonimmediate_operand" "=r, m, m")
+	(match_operand:GPR 3 "move_operand" "m, r, T"))]
+  "TARGET_XTHEADMEMPAIR && reload_completed
+   && (register_operand (operands[0], <GPR:MODE>mode)
+   || reg_or_const_operand (operands[1], <GPR:MODE>mode))
+   && (register_operand (operands[2], <GPR:MODE>mode)
+   || reg_or_const_operand (operands[3], <GPR:MODE>mode))"
+  { return th_riscv_output_mempair_move (operands, <GPR:MODE>mode,
+    SIGN_EXTEND); }
+  [(set_attr "move_type" "load, store, const")
+   (set_attr "mode" "<GPR:MODE>")])
+
+;; MEMPAIR load DI extended unsigned SI
+(define_insn "th_mov_mempair_di_si_zero_ext"
+  [(set (match_operand 0 "nonimmediate_operand" "=r")
+	(zero_extend:DI (match_operand 1 "move_operand" "m")))
+   (set (match_operand 2 "nonimmediate_operand" "=r")
+	(zero_extend:DI (match_operand 3 "move_operand" "m")))]
+  "TARGET_XTHEADMEMPAIR && reload_completed
+   && (register_operand (operands[0], DImode)
+   || reg_or_const_operand (operands[1], SImode))
+   && (register_operand (operands[2], DImode)
+   || reg_or_const_operand (operands[3], SImode))"
+  { return th_riscv_output_mempair_move (operands, SImode,
+    ZERO_EXTEND); }
+  [(set_attr "move_type" "load")
+   (set_attr "mode" "DI")
+   (set_attr "length" "8")])
+
+;; MEMPAIR load DI extended signed SI
+(define_insn "th_mov_mempair_di_si_sign_ext"
+  [(set (match_operand 0 "nonimmediate_operand" "=r")
+	(sign_extend:DI (match_operand 1 "move_operand" "m")))
+   (set (match_operand 2 "nonimmediate_operand" "=r")
+	(sign_extend:DI (match_operand 3 "move_operand" "m")))]
+  "TARGET_XTHEADMEMPAIR && reload_completed
+   && (register_operand (operands[0], DImode)
+   || reg_or_const_operand (operands[1], SImode))
+   && (register_operand (operands[2], DImode)
+   || reg_or_const_operand (operands[3], SImode))"
+  { return th_riscv_output_mempair_move (operands, SImode,
+    SIGN_EXTEND); }
+  [(set_attr "move_type" "load")
+   (set_attr "mode" "DI")
+   (set_attr "length" "8")])
+
+;; MEMPAIR load SI extended unsigned SI
+(define_insn "th_mov_mempair_si_si_zero_ext"
+  [(set (match_operand 0 "nonimmediate_operand" "=r")
+	(zero_extend:SI (match_operand 1 "move_operand" "m")))
+   (set (match_operand 2 "nonimmediate_operand" "=r")
+	(zero_extend:SI (match_operand 3 "move_operand" "m")))]
+  "TARGET_XTHEADMEMPAIR && reload_completed
+   && (register_operand (operands[0], SImode)
+   || reg_or_const_operand (operands[1], SImode))
+   && (register_operand (operands[2], SImode)
+   || reg_or_const_operand (operands[3], SImode))"
+  { return th_riscv_output_mempair_move (operands, SImode,
+    ZERO_EXTEND); }
+  [(set_attr "move_type" "load")
+   (set_attr "mode" "SI")
+   (set_attr "length" "4")])
+
+;; MEMPAIR load SI extended signed SI
+(define_insn "th_mov_mempair_si_si_sign_ext"
+  [(set (match_operand 0 "nonimmediate_operand" "=r")
+	(sign_extend:SI (match_operand 1 "move_operand" "m")))
+   (set (match_operand 2 "nonimmediate_operand" "=r")
+	(sign_extend:SI (match_operand 3 "move_operand" "m")))]
+  "TARGET_XTHEADMEMPAIR && reload_completed
+   && (register_operand (operands[0], SImode)
+   || reg_or_const_operand (operands[1], SImode))
+   && (register_operand (operands[2], SImode)
+   || reg_or_const_operand (operands[3], SImode))"
+  { return th_riscv_output_mempair_move (operands, SImode,
+    SIGN_EXTEND); }
+  [(set_attr "move_type" "load")
+   (set_attr "mode" "SI")
+   (set_attr "length" "4")])

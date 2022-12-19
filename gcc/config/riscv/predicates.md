@@ -59,6 +59,10 @@
   (ior (match_operand 0 "const_0_operand")
        (match_operand 0 "register_operand")))
 
+(define_predicate "reg_or_const_operand"
+  (ior (match_operand 0 "const_int_operand")
+       (match_operand 0 "register_operand")))
+
 ;; Only use branch-on-bit sequences when the mask is not an ANDI immediate.
 (define_predicate "branch_on_bit_operand"
   (and (match_code "const_int")

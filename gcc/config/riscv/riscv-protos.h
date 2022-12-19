@@ -54,7 +54,16 @@ extern bool riscv_split_64bit_move_p (rtx, rtx);
 extern void riscv_split_doubleword_move (rtx, rtx);
 extern const char *riscv_output_move (rtx, rtx);
 extern const char *riscv_output_return ();
+extern bool riscv_load_store_bonding_p_2instr (rtx*, machine_mode, bool);
+extern bool riscv_load_store_bonding_p_4instr (rtx*, machine_mode, bool);
+extern int riscv_ldrstr_offset_compare (const void *, const void *);
+extern bool extract_base_offset_in_addr (rtx mem, rtx *base, rtx *offset);
 #ifdef RTX_CODE
+extern const char *th_riscv_output_mempair_move (rtx*, machine_mode,
+						 enum rtx_code);
+extern bool th_riscv_gen_adjusted_mempair (rtx*, bool, machine_mode,
+					   enum rtx_code, bool,
+					   bool has_scratch = true);
 extern void riscv_expand_int_scc (rtx, enum rtx_code, rtx, rtx);
 extern void riscv_expand_float_scc (rtx, enum rtx_code, rtx, rtx);
 extern void riscv_expand_conditional_branch (rtx, enum rtx_code, rtx, rtx);

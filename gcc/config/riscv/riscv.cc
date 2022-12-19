@@ -36,6 +36,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "output.h"
 #include "alias.h"
 #include "tree.h"
+#include "fold-const.h"
 #include "stringpool.h"
 #include "attribs.h"
 #include "varasm.h"
@@ -57,6 +58,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "builtins.h"
 #include "predict.h"
 #include "tree-pass.h"
+#include "tree-dfa.h"
 #include "opts.h"
 #include "tm-constrs.h"
 #include "rtl-iter.h"
@@ -2943,6 +2945,570 @@ riscv_output_move (rtx dest, rtx src)
   gcc_unreachable ();
 }
 
+/* If MEM is in the form of "base+offset", extract the two parts
+   of address and set to BASE and OFFSET, otherwise return false
+   after clearing BASE and OFFSET.  */
+
+bool
+extract_base_offset_in_addr (rtx mem, rtx *base, rtx *offset)
+{
+  rtx addr;
+
+  gcc_assert (MEM_P (mem));
+
+  addr = XEXP (mem, 0);
+
+  if (REG_P (addr))
+    {
+      *base = addr;
+      *offset = const0_rtx;
+      return true;
+    }
+
+  if (GET_CODE (addr) == PLUS
+      && REG_P (XEXP (addr, 0)) && CONST_INT_P (XEXP (addr, 1)))
+    {
+      *base = XEXP (addr, 0);
+      *offset = XEXP (addr, 1);
+      return true;
+    }
+
+  *base = NULL_RTX;
+  *offset = NULL_RTX;
+
+  return false;
+}
+
+/* If X is a PLUS of a CONST_INT, return the two terms in *BASE_PTR
+   and *OFFSET_PTR.  Return X in *BASE_PTR and 0 in *OFFSET_PTR otherwise.  */
+
+static void
+riscv_split_plus (rtx x, rtx *base_ptr, HOST_WIDE_INT *offset_ptr)
+{
+  if (GET_CODE (x) == PLUS && CONST_INT_P (XEXP (x, 1)))
+    {
+      *base_ptr = XEXP (x, 0);
+      *offset_ptr = INTVAL (XEXP (x, 1));
+    }
+  else
+    {
+      *base_ptr = x;
+      *offset_ptr = 0;
+    }
+}
+
+const char *
+th_riscv_output_mempair_move (rtx *operands, machine_mode mode,
+			      enum rtx_code code)
+{
+  unsigned width;
+  rtx reg1, reg2, mem1, mem2, base1, base2;
+  HOST_WIDE_INT offset1, offset2;
+  rtx output_operands[5];
+
+  width = GET_MODE_SIZE (mode).to_constant ();
+
+  // LOAD
+  if (which_alternative == 0)
+    {
+	reg1 = copy_rtx (operands[0]);
+	reg2 = copy_rtx (operands[2]);
+	mem1 = copy_rtx (operands[1]);
+	mem2 = copy_rtx (operands[3]);
+    }
+  // STORE OR CONST STORE
+  else if ( (which_alternative == 1)
+	 || (which_alternative == 2))
+    {
+	reg1 = copy_rtx (operands[1]);
+	reg2 = copy_rtx (operands[3]);
+	mem1 = copy_rtx (operands[0]);
+	mem2 = copy_rtx (operands[2]);
+    }
+  else
+	abort ();
+
+  riscv_split_plus (XEXP (mem1, 0), &base1, &offset1);
+  riscv_split_plus (XEXP (mem2, 0), &base2, &offset2);
+
+  // LOAD
+  if (which_alternative == 0)
+    {
+      switch (width)
+	{
+	case 4:
+	  {
+	    gcc_assert (!(offset1 % 8));
+	    output_operands[0] = copy_rtx (reg1);
+	    output_operands[1] = copy_rtx (reg2);
+	    output_operands[2] = copy_rtx (base1);
+	    output_operands[3] = gen_rtx_CONST_INT (mode, (offset1 >> 3));
+	    output_operands[4] = gen_rtx_CONST_INT (mode, 3);
+
+	    if (code == ZERO_EXTEND)
+	      output_asm_insn ("th.lwud\t%0, %1, (%2), %3, %4",
+			       output_operands);
+	    else if (code == SIGN_EXTEND)
+	      output_asm_insn ("th.lwd\t%0, %1, (%2), %3, %4",
+			       output_operands);
+	    else
+	      abort ();
+	  }
+	  break;
+	case 8:
+	  {
+	    gcc_assert (!(offset1 % 16));
+	    output_operands[0] = copy_rtx (reg1);
+	    output_operands[1] = copy_rtx (reg2);
+	    output_operands[2] = copy_rtx (base1);
+	    output_operands[3] = gen_rtx_CONST_INT (mode, (offset1 >> 4));
+	    output_operands[4] = gen_rtx_CONST_INT (mode, 4);
+
+	    output_asm_insn ("th.ldd\t%0, %1, (%2), %3, %4", output_operands);
+	  }
+	  break;
+	default:
+	  abort ();
+	}
+    }
+  // STORE OR CONST STORE
+  else if (which_alternative == 1 || which_alternative == 2)
+    {
+      switch (width)
+	{
+	case 4:
+	  {
+	    gcc_assert (!(offset1 % 8));
+	    output_operands[0] = copy_rtx (reg1);
+	    output_operands[1] = copy_rtx (reg2);
+	    output_operands[2] = copy_rtx (base1);
+	    output_operands[3] = gen_rtx_CONST_INT (mode, (offset1 >> 3));
+	    output_operands[4] = gen_rtx_CONST_INT (mode, 3);
+
+	    output_asm_insn ("th.swd\t%z0, %z1, (%2), %3, %4",
+			     output_operands);
+	  }
+	  break;
+	case 8:
+	  {
+	    gcc_assert (!(offset1 % 16));
+	    output_operands[0] = copy_rtx (reg1);
+	    output_operands[1] = copy_rtx (reg2);
+	    output_operands[2] = copy_rtx (base1);
+	    output_operands[3] = gen_rtx_CONST_INT (mode, (offset1 >> 4));
+	    output_operands[4] = gen_rtx_CONST_INT (mode, 4);
+
+	    output_asm_insn ("th.sdd\t%z0, %z1, (%2), %3, %4",
+			     output_operands);
+	  }
+	  break;
+	default:
+	  abort ();
+	}
+    }
+  // UNKNOWN
+  else
+    abort ();
+
+  return "";
+}
+
+/* Given OPERANDS of consecutive load/store, check if we can merge
+   them into load-pair or store-pair instructions by adjusting the
+   offset.  LOAD is true if they are load instructions.
+   MODE is the mode of memory operands.
+
+   Given below consecutive stores:
+
+     sd  a2, 0x100 (a1)
+     sd  a3, 0x108 (a1)
+     sd  a4, 0x110 (a1)
+     sd  a5, 0x118 (a1)
+
+   Though the offsets are out of the range supported by stp, we can
+   still pair them after adjusting the offset, like:
+
+     addi t0, a1, 0x100
+     th.sdd  a2, a3, 0 (t0), 0, 4
+     th.sdd  a4, a5, 16 (t0), 0, 4
+
+   The peephole patterns detecting this opportunity should guarantee
+   the scratch register is avaliable.
+
+   The function works for 4 consecutive load/store pairs.  */
+
+bool
+riscv_load_store_bonding_p_4instr (rtx *operands, machine_mode mode,
+				  bool load_p)
+{
+  HOST_WIDE_INT msize;
+  msize = GET_MODE_SIZE (mode).to_constant ();
+
+  constexpr int NUM_INSTR = 4;
+
+  rtx reg[NUM_INSTR], mem[NUM_INSTR], base[NUM_INSTR];
+  rtx temp_operands[2*NUM_INSTR];
+
+  enum reg_class rc[NUM_INSTR];
+  HOST_WIDE_INT offset[NUM_INSTR];
+
+  /* We make changes on a copy as we may still bail out.  */
+  for (int i = 0; i < (2*NUM_INSTR); i++)
+    temp_operands[i] = copy_rtx (operands[i]);
+
+  /* Sort the operands.  */
+  gcc_stablesort (temp_operands, NUM_INSTR, 2 * sizeof (rtx *),
+		  riscv_ldrstr_offset_compare);
+
+  for (int i = 0; i < NUM_INSTR; i++)
+    {
+      reg[i] = (load_p)? temp_operands[2*i] : temp_operands[(2*i) + 1];
+      mem[i] = (load_p)? temp_operands[(2*i) + 1] : temp_operands[(2*i)];
+    }
+
+  for (int i = 0; i < NUM_INSTR; i++)
+    {
+      riscv_split_plus (XEXP (mem[i], 0), &base[i], &offset[i]);
+      rc[i] = REGNO_REG_CLASS (REGNO (reg[i]));
+    }
+
+  for (int i = 0; i < NUM_INSTR; i++)
+    {
+      /* All bases are reg.  */
+      if (!REG_P (base[i]))
+	return false;
+
+      /* The mems cannot be volatile.  */
+      if (MEM_VOLATILE_P (mem[i]))
+	return false;
+
+      /* Base regs do not match.  */
+      if (!rtx_equal_p (base[i], base[(i+1) % NUM_INSTR]))
+	return false;
+    }
+
+  /* Either of the loads is clobbering base register.
+     It is legitimate to bond loads if second load clobbers base register.
+     However, hardware does not support such bonding.  */
+  if (load_p
+      && (REGNO (reg[0]) == REGNO (base[0])
+	  || (REGNO (reg[1]) == REGNO (base[0])))
+      && (REGNO (reg[2]) == REGNO (base[0])
+	  || (REGNO (reg[3]) == REGNO (base[3])))
+      && (REGNO (reg[1]) == REGNO (base[1])
+	  || (REGNO (reg[2]) == REGNO (base[2]))))
+    return false;
+
+  /* Loading in same registers.  */
+  if (load_p
+      && (REGNO (reg[0]) == REGNO (reg[1]))
+      && (REGNO (reg[1]) == REGNO (reg[2]))
+      && (REGNO (reg[2]) == REGNO (reg[3])))
+    return false;
+
+  /* The loads/stores are not of same type.  */
+  if (rc[0] != rc[1]
+      && rc[1] != rc[2]
+      && rc[2] != rc[3]
+      && !reg_class_subset_p (rc[0], rc[1])
+      && !reg_class_subset_p (rc[1], rc[0])
+      && !reg_class_subset_p (rc[2], rc[3])
+      && !reg_class_subset_p (rc[3], rc[2])
+      && !reg_class_subset_p (rc[1], rc[2])
+      && !reg_class_subset_p (rc[2], rc[3]))
+    return false;
+
+  if ((abs (offset[0] - offset[1]) != msize)
+      || (abs (offset[2] - offset[3]) != msize)
+      || (abs (offset[1] - offset[2]) != msize))
+    return false;
+
+  return true;
+}
+
+/* Given OPERANDS of consecutive load/store, check if we can merge
+   them into load-pair or store-pair instructions by adjusting the
+   offset.  LOAD is true if they are load instructions.
+   MODE is the mode of memory operands.
+
+   Given below consecutive stores:
+
+     sd  a2, 0x100 (a1)
+     sd  a3, 0x108 (a1)
+     sd  a4, 0x110 (a1)
+     sd  a5, 0x118 (a1)
+
+   Though the offsets are out of the range supported by stp, we can
+   still pair them after adjusting the offset, like:
+
+     addi t0, a1, 0x100
+     th.sdd  a2, a3, 0 (t0), 0, 4
+     th.sdd  a4, a5, 16 (t0), 0, 4
+
+   The peephole patterns detecting this opportunity should guarantee
+   the scratch register is avaliable.
+
+   The function works for 2 consecutive load/store pairs.  */
+
+bool
+riscv_load_store_bonding_p_2instr (rtx *operands, machine_mode mode,
+				  bool load_p)
+{
+  HOST_WIDE_INT msize;
+  msize = GET_MODE_SIZE (mode).to_constant ();
+
+  constexpr int NUM_INSTR = 2;
+
+  rtx reg[NUM_INSTR], mem[NUM_INSTR], base[NUM_INSTR];
+  rtx  temp_operands[2*NUM_INSTR];
+
+  enum reg_class rc[NUM_INSTR];
+  HOST_WIDE_INT offset[NUM_INSTR];
+
+  /* We make changes on a copy as we may still bail out.  */
+  for (int i = 0; i < (2*NUM_INSTR); i++)
+    temp_operands[i] = copy_rtx (operands[i]);
+
+  /* Sort the operands.  */
+  gcc_stablesort (temp_operands, NUM_INSTR, 2 * sizeof (rtx *),
+		  riscv_ldrstr_offset_compare);
+
+  for (int i = 0; i < NUM_INSTR; i++)
+    {
+      reg[i] = (load_p)? temp_operands[2*i] : temp_operands[(2*i) + 1];
+      mem[i] = (load_p)? temp_operands[(2*i) + 1] : temp_operands[(2*i)];
+    }
+
+  for (int i = 0; i < NUM_INSTR; i++)
+    {
+      riscv_split_plus (XEXP (mem[i], 0), &base[i], &offset[i]);
+      rc[i] = REGNO_REG_CLASS (REGNO (reg[i]));
+    }
+
+  for (int i = 0; i < NUM_INSTR; i++)
+    {
+      /* All bases are reg.  */
+      if (!REG_P (base[i]))
+	return false;
+
+      /* The mems cannot be volatile.  */
+      if (MEM_VOLATILE_P (mem[i]))
+	return false;
+
+      /* Base regs do not match.  */
+      if (!rtx_equal_p (base[i], base[(i+1) % NUM_INSTR]))
+	return false;
+    }
+
+  /* Either of the loads is clobbering base register.
+     It is legitimate to bond loads if second load clobbers base register.
+     However, hardware does not support such bonding.  */
+  if (load_p
+      && (REGNO (reg[0]) == REGNO (base[0])
+	  || (REGNO (reg[1]) == REGNO (base[0]))))
+    return false;
+
+  /* Loading in same registers.  */
+  if (load_p
+      && REGNO (reg[0]) == REGNO (reg[1]))
+    return false;
+
+  /* The loads/stores are not of same type.  */
+  if (rc[0] != rc[1]
+      && !reg_class_subset_p (rc[0], rc[1])
+      && !reg_class_subset_p (rc[1], rc[0]))
+    return false;
+
+  if (abs (offset[0] - offset[1]) != msize)
+    return false;
+
+  return true;
+}
+
+/* Taking X and Y to be pairs of RTX, one pointing to a MEM rtx and the
+   other pointing to a REG rtx containing an offset, compare the offsets
+   of the two pairs.
+
+   Return:
+      1 iff offset (X) > offset (Y)
+      0 iff offset (X) == offset (Y)
+     -1 iff offset (X) < offset (Y)  */
+
+int
+riscv_ldrstr_offset_compare (const void *x, const void *y)
+{
+  const rtx * operands_1 = (const rtx *) x;
+  const rtx * operands_2 = (const rtx *) y;
+  rtx mem_1, mem_2, base, offset_1, offset_2;
+
+  if (MEM_P (operands_1[0]))
+    mem_1 = operands_1[0];
+  else
+    mem_1 = operands_1[1];
+
+  if (MEM_P (operands_2[0]))
+    mem_2 = operands_2[0];
+  else
+    mem_2 = operands_2[1];
+
+  /* Extract the offsets.  */
+  extract_base_offset_in_addr (mem_1, &base, &offset_1);
+  extract_base_offset_in_addr (mem_2, &base, &offset_2);
+
+  gcc_assert (offset_1 != NULL_RTX && offset_2 != NULL_RTX);
+
+  return wi::cmps (INTVAL (offset_1), INTVAL (offset_2));
+}
+
+/* Given OPERANDS of consecutive load/store, this function pairs them
+   into LDP/STP after adjusting the offset.  It depends on the fact
+   that the operands can be sorted so the offsets are correct for STP.
+   MODE is the mode of memory operands.  CODE is the rtl operator
+   which should be applied to all memory operands, it's SIGN_EXTEND,
+   ZERO_EXTEND or UNKNOWN.  */
+
+bool
+th_riscv_gen_adjusted_mempair (rtx *operands, bool load,
+			      machine_mode mode,
+			      enum rtx_code code,
+			      bool is_four_insns,
+			      bool has_scratch)
+{
+  rtx base, offset_1, t1, t2, scratch;
+  HOST_WIDE_INT off_val_1, base_off, new_off_1,
+    off_upper_limit, off_lower_limit, msize;
+
+  constexpr int NUM_INSTR_MAX = 4;
+  int NUM_INSTR = 2;
+  if (is_four_insns)
+    NUM_INSTR = 4;
+
+  rtx temp_operands[2*NUM_INSTR_MAX], mem[NUM_INSTR_MAX];
+  bool emit_adjust_insn = false;
+  bool misaligned_offset = false;
+
+  if (has_scratch)
+    scratch = copy_rtx (operands[2*NUM_INSTR]);
+
+  msize = GET_MODE_SIZE (mode).to_constant ();
+
+  /* Sort the mem operands.  */
+  gcc_stablesort (operands, NUM_INSTR, 2 * sizeof (rtx *),
+		  riscv_ldrstr_offset_compare);
+
+  /* We make changes on a copy as we may still bail out.  */
+  for (int i = 0; i < (2*NUM_INSTR); i++)
+    temp_operands[i] = copy_rtx (operands[i]);
+
+  for (int i = 0; i < NUM_INSTR; i++)
+    mem[i] = copy_rtx (load? temp_operands[(2*i) + 1] : temp_operands[2*i]);
+
+  extract_base_offset_in_addr (mem[0], &base, &offset_1);
+  gcc_assert (base != NULL_RTX && offset_1 != NULL_RTX);
+
+  off_val_1 = INTVAL (offset_1);
+
+  switch (msize)
+    {
+    case 4:
+      {
+	off_upper_limit = 3 << 3;
+	off_lower_limit = 0;
+	misaligned_offset = (off_val_1 % 8) ? true : false;
+      }
+      break;
+    case 8:
+      {
+	off_upper_limit = 3 << 4;
+	off_lower_limit = 0;
+	misaligned_offset = (off_val_1 % 16) ? true : false;
+      }
+      break;
+    default:
+      abort ();
+    }
+
+  /* Offset of the first STP/LDP.  */
+  if ((off_val_1 < off_lower_limit)
+      || (off_val_1 > off_upper_limit)
+      || misaligned_offset)
+    {
+      emit_adjust_insn = true;
+      new_off_1 = 0;
+      base_off = abs (new_off_1 - off_val_1);
+    }
+
+  for (int i = 0; i < NUM_INSTR; i++)
+    {
+      if (has_scratch && emit_adjust_insn)
+	{
+	  replace_equiv_address_nv (mem[i], plus_constant (Pmode, scratch,
+				      (new_off_1 + (i*msize))), true);
+	}
+
+      operands[2*i] = (load)? temp_operands[2*i] : mem[i];
+      operands[(2*i) + 1] = (load)? mem[i] : temp_operands[(2*i) + 1];
+  }
+
+  if (is_four_insns)
+    {
+      if (!riscv_load_store_bonding_p_4instr (operands, mode, load))
+	{
+	  return false;
+	}
+    }
+  else
+    {
+      if (!riscv_load_store_bonding_p_2instr (operands, mode, load))
+	{
+	  return false;
+	}
+    }
+
+  /* Sign extension for loads.  */
+  for (int i = 0; i < NUM_INSTR; i++)
+    {
+      if (load && GET_MODE_SIZE (GET_MODE (mem[i])).to_constant () == 4)
+	{
+	  if (code == ZERO_EXTEND)
+	    {
+	      mem[i] = gen_rtx_ZERO_EXTEND (Pmode, mem[i]);
+	    }
+	  else if (code == SIGN_EXTEND)
+	    {
+	      mem[i] = gen_rtx_SIGN_EXTEND (Pmode, mem[i]);
+	    }
+	  else
+	    {
+	      abort ();
+	    }
+	}
+
+      operands[2*i] = (load)? temp_operands[2*i] : mem[i];
+      operands[(2*i) + 1] = (load)? mem[i] : temp_operands[(2*i) + 1];
+    }
+
+  /* Emit adjusting instruction.  */
+  if (has_scratch && emit_adjust_insn)
+    {
+      emit_insn (gen_rtx_SET (scratch, plus_constant (Pmode, base, base_off)));
+    }
+
+  /* Emit ld/sd paired instructions.  */
+  t1 = gen_rtx_SET (operands[0], operands[1]);
+  t2 = gen_rtx_SET (operands[2], operands[3]);
+
+  emit_insn (gen_rtx_PARALLEL (mode, gen_rtvec (2, t1, t2)));
+  if (is_four_insns)
+    {
+      t1 = gen_rtx_SET (operands[4], operands[5]);
+      t2 = gen_rtx_SET (operands[6], operands[7]);
+      emit_insn (gen_rtx_PARALLEL (mode, gen_rtvec (2, t1, t2)));
+    }
+
+  return true;
+}
+
 const char *
 riscv_output_return ()
 {
@@ -4916,6 +5482,35 @@ riscv_set_return_address (rtx address, rtx scratch)
   riscv_emit_move (gen_frame_mem (GET_MODE (address), slot_address), address);
 }
 
+/* Save register REG to MEM.  Make the instruction frame-related.  */
+
+static void
+riscv_save_reg (rtx reg, rtx mem)
+{
+  riscv_emit_move (mem, reg);
+  riscv_set_frame_expr (riscv_frame_set (mem, reg));
+}
+
+/* Restore register REG from MEM.  */
+
+static void
+riscv_restore_reg (rtx reg, rtx mem)
+{
+  rtx insn = riscv_emit_move (reg, mem);
+  rtx dwarf = NULL_RTX;
+  dwarf = alloc_reg_note (REG_CFA_RESTORE, reg, dwarf);
+
+  if (epilogue_cfa_sp_offset && REGNO (reg) == HARD_FRAME_POINTER_REGNUM)
+    {
+      rtx cfa_adjust_rtx = gen_rtx_PLUS (Pmode, stack_pointer_rtx,
+					 GEN_INT (epilogue_cfa_sp_offset));
+      dwarf = alloc_reg_note (REG_CFA_DEF_CFA, cfa_adjust_rtx, dwarf);
+    }
+
+  REG_NOTES (insn) = dwarf;
+  RTX_FRAME_RELATED_P (insn) = 1;
+}
+
 /* A function to save or store a register.  The first argument is the
    register and the second is the stack slot.  */
 typedef void (*riscv_save_restore_fn) (rtx, rtx);
@@ -4985,8 +5580,8 @@ static void
 riscv_for_each_saved_reg (poly_int64 sp_offset, riscv_save_restore_fn fn,
 			  bool epilogue, bool maybe_eh_return)
 {
-  HOST_WIDE_INT offset;
-  unsigned int regno;
+  HOST_WIDE_INT offset, offset2;
+  unsigned int regno, regno2;
   unsigned int start = GP_REG_FIRST;
   unsigned int limit = GP_REG_LAST;
 
@@ -5009,7 +5604,78 @@ riscv_for_each_saved_reg (poly_int64 sp_offset, riscv_save_restore_fn fn,
 	  && riscv_is_eh_return_data_register (regno))
 	continue;
 
-      riscv_save_restore_reg (word_mode, regno, offset, fn);
+      if (TARGET_XTHEADMEMPAIR && regno < limit)
+	{
+	  offset2 = offset;
+	  regno2 = riscv_next_saved_reg (regno + 1, limit, &offset2, false);
+	}
+
+      if (TARGET_XTHEADMEMPAIR && regno2 <= limit
+	  && !riscv_is_eh_return_data_register (regno2)
+	  && !cfun->machine->reg_is_wrapped_separately[regno2])
+	{
+	  if ((fn == riscv_save_reg) || (fn == riscv_restore_reg))
+	    {
+	      rtx operands[4], reg1, reg2, mem1, mem2;
+	      HOST_WIDE_INT mem_stride;
+
+	      reg1 = gen_rtx_REG (Pmode, regno);
+	      mem1 = gen_frame_mem (Pmode, plus_constant (Pmode,
+							  stack_pointer_rtx,
+							  offset));
+	      reg2 = gen_rtx_REG (Pmode, regno2);
+	      mem2 = gen_frame_mem (Pmode, plus_constant (Pmode,
+							  stack_pointer_rtx,
+							  offset2));
+
+	      if (fn == riscv_restore_reg)
+		{
+		  operands[0] = copy_rtx (reg1);
+		  operands[1] = copy_rtx (mem1);
+		  operands[2] = copy_rtx (reg2);
+		  operands[3] = copy_rtx (mem2);
+		}
+	      else if (fn == riscv_save_reg)
+		{
+		  operands[0] = copy_rtx (mem1);
+		  operands[1] = copy_rtx (reg1);
+		  operands[2] = copy_rtx (mem2);
+		  operands[3] = copy_rtx (reg2);
+		}
+	      else
+		abort ();
+
+	      /* Sort the mem operands.  */
+	      gcc_stablesort (operands, 2, 2 * sizeof (rtx *),
+			      riscv_ldrstr_offset_compare);
+
+	      mem_stride = abs (offset - offset2);
+
+	      /* Offset alignment should be matching the pair immediate.  */
+	      if ((mem_stride == 8) && (offset % 16))
+		emit_insn (gen_th_mov_mempair_DI (operands[0], operands[1],
+						  operands[2], operands[3]));
+	      else if ((mem_stride == 4) && (offset % 8))
+		emit_insn (gen_th_mov_mempair_SI (operands[0], operands[1],
+						  operands[2], operands[3]));
+	      else
+		{
+		  riscv_save_restore_reg (word_mode, regno, offset, fn);
+		  continue;
+		}
+
+	      offset = offset2;
+	      regno = regno2;
+	    }
+	  else
+	    {
+	      riscv_save_restore_reg (word_mode, regno, offset, fn);
+	    }
+	}
+      else
+	{
+	  riscv_save_restore_reg (word_mode, regno, offset, fn);
+	}
     }
 
   /* This loop must iterate over the same space as its companion in
@@ -5025,35 +5691,6 @@ riscv_for_each_saved_reg (poly_int64 sp_offset, riscv_save_restore_fn fn,
 	  riscv_save_restore_reg (mode, regno, offset, fn);
 	offset -= GET_MODE_SIZE (mode).to_constant ();
       }
-}
-
-/* Save register REG to MEM.  Make the instruction frame-related.  */
-
-static void
-riscv_save_reg (rtx reg, rtx mem)
-{
-  riscv_emit_move (mem, reg);
-  riscv_set_frame_expr (riscv_frame_set (mem, reg));
-}
-
-/* Restore register REG from MEM.  */
-
-static void
-riscv_restore_reg (rtx reg, rtx mem)
-{
-  rtx insn = riscv_emit_move (reg, mem);
-  rtx dwarf = NULL_RTX;
-  dwarf = alloc_reg_note (REG_CFA_RESTORE, reg, dwarf);
-
-  if (epilogue_cfa_sp_offset && REGNO (reg) == HARD_FRAME_POINTER_REGNUM)
-    {
-      rtx cfa_adjust_rtx = gen_rtx_PLUS (Pmode, stack_pointer_rtx,
-					 GEN_INT (epilogue_cfa_sp_offset));
-      dwarf = alloc_reg_note (REG_CFA_DEF_CFA, cfa_adjust_rtx, dwarf);
-    }
-
-  REG_NOTES (insn) = dwarf;
-  RTX_FRAME_RELATED_P (insn) = 1;
 }
 
 /* For stack frames that can't be allocated with a single ADDI instruction,
