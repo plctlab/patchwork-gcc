@@ -4778,10 +4778,14 @@ get_address_cost (struct ivopts_data *data, struct iv_use *use,
     comp_inv = aff_combination_to_tree (aff_inv);
   if (comp_inv != NULL_TREE)
     cost = force_var_cost (data, comp_inv, inv_vars);
-  if (ratio != 1 && parts.step == NULL_TREE)
+  if (ratio != 1 && parts.step == NULL_TREE) {
     var_cost += mult_by_coeff_cost (ratio, addr_mode, speed);
-  if (comp_inv != NULL_TREE && parts.index == NULL_TREE)
+    var_cost.complexity += 1;
+  }
+  if (comp_inv != NULL_TREE && parts.index == NULL_TREE) {
     var_cost += add_cost (speed, addr_mode);
+    var_cost.complexity += 1;
+  }
 
   if (comp_inv && inv_expr && !simple_inv)
     {
