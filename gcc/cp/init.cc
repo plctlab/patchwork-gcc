@@ -561,7 +561,8 @@ perform_target_ctor (tree init)
   return init;
 }
 
-/* Return the non-static data initializer for FIELD_DECL MEMBER.  */
+/* Return the non-static data initializer for FIELD_DECL MEMBER.
+   The initializer returned is always non-templated.  */
 
 static GTY((cache)) decl_tree_cache_map *nsdmi_inst;
 
@@ -669,6 +670,11 @@ get_nsdmi (tree member, bool in_ctor, tsubst_flags_t complain)
       current_class_ref = build0 (PLACEHOLDER_EXPR, DECL_CONTEXT (member));
       current_class_ptr = build_address (current_class_ref);
     }
+
+  /* Since INIT is always non-templated clear processing_template_decl
+     before processing it so that we don't interleave templated and
+     non-templated trees.  */
+  processing_template_decl_sentinel ptds;
 
   /* Strip redundant TARGET_EXPR so we don't need to remap it, and
      so the aggregate init code below will see a CONSTRUCTOR.  */
