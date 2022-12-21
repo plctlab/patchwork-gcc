@@ -4491,6 +4491,17 @@ original and the returned modes should be @code{MODE_INT}.",
  (machine_mode mode),
  default_preferred_doloop_mode)
 
+
+/* Loading an integer value from memory first, then convert (bitcast) to\n\n
+   floating point value, if target is able to support such behavior.  */
+DEFHOOK
+(loading_int_convert_to_float,
+"If the target is protifiable to load an integer in word_mode from\n\
+@var{source} which is based on @var{base}, then convert to a floating\n\
+point value in @var{mode}.",
+ rtx, (machine_mode mode, rtx source, rtx base),
+ NULL)
+
 /* Returns true for a legitimate combined insn.  */
 DEFHOOK
 (legitimate_combined_insn,

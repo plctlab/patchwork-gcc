@@ -11933,6 +11933,12 @@ or when the back end is in a partially-initialized state.
 outside of any function scope.
 @end deftypefn
 
+@deftypefn {Target Hook} rtx TARGET_LOADING_INT_CONVERT_TO_FLOAT (machine_mode @var{mode}, rtx @var{source}, rtx @var{base})
+If the target is protifiable to load an integer in word_mode from
+@var{source} which is based on @var{base}, then convert to a floating
+point value in @var{mode}.
+@end deftypefn
+
 @defmac TARGET_OBJECT_SUFFIX
 Define this macro to be a C string representing the suffix for object
 files on your target machine.  If you do not define this macro, GCC will

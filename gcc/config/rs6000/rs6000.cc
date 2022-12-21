@@ -1559,6 +1559,9 @@ static const struct attribute_spec rs6000_attribute_table[] =
 #undef TARGET_INVALID_ARG_FOR_UNPROTOTYPED_FN
 #define TARGET_INVALID_ARG_FOR_UNPROTOTYPED_FN invalid_arg_for_unprototyped_fn
 
+#undef TARGET_LOADING_INT_CONVERT_TO_FLOAT
+#define TARGET_LOADING_INT_CONVERT_TO_FLOAT rs6000_loading_int_convert_to_float
+
 #undef TARGET_MD_ASM_ADJUST
 #define TARGET_MD_ASM_ADJUST rs6000_md_asm_adjust
 
@@ -24106,6 +24109,73 @@ invalid_arg_for_unprototyped_fn (const_tree typelist, const_tree funcdecl, const
                   && DECL_BUILT_IN_CLASS (funcdecl) != BUILT_IN_MD)))
 	  ? N_("AltiVec argument passed to unprototyped function")
 	  : NULL;
+}
+
+/* Implement the TARGET_LOADING_INT_CONVERT_TO_FLOAT. */
+static rtx
+rs6000_loading_int_convert_to_float (machine_mode mode, rtx source, rtx base)
+{
+  rtx src_base = XEXP (source, 0);
+  poly_uint64 offset = MEM_OFFSET (source);
+
+  if (GET_CODE (src_base) == PLUS && CONSTANT_P (XEXP (src_base, 1)))
+    {
+      offset += INTVAL (XEXP (src_base, 1));
+      src_base = XEXP (src_base, 0);
+    }
+
+  if (!rtx_equal_p (XEXP (base, 0), src_base))
+    return NULL_RTX;
+
+  rtx temp_reg = gen_reg_rtx (word_mode);
+  rtx temp_mem = copy_rtx (source);
+  PUT_MODE (temp_mem, word_mode);
+
+  /* DI->DF */
+  if (word_mode == DImode && mode == DFmode)
+    {
+      if (multiple_p (offset, GET_MODE_SIZE (word_mode)))
+	{
+	  emit_move_insn (temp_reg, temp_mem);
+	  rtx float_subreg = simplify_gen_subreg (mode, temp_reg, word_mode, 0);
+	  rtx target_reg = gen_reg_rtx (mode);
+	  emit_move_insn (target_reg, float_subreg);
+	  return target_reg;
+	}
+      return NULL_RTX;
+    }
+
+  /* Sub DI#->SF */
+  if (word_mode == DImode && mode == SFmode)
+    {
+      poly_uint64 byte_off = 0;
+      if (multiple_p (offset, GET_MODE_SIZE (word_mode)))
+	byte_off = 0;
+      else if (multiple_p (offset - GET_MODE_SIZE (mode),
+			   GET_MODE_SIZE (word_mode)))
+	byte_off = GET_MODE_SIZE (mode);
+      else
+	return NULL_RTX;
+
+      temp_mem = adjust_address (temp_mem, word_mode, -byte_off);
+      emit_move_insn (temp_reg, temp_mem);
+
+      /* little endia only? */
+      poly_uint64 high_off = subreg_highpart_offset (SImode, word_mode);
+      if (known_eq (byte_off, high_off))
+	{
+	  temp_reg = expand_shift (RSHIFT_EXPR, word_mode, temp_reg,
+				   GET_MODE_PRECISION (SImode), temp_reg, 0);
+	}
+      rtx subreg_si = gen_reg_rtx (SImode);
+      emit_move_insn (subreg_si,  gen_lowpart (SImode, temp_reg));
+      rtx float_subreg = simplify_gen_subreg (mode, subreg_si, SImode, 0);
+      rtx target_reg = gen_reg_rtx (mode);
+      emit_move_insn (target_reg, float_subreg);
+      return target_reg;
+    }
+
+  return NULL_RTX;
 }
 
 /* For TARGET_SECURE_PLT 32-bit PIC code we can save PIC register

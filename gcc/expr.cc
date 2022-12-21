@@ -11812,6 +11812,21 @@ expand_expr_real_1 (tree exp, rtx target, machine_mode tmode,
 	    && modifier != EXPAND_WRITE)
 	  op0 = flip_storage_order (mode1, op0);
 
+	/* Accessing float field of struct parameter which passed via integer
+	   registers.  */
+	if (targetm.loading_int_convert_to_float && mode == mode1
+	    && GET_MODE_CLASS (mode) == MODE_FLOAT
+	    && TREE_CODE (tem) == PARM_DECL && DECL_INCOMING_RTL (tem)
+	    && REG_P (DECL_INCOMING_RTL (tem))
+	    && GET_MODE (DECL_INCOMING_RTL (tem)) == BLKmode && MEM_P (op0)
+	    && MEM_OFFSET_KNOWN_P (op0))
+	  {
+	    rtx res = targetm.loading_int_convert_to_float (mode, op0,
+							    DECL_RTL (tem));
+	    if (res)
+	      op0 = res;
+	  }
+
 	if (mode == mode1 || mode1 == BLKmode || mode1 == tmode
 	    || modifier == EXPAND_CONST_ADDRESS
 	    || modifier == EXPAND_INITIALIZER)

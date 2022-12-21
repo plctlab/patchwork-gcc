@@ -7756,6 +7756,8 @@ to by @var{ce_info}.
 
 @hook TARGET_SET_CURRENT_FUNCTION
 
+@hook TARGET_LOADING_INT_CONVERT_TO_FLOAT
+
 @defmac TARGET_OBJECT_SUFFIX
 Define this macro to be a C string representing the suffix for object
 files on your target machine.  If you do not define this macro, GCC will
