@@ -140,7 +140,7 @@ host_libs="intl libiberty opcodes bfd readline tcl tk itcl libgui zlib libbacktr
 # binutils, gas and ld appear in that order because it makes sense to run
 # "make check" in that particular order.
 # If --enable-gold is used, "gold" may replace "ld".
-host_tools="texinfo flex bison binutils gas ld fixincludes gcc cgen sid sim gdb gdbserver gprof etc expect dejagnu m4 utils guile fastjar gnattools libcc1 gm2tools gotools c++tools"
+host_tools="texinfo flex bison binutils gas ld fixincludes gcc cgen sid sim gdb gdbserver gprof etc expect dejagnu m4 utils guile fastjar gnattools libcc1 gotools c++tools"
 
 # these libraries are built for the target environment, and are built after
 # the host libraries and the host tools (which may be a cross compiler)
@@ -465,13 +465,22 @@ if test "${ENABLE_LIBADA}" != "yes" ; then
   noconfigdirs="$noconfigdirs gnattools"
 fi
 
+
 AC_ARG_ENABLE(libgm2,
 [AS_HELP_STRING([--enable-libgm2], [build libgm2 directory])],
 ENABLE_LIBGM2=$enableval,
 ENABLE_LIBGM2=no)
-if test "${ENABLE_LIBGM2}" != "yes" ; then
-  noconfigdirs="$noconfigdirs gm2tools"
+
+
+AC_ARG_ENABLE(m2plugin,
+[AS_HELP_STRING([--enable-m2plugin], [enable m2rte plugin])],
+enable_m2plugin=$enableval,
+enable_m2plugin=yes)
+if test "${enable_m2plugin}" != "yes" ; then
+  enable_m2plugin=no
 fi
+AC_SUBST(enable_m2plugin)
+
 
 AC_ARG_ENABLE(libssp,
 [AS_HELP_STRING([--enable-libssp], [build libssp directory])],

@@ -1926,6 +1926,9 @@ do a @samp{make -C gcc gnatlib_and_tools}.
 Specify that the run-time libraries and tools used by Modula-2 should not
 be built.  This can be useful for debugging.
 
+@item --enable-m2plugin
+Specify that the modula-2 static analysis plugin should be built.
+
 @item --disable-libsanitizer
 Specify that the run-time libraries for the various sanitizers should
 not be built.

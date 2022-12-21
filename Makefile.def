@@ -103,7 +103,7 @@ host_modules= { module= libiberty; bootstrap=true;
 // @extra_linker_plugin_flags@ and @extra_linker_plugin_configure_flags@.
 host_modules= { module= libiberty-linker-plugin; bootstrap=true;
 		module_srcdir=libiberty;
-	        extra_configure_flags='@extra_host_libiberty_configure_flags@ --disable-install-libiberty @extra_linker_plugin_flags@ @extra_linker_plugin_configure_flags@';
+	        extra_configure_flags='@extra_host_libiberty_configure_flags@ --disable-install-libiberty @extra_linker_plugin_flags@ @extra_linker_plugin_configure_flags@ @enable_m2plugin@';
 		extra_make_flags='@extra_linker_plugin_flags@'; };
 // We abuse missing to avoid installing anything for libiconv.
 host_modules= { module= libiconv;

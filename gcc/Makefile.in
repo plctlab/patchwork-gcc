@@ -404,6 +404,8 @@ PLUGINCFLAGS = @CXXFLAGS@
 PLUGINLIBS = @pluginlibs@
 
 enable_plugin = @enable_plugin@
+# Should we build the m2plugin?
+enable_m2plugin = @enable_m2plugin@
 
 # On MinGW plugin installation involves installing import libraries.
 ifeq ($(enable_plugin),yes)
@@ -4100,6 +4102,9 @@ site.exp: ./config.status Makefile
 	  echo "set PLUGINCC \"$(PLUGINCC)\"" >> ./site.tmp; \
 	  echo "set PLUGINCFLAGS \"$(PLUGINCFLAGS)\"" >> ./site.tmp; \
 	  echo "set GMPINC \"$(GMPINC)\"" >> ./site.tmp; \
+	fi
+	@if test "@enable_m2plugin@" = "yes" ; then \
+	  echo "set ENABLE_M2PLUGIN 1" >> ./site.tmp; \
 	fi
 # If newlib has been configured, we need to pass -B to gcc so it can find
 # newlib's crt0.o if it exists.  This will cause a "path prefix not used"

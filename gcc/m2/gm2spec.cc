@@ -610,7 +610,7 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
   /* The number of libraries added in.  */
   int added_libraries;
 
-#ifdef ENABLE_PLUGIN
+#ifdef ENABLE_M2PLUGIN
   /* True if we should add -fplugin=m2rte to the command-line.  */
   bool need_plugin = true;
 #else
@@ -678,10 +678,10 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
           break;
         case OPT_fm2_plugin:
           need_plugin = decoded_options[i].value;
-#ifndef ENABLE_PLUGIN
+#ifndef ENABLE_M2PLUGIN
 	  if (need_plugin)
 	    error ("plugin support is disabled; configure with "
-		   "%<--enable-plugin%>");
+		   "%<--enable-m2plugin%>");
 #endif
           break;
 	case OPT_fscaffold_dynamic:
@@ -802,7 +802,6 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
 	       "-fgen-module-list=", "-fuse-list=");
     }
 
-
   /* There's no point adding -shared-libgcc if we don't have a shared
      libgcc.  */
 #ifndef ENABLE_SHARED_LIBGCC
@@ -848,7 +847,8 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
   if (allow_libraries)
     {
       /* If the libraries have not been specified by the user but the
-	 dialect has been specified then select the appropriate libraries.  */
+	 dialect has been specified then select the appropriate
+	 libraries.  */
       if (libraries == NULL)
 	{
 	  if (strcmp (dialect, "iso") == 0)
@@ -865,8 +865,10 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
   if ((! seen_x_flag) && seen_module_extension)
     append_option (OPT_x, "modula-2", 1);
 
+#ifdef ENABLE_M2PLUGIN
   if (need_plugin)
     append_option (OPT_fplugin_, "m2rte", 1);
+#endif
 
   if (linking)
     {

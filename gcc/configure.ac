@@ -1011,6 +1011,7 @@ analyzer=1)
 AC_DEFINE_UNQUOTED(ENABLE_ANALYZER, $analyzer,
 [Define 0/1 if static analyzer feature is enabled.])
 
+
 AC_ARG_ENABLE(objc-gc,
 [AS_HELP_STRING([--enable-objc-gc],
 		[enable the use of Boehm's garbage collector with
@@ -7373,6 +7374,26 @@ AC_SUBST(enable_plugin)
 if test x"$enable_plugin" = x"yes"; then
   AC_DEFINE(ENABLE_PLUGIN, 1, [Define to enable plugin support.])
 fi
+
+
+AC_ARG_ENABLE(m2plugin,
+[AS_HELP_STRING([--enable-m2plugin],
+		[enable the modula-2 static analysis plugin])],
+if test x$enable_m2plugin = xno; then
+  m2plugin=0
+else
+  if test x"$enable_plugin" = x"yes"; then
+     m2plugin=1
+  else
+     m2plugin=0
+     AC_MSG_WARN([modula-2 plugin is disabled as the host has disabled plugins])
+  fi
+fi,
+m2plugin=0)
+if test x"$enable_m2plugin" = x"yes"; then
+  AC_DEFINE(ENABLE_M2PLUGIN, 1, [Define to enable m2plugin support.])
+fi
+AC_SUBST(enable_m2plugin)
 
 
 # Enable --enable-host-shared
