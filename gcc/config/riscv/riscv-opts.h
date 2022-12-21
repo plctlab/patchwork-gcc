@@ -132,6 +132,22 @@ enum stack_protector_guard {
 #define TARGET_VECTOR_ELEN_FP_64 \
   ((riscv_vector_elen_flags & MASK_VECTOR_ELEN_FP_64) != 0)
 
+#define MASK_ZVKB      (1 << 0)
+#define MASK_ZVKG      (1 << 1)
+#define MASK_ZVKHA     (1 << 2)
+#define MASK_ZVKHB     (1 << 3)
+#define MASK_ZVKN      (1 << 4)
+#define MASK_ZVKSED    (1 << 5)
+#define MASK_ZVKSH     (1 << 6)
+
+#define TARGET_ZVKB    ((riscv_zvk_subext & MASK_ZVKB) != 0)
+#define TARGET_ZVKG    ((riscv_zvk_subext & MASK_ZVKG) != 0)
+#define TARGET_ZVKHA   ((riscv_zvk_subext & MASK_ZVKHA) != 0)
+#define TARGET_ZVKHB   ((riscv_zvk_subext & MASK_ZVKHB) != 0)
+#define TARGET_ZVKN    ((riscv_zvk_subext & MASK_ZVKN) != 0)
+#define TARGET_ZVKSED  ((riscv_zvk_subext & MASK_ZVKSED) != 0)
+#define TARGET_ZVKSH   ((riscv_zvk_subext & MASK_ZVKSH) != 0)
+
 #define MASK_ZVL32B    (1 <<  0)
 #define MASK_ZVL64B    (1 <<  1)
 #define MASK_ZVL128B   (1 <<  2)

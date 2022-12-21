@@ -201,6 +201,14 @@ static const struct riscv_ext_version riscv_ext_version_table[] =
   {"zve64f", ISA_SPEC_CLASS_NONE, 1, 0},
   {"zve64d", ISA_SPEC_CLASS_NONE, 1, 0},
 
+  {"zvkb", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"zvkg", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"zvkha", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"zvkhb", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"zvkn", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"zvksed", ISA_SPEC_CLASS_NONE, 1, 0},
+  {"zvksh", ISA_SPEC_CLASS_NONE, 1, 0},
+
   {"zvl32b", ISA_SPEC_CLASS_NONE, 1, 0},
   {"zvl64b", ISA_SPEC_CLASS_NONE, 1, 0},
   {"zvl128b", ISA_SPEC_CLASS_NONE, 1, 0},
@@ -1225,6 +1233,14 @@ static const riscv_ext_flag_table_t riscv_ext_flag_table[] =
   {"zve64x",   &gcc_options::x_riscv_vector_elen_flags, MASK_VECTOR_ELEN_64},
   {"zve64f",   &gcc_options::x_riscv_vector_elen_flags, MASK_VECTOR_ELEN_FP_32},
   {"zve64d",   &gcc_options::x_riscv_vector_elen_flags, MASK_VECTOR_ELEN_FP_64},
+
+  {"zvkb",     &gcc_options::x_riscv_zvk_subext, MASK_ZVKB},
+  {"zvkg",     &gcc_options::x_riscv_zvk_subext, MASK_ZVKG},
+  {"zvkha",    &gcc_options::x_riscv_zvk_subext, MASK_ZVKHA},
+  {"zvkhb",    &gcc_options::x_riscv_zvk_subext, MASK_ZVKHB},
+  {"zvkn",     &gcc_options::x_riscv_zvk_subext, MASK_ZVKN},
+  {"zvksed",   &gcc_options::x_riscv_zvk_subext, MASK_ZVKSED},
+  {"zvksh",    &gcc_options::x_riscv_zvk_subext, MASK_ZVKSH},
 
   {"zvl32b",    &gcc_options::x_riscv_zvl_flags, MASK_ZVL32B},
   {"zvl64b",    &gcc_options::x_riscv_zvl_flags, MASK_ZVL64B},
