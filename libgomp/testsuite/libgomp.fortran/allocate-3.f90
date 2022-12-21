@@ -23,6 +23,6 @@ integer :: q, x,y,z
 ! { dg-error "Object 'omp_high_bw_mem_alloc' is not a variable" "" { target *-*-* } .-1 }
 !$omp end parallel
 
-!$omp parallel allocate( align(q) : x) firstprivate(x) ! { dg-error "31:ALIGN modifier requires a scalar positive constant integer alignment expression at" }
+!$omp parallel allocate( align(q) : x) firstprivate(x) ! { dg-error "31:ALIGN requires a scalar positive constant integer alignment expression at" }
 !$omp end parallel
 end
