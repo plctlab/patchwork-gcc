@@ -6092,7 +6092,7 @@ ivopts_estimate_reg_pressure (struct ivopts_data *data, unsigned n_invs,
 
   /* If we have enough registers.  */
   if (regs_needed + target_res_regs < available_regs)
-    cost = n_new;
+    return n_new;
   /* If close to running out of registers, try to preserve them.  */
   else if (regs_needed <= available_regs)
     cost = target_reg_cost [speed] * regs_needed;
