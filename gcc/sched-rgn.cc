@@ -3847,7 +3847,8 @@ bool
 pass_sched::gate (function *)
 {
 #ifdef INSN_SCHEDULING
-  return optimize > 0 && flag_schedule_insns && dbg_cnt (sched_func);
+  return optimize > 0 && flag_schedule_insns
+    && !cfun->calls_setjmp && dbg_cnt (sched_func);
 #else
   return 0;
 #endif
