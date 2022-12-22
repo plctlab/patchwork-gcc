@@ -48,6 +48,7 @@ typedef pthread_t __gthread_t;
 typedef pthread_key_t __gthread_key_t;
 typedef pthread_once_t __gthread_once_t;
 typedef pthread_mutex_t __gthread_mutex_t;
+typedef pthread_rwlock_t __gthread_rwlock_t;
 typedef pthread_mutex_t __gthread_recursive_mutex_t;
 typedef pthread_cond_t __gthread_cond_t;
 typedef struct timespec __gthread_time_t;
@@ -58,6 +59,7 @@ typedef struct timespec __gthread_time_t;
 
 #define __GTHREAD_MUTEX_INIT PTHREAD_MUTEX_INITIALIZER
 #define __GTHREAD_MUTEX_INIT_FUNCTION __gthread_mutex_init_function
+#define __GTHREAD_RWLOCK_INIT PTHREAD_RWLOCK_INITIALIZER
 #define __GTHREAD_ONCE_INIT PTHREAD_ONCE_INIT
 #if defined(PTHREAD_RECURSIVE_MUTEX_INITIALIZER)
 #define __GTHREAD_RECURSIVE_MUTEX_INIT PTHREAD_RECURSIVE_MUTEX_INITIALIZER
@@ -135,6 +137,11 @@ __gthrw(pthread_mutexattr_init)
 __gthrw(pthread_mutexattr_settype)
 __gthrw(pthread_mutexattr_destroy)
 
+__gthrw(pthread_rwlock_rdlock)
+__gthrw(pthread_rwlock_tryrdlock)
+__gthrw(pthread_rwlock_wrlock)
+__gthrw(pthread_rwlock_trywrlock)
+__gthrw(pthread_rwlock_unlock)
 
 #if defined(_LIBOBJC) || defined(_LIBOBJC_WEAK)
 /* Objective-C.  */
@@ -883,6 +890,51 @@ static inline int
 __gthread_cond_destroy (__gthread_cond_t* __cond)
 {
   return __gthrw_(pthread_cond_destroy) (__cond);
+}
+
+static inline int
+__gthread_rwlock_rdlock (__gthread_rwlock_t *__rwlock)
+{
+  if (__gthread_active_p ())
+    return __gthrw_(pthread_rwlock_rdlock) (__rwlock);
+  else
+    return 0;
+}
+
+static inline int
+__gthread_rwlock_tryrdlock (__gthread_rwlock_t *__rwlock)
+{
+  if (__gthread_active_p ())
+    return __gthrw_(pthread_rwlock_tryrdlock) (__rwlock);
+  else
+    return 0;
+}
+
+static inline int
+__gthread_rwlock_wrlock (__gthread_rwlock_t *__rwlock)
+{
+  if (__gthread_active_p ())
+    return __gthrw_(pthread_rwlock_wrlock) (__rwlock);
+  else
+    return 0;
+}
+
+static inline int
+__gthread_rwlock_trywrlock (__gthread_rwlock_t *__rwlock)
+{
+  if (__gthread_active_p ())
+    return __gthrw_(pthread_rwlock_trywrlock) (__rwlock);
+  else
+    return 0;
+}
+
+static inline int
+__gthread_rwlock_unlock (__gthread_rwlock_t *__rwlock)
+{
+  if (__gthread_active_p ())
+    return __gthrw_(pthread_rwlock_unlock) (__rwlock);
+  else
+    return 0;
 }
 
 #endif /* _LIBOBJC */
