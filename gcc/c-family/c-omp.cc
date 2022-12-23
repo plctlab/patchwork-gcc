@@ -3370,7 +3370,8 @@ tree
 c_omp_address_inspector::expand_array_base (tree c,
 					    vec<omp_addr_token *> &addr_tokens,
 					    tree expr, unsigned *idx,
-					    bool target, bool decl_p)
+					    c_omp_region_type ort,
+					    bool decl_p)
 {
   using namespace omp_addr_tokenizer;
   location_t loc = OMP_CLAUSE_LOCATION (c);
@@ -3380,13 +3381,25 @@ c_omp_address_inspector::expand_array_base (tree c,
 			   && is_global_var (decl)
 			   && lookup_attribute ("omp declare target",
 						DECL_ATTRIBUTES (decl)));
+  bool map_p = OMP_CLAUSE_CODE (c) == OMP_CLAUSE_MAP;
   bool implicit_p = (OMP_CLAUSE_CODE (c) == OMP_CLAUSE_MAP
 		     && OMP_CLAUSE_MAP_IMPLICIT (c));
   bool chain_p = omp_access_chain_p (addr_tokens, i + 1);
   tree c2 = NULL_TREE, c3 = NULL_TREE;
   unsigned consume_tokens = 2;
+  bool target = (ort & C_ORT_TARGET) != 0;
+  bool openmp = (ort & C_ORT_OMP) != 0;
 
   gcc_assert (i == 0);
+
+  if (!openmp
+      && OMP_CLAUSE_CODE (c) == OMP_CLAUSE_MAP
+      && (OMP_CLAUSE_MAP_KIND (c) == GOMP_MAP_ATTACH
+	  || OMP_CLAUSE_MAP_KIND (c) == GOMP_MAP_DETACH))
+    {
+      *idx = ++i;
+      return c;
+    }
 
   switch (addr_tokens[i + 1]->u.access_kind)
     {
@@ -3397,10 +3410,18 @@ c_omp_address_inspector::expand_array_base (tree c,
 
     case ACCESS_REF:
       {
-	/* Copy the referenced object.  */
+	/* Copy the referenced object.  Note that we do this even for !MAP_P
+	   clauses.  */
 	tree obj = convert_from_reference (addr_tokens[i + 1]->expr);
 	OMP_CLAUSE_DECL (c) = obj;
 	OMP_CLAUSE_SIZE (c) = TYPE_SIZE_UNIT (TREE_TYPE (obj));
+
+	if (!map_p)
+	  {
+	    if (decl_p)
+	      c_common_mark_addressable_vec (addr_tokens[i + 1]->expr);
+	    break;
+	  }
 
 	/* If we have a reference to a pointer, avoid using
 	   FIRSTPRIVATE_REFERENCE here in case the pointer is modified in the
@@ -3441,6 +3462,13 @@ c_omp_address_inspector::expand_array_base (tree c,
 
     case ACCESS_INDEXED_REF_TO_ARRAY:
       {
+	if (!map_p)
+	  {
+	    if (decl_p)
+	      c_common_mark_addressable_vec (addr_tokens[i + 1]->expr);
+	    break;
+	  }
+
 	tree virtual_origin
 	  = convert_from_reference (addr_tokens[i + 1]->expr);
 	virtual_origin = build_fold_addr_expr (virtual_origin);
@@ -3467,6 +3495,13 @@ c_omp_address_inspector::expand_array_base (tree c,
 
     case ACCESS_INDEXED_ARRAY:
       {
+	if (!map_p)
+	  {
+	    if (decl_p)
+	      c_common_mark_addressable_vec (addr_tokens[i + 1]->expr);
+	    break;
+	  }
+
 	/* The code handling "firstprivatize_array_bases" in gimplify.cc is
 	   relevant here.  What do we need to create for arrays at this
 	   stage?  (This condition doesn't feel quite right.  FIXME?)  */
@@ -3501,6 +3536,13 @@ c_omp_address_inspector::expand_array_base (tree c,
     case ACCESS_POINTER:
     case ACCESS_POINTER_OFFSET:
       {
+	if (!map_p)
+	  {
+	    if (decl_p)
+	      c_common_mark_addressable_vec (addr_tokens[i + 1]->expr);
+	    break;
+	  }
+
 	unsigned last_access = i + 1;
 	tree virtual_origin;
 
@@ -3524,7 +3566,11 @@ c_omp_address_inspector::expand_array_base (tree c,
 					     addr_tokens[last_access]->expr);
 	tree data_addr = omp_accessed_addr (addr_tokens, last_access, expr);
 	c2 = build_omp_clause (loc, OMP_CLAUSE_MAP);
-	if (decl_p && target && !chain_p && !declare_target_p)
+	/* For OpenACC, use FIRSTPRIVATE_POINTER for decls even on non-compute
+	   regions (e.g. "acc data" constructs).  It'll be removed anyway in
+	   gimplify.cc, but doing it this way maintains diagnostic
+	   behaviour.  */
+	if (decl_p && (target || !openmp) && !chain_p && !declare_target_p)
 	  OMP_CLAUSE_SET_MAP_KIND (c2, GOMP_MAP_FIRSTPRIVATE_POINTER);
 	else
 	  {
@@ -3544,6 +3590,13 @@ c_omp_address_inspector::expand_array_base (tree c,
     case ACCESS_REF_TO_POINTER:
     case ACCESS_REF_TO_POINTER_OFFSET:
       {
+	if (!map_p)
+	  {
+	    if (decl_p)
+	      c_common_mark_addressable_vec (addr_tokens[i + 1]->expr);
+	    break;
+	  }
+
 	unsigned last_access = i + 1;
 	tree virtual_origin;
 
@@ -3618,7 +3671,7 @@ c_omp_address_inspector::expand_array_base (tree c,
   i += consume_tokens;
   *idx = i;
 
-  if (target && chain_p)
+  if (target && chain_p && map_p)
     return omp_expand_access_chain (c, expr, addr_tokens, idx);
   else if (chain_p)
     while (*idx < addr_tokens.length ()
@@ -3635,13 +3688,15 @@ c_omp_address_inspector::expand_component_selector (tree c,
 						    vec<omp_addr_token *>
 						      &addr_tokens,
 						    tree expr, unsigned *idx,
-						    bool target)
+						    c_omp_region_type ort)
 {
   using namespace omp_addr_tokenizer;
   location_t loc = OMP_CLAUSE_LOCATION (c);
   unsigned i = *idx;
   tree c2 = NULL_TREE, c3 = NULL_TREE;
   bool chain_p = omp_access_chain_p (addr_tokens, i + 1);
+  bool map_p = OMP_CLAUSE_CODE (c) == OMP_CLAUSE_MAP;
+  bool target = (ort & C_ORT_TARGET) != 0;
 
   switch (addr_tokens[i + 1]->u.access_kind)
     {
@@ -3651,10 +3706,14 @@ c_omp_address_inspector::expand_component_selector (tree c,
 
     case ACCESS_REF:
       {
-	/* Copy the referenced object.  */
+	/* Copy the referenced object.  Note that we also do this for !MAP_P
+	   clauses.  */
 	tree obj = convert_from_reference (addr_tokens[i + 1]->expr);
 	OMP_CLAUSE_DECL (c) = obj;
 	OMP_CLAUSE_SIZE (c) = TYPE_SIZE_UNIT (TREE_TYPE (obj));
+
+	if (!map_p)
+	  break;
 
 	c2 = build_omp_clause (loc, OMP_CLAUSE_MAP);
 	OMP_CLAUSE_SET_MAP_KIND (c2, GOMP_MAP_ATTACH_DETACH);
@@ -3665,6 +3724,9 @@ c_omp_address_inspector::expand_component_selector (tree c,
 
     case ACCESS_INDEXED_REF_TO_ARRAY:
       {
+	if (!map_p)
+	  break;
+
 	tree virtual_origin
 	  = convert_from_reference (addr_tokens[i + 1]->expr);
 	virtual_origin = build_fold_addr_expr (virtual_origin);
@@ -3686,6 +3748,9 @@ c_omp_address_inspector::expand_component_selector (tree c,
     case ACCESS_POINTER:
     case ACCESS_POINTER_OFFSET:
       {
+	if (!map_p)
+	  break;
+
 	tree virtual_origin
 	  = fold_convert_loc (loc, ptrdiff_type_node,
 			      addr_tokens[i + 1]->expr);
@@ -3705,6 +3770,9 @@ c_omp_address_inspector::expand_component_selector (tree c,
     case ACCESS_REF_TO_POINTER:
     case ACCESS_REF_TO_POINTER_OFFSET:
       {
+	if (!map_p)
+	  break;
+
 	tree ptr = convert_from_reference (addr_tokens[i + 1]->expr);
 	tree virtual_origin = fold_convert_loc (loc, ptrdiff_type_node,
 						ptr);
@@ -3750,7 +3818,7 @@ c_omp_address_inspector::expand_component_selector (tree c,
   i += 2;
   *idx = i;
 
-  if (target && chain_p)
+  if (target && chain_p && map_p)
     return omp_expand_access_chain (c, expr, addr_tokens, idx);
   else if (chain_p)
     while (*idx < addr_tokens.length ()
@@ -3766,7 +3834,7 @@ c_omp_address_inspector::expand_component_selector (tree c,
 tree
 c_omp_address_inspector::expand_map_clause (tree c, tree expr,
 					    vec<omp_addr_token *> &addr_tokens,
-					    bool target)
+					    c_omp_region_type ort)
 {
   using namespace omp_addr_tokenizer;
   unsigned i, length = addr_tokens.length ();
@@ -3780,7 +3848,7 @@ c_omp_address_inspector::expand_map_clause (tree c, tree expr,
 	  && addr_tokens[i]->u.structure_base_kind == BASE_DECL
 	  && addr_tokens[i + 1]->type == ACCESS_METHOD)
 	{
-	  c = expand_array_base (c, addr_tokens, expr, &i, target, true);
+	  c = expand_array_base (c, addr_tokens, expr, &i, ort, true);
 	  if (c == error_mark_node)
 	    return error_mark_node;
 	}
@@ -3789,7 +3857,7 @@ c_omp_address_inspector::expand_map_clause (tree c, tree expr,
 	       && addr_tokens[i]->u.structure_base_kind == BASE_ARBITRARY_EXPR
 	       && addr_tokens[i + 1]->type == ACCESS_METHOD)
 	{
-	  c = expand_array_base (c, addr_tokens, expr, &i, target, false);
+	  c = expand_array_base (c, addr_tokens, expr, &i, ort, false);
 	  if (c == error_mark_node)
 	    return error_mark_node;
 	}
@@ -3825,7 +3893,7 @@ c_omp_address_inspector::expand_map_clause (tree c, tree expr,
 	       && addr_tokens[i]->type == COMPONENT_SELECTOR
 	       && addr_tokens[i + 1]->type == ACCESS_METHOD)
 	{
-	  c = expand_component_selector (c, addr_tokens, expr, &i, target);
+	  c = expand_component_selector (c, addr_tokens, expr, &i, ort);
 	  /* We used 'expr', so these must have been the last tokens.  */
 	  gcc_assert (i == length);
 	  if (c == error_mark_node)

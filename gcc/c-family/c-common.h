@@ -1245,7 +1245,8 @@ enum c_omp_region_type
   C_ORT_DECLARE_SIMD		= 1 << 2,
   C_ORT_TARGET			= 1 << 3,
   C_ORT_OMP_DECLARE_SIMD	= C_ORT_OMP | C_ORT_DECLARE_SIMD,
-  C_ORT_OMP_TARGET		= C_ORT_OMP | C_ORT_TARGET
+  C_ORT_OMP_TARGET		= C_ORT_OMP | C_ORT_TARGET,
+  C_ORT_ACC_TARGET		= C_ORT_ACC | C_ORT_TARGET
 };
 
 extern tree c_finish_omp_master (location_t, tree);
@@ -1345,10 +1346,11 @@ public:
   bool maybe_zero_length_array_section (tree);
 
   tree expand_array_base (tree, vec<omp_addr_token *> &, tree, unsigned *,
-			  bool, bool);
+			  c_omp_region_type, bool);
   tree expand_component_selector (tree, vec<omp_addr_token *> &, tree,
-				  unsigned *, bool);
-  tree expand_map_clause (tree, tree, vec<omp_addr_token *> &, bool);
+				  unsigned *, c_omp_region_type);
+  tree expand_map_clause (tree, tree, vec<omp_addr_token *> &,
+			  c_omp_region_type);
 };
 
 enum c_omp_directive_kind {
