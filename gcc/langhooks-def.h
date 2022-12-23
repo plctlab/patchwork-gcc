@@ -85,6 +85,10 @@ extern enum omp_clause_defaultmap_kind lhd_omp_predetermined_mapping (tree);
 extern tree lhd_omp_assignment (tree, tree, tree);
 extern void lhd_omp_finish_clause (tree, gimple_seq *, bool);
 extern tree lhd_omp_array_size (tree, gimple_seq *);
+extern tree lhd_omp_finish_mapper_clauses (tree);
+extern tree lhd_omp_mapper_lookup (tree, tree);
+extern tree lhd_omp_extract_mapper_directive (tree);
+extern tree lhd_omp_map_array_section (location_t, tree);
 struct gimplify_omp_ctx;
 extern void lhd_omp_firstprivatize_type_sizes (struct gimplify_omp_ctx *,
 					       tree);
@@ -273,6 +277,11 @@ extern tree lhd_unit_size_without_reusable_padding (tree);
 #define LANG_HOOKS_OMP_CLAUSE_LINEAR_CTOR NULL
 #define LANG_HOOKS_OMP_CLAUSE_DTOR hook_tree_tree_tree_null
 #define LANG_HOOKS_OMP_FINISH_CLAUSE lhd_omp_finish_clause
+#define LANG_HOOKS_OMP_FINISH_MAPPER_CLAUSES lhd_omp_finish_mapper_clauses
+#define LANG_HOOKS_OMP_MAPPER_LOOKUP lhd_omp_mapper_lookup
+#define LANG_HOOKS_OMP_EXTRACT_MAPPER_DIRECTIVE \
+  lhd_omp_extract_mapper_directive
+#define LANG_HOOKS_OMP_MAP_ARRAY_SECTION lhd_omp_map_array_section
 #define LANG_HOOKS_OMP_ALLOCATABLE_P hook_bool_tree_false
 #define LANG_HOOKS_OMP_SCALAR_P lhd_omp_scalar_p
 #define LANG_HOOKS_OMP_SCALAR_TARGET_P hook_bool_tree_false
@@ -307,6 +316,10 @@ extern tree lhd_unit_size_without_reusable_padding (tree);
   LANG_HOOKS_OMP_CLAUSE_LINEAR_CTOR, \
   LANG_HOOKS_OMP_CLAUSE_DTOR, \
   LANG_HOOKS_OMP_FINISH_CLAUSE, \
+  LANG_HOOKS_OMP_FINISH_MAPPER_CLAUSES, \
+  LANG_HOOKS_OMP_MAPPER_LOOKUP, \
+  LANG_HOOKS_OMP_EXTRACT_MAPPER_DIRECTIVE, \
+  LANG_HOOKS_OMP_MAP_ARRAY_SECTION, \
   LANG_HOOKS_OMP_ALLOCATABLE_P, \
   LANG_HOOKS_OMP_SCALAR_P, \
   LANG_HOOKS_OMP_SCALAR_TARGET_P, \
