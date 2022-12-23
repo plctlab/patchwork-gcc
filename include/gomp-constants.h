@@ -194,7 +194,10 @@ enum gomp_map_kind
     GOMP_MAP_UNSET =			(GOMP_MAP_LAST | 4),
     /* Used to record the name of a named mapper.  */
     GOMP_MAP_PUSH_MAPPER_NAME =		(GOMP_MAP_LAST | 5),
-    GOMP_MAP_POP_MAPPER_NAME =		(GOMP_MAP_LAST | 6)
+    GOMP_MAP_POP_MAPPER_NAME =		(GOMP_MAP_LAST | 6),
+    /* Used to hold a TREE_LIST of grouped nodes in an 'omp declare mapper'
+       definition (only for Fortran at present).  */
+    GOMP_MAP_MAPPING_GROUP =		(GOMP_MAP_LAST | 7)
   };
 
 #define GOMP_MAP_COPY_TO_P(X) \
