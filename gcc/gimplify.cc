@@ -10617,6 +10617,7 @@ omp_accumulate_sibling_list (enum omp_region_type region_type,
   poly_int64 cbitpos;
   tree ocd = OMP_CLAUSE_DECL (grp_end);
   bool openmp = !(region_type & ORT_ACC);
+  bool target = (region_type & ORT_TARGET) != 0;
   tree *continue_at = NULL;
 
   while (TREE_CODE (ocd) == ARRAY_REF)
@@ -10721,9 +10722,9 @@ omp_accumulate_sibling_list (enum omp_region_type region_type,
 	    }
 
 	  /* For OpenMP semantics, we don't want to implicitly allocate
-	     space for the pointer here.  A FRAGILE_P node is only being
-	     created so that omp-low.cc is able to rewrite the struct
-	     properly.
+	     space for the pointer here for non-compute regions (e.g. "enter
+	     data").  A FRAGILE_P node is only being created so that
+	     omp-low.cc is able to rewrite the struct properly.
 	     For references (to pointers), we want to actually allocate the
 	     space for the reference itself in the sorted list following the
 	     struct node.
@@ -10731,6 +10732,7 @@ omp_accumulate_sibling_list (enum omp_region_type region_type,
 	     mapping of the attachment point, but not otherwise.  */
 	  if (*fragile_p
 	      || (openmp
+		  && !target
 		  && attach_detach
 		  && TREE_CODE (TREE_TYPE (ocd)) == POINTER_TYPE
 		  && !OMP_CLAUSE_ATTACHMENT_MAPPING_ERASED (grp_end)))
@@ -11043,6 +11045,7 @@ omp_accumulate_sibling_list (enum omp_region_type region_type,
 
 	  if (*fragile_p
 	      || (openmp
+		  && !target
 		  && attach_detach
 		  && TREE_CODE (TREE_TYPE (ocd)) == POINTER_TYPE
 		  && !OMP_CLAUSE_ATTACHMENT_MAPPING_ERASED (grp_end)))
