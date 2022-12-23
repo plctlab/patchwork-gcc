@@ -13634,6 +13634,7 @@ handle_omp_array_sections_1 (tree c, tree t, vec<tree> &types,
 			     enum c_omp_region_type ort)
 {
   tree ret, low_bound, length, type;
+  bool openacc = (ort & C_ORT_ACC) != 0;
   if (TREE_CODE (t) != TREE_LIST)
     {
       if (error_operand_p (t))
@@ -13753,7 +13754,7 @@ handle_omp_array_sections_1 (tree c, tree t, vec<tree> &types,
 	{
 	  error_at (OMP_CLAUSE_LOCATION (c),
 		    "expected single pointer in %qs clause",
-		    user_omp_clause_code_name (c, ort == C_ORT_ACC));
+		    user_omp_clause_code_name (c, openacc));
 	  return error_mark_node;
 	}
     }
@@ -14201,9 +14202,7 @@ handle_omp_array_sections (tree c, enum c_omp_region_type ort)
 
       c_omp_address_inspector ai (OMP_CLAUSE_LOCATION (c), t);
 
-      tree nc = ai.expand_map_clause (c, first, addr_tokens,
-				      (ort == C_ORT_OMP_TARGET
-				       || ort == C_ORT_ACC));
+      tree nc = ai.expand_map_clause (c, first, addr_tokens, ort);
       if (nc != error_mark_node)
 	{
 	  if (ai.maybe_zero_length_array_section (c))
@@ -14486,6 +14485,7 @@ c_finish_omp_clauses (tree clauses, enum c_omp_region_type ort)
   bool allocate_seen = false;
   bool implicit_moved = false;
   bool target_in_reduction_seen = false;
+  bool openacc = (ort & C_ORT_ACC) != 0;
 
   bitmap_obstack_initialize (NULL);
   bitmap_initialize (&generic_head, &bitmap_default_obstack);
@@ -14501,7 +14501,7 @@ c_finish_omp_clauses (tree clauses, enum c_omp_region_type ort)
   bitmap_initialize (&oacc_reduction_head, &bitmap_default_obstack);
   bitmap_initialize (&is_on_device_head, &bitmap_default_obstack);
 
-  if (ort & C_ORT_ACC)
+  if (openacc)
     for (c = clauses; c; c = OMP_CLAUSE_CHAIN (c))
       if (OMP_CLAUSE_CODE (c) == OMP_CLAUSE_ASYNC)
 	{
@@ -14895,8 +14895,7 @@ c_finish_omp_clauses (tree clauses, enum c_omp_region_type ort)
 			omp_clause_code_name[OMP_CLAUSE_CODE (c)]);
 	      remove = true;
 	    }
-	  else if ((ort == C_ORT_ACC
-		    && OMP_CLAUSE_CODE (c) == OMP_CLAUSE_REDUCTION)
+	  else if ((openacc && OMP_CLAUSE_CODE (c) == OMP_CLAUSE_REDUCTION)
 		   || (ort == C_ORT_OMP
 		       && (OMP_CLAUSE_CODE (c) == OMP_CLAUSE_USE_DEVICE_PTR
 			   || (OMP_CLAUSE_CODE (c)
@@ -14919,7 +14918,7 @@ c_finish_omp_clauses (tree clauses, enum c_omp_region_type ort)
 	      if (bitmap_bit_p (&oacc_reduction_head, DECL_UID (t)))
 		{
 		  error_at (OMP_CLAUSE_LOCATION (c),
-			    ort == C_ORT_ACC
+			    openacc
 			    ? "%qD appears more than once in reduction clauses"
 			    : "%qD appears more than once in data clauses",
 			    t);
@@ -14942,7 +14941,7 @@ c_finish_omp_clauses (tree clauses, enum c_omp_region_type ort)
 		    || OMP_CLAUSE_CODE (c) == OMP_CLAUSE_IS_DEVICE_PTR)
 		   && bitmap_bit_p (&map_head, DECL_UID (t)))
 	    {
-	      if (ort == C_ORT_ACC)
+	      if (openacc)
 		error_at (OMP_CLAUSE_LOCATION (c),
 			  "%qD appears more than once in data clauses", t);
 	      else
@@ -15010,7 +15009,7 @@ c_finish_omp_clauses (tree clauses, enum c_omp_region_type ort)
 	  else if (bitmap_bit_p (&map_head, DECL_UID (t))
 		   || bitmap_bit_p (&map_field_head, DECL_UID (t)))
 	    {
-	      if (ort == C_ORT_ACC)
+	      if (openacc)
 		error_at (OMP_CLAUSE_LOCATION (c),
 			  "%qD appears more than once in data clauses", t);
 	      else if (OMP_CLAUSE_FIRSTPRIVATE_IMPLICIT (c)
@@ -15357,7 +15356,7 @@ c_finish_omp_clauses (tree clauses, enum c_omp_region_type ort)
 			      error_at (OMP_CLAUSE_LOCATION (c),
 					"%qD appears more than once in motion "
 					"clauses", rt);
-			    else if (ort == C_ORT_ACC)
+			    else if (openacc)
 			      error_at (OMP_CLAUSE_LOCATION (c),
 					"%qD appears more than once in data "
 					"clauses", rt);
@@ -15445,8 +15444,7 @@ c_finish_omp_clauses (tree clauses, enum c_omp_region_type ort)
 	       to be written.  */
 	    if (addr_tokens[0]->type == STRUCTURE_BASE
 		&& (bitmap_bit_p (&map_field_head, DECL_UID (t))
-		    || (ort != C_ORT_ACC
-			&& bitmap_bit_p (&map_head, DECL_UID (t)))))
+		    || (!openacc && bitmap_bit_p (&map_head, DECL_UID (t)))))
 	      goto skip_decl_checks;
 
 	    if (!VAR_P (t) && TREE_CODE (t) != PARM_DECL)
@@ -15512,7 +15510,7 @@ c_finish_omp_clauses (tree clauses, enum c_omp_region_type ort)
 		  }
 		else if (bitmap_bit_p (&map_head, DECL_UID (t))
 			 && !bitmap_bit_p (&map_field_head, DECL_UID (t))
-			 && ort == C_ORT_ACC)
+			 && openacc)
 		  {
 		    error_at (OMP_CLAUSE_LOCATION (c),
 			      "%qD appears more than once in data clauses", t);
@@ -15527,7 +15525,7 @@ c_finish_omp_clauses (tree clauses, enum c_omp_region_type ort)
 		if (OMP_CLAUSE_CODE (c) != OMP_CLAUSE_MAP)
 		  error_at (OMP_CLAUSE_LOCATION (c),
 			    "%qD appears more than once in motion clauses", t);
-		else if (ort == C_ORT_ACC)
+		else if (openacc)
 		  error_at (OMP_CLAUSE_LOCATION (c),
 			    "%qD appears more than once in data clauses", t);
 		else
@@ -15535,8 +15533,7 @@ c_finish_omp_clauses (tree clauses, enum c_omp_region_type ort)
 			    "%qD appears more than once in map clauses", t);
 		remove = true;
 	      }
-	    else if (ort == C_ORT_ACC
-		     && bitmap_bit_p (&generic_head, DECL_UID (t)))
+	    else if (openacc && bitmap_bit_p (&generic_head, DECL_UID (t)))
 	      {
 		error_at (OMP_CLAUSE_LOCATION (c),
 			  "%qD appears more than once in data clauses", t);
@@ -15545,7 +15542,7 @@ c_finish_omp_clauses (tree clauses, enum c_omp_region_type ort)
 	    else if (bitmap_bit_p (&firstprivate_head, DECL_UID (t))
 		     || bitmap_bit_p (&is_on_device_head, DECL_UID (t)))
 	      {
-		if (ort == C_ORT_ACC)
+		if (openacc)
 		  error_at (OMP_CLAUSE_LOCATION (c),
 			    "%qD appears more than once in data clauses", t);
 		else
@@ -15578,9 +15575,7 @@ c_finish_omp_clauses (tree clauses, enum c_omp_region_type ort)
 		grp_start_p = pc;
 		grp_sentinel = OMP_CLAUSE_CHAIN (c);
 		tree nc = ai.expand_map_clause (c, OMP_CLAUSE_DECL (c),
-						addr_tokens,
-						(ort == C_ORT_OMP_TARGET
-						 || ort == C_ORT_ACC));
+						addr_tokens, ort);
 		if (nc != error_mark_node)
 		  c = nc;
 	      }
@@ -15661,7 +15656,7 @@ c_finish_omp_clauses (tree clauses, enum c_omp_region_type ort)
 	  if (TREE_CODE (TREE_TYPE (t)) != POINTER_TYPE)
 	    {
 	      if (OMP_CLAUSE_CODE (c) == OMP_CLAUSE_USE_DEVICE_PTR
-		  && ort != C_ORT_ACC)
+		  && !openacc)
 		{
 		  error_at (OMP_CLAUSE_LOCATION (c),
 			    "%qs variable is not a pointer",
