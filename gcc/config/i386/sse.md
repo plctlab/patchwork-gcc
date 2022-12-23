@@ -10513,6 +10513,21 @@
    (set_attr "prefix" "orig,maybe_evex")
    (set_attr "mode" "SF")])
 
+(define_insn "sse_movss_v4si"
+  [(set (match_operand:V4SI 0 "register_operand"   "=x,v")
+	(vec_merge:V4SI
+	  (match_operand:V4SI 2 "register_operand" " x,v")
+	  (match_operand:V4SI 1 "register_operand" " 0,v")
+	  (const_int 1)))]
+  "TARGET_SSE"
+  "@
+   movss\t{%2, %0|%0, %2}
+   vmovss\t{%2, %1, %0|%0, %1, %2}"
+  [(set_attr "isa" "noavx,avx")
+   (set_attr "type" "ssemov")
+   (set_attr "prefix" "orig,maybe_evex")
+   (set_attr "mode" "SF")])
+
 (define_insn "avx2_vec_dup<mode>"
   [(set (match_operand:VF1_128_256 0 "register_operand" "=v")
 	(vec_duplicate:VF1_128_256
@@ -13522,6 +13537,21 @@
 	   ]
 	   (const_string "orig")))
    (set_attr "mode" "DF,DF,V1DF,V1DF,V1DF,V2DF,V1DF,V1DF,V1DF")])
+
+(define_insn "sse2_movsd_v2di"
+  [(set (match_operand:V2DI 0 "register_operand"   "=x,v")
+	(vec_merge:V2DI
+	  (match_operand:V2DI 2 "register_operand" " x,v")
+	  (match_operand:V2DI 1 "register_operand" " 0,v")
+	  (const_int 1)))]
+  "TARGET_SSE2"
+  "@
+   movsd\t{%2, %0|%0, %2}
+   vmovsd\t{%2, %1, %0|%0, %1, %2}"
+  [(set_attr "isa" "noavx,avx")
+   (set_attr "type" "ssemov")
+   (set_attr "prefix" "orig,maybe_evex")
+   (set_attr "mode" "DF")])
 
 (define_insn "vec_dupv2df<mask_name>"
   [(set (match_operand:V2DF 0 "register_operand"     "=x,x,v")
