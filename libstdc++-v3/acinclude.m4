@@ -5153,18 +5153,25 @@ AC_DEFUN([GLIBCXX_ZONEINFO_DIR], [
   AC_ARG_WITH([libstdcxx-zoneinfo-dir],
     AC_HELP_STRING([--with-libstdcxx-zoneinfo-dir],
 		   [the directory to search for tzdata files]),
-    [zoneinfo_dir="${withval}"
-     AC_DEFINE(_GLIBCXX_ZONEINFO_DIR, "${withval}",
-       [Define if a non-default location should be used for tzdata files.])
-    ],
-    [
+    [],[with_libstdcxx_zoneinfo_dir=yes])
+
+  # Pick a default when no specific path is set.
+  if test x${with_libstdcxx_zoneinfo_dir} = xyes; then
     case "$host" in
       # *-*-aix*) zoneinfo_dir="/usr/share/lib/zoneinfo" ;;
+      *-*-darwin2*) zoneinfo_dir="/usr/share/lib/zoneinfo.default" ;;
       *) zoneinfo_dir="/usr/share/zoneinfo" ;;
     esac
-    ])
-
+  elif test x${with_libstdcxx_zoneinfo_dir} = xno; then
+    zoneinfo_dir=none
+  else
+    zoneinfo_dir=${with_libstdcxx_zoneinfo_dir}
+  fi
   AC_MSG_NOTICE([zoneinfo data directory: ${zoneinfo_dir}])
+  if test x${zoneinfo_dir} != xnone; then
+    AC_DEFINE_UNQUOTED(_GLIBCXX_ZONEINFO_DIR, "${zoneinfo_dir}",
+       [Define if a non-default location should be used for tzdata files.])
+  fi
 ])
 
 # Macros from the top-level gcc directory.

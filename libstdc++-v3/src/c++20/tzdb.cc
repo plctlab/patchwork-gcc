@@ -52,6 +52,7 @@
 # endif
 #endif
 
+// This is a bit odd; the configure-time setting was 'no zoneinfo directory'
 #ifndef _GLIBCXX_ZONEINFO_DIR
 # define _GLIBCXX_ZONEINFO_DIR "/usr/share/zoneinfo"
 #endif
