@@ -9651,18 +9651,45 @@ omp_tsort_mapping_groups_1 (omp_mapping_group ***outlist,
 static omp_mapping_group *
 omp_tsort_mapping_groups (vec<omp_mapping_group> *groups,
 			  hash_map<tree_operand_hash, omp_mapping_group *>
-			    *grpmap)
+			    *grpmap,
+			  bool enter_exit_data)
 {
   omp_mapping_group *grp, *outlist = NULL, **cursor;
   unsigned int i;
+  bool saw_runtime_implicit = false;
 
   cursor = &outlist;
 
   FOR_EACH_VEC_ELT (*groups, i, grp)
     {
       if (grp->mark != PERMANENT)
-	if (!omp_tsort_mapping_groups_1 (&cursor, groups, grpmap, grp))
-	  return NULL;
+	{
+	  if (OMP_CLAUSE_MAP_RUNTIME_IMPLICIT_P (*grp->grp_start))
+	    {
+	      saw_runtime_implicit = true;
+	      continue;
+	    }
+	  if (!omp_tsort_mapping_groups_1 (&cursor, groups, grpmap, grp))
+	    return NULL;
+	}
+    }
+
+  if (!saw_runtime_implicit)
+    return outlist;
+
+  FOR_EACH_VEC_ELT (*groups, i, grp)
+    {
+      if (grp->mark != PERMANENT
+	  && OMP_CLAUSE_MAP_RUNTIME_IMPLICIT_P (*grp->grp_start))
+	{
+	  /* Clear the flag for enter/exit data because it is currently
+	     meaningless for those operations in libgomp.  */
+	  if (enter_exit_data)
+	    OMP_CLAUSE_MAP_RUNTIME_IMPLICIT_P (*grp->grp_start) = 0;
+
+	  if (!omp_tsort_mapping_groups_1 (&cursor, groups, grpmap, grp))
+	    return NULL;
+	}
     }
 
   return outlist;
@@ -10060,6 +10087,11 @@ omp_check_mapping_compatibility (location_t loc,
    mapping.  However, if we have a reference to pointer, make other appropriate
    adjustments to the mapping nodes instead.
 
+   If we have an ATTACH_DETACH node with a Fortran pointer-set (array
+   descriptor) mapping for a derived-type component, and we're also mapping the
+   whole of the derived-type variable on another clause, the pointer-set
+   mapping is removed.
+
    If we have a component access but we're also mapping the whole of the
    containing struct, drop the former access.
 
@@ -10239,6 +10271,18 @@ omp_resolve_clause_dependencies (enum tree_code code,
 		   GOMP_MAP_ATTACH_ZLAS for it.  */
 		if (!base_mapped_to && referenced_ptr_node)
 		  OMP_CLAUSE_SET_MAP_KIND (referenced_ptr_node, zlas_kind);
+
+		omp_mapping_group *struct_group;
+		tree desc;
+		if ((desc = OMP_CLAUSE_CHAIN (*grp->grp_start))
+		    && OMP_CLAUSE_CODE (desc) == OMP_CLAUSE_MAP
+		    && OMP_CLAUSE_MAP_KIND (desc) == GOMP_MAP_TO_PSET
+		    && omp_mapped_by_containing_struct (grpmap, decl,
+							&struct_group))
+		  /* If we have a pointer set but we're mapping the whole of
+		     the containing struct, we can remove the pointer set
+		     mapping.  */
+		  OMP_CLAUSE_CHAIN (*grp->grp_start) = OMP_CLAUSE_CHAIN (desc);
 	      }
 	    else if (TREE_CODE (TREE_TYPE (base_ptr)) == REFERENCE_TYPE
 		     && (TREE_CODE (TREE_TYPE (TREE_TYPE (base_ptr)))
@@ -10673,11 +10717,19 @@ omp_accumulate_sibling_list (enum omp_region_type region_type,
      for the purposes of gathering sibling lists, etc.  */
   /* gcc_assert (base == addr_tokens[base_token]->expr);  */
 
-  bool ptr = (OMP_CLAUSE_MAP_KIND (grp_end) == GOMP_MAP_ALWAYS_POINTER);
   bool attach_detach = ((OMP_CLAUSE_MAP_KIND (grp_end)
 			 == GOMP_MAP_ATTACH_DETACH)
 			|| (OMP_CLAUSE_MAP_KIND (grp_end)
 			    == GOMP_MAP_ATTACH_ZERO_LENGTH_ARRAY_SECTION));
+  bool has_descriptor = false;
+  if (OMP_CLAUSE_CHAIN (*grp_start_p) != grp_end)
+    {
+      tree grp_mid = OMP_CLAUSE_CHAIN (*grp_start_p);
+      if (grp_mid
+	  && OMP_CLAUSE_CODE (grp_mid) == OMP_CLAUSE_MAP
+	  && OMP_CLAUSE_MAP_KIND (grp_mid) == GOMP_MAP_TO_PSET)
+	has_descriptor = true;
+    }
 
   if (!struct_map_to_clause || struct_map_to_clause->get (base) == NULL)
     {
@@ -10700,7 +10752,18 @@ omp_accumulate_sibling_list (enum omp_region_type region_type,
 	 GOMP_MAP_STRUCT into the middle of the old one.  */
       tree *insert_node_pos = reprocessing_struct ? *added_tail : grp_start_p;
 
-      if (ptr || attach_detach)
+      if (has_descriptor)
+	{
+	  tree desc = OMP_CLAUSE_CHAIN (*grp_start_p);
+	  if (code == OMP_TARGET_EXIT_DATA || code == OACC_EXIT_DATA)
+	    OMP_CLAUSE_SET_MAP_KIND (desc, GOMP_MAP_RELEASE);
+	  tree sc = *insert_node_pos;
+	  OMP_CLAUSE_CHAIN (l) = desc;
+	  OMP_CLAUSE_CHAIN (*grp_start_p) = OMP_CLAUSE_CHAIN (desc);
+	  OMP_CLAUSE_CHAIN (desc) = sc;
+	  *insert_node_pos = l;
+	}
+      else if (attach_detach)
 	{
 	  tree extra_node;
 	  tree alloc_node
@@ -10931,7 +10994,7 @@ omp_accumulate_sibling_list (enum omp_region_type region_type,
 	  || OMP_CLAUSE_MAP_KIND (*sc) == GOMP_MAP_ATTACH_DETACH)
 	sc = &OMP_CLAUSE_CHAIN (*sc);
       for (i = 0; i < elems; i++, sc = &OMP_CLAUSE_CHAIN (*sc))
-	if ((ptr || attach_detach) && sc == grp_start_p)
+	if (attach_detach && sc == grp_start_p)
 	  break;
 	else if (TREE_CODE (OMP_CLAUSE_DECL (*sc)) != COMPONENT_REF
 		 && TREE_CODE (OMP_CLAUSE_DECL (*sc)) != INDIRECT_REF
@@ -10987,7 +11050,7 @@ omp_accumulate_sibling_list (enum omp_region_type region_type,
 		|| (known_eq (coffset, offset)
 		    && maybe_lt (cbitpos, bitpos)))
 	      {
-		if (ptr || attach_detach)
+		if (attach_detach)
 		  scp = sc;
 		else
 		  break;
@@ -11003,7 +11066,9 @@ omp_accumulate_sibling_list (enum omp_region_type region_type,
 	     the list manipulation below.  We only need to handle the (pointer
 	     or reference) attach/detach case.  */
 	  tree extra_node, alloc_node;
-	  if (attach_detach)
+	  if (has_descriptor)
+	    gcc_unreachable ();
+	  else if (attach_detach)
 	    alloc_node = build_omp_struct_comp_nodes (code, *grp_start_p,
 						      grp_end, &extra_node);
 	  else
@@ -11036,7 +11101,17 @@ omp_accumulate_sibling_list (enum omp_region_type region_type,
 	  return NULL;
 	}
 
-      if (ptr || attach_detach)
+      if (has_descriptor)
+	{
+	  tree desc = OMP_CLAUSE_CHAIN (*grp_start_p);
+	  if (code == OMP_TARGET_EXIT_DATA
+	      || code == OACC_EXIT_DATA)
+	    OMP_CLAUSE_SET_MAP_KIND (desc, GOMP_MAP_RELEASE);
+	  omp_siblist_move_node_after (desc,
+				       &OMP_CLAUSE_CHAIN (*grp_start_p),
+				       scp ? scp : sc);
+	}
+      else if (attach_detach)
 	{
 	  tree cl = NULL_TREE, extra_node;
 	  tree alloc_node = build_omp_struct_comp_nodes (code, *grp_start_p,
@@ -11457,6 +11532,8 @@ gimplify_scan_omp_clauses (tree *list_p, gimple_seq *pre_p,
 					  list_p);
 
 	  omp_mapping_group *outlist = NULL;
+	  bool enter_exit = (code == OMP_TARGET_ENTER_DATA
+			     || code == OMP_TARGET_EXIT_DATA);
 
 	  /* Topological sorting may fail if we have duplicate nodes, which
 	     we should have detected and shown an error for already.  Skip
@@ -11471,7 +11548,7 @@ gimplify_scan_omp_clauses (tree *list_p, gimple_seq *pre_p,
 	  groups = omp_gather_mapping_groups (list_p);
 	  grpmap = omp_index_mapping_groups (groups);
 
-	  outlist = omp_tsort_mapping_groups (groups, grpmap);
+	  outlist = omp_tsort_mapping_groups (groups, grpmap, enter_exit);
 	  outlist = omp_segregate_mapping_groups (outlist);
 	  list_p = omp_reorder_mapping_groups (groups, outlist, list_p);
 
@@ -11865,27 +11942,45 @@ gimplify_scan_omp_clauses (tree *list_p, gimple_seq *pre_p,
 	     explicit-shape array to a function expecting an assumed-shape
 	     argument.  Performing "enter data" inside the called function
 	     would thus be problematic.  */
-	  if (code == OMP_TARGET_EXIT_DATA
-	      && OMP_CLAUSE_MAP_KIND (c) == GOMP_MAP_TO_PSET)
-	    OMP_CLAUSE_SET_MAP_KIND (c, OMP_CLAUSE_MAP_KIND (*prev_list_p)
-					== GOMP_MAP_DELETE
-					? GOMP_MAP_DELETE : GOMP_MAP_RELEASE);
-	  else if ((code == OMP_TARGET_EXIT_DATA || code == OMP_TARGET_UPDATE)
-		   && (OMP_CLAUSE_MAP_KIND (c) == GOMP_MAP_POINTER
-		       || OMP_CLAUSE_MAP_KIND (c) == GOMP_MAP_TO_PSET))
-	    remove = true;
-	  else if (code == OMP_TARGET_EXIT_DATA
-		   && OMP_CLAUSE_MAP_KIND (c) == GOMP_MAP_ALLOC
-		   && OMP_CLAUSE_CHAIN (c)
-		   && (OMP_CLAUSE_CODE (OMP_CLAUSE_CHAIN (c))
-		       == OMP_CLAUSE_MAP)
-		   && ((OMP_CLAUSE_MAP_KIND (OMP_CLAUSE_CHAIN (c))
-			== GOMP_MAP_ATTACH_DETACH)
-		       || (OMP_CLAUSE_MAP_KIND (OMP_CLAUSE_CHAIN (c))
-			   == GOMP_MAP_ATTACH_ZERO_LENGTH_ARRAY_SECTION))
-		   && TREE_CODE (TREE_TYPE (OMP_CLAUSE_DECL
-			(OMP_CLAUSE_CHAIN (c)))) == REFERENCE_TYPE)
-	    OMP_CLAUSE_SET_MAP_KIND (c, GOMP_MAP_RELEASE);
+
+	  tree desc;
+	  if (DECL_P (decl)
+	      || (prev_list_p
+		  && (desc = OMP_CLAUSE_CHAIN (*prev_list_p))
+		  && OMP_CLAUSE_CODE (desc) == OMP_CLAUSE_MAP
+		  && (OMP_CLAUSE_MAP_KIND (desc) == GOMP_MAP_RELEASE
+		      || OMP_CLAUSE_MAP_KIND (desc) == GOMP_MAP_DELETE)
+		  && DECL_P (OMP_CLAUSE_DECL (desc))))
+	    {
+	      /* We only do the transformations here for non-component
+		 mappings.  Array descriptors for component mappings are
+		 handled in omp_accumulate_sibling_list.  */
+	      if (code == OMP_TARGET_EXIT_DATA
+		  && OMP_CLAUSE_MAP_KIND (c) == GOMP_MAP_TO_PSET)
+		{
+		  enum gomp_map_kind k
+		    = (OMP_CLAUSE_MAP_KIND (*prev_list_p) == GOMP_MAP_DELETE
+		       ? GOMP_MAP_DELETE : GOMP_MAP_RELEASE);
+		  OMP_CLAUSE_SET_MAP_KIND (c, k);
+		}
+	      else if ((code == OMP_TARGET_EXIT_DATA
+			|| code == OMP_TARGET_UPDATE)
+		       && (OMP_CLAUSE_MAP_KIND (c) == GOMP_MAP_POINTER
+			   || OMP_CLAUSE_MAP_KIND (c) == GOMP_MAP_TO_PSET))
+		remove = true;
+	      else if (code == OMP_TARGET_EXIT_DATA
+		       && OMP_CLAUSE_MAP_KIND (c) == GOMP_MAP_ALLOC
+		       && OMP_CLAUSE_CHAIN (c)
+		       && (OMP_CLAUSE_CODE (OMP_CLAUSE_CHAIN (c))
+			   == OMP_CLAUSE_MAP)
+		       && ((OMP_CLAUSE_MAP_KIND (OMP_CLAUSE_CHAIN (c))
+			    == GOMP_MAP_ATTACH_DETACH)
+			   || (OMP_CLAUSE_MAP_KIND (OMP_CLAUSE_CHAIN (c))
+			       == GOMP_MAP_ATTACH_ZERO_LENGTH_ARRAY_SECTION))
+		       && TREE_CODE (TREE_TYPE (OMP_CLAUSE_DECL
+			    (OMP_CLAUSE_CHAIN (c)))) == REFERENCE_TYPE)
+		OMP_CLAUSE_SET_MAP_KIND (c, GOMP_MAP_RELEASE);
+	    }
 
 	  if (remove)
 	    break;
