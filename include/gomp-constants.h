@@ -188,7 +188,13 @@ enum gomp_map_kind
     /* An attach or detach operation.  Rewritten to the appropriate type during
        gimplification, depending on directive (i.e. "enter data" or
        parallel/kernels region vs. "exit data").  */
-    GOMP_MAP_ATTACH_DETACH =		(GOMP_MAP_LAST | 3)
+    GOMP_MAP_ATTACH_DETACH =		(GOMP_MAP_LAST | 3),
+    /* Unset, used for "declare mapper" maps with no explicit data movement
+       specified.  These use the movement specified at the invocation site.  */
+    GOMP_MAP_UNSET =			(GOMP_MAP_LAST | 4),
+    /* Used to record the name of a named mapper.  */
+    GOMP_MAP_PUSH_MAPPER_NAME =		(GOMP_MAP_LAST | 5),
+    GOMP_MAP_POP_MAPPER_NAME =		(GOMP_MAP_LAST | 6)
   };
 
 #define GOMP_MAP_COPY_TO_P(X) \
