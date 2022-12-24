@@ -261,10 +261,20 @@ else
 endif
 
 # Strip -Werror during linking for the LTO bootstrap
-GCC_LINKERFLAGS = $(filter-out -Werror, $(ALL_LINKERFLAGS))
 
-GCC_LINK=$(LINKER) $(GCC_LINKERFLAGS) $(LDFLAGS)
-GCC_LLINK=$(LLINKER) $(GCC_LINKERFLAGS) $(LDFLAGS)
+ifneq ($(findstring darwin,$(host)),)
+# gnat1 uses exceptions which is incompatible with statically-linked libgcc
+# on Darwin, since gnat1 also pulls in libraries linked with the system
+# unwinder.
+GCC_LINKERFLAGS = $(filter-out -Werror -static-libgcc, $(ALL_LINKERFLAGS))
+GCC_LDFLAGS = $(filter-out -static-libgcc, $(LDFLAGS))
+else
+GCC_LINKERFLAGS = $(filter-out -Werror, $(ALL_LINKERFLAGS))
+GCC_LDFLAGS = $(LDFLAGS)
+endif
+
+GCC_LINK=$(LINKER) $(GCC_LINKERFLAGS) $(GCC_LDFLAGS)
+GCC_LLINK=$(LLINKER) $(GCC_LINKERFLAGS) $(GCC_LDFLAGS)
 
 # Lists of files for various purposes.
 
