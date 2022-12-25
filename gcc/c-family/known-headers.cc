@@ -171,6 +171,10 @@ get_stdlib_header_for_name (const char *name, enum stdlib lib)
     {"getenv", {"<stdlib.h>", "<cstdlib>"} },
     {"malloc", {"<stdlib.h>", "<cstdlib>"} },
     {"realloc", {"<stdlib.h>", "<cstdlib>"} },
+    {"random", {"<stdlib.h>", "<cstdlib>"} },
+    {"srandom", {"<stdlib.h>", "<cstdlib>"} },
+    {"initstate", {"<stdlib.h>", "<cstdlib>"} },
+    {"setstate", {"<stdlib.h>", "<cstdlib>"} },
 
     /* <string.h> and <cstring>.  */
     {"memchr", {"<string.h>", "<cstring>"} },
