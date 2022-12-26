@@ -9353,6 +9353,13 @@ __attribute__((noreturn)) void d0 (void),
 the @code{noreturn} attribute applies to all the functions
 declared; the @code{format} attribute only applies to @code{d1}.
 
+@noindent
+The following __attribute__ causes gcc to check run printf argument checks on argument '3' which is 'const char * string format' (when visible at compile time), against argument '4' the '...' variadic ellipsis.  In the example below, arguments '1' and '2' are not checked.
+
+@smallexample
+void string_format(const char * prefix, size_t line, const char * const format, ...) __attribute__ ((format (printf,3,4)));
+@end smallexample
+
 An attribute specifier list may appear immediately before the comma,
 @code{=} or semicolon terminating the declaration of an identifier other
 than a function definition.  Such attribute specifiers apply
