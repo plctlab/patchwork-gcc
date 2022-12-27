@@ -1874,6 +1874,10 @@ finline-atomics
 Common Var(flag_inline_atomics) Init(1) Optimization
 Inline __atomic operations when a lock free instruction sequence is available.
 
+finline-memset-loops
+Common Var(flag_inline_memset_loops) Init(0) Optimization
+Inline memset even if it requires loops.
+
 fcf-protection
 Common RejectNegative Alias(fcf-protection=,full)
 

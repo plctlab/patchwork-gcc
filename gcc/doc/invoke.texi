@@ -548,7 +548,8 @@ Objective-C and Objective-C++ Dialects}.
 -fgcse-sm  -fhoist-adjacent-loads  -fif-conversion @gol
 -fif-conversion2  -findirect-inlining @gol
 -finline-functions  -finline-functions-called-once  -finline-limit=@var{n} @gol
--finline-small-functions -fipa-modref -fipa-cp  -fipa-cp-clone @gol
+-finline-memset-loops -finline-small-functions @gol
+-fipa-modref -fipa-cp  -fipa-cp-clone @gol
 -fipa-bit-cp  -fipa-vrp  -fipa-pta  -fipa-profile  -fipa-pure-const @gol
 -fipa-reference  -fipa-reference-addressable @gol
 -fipa-stack-alignment  -fipa-icf  -fira-algorithm=@var{algorithm} @gol
@@ -11959,6 +11960,16 @@ in its own right.
 
 Enabled at levels @option{-O1}, @option{-O2}, @option{-O3} and @option{-Os},
 but not @option{-Og}.
+
+@item -finline-memset-loops
+@opindex finline-memset-loops
+Expand @code{memset} calls inline, even when the length is variable or
+big enough as to require looping.  This may enable the compiler to take
+advantage of known alignment and length multipliers, but it will often
+generate code that is less efficient than performant implementations of
+@code{memset}, and grow code size so much that even a less performant
+@code{memset} may run faster due to better use of the code cache.  This
+option is disabled by default.
 
 @item -fearly-inlining
 @opindex fearly-inlining

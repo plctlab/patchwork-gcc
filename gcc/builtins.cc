@@ -4361,9 +4361,37 @@ try_store_by_multiple_pieces (rtx to, rtx len, unsigned int ctz_len,
   if (max_bits >= 0)
     xlenest += ((HOST_WIDE_INT_1U << max_bits) * 2
 		- (HOST_WIDE_INT_1U << ctz_len));
+  bool max_loop = false;
   if (!can_store_by_pieces (xlenest, builtin_memset_read_str,
 			    &valc, align, true))
-    return false;
+    {
+      if (!flag_inline_memset_loops)
+	return false;
+      while (--max_bits >= sctz_len)
+	{
+	  xlenest = ((HOST_WIDE_INT_1U << max_bits) * 2
+		     - (HOST_WIDE_INT_1U << ctz_len));
+	  if (can_store_by_pieces (xlenest + blksize,
+				   builtin_memset_read_str,
+				   &valc, align, true))
+	    {
+	      max_loop = true;
+	      break;
+	    }
+	  if (!blksize)
+	    continue;
+	  if (can_store_by_pieces (xlenest,
+				   builtin_memset_read_str,
+				   &valc, align, true))
+	    {
+	      blksize = 0;
+	      max_loop = true;
+	      break;
+	    }
+	}
+      if (!max_loop)
+	return false;
+    }
 
   by_pieces_constfn constfun;
   void *constfundata;
@@ -4405,6 +4433,7 @@ try_store_by_multiple_pieces (rtx to, rtx len, unsigned int ctz_len,
      the least significant bit possibly set in the length.  */
   for (int i = max_bits; i >= sctz_len; i--)
     {
+      rtx_code_label *loop_label = NULL;
       rtx_code_label *label = NULL;
       blksize = HOST_WIDE_INT_1U << i;
 
@@ -4423,20 +4452,35 @@ try_store_by_multiple_pieces (rtx to, rtx len, unsigned int ctz_len,
       else if ((max_len & blksize) == 0)
 	continue;
 
+      if (max_loop && i == max_bits)
+	{
+	  loop_label = gen_label_rtx ();
+	  emit_label (loop_label);
+	  /* Since we may run this multiple times, don't assume we
+	     know anything about the offset.  */
+	  clear_mem_offset (to);
+	}
+
       /* Issue a store of BLKSIZE bytes.  */
+      bool update_needed = i != sctz_len || loop_label;
       to = store_by_pieces (to, blksize,
 			    constfun, constfundata,
 			    align, true,
-			    i != sctz_len ? RETURN_END : RETURN_BEGIN);
+			    update_needed ? RETURN_END : RETURN_BEGIN);
 
       /* Adjust REM and PTR, unless this is the last iteration.  */
-      if (i != sctz_len)
+      if (update_needed)
 	{
 	  emit_move_insn (ptr, force_operand (XEXP (to, 0), NULL_RTX));
 	  to = replace_equiv_address (to, ptr);
 	  rtx rem_minus_blksize = plus_constant (ptr_mode, rem, -blksize);
 	  emit_move_insn (rem, force_operand (rem_minus_blksize, NULL_RTX));
 	}
+
+      if (loop_label)
+	emit_cmp_and_jump_insns (rem, GEN_INT (blksize), GE, NULL,
+				 ptr_mode, 1, loop_label,
+				 profile_probability::likely ());
 
       if (label)
 	{
