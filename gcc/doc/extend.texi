@@ -10234,6 +10234,24 @@ generates multiple assembler instructions.
 Outputs @samp{@{}, @samp{|}, and @samp{@}} characters (respectively)
 into the assembler code.  When unescaped, these characters have special
 meaning to indicate multiple assembler dialects, as described below.
+
+@item %c@var{digit}
+It can be used to substitute an operand that is a constant value without
+the syntax that normally indicates an immediate operand.
+
+@item %n@var{digit}
+It's like @samp{%c@var{digit}} except that the value of the constant is
+negated before printing.
+
+@item %a@var{digit}
+It Can be used to substitute an operand as if it were a memory reference,
+with the actual operand treated as the address.  This may be useful when
+outputting a ``load address'' instruction, because often the assembler
+syntax for such an instruction requires you to write the operand as if it
+were a memory reference.
+
+@item %l@var{digit}
+It's used to substitute a @code{label_ref} into a jump instruction.
 @end table
 
 @subsubheading Multiple assembler dialects in @code{asm} templates
@@ -11373,6 +11391,21 @@ constant.  Used to select the specified bit position.
 @item @code{r} @tab Inverse of condition code, for signed comparisons.
 @item @code{x} @tab Equivialent to @code{X}, but only for pointers.
 @end multitable
+
+@anchor{loongarchOperandmodifiers}
+@subsubsection LoongArch Operand Modifiers
+
+The list below describes the supported modifiers and their effects for LoongArch.
+
+@multitable @columnfractions .10 .90
+@headitem Modifier @tab Description
+@item @code{d} @tab Same as @code{c}.
+@item @code{i} @tab Print the character ''@code{i}'' if the operand is not a register.
+@item @code{m} @tab Same as @code{c}, but the printed value is @code{operand - 1}.
+@item @code{X} @tab Print a constant integer operand in hexadecimal.
+@item @code{z} @tab Print the operand in its unmodified form, followed by a comma.
+@end multitable
+
 
 @lowersections
 @include md.texi
