@@ -9,6 +9,6 @@ int f(unsigned int* a)
 }
 
 /* { dg-final { scan-assembler-times "minu" 1 } } */
-/* { dg-final { scan-assembler-times "sext.w" 1 } } */
+/* { dg-final { scan-assembler-times "sext.w|addw" 1 } } */
 /* { dg-final { scan-assembler-not "zext.w" } } */
 

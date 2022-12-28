@@ -360,13 +360,41 @@
   DONE;
 })
 
-(define_insn "<bitmanip_optab><mode>3"
-  [(set (match_operand:X 0 "register_operand" "=r")
-        (bitmanip_minmax:X (match_operand:X 1 "register_operand" "r")
-			   (match_operand:X 2 "register_operand" "r")))]
-  "TARGET_ZBB"
+(define_insn "<bitmanip_optab>si3_insn"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	 (bitmanip_minmax:SI (match_operand:SI 1 "register_operand" "r")
+			     (match_operand:SI 2 "register_operand" "r")))]
+  "!TARGET_64BIT && TARGET_ZBB"
   "<bitmanip_insn>\t%0,%1,%2"
   [(set_attr "type" "bitmanip")])
+
+(define_insn "<bitmanip_optab>di3"
+  [(set (match_operand:DI 0 "register_operand" "=r")
+	 (bitmanip_minmax:DI (match_operand:DI 1 "register_operand" "r")
+			     (match_operand:DI 2 "register_operand" "r")))]
+  "TARGET_64BIT && TARGET_ZBB"
+  "<bitmanip_insn>\t%0,%1,%2"
+  [(set_attr "type" "bitmanip")])
+
+(define_expand "<bitmanip_optab>si3"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	 (bitmanip_minmax:SI (match_operand:SI 1 "register_operand" "r")
+			     (match_operand:SI 2 "register_operand" "r")))]
+  "TARGET_ZBB"
+  "
+{
+  if (TARGET_64BIT)
+    {
+      rtx op1_x = gen_reg_rtx (DImode);
+      emit_move_insn (op1_x, gen_rtx_SIGN_EXTEND (DImode, operands[1]));
+      rtx op2_x = gen_reg_rtx (DImode);
+      emit_move_insn (op2_x, gen_rtx_SIGN_EXTEND (DImode, operands[2]));
+      rtx dst_x = gen_reg_rtx (DImode);
+      emit_insn (gen_<bitmanip_optab>di3 (dst_x, op1_x, op2_x));
+      emit_move_insn (operands[0], gen_lowpart (SImode, dst_x));
+      DONE;
+    }
+}")
 
 ;; Optimize the common case of a SImode min/max against a constant
 ;; that is safe both for sign- and zero-extension.
