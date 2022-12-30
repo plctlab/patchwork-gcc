@@ -233,7 +233,7 @@ case ${host} in
       ;;
   esac
   tmake_file="$tmake_file t-slibgcc-darwin"
-  extra_parts="crt3.o libd10-uwfef.a crttms.o crttme.o libemutls_w.a"
+  extra_parts="crt3.o libd10-uwfef.a crttms.o crttme.o libemutls_w.a libfltext.a"
   ;;
 *-*-dragonfly*)
   tmake_file="$tmake_file t-crtstuff-pic t-libgcc-pic t-eh-dw2-dip"

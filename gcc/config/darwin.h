@@ -370,6 +370,7 @@ extern GTY(()) int darwin_ms_struct;
       %{%:sanitize(undefined): -lubsan } \
       %(link_ssp) \
       %:version-compare(>< 10.6 10.7 mmacosx-version-min= -ld10-uwfef) \
+      -lfltext \
       %(link_gcc_c_sequence) \
       %{!nodefaultexport:%{dylib|dynamiclib|bundle: \
 	%:version-compare(>= 10.11 asm_macosx_version_min= -U) \

@@ -11,6 +11,16 @@ crttms.o: $(srcdir)/config/darwin-crt-tm.c
 crttme.o: $(srcdir)/config/darwin-crt-tm.c
 	$(crt_compile) -mmacosx-version-min=10.4 -DEND -c $<
 
+darwin-scalb.o: $(srcdir)/config/darwin-scalb.c
+	$(crt_compile) -mmacosx-version-min=10.4 -DEND -c $<
+
+darwin-significand.o: $(srcdir)/config/darwin-significand.c
+	$(crt_compile) -mmacosx-version-min=10.4 -DEND -c $<
+
+libfltext.a: darwin-scalb.o darwin-significand.o
+	$(AR_CREATE_FOR_TARGET) $@ darwin-scalb.o darwin-significand.o
+	$(RANLIB_FOR_TARGET) $@
+
 # Make emutls weak so that we can deal with -static-libgcc, override the
 # hidden visibility when this is present in libgcc_eh.
 emutls.o: HOST_LIBGCC2_CFLAGS += \
