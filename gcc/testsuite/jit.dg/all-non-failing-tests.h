@@ -268,6 +268,13 @@
 #undef create_code
 #undef verify_code
 
+/* test-popcount.c */
+#define create_code create_code_popcount
+#define verify_code verify_code_popcount
+#include "test-popcount.c"
+#undef create_code
+#undef verify_code
+
 /* test-pr103562.c: We don't add this one, since it touches
    the optimization level of the context as a whole.  */
 
@@ -485,6 +492,9 @@ const struct testcase testcases[] = {
   {"nested_loop",
    create_code_nested_loop,
    verify_code_nested_loop},
+  {"popcount",
+   create_code_popcount,
+   verify_code_popcount},
   {"pr66700_observing_write_through_ptr",
    create_code_pr66700_observing_write_through_ptr,
    verify_code_pr66700_observing_write_through_ptr},
