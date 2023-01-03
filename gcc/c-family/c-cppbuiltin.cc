@@ -1522,10 +1522,14 @@ c_cpp_builtins (cpp_reader *pfile)
       builtin_define_with_int_value ("__LIBGCC_DWARF_FRAME_REGISTERS__",
 				     DWARF_FRAME_REGISTERS);
       {
-	int value = dwarf_reg_sizes_constant ();
-	if (value > 0)
-	  builtin_define_with_int_value ("__LIBGCC_DWARF_REG_SIZES_CONSTANT__",
-					 value);
+	dwarf_single_register_size srs;
+	if (srs.common_size > 0)
+	  {
+	    builtin_define_with_int_value ("__LIBGCC_DWARF_REG_SIZES_CONSTANT__",
+					   srs.common_size);
+	    builtin_define_with_int_value ("__LIBGCC_DWARF_REG_MAXIMUM__",
+					   srs.maximum_register);
+	  }
       }
       builtin_define_with_int_value ("__LIBGCC_DWARF_CIE_DATA_ALIGNMENT__",
 				     DWARF_CIE_DATA_ALIGNMENT);

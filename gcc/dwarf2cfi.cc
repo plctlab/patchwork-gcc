@@ -291,11 +291,10 @@ init_one_dwarf_reg_size (int regno, machine_mode regmode,
 static void
 generate_dwarf_reg_sizes (poly_uint16 *sizes)
 {
-  for (unsigned int i = 0; i < DWARF_FRAME_REGISTERS; i++)
-    sizes[i] = poly_uint16{};
+  for (unsigned int i = 0; i <= DWARF_FRAME_REGISTERS; i++)
+    new (&sizes[i]) poly_uint16(0);
 
   init_one_dwarf_reg_state init_state{};
-  memset ((char *)&init_state, 0, sizeof (init_state));
 
   for (unsigned int i = 0; i < FIRST_PSEUDO_REGISTER; i++)
     {
@@ -334,27 +333,39 @@ generate_dwarf_reg_sizes (poly_uint16 *sizes)
     targetm.init_dwarf_reg_sizes_extra (sizes);
 }
 
-/* Return 0 if the DWARF register sizes are not constant, otherwise
-   return the size constant.  */
-
-int
-dwarf_reg_sizes_constant ()
+dwarf_single_register_size::dwarf_single_register_size()
 {
-  poly_uint16 *sizes = XALLOCAVEC (poly_uint16, DWARF_FRAME_REGISTERS);
+  poly_uint16 *sizes = XALLOCAVEC (poly_uint16, DWARF_FRAME_REGISTERS + 1);
   generate_dwarf_reg_sizes (sizes);
 
-  int result;
-  for (unsigned int i = 0; i < DWARF_FRAME_REGISTERS; i++)
+  /* Find the last register number actually in use.  */
+  for (int i = DWARF_FRAME_REGISTERS; i >= 0; --i)
+    {
+      unsigned short value;
+      if (!sizes[i].is_constant (&value) || value != 0)
+	{
+	  maximum_register = i;
+	  break;
+	}
+    }
+
+  /* Check for a common register size among the used registers.  */
+  for (unsigned int i = 0; i <= maximum_register; ++i)
     {
       unsigned short value;
       if (!sizes[i].is_constant (&value))
-	return 0;
+	{
+	  common_size = 0;
+	  break;
+	}
       if (i == 0)
-	result = value;
-      else if (result != value)
-	return 0;
+	common_size = value;
+      else if (common_size != value)
+	{
+	  common_size = 0;
+	  break;
+	}
     }
-  return result;
 }
 
 /* Generate code to initialize the dwarf register size table located
@@ -363,7 +374,7 @@ dwarf_reg_sizes_constant ()
 void
 expand_builtin_init_dwarf_reg_sizes (tree address)
 {
-  poly_uint16 *sizes = XALLOCAVEC (poly_uint16, DWARF_FRAME_REGISTERS);
+  poly_uint16 *sizes = XALLOCAVEC (poly_uint16, DWARF_FRAME_REGISTERS + 1);
   generate_dwarf_reg_sizes (sizes);
 
   scalar_int_mode mode = SCALAR_INT_TYPE_MODE (char_type_node);

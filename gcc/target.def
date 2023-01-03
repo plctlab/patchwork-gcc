@@ -4042,7 +4042,7 @@ sizes of those pieces in the table used by the unwinder at runtime.\n\
 It will be called by @code{generate_dwarf_reg_sizes} after\n\
 filling in a single size corresponding to each hard register;\n\
 @var{sizes} is the address of the table.  It will contain\n\
-@code{DWARF_FRAME_REGISTERS} elements when this hook is called.",
+@code{DWARF_FRAME_REGISTERS + 1} elements when this hook is called.",
  void, (poly_uint16 *sizes), nullptr)
 
 /* Fetch the fixed register(s) which hold condition codes, for

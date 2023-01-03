@@ -245,7 +245,18 @@ extern const struct gcc_debug_hooks vmsdbg_debug_hooks;
 
 /* Dwarf2 frame information.  */
 
-extern int dwarf_reg_sizes_constant ();
+/* Query size information about DWARF registers.  */
+struct dwarf_single_register_size
+{
+  dwarf_single_register_size();
+
+  /* The common register size, or 0 if the register size varies.  */
+  unsigned int common_size;
+
+  /* The maximum register number that is actually present.  Registers
+     above the maximum are size zero even if common_size is positive.  */
+  unsigned int maximum_register;
+};
 
 extern void dwarf2out_begin_prologue (unsigned int, unsigned int,
 				      const char *);

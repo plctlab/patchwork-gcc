@@ -150,9 +150,12 @@ struct _Unwind_Context
 
 #ifdef __LIBGCC_DWARF_REG_SIZES_CONSTANT__
 static inline unsigned char
-dwarf_reg_size (int index __attribute__ ((__unused__)))
+dwarf_reg_size (unsigned int index)
 {
-  return __LIBGCC_DWARF_REG_SIZES_CONSTANT__;
+  if (index <= __LIBGCC_DWARF_REG_MAXIMUM__)
+    return __LIBGCC_DWARF_REG_SIZES_CONSTANT__;
+  else
+    return 0;
 }
 #else
 /* Byte size of every register managed by these routines.  */

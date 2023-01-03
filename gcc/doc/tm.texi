@@ -9847,7 +9847,7 @@ sizes of those pieces in the table used by the unwinder at runtime.
 It will be called by @code{generate_dwarf_reg_sizes} after
 filling in a single size corresponding to each hard register;
 @var{sizes} is the address of the table.  It will contain
-@code{DWARF_FRAME_REGISTERS} elements when this hook is called.
+@code{DWARF_FRAME_REGISTERS + 1} elements when this hook is called.
 @end deftypefn
 
 @deftypefn {Target Hook} bool TARGET_ASM_TTYPE (rtx @var{sym})
