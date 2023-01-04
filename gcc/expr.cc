@@ -10634,6 +10634,69 @@ stmt_is_replaceable_p (gimple *stmt)
   return false;
 }
 
+/* Return the content of the memory slot SOURCE as MODE.
+   SOURCE is based on BASE. BASE is a memory block that is stored via words.
+
+   To get the content from SOURCE:
+   first load the word from the memory which covers the SOURCE slot first;
+   next return the word's subreg which offsets to SOURCE slot;
+   then convert to MODE as necessary.  */
+
+static rtx
+extract_subreg_from_loading_word (machine_mode mode, rtx source, rtx base)
+{
+  rtx src_base = XEXP (source, 0);
+  poly_uint64 offset = MEM_OFFSET (source);
+
+  if (GET_CODE (src_base) == PLUS && CONSTANT_P (XEXP (src_base, 1)))
+    {
+      offset += INTVAL (XEXP (src_base, 1));
+      src_base = XEXP (src_base, 0);
+    }
+
+  if (!rtx_equal_p (XEXP (base, 0), src_base))
+    return NULL_RTX;
+
+  /* Subreg(DI,n) -> DF/SF/SI/HI/QI */
+  poly_uint64 word_size = GET_MODE_SIZE (word_mode);
+  poly_uint64 mode_size = GET_MODE_SIZE (mode);
+  poly_uint64 byte_off;
+  unsigned int start;
+  machine_mode int_mode;
+  if (known_ge (word_size, mode_size) && multiple_p (word_size, mode_size)
+      && int_mode_for_mode (mode).exists (&int_mode)
+      && can_div_trunc_p (offset, word_size, &start, &byte_off)
+      && multiple_p (byte_off, mode_size))
+    {
+      rtx word_mem = copy_rtx (source);
+      PUT_MODE (word_mem, word_mode);
+      word_mem = adjust_address (word_mem, word_mode, -byte_off);
+
+      rtx word_reg = gen_reg_rtx (word_mode);
+      emit_move_insn (word_reg, word_mem);
+
+      poly_uint64 low_off = subreg_lowpart_offset (int_mode, word_mode);
+      if (!known_eq (byte_off, low_off))
+	{
+	  poly_uint64 shift_bytes = known_gt (byte_off, low_off)
+				      ? byte_off - low_off
+				      : low_off - byte_off;
+	  word_reg = expand_shift (RSHIFT_EXPR, word_mode, word_reg,
+				   shift_bytes * BITS_PER_UNIT, word_reg, 0);
+	}
+
+      rtx int_subreg = gen_lowpart (int_mode, word_reg);
+      if (mode == int_mode)
+	return int_subreg;
+
+      rtx int_mode_reg = gen_reg_rtx (int_mode);
+      emit_move_insn (int_mode_reg, int_subreg);
+      return gen_lowpart (mode, int_mode_reg);
+    }
+
+  return NULL_RTX;
+}
+
 rtx
 expand_expr_real_1 (tree exp, rtx target, machine_mode tmode,
 		    enum expand_modifier modifier, rtx *alt_rtl,
@@ -11814,6 +11877,19 @@ expand_expr_real_1 (tree exp, rtx target, machine_mode tmode,
 	    && modifier != EXPAND_MEMORY
 	    && modifier != EXPAND_WRITE)
 	  op0 = flip_storage_order (mode1, op0);
+
+	/* Accessing sub-field of struct parameter which passed via integer
+	   registers.  */
+	if (mode == mode1 && TREE_CODE (tem) == PARM_DECL
+	    && DECL_INCOMING_RTL (tem) && REG_P (DECL_INCOMING_RTL (tem))
+	    && GET_MODE (DECL_INCOMING_RTL (tem)) == BLKmode && MEM_P (op0)
+	    && MEM_OFFSET_KNOWN_P (op0))
+	  {
+	    rtx subreg
+	      = extract_subreg_from_loading_word (mode, op0, DECL_RTL (tem));
+	    if (subreg)
+	      op0 = subreg;
+	  }
 
 	if (mode == mode1 || mode1 == BLKmode || mode1 == tmode
 	    || modifier == EXPAND_CONST_ADDRESS
