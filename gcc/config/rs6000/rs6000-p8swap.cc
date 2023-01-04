@@ -179,6 +179,9 @@ class swap_web_entry : public web_entry_base
   unsigned int special_handling : 4;
   /* Set if the web represented by this entry cannot be optimized.  */
   unsigned int web_not_optimizable : 1;
+  /* Set if the web represented by this entry has been optimized, ie,
+     register swaps of permuting loads/stores have been removed.  */
+  unsigned int web_is_optimized : 1;
   /* Set if this insn should be deleted.  */
   unsigned int will_delete : 1;
 };
@@ -2627,22 +2630,43 @@ rs6000_analyze_swaps (function *fun)
   /* For each load and store in an optimizable web (which implies
      the loads and stores are permuting), find the associated
      register swaps and mark them for removal.  Due to various
-     optimizations we may mark the same swap more than once.  Also
-     perform special handling for swappable insns that require it.  */
+     optimizations we may mark the same swap more than once. Fix up
+     the non-permuting loads and stores by converting them into
+     permuting ones.  */
   for (i = 0; i < e; ++i)
     if ((insn_entry[i].is_load || insn_entry[i].is_store)
 	&& insn_entry[i].is_swap)
       {
 	swap_web_entry* root_entry
 	  = (swap_web_entry*)((&insn_entry[i])->unionfind_root ());
-	if (!root_entry->web_not_optimizable)
+	if (!root_entry->web_not_optimizable) {
 	  mark_swaps_for_removal (insn_entry, i);
+          root_entry->web_is_optimized = true;
+        }
       }
-    else if (insn_entry[i].is_swappable && insn_entry[i].special_handling)
+    else if (insn_entry[i].is_swappable
+             && (insn_entry[i].special_handling == SH_NOSWAP_LD ||
+                 insn_entry[i].special_handling == SH_NOSWAP_ST))
+      {
+        swap_web_entry* root_entry
+          = (swap_web_entry*)((&insn_entry[i])->unionfind_root ());
+        if (!root_entry->web_not_optimizable) {
+          handle_special_swappables (insn_entry, i);
+          root_entry->web_is_optimized = true;
+        }
+      }
+
+  /* Perform special handling for swappable insns that require it. 
+     Note that special handling should be done only for those 
+     swappable insns that are present in webs optimized above.  */
+  for (i = 0; i < e; ++i)
+    if (insn_entry[i].is_swappable && insn_entry[i].special_handling &&
+        !(insn_entry[i].special_handling == SH_NOSWAP_LD || 
+          insn_entry[i].special_handling == SH_NOSWAP_ST))
       {
 	swap_web_entry* root_entry
 	  = (swap_web_entry*)((&insn_entry[i])->unionfind_root ());
-	if (!root_entry->web_not_optimizable)
+	if (root_entry->web_is_optimized)
 	  handle_special_swappables (insn_entry, i);
       }
 
