@@ -62,11 +62,18 @@ was made to unlink the file because it is special.
 int
 unlink_if_ordinary (const char *name)
 {
+/* MS-Windows 'stat' function (and in turn, S_ISREG)
+   reports the null device as a regular file.  */
+#ifdef _WIN32
+    if (stricmp (name, "nul") == 0)
+      return 1;
+#else
   struct stat st;
 
   if (lstat (name, &st) == 0
       && (S_ISREG (st.st_mode) || S_ISLNK (st.st_mode)))
     return unlink (name);
+#endif
 
   return 1;
 }
