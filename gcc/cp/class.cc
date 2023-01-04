@@ -6018,6 +6018,76 @@ explain_non_literal_class (tree t)
     }
 }
 
+
+/* Warn for private const or reference class members that cannot be initialized
+   due to the class not having a default constructor.  If a child type is
+   provided, then we are checking class_type's members in case they cannot be
+   initialized by child_type.  If child_type is null, then we simply check
+   class_type.  */
+static void
+warn_uninitialized_const_and_ref (tree class_type, tree child_type)
+{
+  /* Check the fields on this class type.  */
+  tree field;
+  for (field = TYPE_FIELDS (class_type); field; field = DECL_CHAIN (field))
+    {
+      /* We only want to check variable declarations.
+       Exclude fields that are not field decls or are not initialized.  */
+      if (TREE_CODE (field) != FIELD_DECL
+	  || DECL_INITIAL (field) != NULL_TREE)
+	continue;
+
+      tree type = TREE_TYPE (field);
+
+      if (TYPE_REF_P (type))
+	{
+	  if (child_type != nullptr)
+      {
+	/* Show parent class while processing.  */
+	auto_diagnostic_group d;
+	warning_at (DECL_SOURCE_LOCATION (field),
+		    OPT_Wuninitialized, "while processing %qE: "
+		    "non-static reference %q#D in class without a constructor",
+		    child_type, field);
+	inform (DECL_SOURCE_LOCATION (field),
+		"%qE inherits %qE as private, so all fields "
+		"contained within %qE are private to %qE",
+		child_type, class_type, class_type, child_type);
+      }
+	  else
+      {
+	warning_at (DECL_SOURCE_LOCATION (field),
+		    OPT_Wuninitialized, "non-static reference %q#D "
+		    "in class without a constructor", field);
+      }
+	}
+      else if (CP_TYPE_CONST_P (type)
+	       && (!CLASS_TYPE_P (type)
+		   || !TYPE_HAS_DEFAULT_CONSTRUCTOR (type)))
+	{
+	  if (child_type)
+      {
+	/* ditto.  */
+	auto_diagnostic_group d;
+	warning_at (DECL_SOURCE_LOCATION (field),
+		    OPT_Wuninitialized, "while processing %qE: "
+		    "non-static const member %q#D in class "
+		    "without a constructor", child_type, field);
+	inform (DECL_SOURCE_LOCATION (field),
+		"%qE inherits %qE as private, so all fields "
+		"contained within %qE are private to %qE",
+		child_type, class_type, class_type, child_type);
+      }
+	  else
+      {
+	warning_at (DECL_SOURCE_LOCATION (field),
+		    OPT_Wuninitialized, "non-static const member %q#D "
+		    "in class without a constructor", field);
+      }
+	}
+    }
+}
+
 /* Check the validity of the bases and members declared in T.  Add any
    implicitly-generated functions (like copy-constructors and
    assignment operators).  Compute various flag bits (like
@@ -6160,30 +6230,32 @@ check_bases_and_members (tree t)
 	 initializers.  */
       && CLASSTYPE_NON_AGGREGATE (t))
     {
-      tree field;
+      /* First, warn for this class.  */
+      warn_uninitialized_const_and_ref (t, nullptr /* no child class.  */);
 
-      for (field = TYPE_FIELDS (t); field; field = DECL_CHAIN (field))
+      /* Then, warn for any direct base classes.  This process will not
+	 descend all base classes, just the ones directly inherited by
+	 this class.  */
+      tree binfo, base_binfo;
+      int idx;
+
+      for (binfo = TYPE_BINFO (t), idx = 0;
+	   BINFO_BASE_ITERATE (binfo, idx, base_binfo); idx++)
 	{
-	  tree type;
+	  tree basetype = TREE_TYPE (base_binfo);
 
-	  if (TREE_CODE (field) != FIELD_DECL
-	      || DECL_INITIAL (field) != NULL_TREE)
-	    continue;
-
-	  type = TREE_TYPE (field);
-	  if (TYPE_REF_P (type))
-	    warning_at (DECL_SOURCE_LOCATION (field),
-			OPT_Wuninitialized, "non-static reference %q#D "
-			"in class without a constructor", field);
-	  else if (CP_TYPE_CONST_P (type)
-		   && (!CLASS_TYPE_P (type)
-		       || !TYPE_HAS_DEFAULT_CONSTRUCTOR (type)))
-	    warning_at (DECL_SOURCE_LOCATION (field),
-			OPT_Wuninitialized, "non-static const member %q#D "
-			"in class without a constructor", field);
+	  /* Base types are not going to be aggregates, so don't
+	     check for that.  Otherwise, this step will never happen.  */
+	  if (!TYPE_HAS_USER_CONSTRUCTOR (basetype)
+	      || CLASSTYPE_NON_AGGREGATE (basetype))
+	    {
+	      /* Repeat the same process on base classes, know that 't'
+	         is a child_class of basetype.  */
+	      warn_uninitialized_const_and_ref (basetype, t);
+	    }
 	}
-    }
 
+    }
   /* Synthesize any needed methods.  */
   add_implicitly_declared_members (t, &access_decls,
 				   cant_have_const_ctor,
