@@ -60,13 +60,11 @@ cpp_diagnostic_at (cpp_reader * pfile, enum cpp_diagnostic_level level,
 		   enum cpp_warning_reason reason, rich_location *richloc,
 		   const char *msgid, va_list *ap)
 {
-  bool ret;
-
   if (!pfile->cb.diagnostic)
     abort ();
-  ret = pfile->cb.diagnostic (pfile, level, reason, richloc, _(msgid), ap);
-
-  return ret;
+  if (pfile->diagnostic_rebase_loc)
+    _cpp_rebase_diagnostic_location (pfile, richloc);
+  return pfile->cb.diagnostic (pfile, level, reason, richloc, _(msgid), ap);
 }
 
 /* Print a diagnostic at the location of the previously lexed token.  */
@@ -197,16 +195,14 @@ cpp_diagnostic_with_line (cpp_reader * pfile, enum cpp_diagnostic_level level,
 			  location_t src_loc, unsigned int column,
 			  const char *msgid, va_list *ap)
 {
-  bool ret;
-  
   if (!pfile->cb.diagnostic)
     abort ();
   rich_location richloc (pfile->line_table, src_loc);
   if (column)
     richloc.override_column (column);
-  ret = pfile->cb.diagnostic (pfile, level, reason, &richloc, _(msgid), ap);
-
-  return ret;
+  if (pfile->diagnostic_rebase_loc)
+    _cpp_rebase_diagnostic_location (pfile, &richloc);
+  return pfile->cb.diagnostic (pfile, level, reason, &richloc, _(msgid), ap);
 }
 
 /* Print a warning or error, depending on the value of LEVEL.  */

@@ -292,6 +292,28 @@ struct lexer_state
   unsigned char ignore__Pragma;
 };
 
+/* Because handling of _Pragma bounces back and forth between macro.cc and
+   directives.cc, it is useful to keep the needed state in one place.  */
+struct _cpp__Pragma_state
+{
+  const cpp_token *string_tok; /* The token for the argument string.  */
+
+  /* These locations are the virtual locations returned by
+     cpp_get_token_with_location, if the relevant tokens came from macro
+     expansions.  */
+  location_t pragma_loc; /* Location of the _Pragma token.  */
+  location_t string_loc; /* Location of the string arg.  */
+
+  /* The tokens lexed from the _Pragma string.  */
+  unsigned int ntoks;
+  _cpp_buff *tok_buff;
+  _cpp_buff *loc_buff;
+  _cpp_buff **buff_chain;
+};
+
+/* In macro.cc, implements pstate->diagnostic_rebase_loc handling.  */
+void _cpp_rebase_diagnostic_location (cpp_reader *, rich_location *);
+
 /* Special nodes - identifiers with predefined significance.  */
 struct spec_nodes
 {
@@ -601,6 +623,12 @@ struct cpp_reader
      zero of said file.  */
   location_t main_loc;
 
+  /* Location from which we would like to pretend a given token was
+     macro-expanded, if a diagnostic is issued.  Useful for improving
+     _Pragma diagnostics.  */
+  location_t diagnostic_rebase_loc;
+  cpp_hashnode *diagnostic_rebase_node;
+
   /* Returns true iff we should warn about UTF-8 bidirectional control
      characters.  */
   bool warn_bidi_p () const
@@ -701,6 +729,8 @@ extern const unsigned char *_cpp_builtin_macro_text (cpp_reader *,
 extern int _cpp_warn_if_unused_macro (cpp_reader *, cpp_hashnode *, void *);
 extern void _cpp_push_token_context (cpp_reader *, cpp_hashnode *,
 				     const cpp_token *, unsigned int);
+extern void _cpp_push__Pragma_token_context (cpp_reader *,
+					     _cpp__Pragma_state *);
 extern void _cpp_backup_tokens_direct (cpp_reader *, unsigned int);
 
 /* In identifiers.cc */
@@ -772,7 +802,7 @@ extern int _cpp_handle_directive (cpp_reader *, bool);
 extern void _cpp_define_builtin (cpp_reader *, const char *);
 extern char ** _cpp_save_pragma_names (cpp_reader *);
 extern void _cpp_restore_pragma_names (cpp_reader *, char **);
-extern int _cpp_do__Pragma (cpp_reader *, location_t);
+extern int _cpp_do__Pragma (cpp_reader *, _cpp__Pragma_state *);
 extern void _cpp_init_directives (cpp_reader *);
 extern void _cpp_init_internal_pragmas (cpp_reader *);
 extern void _cpp_do_file_change (cpp_reader *, enum lc_reason, const char *,
