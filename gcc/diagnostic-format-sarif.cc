@@ -125,7 +125,10 @@ private:
   json::array *maybe_make_kinds_array (diagnostic_event::meaning m) const;
   json::object *maybe_make_physical_location_object (location_t loc);
   json::object *make_artifact_location_object (location_t loc);
-  json::object *make_artifact_location_object (const char *filename);
+
+  typedef std::pair<const char *, unsigned int> filename_or_buffer;
+  json::object *make_artifact_location_object (filename_or_buffer fb);
+
   json::object *make_artifact_location_object_for_pwd () const;
   json::object *maybe_make_region_object (location_t loc) const;
   json::object *maybe_make_region_object_for_context (location_t loc) const;
@@ -146,16 +149,17 @@ private:
   json::object *make_reporting_descriptor_object_for_cwe_id (int cwe_id) const;
   json::object *
   make_reporting_descriptor_reference_object_for_cwe_id (int cwe_id);
-  json::object *make_artifact_object (const char *filename);
-  json::object *maybe_make_artifact_content_object (const char *filename) const;
-  json::object *maybe_make_artifact_content_object (const char *filename,
-						    int start_line,
+  json::object *make_artifact_object (filename_or_buffer fb);
+  json::object *
+  maybe_make_artifact_content_object (filename_or_buffer fb) const;
+  json::object *maybe_make_artifact_content_object (expanded_location xloc,
 						    int end_line) const;
   json::object *make_fix_object (const rich_location &rich_loc);
   json::object *make_artifact_change_object (const rich_location &richloc);
   json::object *make_replacement_object (const fixit_hint &hint) const;
   json::object *make_artifact_content_object (const char *text) const;
   int get_sarif_column (expanded_location exploc) const;
+  static filename_or_buffer xloc_to_fb (expanded_location xloc);
 
   diagnostic_context *m_context;
 
@@ -166,7 +170,11 @@ private:
      diagnostic group.  */
   sarif_result *m_cur_group_result;
 
-  hash_set <const char *> m_filenames;
+  /* If the second member is >0, then this is a buffer of generated content,
+     with that length, not a filename.  */
+  hash_set <pair_hash <nofree_ptr_hash <const char>,
+		       int_hash <unsigned int, -1U> >
+	    > m_filenames;
   bool m_seen_any_relative_paths;
   hash_set <free_string_hash> m_rule_id_set;
   json::array *m_rules_arr;
@@ -588,6 +596,15 @@ sarif_builder::make_location_object (const diagnostic_event &event)
   return location_obj;
 }
 
+/* Populate a filename_or_buffer pair from an expanded location.  */
+sarif_builder::filename_or_buffer
+sarif_builder::xloc_to_fb (expanded_location xloc)
+{
+  if (xloc.generated_data_len)
+    return filename_or_buffer (xloc.generated_data, xloc.generated_data_len);
+  return filename_or_buffer (xloc.file, 0);
+}
+
 /* Make a physicalLocation object (SARIF v2.1.0 section 3.29) for LOC,
    or return NULL;
    Add any filename to the m_artifacts.  */
@@ -603,7 +620,7 @@ sarif_builder::maybe_make_physical_location_object (location_t loc)
   /* "artifactLocation" property (SARIF v2.1.0 section 3.29.3).  */
   json::object *artifact_loc_obj = make_artifact_location_object (loc);
   phys_loc_obj->set ("artifactLocation", artifact_loc_obj);
-  m_filenames.add (LOCATION_FILE (loc));
+  m_filenames.add (xloc_to_fb (expand_location (loc)));
 
   /* "region" property (SARIF v2.1.0 section 3.29.4).  */
   if (json::object *region_obj = maybe_make_region_object (loc))
@@ -627,7 +644,7 @@ sarif_builder::maybe_make_physical_location_object (location_t loc)
 json::object *
 sarif_builder::make_artifact_location_object (location_t loc)
 {
-  return make_artifact_location_object (LOCATION_FILE (loc));
+  return make_artifact_location_object (xloc_to_fb (expand_location (loc)));
 }
 
 /* The ID value for use in "uriBaseId" properties (SARIF v2.1.0 section 3.4.4)
@@ -639,9 +656,11 @@ sarif_builder::make_artifact_location_object (location_t loc)
    or return NULL.  */
 
 json::object *
-sarif_builder::make_artifact_location_object (const char *filename)
+sarif_builder::make_artifact_location_object (filename_or_buffer fb)
 {
   json::object *artifact_loc_obj = new json::object ();
+
+  const auto filename = (fb.second ? special_fname_generated () : fb.first);
 
   /* "uri" property (SARIF v2.1.0 section 3.4.3).  */
   artifact_loc_obj->set ("uri", new json::string (filename));
@@ -795,9 +814,7 @@ sarif_builder::maybe_make_region_object_for_context (location_t loc) const
 
   /* "snippet" property (SARIF v2.1.0 section 3.30.13).  */
   if (json::object *artifact_content_obj
-	 = maybe_make_artifact_content_object (exploc_start.file,
-					       exploc_start.line,
-					       exploc_finish.line))
+	= maybe_make_artifact_content_object (exploc_start, exploc_finish.line))
     region_obj->set ("snippet", artifact_content_obj);
 
   return region_obj;
@@ -1248,24 +1265,24 @@ sarif_builder::maybe_make_cwe_taxonomy_object () const
 /* Make an artifact object (SARIF v2.1.0 section 3.24).  */
 
 json::object *
-sarif_builder::make_artifact_object (const char *filename)
+sarif_builder::make_artifact_object (filename_or_buffer fb)
 {
   json::object *artifact_obj = new json::object ();
 
   /* "location" property (SARIF v2.1.0 section 3.24.2).  */
-  json::object *artifact_loc_obj = make_artifact_location_object (filename);
+  json::object *artifact_loc_obj = make_artifact_location_object (fb);
   artifact_obj->set ("location", artifact_loc_obj);
 
   /* "contents" property (SARIF v2.1.0 section 3.24.8).  */
   if (json::object *artifact_content_obj
-	= maybe_make_artifact_content_object (filename))
+	= maybe_make_artifact_content_object (fb))
     artifact_obj->set ("contents", artifact_content_obj);
 
   /* "sourceLanguage" property (SARIF v2.1.0 section 3.24.10).  */
   if (m_context->m_client_data_hooks)
     if (const char *source_lang
 	= m_context->m_client_data_hooks->maybe_get_sarif_source_language
-	    (filename))
+	    (fb.first))
       artifact_obj->set ("sourceLanguage", new json::string (source_lang));
 
   return artifact_obj;
@@ -1331,34 +1348,40 @@ maybe_read_file (const char *filename)
    full contents of FILENAME.  */
 
 json::object *
-sarif_builder::maybe_make_artifact_content_object (const char *filename) const
+sarif_builder::maybe_make_artifact_content_object (filename_or_buffer fb) const
 {
-  char *text_utf8 = maybe_read_file (filename);
-  if (!text_utf8)
-    return NULL;
-
-  json::object *artifact_content_obj = new json::object ();
-  artifact_content_obj->set ("text", new json::string (text_utf8));
-  free (text_utf8);
-
+  json::object *artifact_content_obj = nullptr;
+  if (fb.second)
+    {
+      artifact_content_obj = new json::object ();
+      artifact_content_obj->set ("text", new json::string (fb.first,
+							   fb.second));
+    }
+  else if (char *text_utf8 = maybe_read_file (fb.first))
+    {
+      artifact_content_obj = new json::object ();
+      artifact_content_obj->set ("text", new json::string (text_utf8));
+      free (text_utf8);
+    }
   return artifact_content_obj;
 }
 
 /* Attempt to read the given range of lines from FILENAME; return
-   a freshly-allocated 0-terminated buffer containing them, or NULL.  */
+   a freshly-allocated buffer containing them, or NULL.
+   The buffer is null-terminated, but could also contain embedded null
+   bytes, so the char_span's length() accessor should be used.  */
 
-static char *
-get_source_lines (const char *filename,
-		  int start_line,
+static char_span
+get_source_lines (expanded_location xloc,
 		  int end_line)
 {
   auto_vec<char> result;
 
-  for (int line = start_line; line <= end_line; line++)
+  for (int line = xloc.line; line <= end_line; line++)
     {
-      char_span line_content = location_get_source_line (filename, line);
+      char_span line_content = location_get_source_line (xloc, line);
       if (!line_content.get_buffer ())
-	return NULL;
+	return char_span (nullptr, 0);
       result.reserve (line_content.length () + 1);
       for (size_t i = 0; i < line_content.length (); i++)
 	result.quick_push (line_content[i]);
@@ -1366,26 +1389,25 @@ get_source_lines (const char *filename,
     }
   result.safe_push ('\0');
 
-  return xstrdup (result.address ());
+  return char_span (xstrdup (result.address ()), result.length () - 1);
 }
 
 /* Make an artifactContent object (SARIF v2.1.0 section 3.3) for the given
-   run of lines within FILENAME (including the endpoints).  */
+   run of lines starting at XLOC (including the endpoints).  */
 
 json::object *
-sarif_builder::maybe_make_artifact_content_object (const char *filename,
-						   int start_line,
+sarif_builder::maybe_make_artifact_content_object (expanded_location xloc,
 						   int end_line) const
 {
-  char *text_utf8 = get_source_lines (filename, start_line, end_line);
+  const char_span text_utf8 = get_source_lines (xloc, end_line);
 
   if (!text_utf8)
     return NULL;
 
   json::object *artifact_content_obj = new json::object ();
-  artifact_content_obj->set ("text", new json::string (text_utf8));
-  free (text_utf8);
-
+  artifact_content_obj->set ("text", new json::string (text_utf8.get_buffer (),
+						       text_utf8.length ()));
+  free (const_cast<char *> (text_utf8.get_buffer ()));
   return artifact_content_obj;
 }
 
