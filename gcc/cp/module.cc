@@ -16248,6 +16248,8 @@ module_state::write_ordinary_maps (elf_out *to, range_t &info,
        iter != end; ++iter)
     if (iter->src != current)
       {
+	if (ORDINARY_MAP_GENERATED_DATA_P (iter->src))
+	  continue;
 	current = iter->src;
 	const char *fname = ORDINARY_MAP_FILE_NAME (iter->src);
 
@@ -16265,7 +16267,7 @@ module_state::write_ordinary_maps (elf_out *to, range_t &info,
 		   preprocessed input we could have multiple instances
 		   of the same name, and we'd rather not percolate
 		   that.  */
-		const_cast<line_map_ordinary *> (iter->src)->to_file = name;
+		const_cast<line_map_ordinary *> (iter->src)->data = name;
 		fname = NULL;
 		break;
 	      }
@@ -16293,6 +16295,8 @@ module_state::write_ordinary_maps (elf_out *to, range_t &info,
   for (auto iter = ord_loc_remap->begin (), end = ord_loc_remap->end ();
        iter != end; ++iter)
     {
+      if (ORDINARY_MAP_GENERATED_DATA_P (iter->src))
+	continue;
       dump (dumper::LOCATION)
 	&& dump ("Span:%u ordinary [%u+%u,+%u)->[%u,+%u)",
 		 iter - ord_loc_remap->begin (),
@@ -16454,7 +16458,8 @@ module_state::read_ordinary_maps (unsigned num_ord_locs, unsigned range_bits)
 	  map->m_range_bits = sec.u ();
 	  map->m_column_and_range_bits = sec.u () + map->m_range_bits;
 	  unsigned fnum = sec.u ();
-	  map->to_file = (fnum < filenames.length () ? filenames[fnum] : "");
+	  map->data = (fnum < filenames.length () ? filenames[fnum] : "");
+	  map->data_len = 1 + strlen (map->data);
 	  map->to_line = sec.u ();
 	  base = map;
 	}
