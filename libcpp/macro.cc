@@ -93,6 +93,8 @@ struct macro_arg_saved_data {
 static const char *vaopt_paste_error =
   N_("'##' cannot appear at either end of __VA_OPT__");
 
+static const uchar pragma_str[] = N_("<_Pragma directive>");
+
 static void expand_arg (cpp_reader *, macro_arg *);
 
 /* A class for tracking __VA_OPT__ state while iterating over a
@@ -756,7 +758,31 @@ builtin_macro (cpp_reader *pfile, cpp_hashnode *node,
       if (pfile->state.in_directive || pfile->state.ignore__Pragma)
 	return 0;
 
-      return _cpp_do__Pragma (pfile, loc);
+      _cpp__Pragma_state pstate = {};
+      pstate.pragma_loc = loc;
+
+      /* The diagnostic_rebase stuff arranges that any diagnostics issued during
+	 lexing will point the user back to the _Pragma location.  */
+      const auto prev_rloc = pfile->diagnostic_rebase_loc;
+      const auto prev_rnode = pfile->diagnostic_rebase_node;
+      pfile->diagnostic_rebase_loc = loc;
+      pfile->diagnostic_rebase_node
+	= cpp_lookup (pfile, pragma_str, (sizeof pragma_str) - 1);
+
+      /* While lexing tokens, if we end up expanding some macros, we would
+	 like not to override top_most_macro_node; preserving it pointing
+	 to the _Pragma helps out the case of -ftrack-macro-expansion=0.
+	 Setting this flag causes in_macro_expansion_p to return TRUE,
+	 even though we are not technically in a macro context.  */
+      const bool prev_expand = pfile->about_to_expand_macro_p;
+      pfile->about_to_expand_macro_p = true;
+
+      /* Get the tokens, then reset everything back how it was.  */
+      const int res = _cpp_do__Pragma (pfile, &pstate);
+      pfile->about_to_expand_macro_p = prev_expand;
+      pfile->diagnostic_rebase_loc = prev_rloc;
+      pfile->diagnostic_rebase_node = prev_rnode;
+      return res;
     }
 
   buf = _cpp_builtin_macro_text (pfile, node, expand_loc);
@@ -2802,7 +2828,8 @@ _cpp_pop_context (cpp_reader *pfile)
 	  && macro_of_context (context->prev) != macro)
 	macro->flags &= ~NODE_DISABLED;
 
-      if (macro == pfile->top_most_macro_node && context->prev == NULL)
+      if (!pfile->about_to_expand_macro_p
+	  && context->prev == &pfile->base_context)
 	/* We are popping the context of the top-most macro node.  */
 	pfile->top_most_macro_node = NULL;
     }
@@ -2836,10 +2863,10 @@ reached_end_of_context (cpp_context *context)
 
 /* Consume the next token contained in the current context of PFILE,
    and return it in *TOKEN. It's "full location" is returned in
-   *LOCATION. If -ftrack-macro-location is in effeect, fFull location"
-   means the location encoding the locus of the token across macro
-   expansion; otherwise it's just is the "normal" location of the
-   token which (*TOKEN)->src_loc.  */
+   *LOCATION.  If -ftrack-macro-location is in effect, "full location"
+   means the virtual location encoding the locus of the token across macro
+   expansion; otherwise it's just the "normal" (spelling) location of the
+   token, which is (*TOKEN)->src_loc.  */
 static inline void
 consume_next_token_from_context (cpp_reader *pfile,
 				 const cpp_token ** token,
@@ -4128,4 +4155,91 @@ cpp_macro_definition (cpp_reader *pfile, cpp_hashnode *node,
 
   *buffer = '\0';
   return pfile->macro_buffer;
+}
+
+/* Handle the list of tokens lexed from a _Pragma string.  We need to create
+   virtual locations (reflecting the fact that these tokens are logically
+   within the expansion of the _Pragma string), and push an extended token
+   context.  */
+
+void
+_cpp_push__Pragma_token_context (cpp_reader *pfile,
+				 _cpp__Pragma_state *pstate)
+{
+  const auto node = cpp_lookup (pfile, pragma_str, (sizeof pragma_str) - 1);
+  const auto toks = (const cpp_token *) pstate->tok_buff->base;
+
+  /* If not tracking macro expansions, then just push a normal token context.
+     cpp_get_token () will return the user the location of the _Pragma
+     directive, so they will have a valid location for the _Pragma which is
+     outside the LC_GEN map.  */
+  if (!CPP_OPTION (pfile, track_macro_expansion))
+    {
+      _cpp_push_token_context (pfile, node, toks, pstate->ntoks);
+      /* Arrange to free the buffers when the context is popped.  */
+      pfile->context->buff = pstate->tok_buff;
+      return;
+    }
+
+  location_t *virt_locs = nullptr;
+  _cpp_buff *const macro_tokens = tokens_buff_new (pfile, pstate->ntoks,
+						   &virt_locs);
+  const auto map = linemap_enter_macro (pfile->line_table, node,
+					pstate->pragma_loc, pstate->ntoks);
+  const auto locs = (location_t *)pstate->loc_buff->base;
+  for (unsigned int i = 0; i != pstate->ntoks; ++i)
+    {
+      tokens_buff_add_token (macro_tokens, virt_locs, toks + i,
+			     locs[i], locs[i], map, i);
+    }
+
+  /* Chain tok_buff ahead of macro_tokens so both are freed together
+     when the context is popped.  pstate->buff_chain is the NEXT pointer
+     of the last buffer in the LOC_BUFF chain, so it looks like:
+     TOK_BUFF_1 -> ... -> TOK_BUFF_N -> ... -> LOC_BUFF_1 -> ... ->
+     LOC_BUFF_N -> MACRO_TOKENS_1 -> ... -> MACRO_TOKENS_N.  */
+  *pstate->buff_chain = macro_tokens;
+  push_extended_tokens_context (pfile, node, pstate->tok_buff, virt_locs,
+				(const cpp_token **) macro_tokens->base,
+				pstate->ntoks);
+}
+
+void
+_cpp_rebase_diagnostic_location (cpp_reader *pfile, rich_location *richloc)
+{
+  /* If we are here, it means a diagnostic is being generated while lexing
+     tokens outside a macro context, but pfile->diagnostic_rebase_loc indicates
+     a location from which we would like to pretend we are actually expanding a
+     macro.  This works around the fact that a macro map can only be generated
+     once we know how many tokens it will contain, but the number of tokens to
+     be lexed from, say, a _Pragma string, is not known ahead of time.  In the
+     case of _Pragma, _cpp_push__Pragma_token_context above handles creating the
+     proper macro map once all the tokens are available.  This function runs
+     earlier than that, while in the middle of lexing tokens, so it creates a
+     temporary macro map which serves only to improve the information content of
+     the diagnostic that's about to be generated.  */
+
+  const int nlocs = richloc->get_num_locations ();
+
+  if (CPP_OPTION (pfile, track_macro_expansion))
+    {
+      const auto map
+	= linemap_enter_macro (pfile->line_table, pfile->diagnostic_rebase_node,
+			       pfile->diagnostic_rebase_loc, nlocs);
+      for (int i = 0; i != nlocs; ++i)
+	{
+	  location_range& r = *richloc->get_range (i);
+	  r.m_loc = linemap_add_macro_token (map, i, r.m_loc, r.m_loc);
+	}
+    }
+  else
+    {
+      /* When not tracking macro expansion, then set the location to the
+	 expansion point for all tokens, which is what would be returned
+	 by cpp_get_token in the normal case.  */
+      for (int i = 0; i != nlocs; ++i)
+	richloc->get_range (i)->m_loc = pfile->invocation_location;
+    }
+
+  richloc->forget_cached_expanded_location ();
 }

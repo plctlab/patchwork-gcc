@@ -45,8 +45,9 @@
 #define DO_PRAGMA(x) _Pragma (#x) /* { dg-line pragma_loc1 } */
 #define TODO(x) DO_PRAGMA(message ("TODO - " #x)) /* { dg-line pragma_loc2 } */
 TODO(Okay 4) /* { dg-message "in expansion of macro 'TODO'" } */
-/* { dg-message "TODO - Okay 4" "test4.1" { target *-*-* } pragma_loc1 } */
+/* { dg-message "1:TODO - Okay 4" "test4.1" { target *-*-* } 1 } */
 /* { dg-message "in expansion of macro 'DO_PRAGMA'" "test4.2" { target *-*-* } pragma_loc2 } */
+/* { dg-note {in <_Pragma directive>} "test4.3" { target *-*-* } pragma_loc1 } */
 
 #if 0
 #pragma message ("Not printed")

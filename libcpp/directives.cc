@@ -127,10 +127,10 @@ static void do_pragma_warning_or_error (cpp_reader *, bool error);
 static void do_pragma_warning (cpp_reader *);
 static void do_pragma_error (cpp_reader *);
 static void do_linemarker (cpp_reader *);
-static const cpp_token *get_token_no_padding (cpp_reader *);
-static const cpp_token *get__Pragma_string (cpp_reader *);
-static void destringize_and_run (cpp_reader *, const cpp_string *,
-				 location_t);
+static const cpp_token *get_token_no_padding (cpp_reader *,
+					      location_t * = nullptr);
+static const cpp_token *get__Pragma_string (cpp_reader *,
+					    location_t * = nullptr);
 static bool parse_answer (cpp_reader *, int, location_t, cpp_macro **);
 static cpp_hashnode *parse_assertion (cpp_reader *, int, cpp_macro **);
 static cpp_macro **find_answer (cpp_hashnode *, const cpp_macro *);
@@ -1502,14 +1502,12 @@ do_pragma (cpp_reader *pfile)
 {
   const struct pragma_entry *p = NULL;
   const cpp_token *token, *pragma_token;
-  location_t pragma_token_virt_loc = 0;
   cpp_token ns_token;
   unsigned int count = 1;
 
   pfile->state.prevent_expansion++;
 
-  pragma_token = token = cpp_get_token_with_location (pfile,
-						      &pragma_token_virt_loc);
+  pragma_token = token = cpp_get_token (pfile);
   ns_token = *token;
   if (token->type == CPP_NAME)
     {
@@ -1535,7 +1533,7 @@ do_pragma (cpp_reader *pfile)
     {
       if (p->is_deferred)
 	{
-	  pfile->directive_result.src_loc = pragma_token_virt_loc;
+	  pfile->directive_result.src_loc = pragma_token->src_loc;
 	  pfile->directive_result.type = CPP_PRAGMA;
 	  pfile->directive_result.flags = pragma_token->flags;
 	  pfile->directive_result.val.pragma = p->u.ident;
@@ -1828,11 +1826,11 @@ do_pragma_error (cpp_reader *pfile)
 
 /* Get a token but skip padding.  */
 static const cpp_token *
-get_token_no_padding (cpp_reader *pfile)
+get_token_no_padding (cpp_reader *pfile, location_t *virt_loc)
 {
   for (;;)
     {
-      const cpp_token *result = cpp_get_token (pfile);
+      const cpp_token *result = cpp_get_token_with_location (pfile, virt_loc);
       if (result->type != CPP_PADDING)
 	return result;
     }
@@ -1841,7 +1839,7 @@ get_token_no_padding (cpp_reader *pfile)
 /* Check syntax is "(string-literal)".  Returns the string on success,
    or NULL on failure.  */
 static const cpp_token *
-get__Pragma_string (cpp_reader *pfile)
+get__Pragma_string (cpp_reader *pfile, location_t *string_virt_loc)
 {
   const cpp_token *string;
   const cpp_token *paren;
@@ -1852,7 +1850,7 @@ get__Pragma_string (cpp_reader *pfile)
   if (paren->type != CPP_OPEN_PAREN)
     return NULL;
 
-  string = get_token_no_padding (pfile);
+  string = get_token_no_padding (pfile, string_virt_loc);
   if (string->type == CPP_EOF)
     _cpp_backup_tokens (pfile, 1);
   if (string->type != CPP_STRING && string->type != CPP_WSTRING
@@ -1872,55 +1870,105 @@ get__Pragma_string (cpp_reader *pfile)
 /* Destringize IN into a temporary buffer, by removing the first \ of
    \" and \\ sequences, and process the result as a #pragma directive.  */
 static void
-destringize_and_run (cpp_reader *pfile, const cpp_string *in,
-		     location_t expansion_loc)
+destringize_and_run (cpp_reader *pfile, _cpp__Pragma_state *pstate)
 {
-  const unsigned char *src, *limit;
-  char *dest, *result;
-  cpp_context *saved_context;
-  cpp_token *saved_cur_token;
-  tokenrun *saved_cur_run;
-  cpp_token *toks;
-  int count;
-  const struct directive *save_directive;
+  uchar *dest, *result;
 
-  dest = result = (char *) alloca (in->len - 1);
-  src = in->text + 1 + (in->text[0] == 'L');
-  limit = in->text + in->len - 1;
-  while (src < limit)
+  /* Determine where the data starts, and what kind of string it is.  */
+  const cpp_string *const in = &pstate->string_tok->val.str;
+  const uchar *src = in->text;
+  bool is_raw_string = false;
+  for (;;)
     {
-      /* We know there is a character following the backslash.  */
-      if (*src == '\\' && (src[1] == '\\' || src[1] == '"'))
-	src++;
-      *dest++ = *src++;
+      switch (*src++)
+	{
+	case '\"': break;
+	case 'R': is_raw_string = true; continue;
+	case '\0': gcc_assert (false);
+	default: continue;
+	}
+      break;
     }
-  *dest = '\n';
 
-  /* Ugh; an awful kludge.  We are really not set up to be lexing
-     tokens when in the middle of a macro expansion.  Use a new
-     context to force cpp_get_token to lex, and so skip_rest_of_line
-     doesn't go beyond the end of the text.  Also, remember the
-     current lexing position so we can return to it later.
+  /* If we were given a raw string literal, we don't need to destringize it,
+     but we do need to strip off the prefix and the suffix.  */
+  if (is_raw_string)
+    {
+      cpp_string buf;
+      const bool ok
+	= cpp_interpret_string_notranslate (pfile, in, 1, &buf, CPP_STRING);
+      gcc_assert (ok);
 
-     Something like line-at-a-time lexing should remove the need for
-     this.  */
-  saved_context = pfile->context;
-  saved_cur_token = pfile->cur_token;
-  saved_cur_run = pfile->cur_run;
+      /* BUF.TEXT ends with a terminating null (which is counted in BUF.LEN).
+	 We want to end with a newline as required by cpp_push_buffer.  While it
+	 is not strictly necessary to null terminate our buffer, it is useful to
+	 do so for safety, so we reserve one extra byte.  The \n\0 sequence is
+	 appended after the else block.  */
+      result = _cpp_unaligned_alloc (pfile, buf.len + 1);
+      memcpy (result, buf.text, buf.len - 1);
+      dest = result + (buf.len - 1);
+      XDELETEVEC (buf.text);
+    }
+  else
+    {
+      const auto last_ptr = in->text + in->len - 1;
+      /* +2 for the trailing \n\0 as above.  */
+      dest = result = _cpp_unaligned_alloc (pfile, last_ptr - src + 1 + 2);
+      while (src < last_ptr)
+	{
+	  /* We know there is a character following the backslash.  */
+	  if (*src == '\\' && (src[1] == '\\' || src[1] == '"'))
+	    src++;
+	  *dest++ = *src++;
+	}
+    }
+  *dest++ = '\n';
+  *dest++ = '\0';
 
+  /* We will now ask PFILE to interrupt what it was doing (obtaining tokens
+     either from the main context via lexing, or from a macro context), and get
+     tokens from the string argument instead.  We create a new isolated
+     cpp_context so that cpp_get_token will think it is working on the main
+     buffer and call cpp_lex_token accordingly.  Save all the relevant state so
+     we can return to the previous task once that is completed.
+
+     Doing things this way is a bit of a kludge, but the alternative would be
+     to create a new context type to support lexing from a string, and that
+     would add overhead to every token parse, while _Pragma is relatively rarely
+     needed.  */
+
+  const auto saved_context = pfile->context;
+  const auto saved_cur_token = pfile->cur_token;
+  const auto saved_cur_run = pfile->cur_run;
   pfile->context = XCNEW (cpp_context);
-
-  /* Inline run_directive, since we need to delay the _cpp_pop_buffer
-     until we've read all of the tokens that we want.  */
-  cpp_push_buffer (pfile, (const uchar *) result, dest - result,
-		   /* from_stage3 */ true);
-  /* ??? Antique Disgusting Hack.  What does this do?  */
-  if (pfile->buffer->prev)
-    pfile->buffer->file = pfile->buffer->prev->file;
-
   start_directive (pfile);
+
+  /* Set up an LC_GEN line map to get valid locations for the tokens we are
+     about to lex.  We need to do this after calling start_directive, because
+     historically pfile->directive_line is what's been passed to
+     pfile->cb.def_pragma, and we are not proposing to change that now.  To
+     decide if we are in a system header or not, look at the location of the
+     _Pragma token.  So for instance if we have _Pragma(S) in the main file,
+     where S is a macro defined in a system header, we will decide we are not in
+     a system location.  */
+  const unsigned int buf_len = dest - result;
+  const int sysp = linemap_location_in_system_header_p (pfile->line_table,
+							pstate->pragma_loc);
+  linemap_add (pfile->line_table, LC_GEN, sysp, (const char *)result, 1,
+	       buf_len);
+  const auto col_hint = (uchar *) memchr (result, '\n', buf_len) - result;
+  linemap_line_start (pfile->line_table, 1, col_hint);
+
+  /* Push the buffer.  */
+  cpp_push_buffer (pfile, result, buf_len - 2, true);
+
+  /* This is needed to make _Pragma("once") work correctly, as it needs
+     pfile->buffer->file to be set to the current source file.  */
+  pfile->buffer->file = pfile->buffer->prev->file;
+
+  /* We are ready to start handling the directive as normal.  */
   _cpp_clean_line (pfile);
-  save_directive = pfile->directive;
+  const auto save_directive = pfile->directive;
   pfile->directive = &dtable[T_PRAGMA];
   do_pragma (pfile);
   if (pfile->directive_result.type == CPP_PRAGMA)
@@ -1929,80 +1977,123 @@ destringize_and_run (cpp_reader *pfile, const cpp_string *in,
   pfile->directive = save_directive;
 
   /* We always insert at least one token, the directive result.  It'll
-     either be a CPP_PADDING or a CPP_PRAGMA.  In the later case, we 
+     either be a CPP_PADDING or a CPP_PRAGMA.  In the latter case, we
      need to insert *all* of the tokens, including the CPP_PRAGMA_EOL.  */
 
   /* If we're not handling the pragma internally, read all of the tokens from
-     the string buffer now, while the string buffer is still installed.  */
-  /* ??? Note that the token buffer allocated here is leaked.  It's not clear
-     to me what the true lifespan of the tokens are.  It would appear that
-     the lifespan is the entire parse of the main input stream, in which case
-     this may not be wrong.  */
-  if (pfile->directive_result.type == CPP_PRAGMA)
+     the string buffer now, while the string buffer is still installed, and then
+     push them as a new token context after.  This way, we can clean up the
+     temporarily modified state of the lexer now.  */
+
+  const bool is_deferred = (pfile->directive_result.type == CPP_PRAGMA);
+  if (is_deferred)
     {
-      int maxcount;
+      /* Using _cpp_buff allows us to arrange for this buffer to be freed when
+	 the new token context is popped, without adding any additional space
+	 overhead to the cpp_context structure.  In order to support
+	 track_macro_expansion==0, we need to store the cpp_token objects
+	 contiguously, and the virt locs separately.  (Note that these tokens
+	 may acquire a virtual loc here, in case the pragma allows macro
+	 expansion.  But they will not yet have virtual locs representing them
+	 as part of the expansion of the _Pragma directive; this will be handled
+	 later in _cpp_push__Pragma_token_context.  */
+      const size_t init_count = 50;
+      _cpp_buff *tok_buff
+	= _cpp_get_buff (pfile, init_count * sizeof (cpp_token));
+      _cpp_buff *loc_buff
+	= _cpp_get_buff (pfile, init_count * sizeof (location_t));
 
-      count = 1;
-      maxcount = 50;
-      toks = XNEWVEC (cpp_token, maxcount);
-      toks[0] = pfile->directive_result;
-      toks[0].src_loc = expansion_loc;
+      /* Remember the base buffs so we can chain the final loc buff after it
+	 once we are done collecting tokens.  */
+      const auto tok_buff0 = tok_buff;
+      pstate->buff_chain = &loc_buff->next;
 
-      do
+      /* DIRECTIVE_RESULT is the first token we return (a CPP_PRAGMA).  This
+	 location cannot result from macro expansion, so there is no virtual
+	 location to worry about.  */
+      auto tok_out = (cpp_token *) tok_buff->base;
+      *tok_out++ = pfile->directive_result;
+      auto loc_out = (location_t *) loc_buff->base;
+      *loc_out++ = pfile->directive_result.src_loc;
+      unsigned int ntoks = 1;
+
+      /* Finally get all the tokens.  */
+      for (;;)
 	{
-	  if (count == maxcount)
+	  if (tok_buff->limit - (uchar *)tok_out < (int)sizeof (cpp_token))
 	    {
-	      maxcount = maxcount * 3 / 2;
-	      toks = XRESIZEVEC (cpp_token, toks, maxcount);
+	      _cpp_extend_buff (pfile, &tok_buff,
+				tok_buff->limit - tok_buff->base);
+	      tok_out = ((cpp_token *)tok_buff->base) + ntoks;
 	    }
-	  toks[count] = *cpp_get_token (pfile);
-	  /* _Pragma is a builtin, so we're not within a macro-map, and so
-	     the token locations are set to bogus ordinary locations
-	     near to, but after that of the "_Pragma".
-	     Paper over this by setting them equal to the location of the
-	     _Pragma itself (PR preprocessor/69126).  */
-	  toks[count].src_loc = expansion_loc;
+
+	  if (loc_buff->limit - (uchar *)loc_out < (int)sizeof (location_t))
+	    {
+	      _cpp_extend_buff (pfile, &loc_buff,
+				loc_buff->limit - loc_buff->base);
+	      loc_out = ((location_t *)loc_buff->base) + ntoks;
+	    }
+
+	  const auto this_tok = tok_out;
+	  *tok_out++ = *cpp_get_token_with_location (pfile, loc_out++);
+	  ++ntoks;
+
 	  /* Macros have been already expanded by cpp_get_token
 	     if the pragma allowed expansion.  */
-	  toks[count++].flags |= NO_EXPAND;
+	  this_tok->flags |= NO_EXPAND;
+	  if (this_tok->type == CPP_PRAGMA_EOL)
+	    break;
 	}
-      while (toks[count-1].type != CPP_PRAGMA_EOL);
+
+      /* Finalize the buffers so they can be stored as one chain in a
+	 cpp_context and freed when that context is popped.  */
+      tok_buff0->next = loc_buff;
+      pstate->ntoks = ntoks;
+      pstate->tok_buff = tok_buff;
+      pstate->loc_buff = loc_buff;
     }
   else
     {
-      count = 1;
-      toks = &pfile->avoid_paste;
-
       /* If we handled the entire pragma internally, make sure we get the
 	 line number correct for the next token.  */
       if (pfile->cb.line_change)
 	pfile->cb.line_change (pfile, pfile->cur_token, false);
     }
 
-  /* Finish inlining run_directive.  */
+  /* Reset the old state before...  */
+  const auto map = linemap_add (pfile->line_table, LC_LEAVE, 0, nullptr, 0);
+  linemap_line_start
+    (pfile->line_table,
+     ORDINARY_MAP_STARTING_LINE_NUMBER (linemap_check_ordinary (map)),
+     127);
   pfile->buffer->file = NULL;
   _cpp_pop_buffer (pfile);
-
-  /* Reset the old macro state before ...  */
   XDELETE (pfile->context);
   pfile->context = saved_context;
   pfile->cur_token = saved_cur_token;
   pfile->cur_run = saved_cur_run;
 
-  /* ... inserting the new tokens we collected.  */
-  _cpp_push_token_context (pfile, NULL, toks, count);
+  /* ...inserting the new tokens we collected.  This is not a simple call to
+     _cpp_push_token_context, because we need to create virtual locations
+     for the tokens and push an extended token context to return them.  */
+  if (is_deferred)
+    _cpp_push__Pragma_token_context (pfile, pstate);
+  else
+    _cpp_push_token_context (pfile, nullptr, &pfile->avoid_paste, 1);
 }
 
-/* Handle the _Pragma operator.  Return 0 on error, 1 if ok.  */
-int
-_cpp_do__Pragma (cpp_reader *pfile, location_t expansion_loc)
-{
-  const cpp_token *string = get__Pragma_string (pfile);
-  pfile->directive_result.type = CPP_PADDING;
 
-  if (string)
+/* Handle the _Pragma operator.  Return 0 on error, 1 if ok.  */
+
+int
+_cpp_do__Pragma (cpp_reader *pfile, _cpp__Pragma_state *pstate)
+{
+  pstate->string_tok = get__Pragma_string (pfile, &pstate->string_loc);
+
+  pfile->directive_result.type = CPP_PADDING;
+  if (pstate->string_tok)
     {
-      destringize_and_run (pfile, &string->val.str, expansion_loc);
+      destringize_and_run (pfile, pstate);
       return 1;
     }
   cpp_error (pfile, CPP_DL_ERROR,

@@ -280,7 +280,7 @@ token_streamer::stream (cpp_reader *pfile, const cpp_token *token,
 	  const char *space;
 	  const char *name;
 
-	  line_marker_emitted = maybe_print_line (token->src_loc);
+	  line_marker_emitted = maybe_print_line (loc);
 	  fputs ("#pragma ", print.outf);
 	  c_pp_lookup_pragma (token->val.pragma, &space, &name);
 	  if (space)

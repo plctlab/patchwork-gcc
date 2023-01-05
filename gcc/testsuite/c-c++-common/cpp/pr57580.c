@@ -1,6 +1,6 @@
 /* PR preprocessor/57580 */
 /* { dg-do compile } */
-/* { dg-options "-save-temps" } */
+/* { dg-options "-save-temps -ftrack-macro-expansion=0" } */
 
 #define MSG 	\
   _Pragma("message(\"message0\")")	\

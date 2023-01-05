@@ -1,4 +1,5 @@
 // { dg-do compile }
+// { dg-additional-options "-ftrack-macro-expansion=0" }
 
 #pragma GCC warning "warn-a" // { dg-warning warn-a }
 #pragma GCC error "err-b" // { dg-error err-b }
