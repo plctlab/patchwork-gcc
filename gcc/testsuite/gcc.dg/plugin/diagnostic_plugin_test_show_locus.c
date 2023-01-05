@@ -430,7 +430,7 @@ test_show_locus (function *fun)
      to upper case.  Give all of the ranges labels (sharing one label).  */
   if (0 == strcmp (fnname, "test_many_nested_locations"))
     {
-      const char *file = LOCATION_FILE (fnstart);
+      const expanded_location xloc = expand_location (fnstart);
       const int start_line = fnstart_line + 2;
       const int finish_line = start_line + 7;
       location_t loc = get_loc (start_line - 1, 2);
@@ -438,7 +438,7 @@ test_show_locus (function *fun)
       rich_location richloc (line_table, loc);
       for (int line = start_line; line <= finish_line; line++)
 	{
-	  char_span content = location_get_source_line (file, line);
+	  char_span content = location_get_source_line (xloc, line);
 	  gcc_assert (content);
 	  /* Split line up into words.  */
 	  for (int idx = 0; idx < content.length (); idx++)
