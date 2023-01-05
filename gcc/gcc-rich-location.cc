@@ -78,7 +78,7 @@ static bool
 blank_line_before_p (location_t loc)
 {
   expanded_location exploc = expand_location (loc);
-  char_span line = location_get_source_line (exploc.file, exploc.line);
+  char_span line = location_get_source_line (exploc);
   if (!line)
     return false;
   if (line.length () < (size_t)exploc.column)

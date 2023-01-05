@@ -48,6 +48,35 @@ static location_t linemap_macro_loc_to_exp_point (line_maps *,
 extern unsigned num_expanded_macros_counter;
 extern unsigned num_macro_tokens_counter;
 
+/* For a normal ordinary map, this is the same as ORDINARY_MAP_FILE_NAME;
+   but for an LC_GEN map, it returns the file name from which the data
+   originated, instead of asserting.  */
+const char *
+ORDINARY_MAP_CONTAINING_FILE_NAME (line_maps *set,
+				   const line_map_ordinary *ord_map)
+{
+  while (ORDINARY_MAP_GENERATED_DATA_P (ord_map))
+    {
+      ord_map = linemap_included_from_linemap (set, ord_map);
+      if (!ord_map)
+	return "-";
+    }
+  return ORDINARY_MAP_FILE_NAME (ord_map);
+}
+
+/* If we just want to know whether two maps point to the same
+   file/buffer or not.  */
+bool
+ORDINARY_MAPS_SAME_FILE_P (const line_map_ordinary *map1,
+			   const line_map_ordinary *map2)
+{
+  const bool is_data = ORDINARY_MAP_GENERATED_DATA_P (map1);
+  return is_data == ORDINARY_MAP_GENERATED_DATA_P (map2)
+    && (is_data
+	? map1->data == map2->data
+	: !filename_cmp (map1->data, map2->data));
+}
+
 /* Destructor for class line_maps.
    Ensure non-GC-managed memory is released.  */
 
@@ -411,8 +440,9 @@ linemap_check_files_exited (line_maps *set)
   for (const line_map_ordinary *map = LINEMAPS_LAST_ORDINARY_MAP (set);
        ! MAIN_FILE_P (map);
        map = linemap_included_from_linemap (set, map))
-    fprintf (stderr, "line-map.cc: file \"%s\" entered but not left\n",
-	     ORDINARY_MAP_FILE_NAME (map));
+    fprintf (stderr, "line-map.cc: file \"%s%s\" entered but not left\n",
+	     ORDINARY_MAP_CONTAINING_FILE_NAME (set, map),
+	     ORDINARY_MAP_GENERATED_DATA_P (map) ? "<generated>" : "");
 }
 
 /* Create NUM zero-initialized maps of type MACRO_P.  */
@@ -504,22 +534,26 @@ LAST_SOURCE_LINE_LOCATION (const line_map_ordinary *map)
 	  + map->start_location);
 }
 
-/* Add a mapping of logical source line to physical source file and
-   line number.
+/* Add a mapping of logical source line to physical source file andg
+   line number.  This function creates an "ordinary map", which is a
+   map that records locations of tokens that are not part of macro
+   replacement-lists present at a macro expansion point.
 
-   The text pointed to by TO_FILE must have a lifetime
-   at least as long as the final call to lookup_line ().  An empty
-   TO_FILE means standard input.  If reason is LC_LEAVE, and
-   TO_FILE is NULL, then TO_FILE, TO_LINE and SYSP are given their
-   natural values considering the file we are returning to.
+   The text pointed to by DATA must have a lifetime at least as long as the
+   lifetime of SET.  If reason is LC_LEAVE, and DATA is NULL, then DATA, TO_LINE
+   and SYSP are given their natural values considering the file we are returning
+   to.  If reason is LC_GEN, then DATA is the actual content, and DATA_LEN>0 is
+   the length of it.  Otherwise DATA is a file name and DATA_LEN need not be
+   specified.  If DATA_LEN is specified for a file name, it should be the length
+   of the file name, including the terminating null.
 
-   FROM_LINE should be monotonic increasing across calls to this
-   function.  A call to this function can relocate the previous set of
-   maps, so any stored line_map pointers should not be used.  */
+   A call to this function can relocate the previous set of maps, so any stored
+   line_map pointers should not be used.  */
 
 const struct line_map *
 linemap_add (line_maps *set, enum lc_reason reason,
-	     unsigned int sysp, const char *to_file, linenum_type to_line)
+	     unsigned int sysp, const char *data, linenum_type to_line,
+	     unsigned int data_len)
 {
   /* Generate a start_location above the current highest_location.
      If possible, make the low range bits be zero.  */
@@ -535,13 +569,25 @@ linemap_add (line_maps *set, enum lc_reason reason,
 		      >= MAP_START_LOCATION (LINEMAPS_LAST_ORDINARY_MAP (set))));
 
   /* When we enter the file for the first time reason cannot be
-     LC_RENAME.  */
-  linemap_assert (!(set->depth == 0 && reason == LC_RENAME));
+     LC_RENAME.  To keep things simple, don't track LC_RENAME for
+     LC_GEN maps, but just keep their reason as always LC_GEN.  */
+  if (reason == LC_RENAME)
+    {
+      linemap_assert (set->depth != 0);
+      const auto prev = LINEMAPS_LAST_ORDINARY_MAP (set);
+      linemap_assert (prev);
+      if (prev->reason == LC_GEN)
+	{
+	  reason = LC_GEN;
+	  data = prev->data;
+	  data_len = prev->data_len;
+	}
+    }
 
   /* If we are leaving the main file, return a NULL map.  */
   if (reason == LC_LEAVE
       && MAIN_FILE_P (LINEMAPS_LAST_ORDINARY_MAP (set))
-      && to_file == NULL)
+      && data == NULL)
     {
       set->depth--;
       return NULL;
@@ -557,8 +603,9 @@ linemap_add (line_maps *set, enum lc_reason reason,
     = linemap_check_ordinary (new_linemap (set, start_location));
   map->reason = reason;
 
-  if (to_file && *to_file == '\0' && reason != LC_RENAME_VERBATIM)
-    to_file = "<stdin>";
+  if (data && *data == '\0' && reason != LC_RENAME_VERBATIM
+      && reason != LC_GEN)
+    data = "<stdin>";
 
   if (reason == LC_RENAME_VERBATIM)
     reason = LC_RENAME;
@@ -577,20 +624,31 @@ linemap_add (line_maps *set, enum lc_reason reason,
 	 that comes right before MAP in the same file.  */
       from = linemap_included_from_linemap (set, map - 1);
 
-      /* A TO_FILE of NULL is special - we use the natural values.  */
-      if (to_file == NULL)
+      /* A DATA of NULL is special - we use the natural values.  */
+      if (data == NULL)
 	{
-	  to_file = ORDINARY_MAP_FILE_NAME (from);
+	  data = ORDINARY_MAP_FILE_NAME_OR_DATA (from);
 	  to_line = SOURCE_LINE (from, from[1].start_location);
 	  sysp = ORDINARY_MAP_IN_SYSTEM_HEADER_P (from);
 	}
       else
-	linemap_assert (filename_cmp (ORDINARY_MAP_FILE_NAME (from),
-				      to_file) == 0);
+	linemap_assert (ORDINARY_MAP_GENERATED_DATA_P (from)
+			? (ORDINARY_MAP_GENERATED_DATA (from) == data)
+			: (filename_cmp (ORDINARY_MAP_FILE_NAME (from), data)
+			   == 0));
     }
 
   map->sysp = sysp;
-  map->to_file = to_file;
+  map->data = data;
+
+  if (reason == LC_GEN)
+    {
+      gcc_assert (data_len);
+      map->data_len = data_len;
+    }
+  else
+    map->data_len = (data_len > 0 ? data_len : strlen (data) + 1);
+
   map->to_line = to_line;
   LINEMAPS_ORDINARY_CACHE (set) = LINEMAPS_ORDINARY_USED (set) - 1;
   /* Do not store range_bits here.  That's readjusted in
@@ -606,7 +664,7 @@ linemap_add (line_maps *set, enum lc_reason reason,
      pure_location_p.  */
   linemap_assert (pure_location_p (set, start_location));
 
-  if (reason == LC_ENTER)
+  if (reason == LC_ENTER || reason == LC_GEN)
     {
       if (set->depth == 0)
 	map->included_from = 0;
@@ -617,7 +675,7 @@ linemap_add (line_maps *set, enum lc_reason reason,
 	      & ~((1 << map[-1].m_column_and_range_bits) - 1))
 	     + map[-1].start_location);
       set->depth++;
-      if (set->trace_includes)
+      if (set->trace_includes && reason == LC_ENTER)
 	trace_include (set, map);
     }
   else if (reason == LC_RENAME)
@@ -863,8 +921,9 @@ linemap_line_start (line_maps *set, linenum_type to_line,
 	        (const_cast <line_map *>
 		  (linemap_add (set, LC_RENAME,
 				ORDINARY_MAP_IN_SYSTEM_HEADER_P (map),
-				ORDINARY_MAP_FILE_NAME (map),
-				to_line)));
+				ORDINARY_MAP_FILE_NAME_OR_DATA (map),
+				to_line,
+				map->data_len)));
       map->m_column_and_range_bits = column_bits;
       map->m_range_bits = range_bits;
       r = (MAP_START_LOCATION (map)
@@ -1025,7 +1084,7 @@ linemap_position_for_loc_and_offset (line_maps *set,
        cannot encode the location there.  */
     if ((map + 1)->reason != LC_RENAME
 	|| line < ORDINARY_MAP_STARTING_LINE_NUMBER (map + 1)
-	|| 0 != strcmp (LINEMAP_FILE (map + 1), LINEMAP_FILE (map)))
+	|| !ORDINARY_MAPS_SAME_FILE_P (map, map + 1))
       return loc;
 
   column += column_offset;
@@ -1283,7 +1342,7 @@ linemap_get_expansion_filename (line_maps *set,
 
   linemap_macro_loc_to_exp_point (set, location, &map);
 
-  return LINEMAP_FILE (map);
+  return ORDINARY_MAP_CONTAINING_FILE_NAME (set, map);
 }
 
 /* Return the name of the macro associated to MACRO_MAP.  */
@@ -1853,8 +1912,12 @@ linemap_expand_location (line_maps *set,
 	abort ();
 
       const line_map_ordinary *ord_map = linemap_check_ordinary (map);
-
-      xloc.file = LINEMAP_FILE (ord_map);
+      xloc.file = ORDINARY_MAP_CONTAINING_FILE_NAME (set, ord_map);
+      if (ORDINARY_MAP_GENERATED_DATA_P (ord_map))
+	{
+	  xloc.generated_data = ORDINARY_MAP_GENERATED_DATA (ord_map);
+	  xloc.generated_data_len = ORDINARY_MAP_GENERATED_DATA_LEN (ord_map);
+	}
       xloc.line = SOURCE_LINE (ord_map, loc);
       xloc.column = SOURCE_COLUMN (ord_map, loc);
       xloc.sysp = LINEMAP_SYSP (ord_map) != 0;
@@ -1873,7 +1936,7 @@ linemap_dump (FILE *stream, class line_maps *set, unsigned ix, bool is_macro)
 {
   const char *const lc_reasons_v[LC_HWM]
       = { "LC_ENTER", "LC_LEAVE", "LC_RENAME", "LC_RENAME_VERBATIM",
-	  "LC_ENTER_MACRO", "LC_MODULE" };
+	  "LC_ENTER_MACRO", "LC_MODULE", "LC_GEN" };
   const line_map *map;
   unsigned reason;
 
@@ -1903,11 +1966,15 @@ linemap_dump (FILE *stream, class line_maps *set, unsigned ix, bool is_macro)
       const line_map_ordinary *includer_map
 	= linemap_included_from_linemap (set, ord_map);
 
-      fprintf (stream, "File: %s:%d\n", ORDINARY_MAP_FILE_NAME (ord_map),
+      fprintf (stream, "File: %s:%d\n",
+	       ORDINARY_MAP_GENERATED_DATA_P (ord_map) ? "<generated>"
+	       : ORDINARY_MAP_FILE_NAME (ord_map),
 	       ORDINARY_MAP_STARTING_LINE_NUMBER (ord_map));
       fprintf (stream, "Included from: [%d] %s\n",
 	       includer_map ? int (includer_map - set->info_ordinary.maps) : -1,
-	       includer_map ? ORDINARY_MAP_FILE_NAME (includer_map) : "None");
+	       includer_map ? ORDINARY_MAP_CONTAINING_FILE_NAME (set,
+								 includer_map)
+	       : "None");
     }
   else
     {
@@ -1931,7 +1998,7 @@ linemap_dump_location (line_maps *set,
 {
   const line_map_ordinary *map;
   location_t location;
-  const char *path = "", *from = "";
+  const char *path = "", *path_suffix = "", *from = "";
   int l = -1, c = -1, s = -1, e = -1;
 
   if (IS_ADHOC_LOC (loc))
@@ -1948,7 +2015,9 @@ linemap_dump_location (line_maps *set,
     linemap_assert (location < RESERVED_LOCATION_COUNT);
   else
     {
-      path = LINEMAP_FILE (map);
+      path = ORDINARY_MAP_CONTAINING_FILE_NAME (set, map);
+      if (ORDINARY_MAP_GENERATED_DATA_P (map))
+	path_suffix = "<generated>";
       l = SOURCE_LINE (map, location);
       c = SOURCE_COLUMN (map, location);
       s = LINEMAP_SYSP (map) != 0;
@@ -1959,24 +2028,27 @@ linemap_dump_location (line_maps *set,
 	{
 	  const line_map_ordinary *from_map
 	    = linemap_included_from_linemap (set, map);
-	  from = from_map ? LINEMAP_FILE (from_map) : "<NULL>";
+	  from = from_map ? ORDINARY_MAP_CONTAINING_FILE_NAME (set, from_map)
+	    : "<NULL>";
 	}
     }
 
   /* P: path, L: line, C: column, S: in-system-header, M: map address,
      E: macro expansion?, LOC: original location, R: resolved location   */
-  fprintf (stream, "{P:%s;F:%s;L:%d;C:%d;S:%d;M:%p;E:%d,LOC:%d,R:%d}",
-	   path, from, l, c, s, (void*)map, e, loc, location);
+  fprintf (stream, "{P:%s%s;F:%s;L:%d;C:%d;S:%d;M:%p;E:%d,LOC:%d,R:%d}",
+	   path, path_suffix, from, l, c, s, (void*)map, e, loc, location);
 }
 
-/* Return the highest location emitted for a given file for which
-   there is a line map in SET.  FILE_NAME is the file name to
-   consider.  If the function returns TRUE, *LOC is set to the highest
-   location emitted for that file.  */
+/* Return the highest location emitted for a given file or generated data buffer
+   for which there is a line map in SET.  If the function returns TRUE, *LOC is
+   set to the highest location emitted for that file.  The const char* arg is
+   either a file name or a generated data buffer, as indicated by
+   IS_DATA.  */
 
 bool
 linemap_get_file_highest_location (line_maps *set,
-				   const char *file_name,
+				   const char *fname_or_data,
+				   bool is_data,
 				   location_t *loc)
 {
   /* If the set is empty or no ordinary map has been created then
@@ -1984,13 +2056,23 @@ linemap_get_file_highest_location (line_maps *set,
   if (set == NULL || set->info_ordinary.used == 0)
     return false;
 
-  /* Now look for the last ordinary map created for FILE_NAME.  */
+  /* Now look for the last ordinary map created for this file.  */
   int i;
   for (i = set->info_ordinary.used - 1; i >= 0; --i)
     {
-      const char *fname = set->info_ordinary.maps[i].to_file;
-      if (fname && !filename_cmp (fname, file_name))
-	break;
+      const auto map = set->info_ordinary.maps + i;
+      if (is_data)
+	{
+	  if (ORDINARY_MAP_GENERATED_DATA_P (map)
+	      && ORDINARY_MAP_GENERATED_DATA (map) == fname_or_data)
+	    break;
+	}
+      else if (!ORDINARY_MAP_GENERATED_DATA_P (map))
+	{
+	  const auto this_fname = ORDINARY_MAP_FILE_NAME (map);
+	  if (this_fname && !filename_cmp (this_fname, fname_or_data))
+	    break;
+	}
     }
 
   if (i < 0)

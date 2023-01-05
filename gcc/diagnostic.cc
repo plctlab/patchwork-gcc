@@ -771,13 +771,15 @@ diagnostic_report_current_module (diagnostic_context *context, location_t where)
       if (!includes_seen (context, map))
 	{
 	  bool first = true, need_inc = true, was_module = MAP_MODULE_P (map);
+	  const bool was_gen = ORDINARY_MAP_GENERATED_DATA_P (map);
 	  expanded_location s = {};
 	  do
 	    {
 	      where = linemap_included_from (map);
 	      map = linemap_included_from_linemap (line_table, map);
 	      bool is_module = MAP_MODULE_P (map);
-	      s.file = LINEMAP_FILE (map);
+	      s.file = (ORDINARY_MAP_GENERATED_DATA_P (map)
+			? special_fname_generated () : LINEMAP_FILE (map));
 	      s.line = SOURCE_LINE (map, where);
 	      int col = -1;
 	      if (first && context->show_column)
@@ -796,10 +798,13 @@ diagnostic_report_current_module (diagnostic_context *context, location_t where)
 		 N_("of module"),
 		 N_("In module imported at"),	/* 6 */
 		 N_("imported at"),
+		 N_("In buffer generated from"),   /* 8 */
 		};
 
-	      unsigned index = (was_module ? 6 : is_module ? 4
-				: need_inc ? 2 : 0) + !first;
+	      const unsigned index
+		= was_gen ? 8
+		: ((was_module ? 6 : is_module ? 4 : need_inc ? 2 : 0)
+		   + !first);
 
 	      pp_verbatim (context->printer, "%s%s %r%s%s%R",
 			   first ? "" : was_module ? ", " : ",\n",
@@ -2604,12 +2609,10 @@ assert_location_text (const char *expected_loc_text,
   dc.column_unit = column_unit;
   dc.column_origin = origin;
 
-  expanded_location xloc;
+  expanded_location xloc = {};
   xloc.file = filename;
   xloc.line = line;
   xloc.column = column;
-  xloc.data = NULL;
-  xloc.sysp = false;
 
   char *actual_loc_text = diagnostic_get_location_text (&dc, xloc);
   ASSERT_STREQ (expected_loc_text, actual_loc_text);

@@ -9185,11 +9185,15 @@ try_to_locate_new_include_insertion_point (const char *file, location_t loc)
       const line_map_ordinary *ord_map
 	= LINEMAPS_ORDINARY_MAP_AT (line_table, i);
 
+      if (ORDINARY_MAP_GENERATED_DATA_P (ord_map))
+	continue;
+
       if (const line_map_ordinary *from
 	  = linemap_included_from_linemap (line_table, ord_map))
 	/* We cannot use pointer equality, because with preprocessed
 	   input all filename strings are unique.  */
-	if (0 == strcmp (from->to_file, file))
+	if (!ORDINARY_MAP_GENERATED_DATA_P (from)
+	    && 0 == strcmp (ORDINARY_MAP_FILE_NAME (from), file))
 	  {
 	    last_include_ord_map = from;
 	    last_ord_map_after_include = NULL;
@@ -9197,7 +9201,8 @@ try_to_locate_new_include_insertion_point (const char *file, location_t loc)
 
       /* Likewise, use strcmp, and reject any line-zero introductory
 	 map.  */
-      if (ord_map->to_line && 0 == strcmp (ord_map->to_file, file))
+      if (ord_map->to_line
+	  && 0 == strcmp (ORDINARY_MAP_FILE_NAME (ord_map), file))
 	{
 	  if (!first_ord_map_in_file)
 	    first_ord_map_in_file = ord_map;
