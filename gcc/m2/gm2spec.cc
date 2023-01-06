@@ -797,8 +797,14 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
 	  if ((decoded_options[i].orig_option_with_args_text != NULL)
 	      && (strncmp (decoded_options[i].orig_option_with_args_text,
 			   "-m", 2) == 0))
-	    multilib_dir = xstrdup (decoded_options[i].orig_option_with_args_text
-				    + 2);
+	    save_switch (decoded_options[i].orig_option_with_args_text,
+			 0, NULL, true, true);
+	  else if ((decoded_options[i].orig_option_with_args_text != NULL)
+		   && (strncmp (decoded_options[i].orig_option_with_args_text,
+				"-f", 2) == 0))
+	      save_switch (decoded_options[i].orig_option_with_args_text,
+			   0, NULL, true, true);
+	  break;
 	}
     }
   if (language != NULL && (strcmp (language, "modula-2") != 0))
@@ -864,10 +870,13 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
   if ((! (seen_uselist || seen_gen_module_list)) && linking)
     append_option (OPT_fgen_module_list_, "-", 1);
 
+  multilib_dir = get_multilib_dir ();
+  reset_mdswitches ();
   if (allow_libraries)
     {
       /* If the libraries have not been specified by the user but the
-	 dialect has been specified then select the appropriate libraries.  */
+	 dialect has been specified then select the appropriate
+	 libraries.  */
       if (libraries == NULL)
 	{
 	  if (strcmp (dialect, "iso") == 0)

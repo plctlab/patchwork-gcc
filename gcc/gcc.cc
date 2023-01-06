@@ -3849,7 +3849,7 @@ alloc_switch (void)
 /* Save an option OPT with N_ARGS arguments in array ARGS, marking it
    as validated if VALIDATED and KNOWN if it is an internal switch.  */
 
-static void
+void
 save_switch (const char *opt, size_t n_args, const char *const *args,
 	     bool validated, bool known)
 {
@@ -9557,6 +9557,24 @@ default_arg (const char *p, int len)
       return 1;
 
   return 0;
+}
+
+/* Return the value of multilib_dir.  */
+
+const char *
+get_multilib_dir (void)
+{
+  set_multilib_dir ();
+  return multilib_dir;
+}
+
+/* Reset the mdswitches array to empty.  */
+
+void
+reset_mdswitches (void)
+{
+  n_mdswitches = 0;
+  mdswitches = NULL;
 }
 
 /* Work out the subdirectory to use based on the options. The format of
