@@ -1968,6 +1968,15 @@ rs6000_modes_tieable_p (machine_mode mode1, machine_mode mode2)
   if (ALTIVEC_OR_VSX_VECTOR_MODE (mode2))
     return false;
 
+  /* SFmode format (IEEE DP) in register would not as required,
+     So SFmode is restrict here.  */
+  if (GET_MODE_CLASS (mode1) == MODE_FLOAT
+      && GET_MODE_CLASS (mode2) == MODE_INT)
+    return GET_MODE_SIZE (mode2) == UNITS_PER_FP_WORD && mode1 != SFmode;
+  if (GET_MODE_CLASS (mode1) == MODE_INT
+      && GET_MODE_CLASS (mode2) == MODE_FLOAT)
+    return GET_MODE_SIZE (mode1) == UNITS_PER_FP_WORD && mode2 != SFmode;
+
   if (SCALAR_FLOAT_MODE_P (mode1))
     return SCALAR_FLOAT_MODE_P (mode2);
   if (SCALAR_FLOAT_MODE_P (mode2))
