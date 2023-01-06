@@ -31,24 +31,11 @@ along with GCC; see the file COPYING3.  If not see
 /* We must include stdarg.h before stdio.h.  */
 #include <stdarg.h>
 
-#ifndef va_copy
-# ifdef __va_copy
-#   define va_copy(d,s)  __va_copy (d, s)
-# else
-#   define va_copy(d,s)  ((d) = (s))
-# endif
-#endif
-
 #ifdef HAVE_STDDEF_H
 # include <stddef.h>
 #endif
 
 #include <stdio.h>
-
-/* Define a generic NULL if one hasn't already been defined.  */
-#ifndef NULL
-#define NULL 0
-#endif
 
 /* Use the unlocked open routines from libiberty.  */
 
