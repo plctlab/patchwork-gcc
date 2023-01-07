@@ -289,7 +289,6 @@ add_default_combination (const char *libpath, const char *library)
 {
   if (library != NULL)
     {
-      append_option (OPT_L, build_archive_path (libpath, library), 1);
       append_option (OPT_l, safe_strdup (library), 1);
       return true;
     }
