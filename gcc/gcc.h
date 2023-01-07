@@ -73,6 +73,11 @@ struct spec_function
 extern int do_spec (const char *);
 extern void record_temp_file (const char *, int, int);
 extern void set_input (const char *);
+extern const char *get_multilib_dir (void);
+extern void reset_mdswitches (void);
+extern void save_switch (const char *opt, size_t n_args,
+			 const char *const *args,
+			 bool validated, bool known);
 
 /* Spec files linked with gcc.cc must provide definitions for these.  */
 
