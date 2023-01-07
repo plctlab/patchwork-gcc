@@ -5986,6 +5986,20 @@ post_call:
     gfc_add_block_to_block (&parmse->post, &block);
 }
 
+/* Helper function - generate a memory barrier.  */
+
+static tree
+trans_memory_barrier (void)
+{
+  tree tmp;
+
+  tmp = gfc_build_string_const (sizeof ("memory"), "memory");
+  tmp = build5_loc (input_location, ASM_EXPR, void_type_node,
+		    gfc_build_string_const (1, ""), NULL_TREE, NULL_TREE,
+		    tree_cons (NULL_TREE, tmp, NULL_TREE), NULL_TREE);
+  ASM_VOLATILE_P (tmp) = 1;
+  return tmp;
+}
 
 /* Generate code for a procedure call.  Note can return se->post != NULL.
    If se->direct_byref is set then se->expr contains the return parameter.
@@ -7706,6 +7720,19 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
     conv_function_val (se, sym, expr, args);
   else
     conv_base_obj_fcn_val (se, base_object, expr);
+
+  /* FIXME: Special handing of ieee_set_rounding_mode - we clobber
+     memory here to avoid common subexpression moving code past calls
+     to ieee_set_rounding_mode.  This should only be done for
+     floating point, but currently gcc offers no other possibility.
+     See PR 108329.  */
+
+  if (sym->from_intmod == INTMOD_IEEE_ARITHMETIC
+      && strcmp (sym->name, "ieee_set_rounding_mode") == 0)
+    {
+      tree tmp = trans_memory_barrier ();
+      gfc_add_expr_to_block (&post, tmp);
+    }
 
   /* If there are alternate return labels, function type should be
      integer.  Can't modify the type in place though, since it can be shared
