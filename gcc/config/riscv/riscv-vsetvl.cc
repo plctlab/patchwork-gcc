@@ -87,6 +87,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "predict.h"
 #include "profile-count.h"
 #include "riscv-vsetvl.h"
+#include "dce.h"
 
 using namespace rtl_ssa;
 using namespace riscv_vector;
@@ -2399,6 +2400,7 @@ pass_vsetvl::done (void)
 	cleanup_cfg (0);
       delete crtl->ssa;
       crtl->ssa = nullptr;
+      run_fast_dce ();
     }
   m_vector_manager->release ();
   delete m_vector_manager;
