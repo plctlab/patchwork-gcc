@@ -88,6 +88,7 @@ extern bool default_fixed_point_supported_p (void);
 extern bool default_has_ifunc_p (void);
 
 extern bool default_predict_doloop_p (class loop *);
+extern rtx default_allow_elementwise_doloop_p (rtx, rtx, rtx);
 extern machine_mode default_preferred_doloop_mode (machine_mode);
 extern const char * default_invalid_within_doloop (const rtx_insn *);
 

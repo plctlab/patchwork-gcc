@@ -11097,3 +11097,38 @@
     }
   DONE;
 })
+
+;; Originally expanded by 'predicated_doloop_end'.
+(define_insn "*predicated_doloop_end_internal"
+  [(set (pc)
+	(if_then_else
+	   (ge (plus:SI (reg:SI LR_REGNUM)
+			(match_operand:SI 0 "const_int_operand" ""))
+		(const_int 0))
+	 (label_ref (match_operand 1 "" ""))
+	 (pc)))
+   (set (reg:SI LR_REGNUM)
+	(plus:SI (reg:SI LR_REGNUM) (match_dup 0)))
+   (clobber (reg:CC CC_REGNUM))]
+  "TARGET_32BIT && TARGET_HAVE_LOB && TARGET_HAVE_MVE && TARGET_THUMB2"
+  {
+    if (get_attr_length (insn) == 4)
+      return "letp\t%|lr, %l1";
+    else
+      return "subs\t%|lr, #%0;bgt\t%l1";
+  }
+  [(set (attr "length")
+	(if_then_else
+	   (ltu (minus (pc) (match_dup 1)) (const_int 1024))
+	    (const_int 4)
+	    (const_int 6)))
+   (set_attr "type" "branch")])
+
+(define_insn "dlstp<mode1>_insn"
+  [
+    (set (reg:SI LR_REGNUM)
+	 (unspec:SI [(match_operand:SI 0 "s_register_operand" "r")]
+	  DLSTP))
+  ]
+  "TARGET_32BIT && TARGET_HAVE_LOB && TARGET_HAVE_MVE && TARGET_THUMB2"
+  "dlstp.<mode1>\t%|lr, %0")

@@ -1464,7 +1464,9 @@
 
 (define_int_attr mode1 [(VCTP8Q "8") (VCTP16Q "16") (VCTP32Q "32")
 			(VCTP64Q "64") (VCTP8Q_M "8") (VCTP16Q_M "16")
-			(VCTP32Q_M "32") (VCTP64Q_M "64")])
+			(VCTP32Q_M "32") (VCTP64Q_M "64")
+			(DLSTP8 "8") (DLSTP16 "16") (DLSTP32 "32")
+			(DLSTP64 "64")])
 
 ;; Both kinds of return insn.
 (define_code_iterator RETURNS [return simple_return])
@@ -1773,6 +1775,8 @@
 (define_int_iterator UQRSHLLQ [UQRSHLL_64 UQRSHLL_48])
 (define_int_iterator SQRSHRLQ [SQRSHRL_64 SQRSHRL_48])
 (define_int_iterator VSHLCQ_M [VSHLCQ_M_S VSHLCQ_M_U])
+(define_int_iterator DLSTP [DLSTP8 DLSTP16 DLSTP32
+				   DLSTP64])
 
 ;; Define iterators for VCMLA operations
 (define_int_iterator VCMLA_OP [UNSPEC_VCMLA

@@ -661,6 +661,12 @@ default_predict_doloop_p (class loop *loop ATTRIBUTE_UNUSED)
   return false;
 }
 
+rtx
+default_allow_elementwise_doloop_p (rtx count, rtx, rtx)
+{
+  return count;
+}
+
 /* By default, just use the input MODE itself.  */
 
 machine_mode

@@ -85,29 +85,29 @@ doloop_condition_get (rtx_insn *doloop_pat)
      forms:
 
      1)  (parallel [(set (pc) (if_then_else (condition)
-	  			            (label_ref (label))
-				            (pc)))
-	             (set (reg) (plus (reg) (const_int -1)))
-	             (additional clobbers and uses)])
+					    (label_ref (label))
+					    (pc)))
+		     (set (reg) (plus (reg) (const_int -n)))
+		     (additional clobbers and uses)])
 
      The branch must be the first entry of the parallel (also required
      by jump.cc), and the second entry of the parallel must be a set of
      the loop counter register.  Some targets (IA-64) wrap the set of
      the loop counter in an if_then_else too.
 
-     2)  (set (reg) (plus (reg) (const_int -1))
-         (set (pc) (if_then_else (reg != 0)
-	                         (label_ref (label))
-			         (pc))).  
+     2)  (set (reg) (plus (reg) (const_int -n))
+	 (set (pc) (if_then_else (reg != 0)
+				 (label_ref (label))
+				 (pc))).
 
      Some targets (ARM) do the comparison before the branch, as in the
      following form:
 
-     3) (parallel [(set (cc) (compare ((plus (reg) (const_int -1), 0)))
-                   (set (reg) (plus (reg) (const_int -1)))])
-        (set (pc) (if_then_else (cc == NE)
-                                (label_ref (label))
-                                (pc))) */
+     3) (parallel [(set (cc) (compare ((plus (reg) (const_int -n), 0)))
+		   (set (reg) (plus (reg) (const_int -n)))])
+	(set (pc) (if_then_else (cc == NE)
+				(label_ref (label))
+				(pc))) */
 
   pattern = PATTERN (doloop_pat);
 
@@ -143,7 +143,7 @@ doloop_condition_get (rtx_insn *doloop_pat)
 	      || GET_CODE (cmp_arg1) != PLUS)
 	    return 0;
 	  reg_orig = XEXP (cmp_arg1, 0);
-	  if (XEXP (cmp_arg1, 1) != GEN_INT (-1) 
+	  if (!CONST_INT_P (XEXP (cmp_arg1, 1))
 	      || !REG_P (reg_orig))
 	    return 0;
 	  cc_reg = SET_DEST (cmp_orig);
@@ -156,7 +156,8 @@ doloop_condition_get (rtx_insn *doloop_pat)
 	{
 	  /* We expect the condition to be of the form (reg != 0)  */
 	  cond = XEXP (SET_SRC (cmp), 0);
-	  if (GET_CODE (cond) != NE || XEXP (cond, 1) != const0_rtx)
+	  if ((GET_CODE (cond) != NE && GET_CODE (cond) != GE)
+	      || XEXP (cond, 1) != const0_rtx)
 	    return 0;
 	}
     }
@@ -173,14 +174,14 @@ doloop_condition_get (rtx_insn *doloop_pat)
   if (! REG_P (reg))
     return 0;
 
-  /* Check if something = (plus (reg) (const_int -1)).
+  /* Check if something = (plus (reg) (const_int -n)).
      On IA-64, this decrement is wrapped in an if_then_else.  */
   inc_src = SET_SRC (inc);
   if (GET_CODE (inc_src) == IF_THEN_ELSE)
     inc_src = XEXP (inc_src, 1);
   if (GET_CODE (inc_src) != PLUS
       || XEXP (inc_src, 0) != reg
-      || XEXP (inc_src, 1) != constm1_rtx)
+      || !CONST_INT_P (XEXP (inc_src, 1)))
     return 0;
 
   /* Check for (set (pc) (if_then_else (condition)
@@ -211,42 +212,49 @@ doloop_condition_get (rtx_insn *doloop_pat)
       || (GET_CODE (XEXP (condition, 0)) == PLUS
 	  && XEXP (XEXP (condition, 0), 0) == reg))
    {
-     if (GET_CODE (pattern) != PARALLEL)
      /*  For the second form we expect:
 
-         (set (reg) (plus (reg) (const_int -1))
-         (set (pc) (if_then_else (reg != 0)
-                                 (label_ref (label))
-                                 (pc))).
+	 (set (reg) (plus (reg) (const_int -n))
+	 (set (pc) (if_then_else (reg != 0)
+				 (label_ref (label))
+				 (pc))).
 
-         is equivalent to the following:
+	 If n == 1, that is equivalent to the following:
 
-         (parallel [(set (pc) (if_then_else (reg != 1)
-                                            (label_ref (label))
-                                            (pc)))
-                     (set (reg) (plus (reg) (const_int -1)))
-                     (additional clobbers and uses)])
+	 (parallel [(set (pc) (if_then_else (reg != 1)
+					    (label_ref (label))
+					    (pc)))
+		     (set (reg) (plus (reg) (const_int -1)))
+		     (additional clobbers and uses)])
 
-        For the third form we expect:
+	For the third form we expect:
 
-        (parallel [(set (cc) (compare ((plus (reg) (const_int -1)), 0))
-                   (set (reg) (plus (reg) (const_int -1)))])
-        (set (pc) (if_then_else (cc == NE)
-                                (label_ref (label))
-                                (pc))) 
+	(parallel [(set (cc) (compare ((plus (reg) (const_int -n)), 0))
+		   (set (reg) (plus (reg) (const_int -n)))])
+	(set (pc) (if_then_else (cc == NE)
+				(label_ref (label))
+				(pc)))
 
-        which is equivalent to the following:
+	Which also for n == 1 is equivalent to the following:
 
-        (parallel [(set (cc) (compare (reg,  1))
-                   (set (reg) (plus (reg) (const_int -1)))
-                   (set (pc) (if_then_else (NE == cc)
-                                           (label_ref (label))
-                                           (pc))))])
+	(parallel [(set (cc) (compare (reg,  1))
+		   (set (reg) (plus (reg) (const_int -1)))
+		   (set (pc) (if_then_else (NE == cc)
+					   (label_ref (label))
+					   (pc))))])
 
-        So we return the second form instead for the two cases.
+	So we return the second form instead for the two cases.
 
+	For the "elementwise" form where the decrement number isn't -1,
+	the final value may be exceeded, so use GE instead of NE.
      */
-        condition = gen_rtx_fmt_ee (NE, VOIDmode, inc_src, const1_rtx);
+     if (GET_CODE (pattern) != PARALLEL)
+       {
+	if (INTVAL (XEXP (inc_src, 1)) != -1)
+	  condition = gen_rtx_fmt_ee (GE, VOIDmode, inc_src, const0_rtx);
+	else
+	  condition = gen_rtx_fmt_ee (NE, VOIDmode, inc_src, const1_rtx);;
+       }
 
     return condition;
    }
@@ -685,17 +693,6 @@ doloop_optimize (class loop *loop)
       return false;
     }
 
-  max_cost
-    = COSTS_N_INSNS (param_max_iterations_computation_cost);
-  if (set_src_cost (desc->niter_expr, mode, optimize_loop_for_speed_p (loop))
-      > max_cost)
-    {
-      if (dump_file)
-	fprintf (dump_file,
-		 "Doloop: number of iterations too costly to compute.\n");
-      return false;
-    }
-
   if (desc->const_iter)
     iterations = widest_int::from (rtx_mode_t (desc->niter_expr, mode),
 				   UNSIGNED);
@@ -721,6 +718,23 @@ doloop_optimize (class loop *loop)
   start_label = block_label (desc->in_edge->dest);
   doloop_reg = gen_reg_rtx (mode);
   rtx_insn *doloop_seq = targetm.gen_doloop_end (doloop_reg, start_label);
+
+  /* Not all targets need to pre-calculate the number of the iterations of
+     the loop, they instead work by storing the number of elements in the
+     counter_reg and decrementing that.  Call the appropriate target hook to
+     change the value of count.  */
+  count = targetm.allow_elementwise_doloop_p (count, start_label, doloop_seq);
+
+  max_cost
+    = COSTS_N_INSNS (param_max_iterations_computation_cost);
+  if (set_src_cost (count, mode, optimize_loop_for_speed_p (loop))
+      > max_cost)
+    {
+      if (dump_file)
+	fprintf (dump_file,
+		 "Doloop: number of iterations too costly to compute.\n");
+      return false;
+    }
 
   word_mode_size = GET_MODE_PRECISION (word_mode);
   word_mode_max = (HOST_WIDE_INT_1U << (word_mode_size - 1) << 1) - 1;
