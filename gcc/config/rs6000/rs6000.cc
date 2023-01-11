@@ -3794,6 +3794,23 @@ rs6000_option_override_internal (bool global_init_p)
 	   & OPTION_MASK_DIRECT_MOVE))
     rs6000_isa_flags |= ~rs6000_isa_flags_explicit & OPTION_MASK_STRICT_ALIGN;
 
+  /* Some options can enable OPTION_MASK_VSX implicitly, but the implicit
+     enablement is after the below checking and adjustment for TARGET_VSX,
+     it can result in some unexpected situation, like PR108240 without
+     hard float but vsx support, which is supposed to be checked and then
+     prevented in the below handlings for TARGET_VSX.  So for any options
+     which can imply OPTION_MASK_VSX later, we want to imply it first here
+     to make the following checking take effects.  */
+  if (!(rs6000_isa_flags_explicit & OPTION_MASK_VSX)
+      && (TARGET_P9_VECTOR
+	  || TARGET_MODULO
+	  || TARGET_P9_MISC
+	  || TARGET_P9_MINMAX
+	  || TARGET_P8_VECTOR
+	  || TARGET_DIRECT_MOVE
+	  || TARGET_CRYPTO))
+    rs6000_isa_flags |= OPTION_MASK_VSX;
+
   /* Add some warnings for VSX.  */
   if (TARGET_VSX)
     {
