@@ -142,7 +142,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vrintzt.f%#<V_sz_elem> %q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrndq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -156,7 +157,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vrintx.f%#<V_sz_elem>	%q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrndxq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -170,7 +172,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vrintz.f%#<V_sz_elem>	%q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrndq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -184,7 +187,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vrintp.f%#<V_sz_elem>	%q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrndpq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -198,7 +202,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vrintn.f%#<V_sz_elem>	%q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrndnq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -212,7 +217,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vrintm.f%#<V_sz_elem>	%q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrndmq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -226,7 +232,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vrinta.f%#<V_sz_elem>	%q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrndaq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -240,7 +247,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vrev64.%#<V_sz_elem> %q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrev64q_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -253,7 +261,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vneg.f%#<V_sz_elem>  %q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vnegq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -267,7 +276,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vdup.%#<V_sz_elem>\t%q0, %1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vdupq_n_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -280,7 +290,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vabs.f%#<V_sz_elem>\t%q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vabsq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -294,7 +305,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vrev32.16 %q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrev32q_fv8hf"))
+  (set_attr "type" "mve_move")
 ])
 ;;
 ;; [vcvttq_f32_f16])
@@ -307,7 +319,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vcvtt.f32.f16 %q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcvttq_f32_f16v4sf"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -321,7 +334,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vcvtb.f32.f16 %q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcvtbq_f32_f16v4sf"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -335,7 +349,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vcvt.f%#<V_sz_elem>.<supf>%#<V_sz_elem>       %q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcvtq_to_f_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -349,7 +364,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vrev64.%#<V_sz_elem> %q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrev64q_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -363,7 +379,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vcvt.<supf>%#<V_sz_elem>.f%#<V_sz_elem>       %q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcvtq_from_f_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 ;; [vqnegq_s])
 ;;
@@ -375,7 +392,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqneg.s%#<V_sz_elem> %q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqnegq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -389,7 +407,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqabs.s%#<V_sz_elem> %q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqabsq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -402,7 +421,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vneg.s%#<V_sz_elem>  %q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vnegq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -415,7 +435,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmvn\t%q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmvnq_u<mode>"))
+  (set_attr "type" "mve_move")
 ])
 (define_expand "mve_vmvnq_s<mode>"
   [
@@ -436,7 +457,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vdup.%#<V_sz_elem>\t%q0, %1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vdupq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -449,7 +471,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vclz.i%#<V_sz_elem>  %q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vclzq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 (define_expand "mve_vclzq_u<mode>"
   [
@@ -470,7 +493,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vcls.s%#<V_sz_elem>  %q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vclsq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -484,7 +508,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vaddv.<supf>%#<V_sz_elem>\t%0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vaddvq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -497,7 +522,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vabs.s%#<V_sz_elem>\t%q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vabsq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -511,7 +537,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vrev32.%#<V_sz_elem>\t%q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrev32q_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -525,7 +552,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmovlt.<supf>%#<V_sz_elem>   %q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmovltq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -539,7 +567,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmovlb.<supf>%#<V_sz_elem>   %q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmovlbq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -553,7 +582,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vcvtp.<supf>%#<V_sz_elem>.f%#<V_sz_elem>      %q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcvtpq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -567,7 +597,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vcvtn.<supf>%#<V_sz_elem>.f%#<V_sz_elem>      %q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcvtnq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -581,7 +612,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vcvtm.<supf>%#<V_sz_elem>.f%#<V_sz_elem>      %q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcvtmq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -595,7 +627,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vcvta.<supf>%#<V_sz_elem>.f%#<V_sz_elem>      %q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcvtaq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -609,7 +642,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmvn.i%#<V_sz_elem>  %q0, %1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmvnq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -623,7 +657,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vrev16.8 %q0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrev16q_<supf>v16qi"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -637,7 +672,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vaddlv.<supf>32\t%Q0, %R0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vaddlvq_<supf>v4si"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -651,7 +687,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vctp.<mode1> %1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vctp<mode1>qhi"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -680,7 +717,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vsub.f<V_sz_elem>\t%q0, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vsubq_n_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -695,7 +733,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vbrsr.<V_sz_elem>  %q0, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vbrsrq_n_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -710,7 +749,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vcvt.f<V_sz_elem>.<supf><V_sz_elem>\t%q0, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcvtq_n_to_f_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;; [vcreateq_f])
@@ -755,7 +795,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vshr.<supf><V_sz_elem>\t%q0, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vshrq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;; Versions that take constant vectors as operand 2 (with all elements
@@ -803,7 +844,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vcvt.<supf><V_sz_elem>.f<V_sz_elem>\t%q0, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcvtq_n_from_f_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -818,8 +860,9 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vaddlvt.<supf>32\t%Q0, %R0, %q1"
-  [(set_attr "type" "mve_move")
-   (set_attr "length""8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vaddlvq_<supf>v4si"))
+  (set_attr "type" "mve_move")
+  (set_attr "length""8")])
 
 ;;
 ;; [vcmpneq_, vcmpcsq_, vcmpeqq_, vcmpgeq_, vcmpgtq_, vcmphiq_, vcmpleq_, vcmpltq_])
@@ -832,7 +875,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vcmp.<mve_cmp_type>%#<V_sz_elem>\t<mve_cmp_op>, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmp<mve_cmp_op>q_<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -847,7 +891,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vcmp.<mve_cmp_type>%#<V_sz_elem>	<mve_cmp_op>, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmp<mve_cmp_op>q_n_<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -866,7 +911,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vabd.<supf>%#<V_sz_elem>	%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vabdq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -881,7 +927,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vadd.i%#<V_sz_elem>\t%q0, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vaddq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -896,7 +943,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vaddva.<supf>%#<V_sz_elem>\t%0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vaddvaq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -911,7 +959,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vaddvt.<supf>%#<V_sz_elem>	%0, %q1"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vaddvq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -931,7 +980,8 @@
   "@
    vand\t%q0, %q1, %q2
    * return neon_output_logic_immediate (\"vand\", &operands[2], <MODE>mode, 1, VALID_NEON_QREG_MODE (<MODE>mode));"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vandq_u<mode>"))
+  (set_attr "type" "mve_move")
 ])
 (define_expand "mve_vandq_s<mode>"
   [
@@ -953,7 +1003,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vbic\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vbicq_u<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 (define_expand "mve_vbicq_s<mode>"
@@ -977,7 +1028,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vbrsr.%#<V_sz_elem>	%q0, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vbrsrq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -992,7 +1044,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vcadd.i%#<V_sz_elem>	%q0, %q1, %q2, #<rot>"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcaddq<mve_rot><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;; Auto vectorizer pattern for int vcadd
@@ -1015,7 +1068,8 @@
   ]
   "TARGET_HAVE_MVE"
   "veor\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_veorq_u<mode>"))
+  (set_attr "type" "mve_move")
 ])
 (define_expand "mve_veorq_s<mode>"
   [
@@ -1038,7 +1092,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vhadd.<supf>%#<V_sz_elem>\t%q0, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vhaddq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1053,7 +1108,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vhadd.<supf>%#<V_sz_elem>\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vhaddq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1068,7 +1124,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vhcadd.s%#<V_sz_elem>\t%q0, %q1, %q2, #270"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vhcaddq_rot270_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1083,7 +1140,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vhcadd.s%#<V_sz_elem>\t%q0, %q1, %q2, #90"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vhcaddq_rot90_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1098,7 +1156,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vhsub.<supf>%#<V_sz_elem>\t%q0, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vhsubq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1113,7 +1172,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vhsub.<supf>%#<V_sz_elem>\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vhsubq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1128,7 +1188,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmaxa.s%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmaxaq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1143,7 +1204,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmaxav.s%#<V_sz_elem>\t%0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmaxavq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1157,7 +1219,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmax.%#<V_s_elem>\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmaxq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 (define_insn "mve_vmaxq_u<mode>"
@@ -1168,7 +1231,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmax.%#<V_u_elem>\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmaxq_u<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1183,7 +1247,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmaxv.<supf>%#<V_sz_elem>\t%0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmaxvq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1198,7 +1263,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmina.s%#<V_sz_elem>\t%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vminaq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1213,7 +1279,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vminav.s%#<V_sz_elem>\t%0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vminavq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1227,7 +1294,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmin.%#<V_s_elem>\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vminq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 (define_insn "mve_vminq_u<mode>"
@@ -1238,7 +1306,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmin.%#<V_u_elem>\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vminq_u<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1253,7 +1322,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vminv.<supf>%#<V_sz_elem>\t%0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vminvq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1268,7 +1338,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmladav.<supf>%#<V_sz_elem>\t%0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmladavq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1283,7 +1354,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmladavx.s%#<V_sz_elem>\t%0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmladavxq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1298,7 +1370,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmlsdav.s%#<V_sz_elem>\t%0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlsdavq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1313,7 +1386,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmlsdavx.s%#<V_sz_elem>\t%0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlsdavxq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1328,7 +1402,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmulh.<supf>%#<V_sz_elem>\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmulhq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1343,7 +1418,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmullb.<supf>%#<V_sz_elem>\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmullbq_int_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1358,7 +1434,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmullt.<supf>%#<V_sz_elem>\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmulltq_int_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1373,7 +1450,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmul.i%#<V_sz_elem>\t%q0, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmulq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1388,7 +1466,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmul.i%#<V_sz_elem>\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmulq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 (define_insn "mve_vmulq<mode>"
@@ -1399,7 +1478,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmul.i%#<V_sz_elem>\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmulq<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1413,7 +1493,8 @@
   ]
   "TARGET_HAVE_MVE"
    "vorn\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vornq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 (define_expand "mve_vornq_u<mode>"
@@ -1442,7 +1523,8 @@
   "@
    vorr\t%q0, %q1, %q2
    * return neon_output_logic_immediate (\"vorr\", &operands[2], <MODE>mode, 0, VALID_NEON_QREG_MODE (<MODE>mode));"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vorrq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 (define_expand "mve_vorrq_u<mode>"
   [
@@ -1465,7 +1547,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqadd.<supf>%#<V_sz_elem>\t%q0, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqaddq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1480,7 +1563,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqadd.<supf>%#<V_sz_elem>\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqaddq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1495,7 +1579,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqdmulh.s%#<V_sz_elem>\t%q0, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqdmulhq_n_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1510,7 +1595,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqdmulh.s%#<V_sz_elem>\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqdmulhq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1525,7 +1611,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqrdmulh.s%#<V_sz_elem>\t%q0, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrdmulhq_n_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1540,7 +1627,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqrdmulh.s%#<V_sz_elem>\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrdmulhq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1555,7 +1643,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqrshl.<supf>%#<V_sz_elem>\t%q0, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrshlq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1570,7 +1659,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqrshl.<supf>%#<V_sz_elem>\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrshlq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1585,7 +1675,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqshl.<supf>%#<V_sz_elem>\t%q0, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqshlq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1600,7 +1691,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqshl.<supf>%#<V_sz_elem>\t%q0, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqshlq_r_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1615,7 +1707,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqshl.<supf>%#<V_sz_elem>\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqshlq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1630,7 +1723,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqshlu.s%#<V_sz_elem>\t%q0, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqshluq_n_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1645,7 +1739,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqsub.<supf>%#<V_sz_elem>\t%q0, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqsubq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1660,7 +1755,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqsub.<supf>%#<V_sz_elem>\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqsubq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1675,7 +1771,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vrhadd.<supf>%#<V_sz_elem>\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrhaddq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1690,7 +1787,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vrmulh.<supf>%#<V_sz_elem>\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrmulhq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1705,7 +1803,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vrshl.<supf>%#<V_sz_elem>\t%q0, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrshlq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1720,7 +1819,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vrshl.<supf>%#<V_sz_elem>\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrshlq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1735,7 +1835,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vrshr.<supf>%#<V_sz_elem>\t%q0, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrshrq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1750,7 +1851,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vshl.<supf>%#<V_sz_elem>\t%q0, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vshlq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1765,7 +1867,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vshl.<supf>%#<V_sz_elem>\t%q0, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vshlq_r_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1780,7 +1883,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vsub.i%#<V_sz_elem>\t%q0, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vsubq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1795,7 +1899,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vsub.i%#<V_sz_elem>\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vsubq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 (define_insn "mve_vsubq<mode>"
@@ -1806,7 +1911,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vsub.i%#<V_sz_elem>\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vorrq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1821,7 +1927,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vabd.f%#<V_sz_elem>	%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vabdq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1836,7 +1943,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vaddlva.<supf>32\t%Q0, %R0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vaddlvaq_<supf>v4si"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1851,7 +1959,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vadd.f%#<V_sz_elem>\t%q0, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vaddq_n_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1865,7 +1974,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vand %q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vandq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1879,7 +1989,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vbic %q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vbicq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1894,7 +2005,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vbic.i%#<V_sz_elem>	%q0, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vbicq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1909,7 +2021,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vcadd.f%#<V_sz_elem>	%q0, %q1, %q2, #<rot>"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcaddq<mve_rot><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1923,7 +2036,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vcmp.f%#<V_sz_elem>	<mve_cmp_op>, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmp<mve_cmp_op>q_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1938,7 +2052,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vcmp.f%#<V_sz_elem>	<mve_cmp_op>, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmp<mve_cmp_op>q_n_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1953,7 +2068,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vcmul.f%#<V_sz_elem>	%q0, %q1, %q2, #<rot>"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmulq<mve_rot><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1968,7 +2084,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vctpt.<mode1> %1"
-  [(set_attr "type" "mve_move")
+  [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vctp<mode1>qhi"))
+   (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -1983,7 +2100,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vcvtb.f16.f32 %q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcvtbq_f16_f32v8hf"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -1998,7 +2116,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vcvtt.f16.f32 %q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcvttq_f16_f32v8hf"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2012,7 +2131,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "veor %q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_veorq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2027,7 +2147,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vmaxnma.f%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmaxnmaq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2042,7 +2163,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vmaxnmav.f%#<V_sz_elem>	%0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmaxnmavq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2056,7 +2178,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vmaxnm.f%#<V_sz_elem>	%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmaxnmq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2071,7 +2194,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vmaxnmv.f%#<V_sz_elem>	%0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmaxnmvq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2086,7 +2210,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vminnma.f%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vminnmaq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2101,7 +2226,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vminnmav.f%#<V_sz_elem>	%0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vminnmavq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2115,7 +2241,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vminnm.f%#<V_sz_elem>	%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vminnmq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2130,7 +2257,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vminnmv.f%#<V_sz_elem>	%0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vminnmvq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2145,7 +2273,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmlaldav.<supf>%#<V_sz_elem>	%Q0, %R0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlaldavq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2160,7 +2289,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmlaldavx.s%#<V_sz_elem> %Q0, %R0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlaldavxq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2175,7 +2305,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmlsldav.s%#<V_sz_elem> %Q0, %R0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlsldavq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2190,7 +2321,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmlsldavx.s%#<V_sz_elem> %Q0, %R0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlsldavxq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2205,7 +2337,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmovnb.i%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmovnbq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2220,7 +2353,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmovnt.i%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmovntq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2234,7 +2368,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vmul.f%#<V_sz_elem>	%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmulq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2249,7 +2384,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vmul.f%#<V_sz_elem>	%q0, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmulq_n_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2263,7 +2399,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vorn %q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vornq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2277,7 +2414,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vorr %q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vorrq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2292,7 +2430,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vorr.i%#<V_sz_elem>	%q0, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vorrq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2307,7 +2446,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqdmullb.s%#<V_sz_elem>	%q0, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqdmullbq_n_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2322,7 +2462,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqdmullb.s%#<V_sz_elem>	%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqdmullbq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2337,7 +2478,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqdmullt.s%#<V_sz_elem>	%q0, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqdmulltq_n_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2352,7 +2494,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqdmullt.s%#<V_sz_elem>	%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqdmulltq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2367,7 +2510,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqmovnb.<supf>%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqmovnbq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2382,7 +2526,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqmovnt.<supf>%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqmovntq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2397,7 +2542,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqmovunb.s%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqmovunbq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2412,7 +2558,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqmovunt.s%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqmovuntq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2427,7 +2574,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vrmlaldavhx.s32 %Q0, %R0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrmlaldavhxq_sv4si"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2442,7 +2590,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vrmlsldavh.s32\t%Q0, %R0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrmlsldavhq_sv4si"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2457,7 +2606,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vrmlsldavhx.s32\t%Q0, %R0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrmlsldavhxq_sv4si"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2472,7 +2622,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vshllb.<supf>%#<V_sz_elem>\t%q0, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vshllbq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2487,7 +2638,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vshllt.<supf>%#<V_sz_elem>\t%q0, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vshlltq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2501,7 +2653,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vsub.f%#<V_sz_elem>\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vsubq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2516,7 +2669,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmullt.p%#<V_sz_elem>\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmulltq_poly_p<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2531,7 +2685,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmullb.p%#<V_sz_elem>\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmullbq_poly_p<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2546,7 +2701,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vrmlaldavh.<supf>32\t%Q0, %R0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrmlaldavhq_<supf>v4si"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2562,7 +2718,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vbict.i%#<V_sz_elem>	%q0, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vbicq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 ;;
 ;; [vcmpeqq_m_f])
@@ -2577,7 +2734,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcmpt.f%#<V_sz_elem>	eq, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmpeqq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 ;;
 ;; [vcvtaq_m_u, vcvtaq_m_s])
@@ -2592,7 +2750,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcvtat.<supf>%#<V_sz_elem>.f%#<V_sz_elem>\t%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcvtaq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 ;;
 ;; [vcvtq_m_to_f_s, vcvtq_m_to_f_u])
@@ -2607,7 +2766,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcvtt.f%#<V_sz_elem>.<supf>%#<V_sz_elem>	 %q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcvtq_to_f_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 ;;
 ;; [vqrshrnbq_n_u, vqrshrnbq_n_s])
@@ -2622,7 +2782,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqrshrnb.<supf>%#<V_sz_elem>	%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrshrnbq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 ;;
 ;; [vqrshrunbq_n_s])
@@ -2637,7 +2798,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqrshrunb.s%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrshrunbq_n_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 ;;
 ;; [vrmlaldavhaq_s vrmlaldavhaq_u])
@@ -2652,7 +2814,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vrmlaldavha.<supf>32\t%Q0, %R0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrmlaldavhaq_<supf>v4si"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2668,7 +2831,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vabav.<supf>%#<V_sz_elem>\t%0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vabavq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -2729,7 +2893,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vabst.s%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vabsq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -2745,7 +2910,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vaddvat.<supf>%#<V_sz_elem>	%0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vaddvaq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -2761,7 +2927,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vclst.s%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vclsq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -2777,7 +2944,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vclzt.i%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vclzq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -2793,7 +2961,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vcmpt.u%#<V_sz_elem>	cs, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmpcsq_n_<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -2809,7 +2978,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vcmpt.u%#<V_sz_elem>	cs, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmpcsq_<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -2825,7 +2995,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vcmpt.i%#<V_sz_elem>	eq, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmpeqq_n_<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -2841,7 +3012,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vcmpt.i%#<V_sz_elem>	eq, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmpeqq_<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -2857,7 +3029,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vcmpt.s%#<V_sz_elem>	ge, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmpgeq_n_<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -2873,7 +3046,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vcmpt.s%#<V_sz_elem>	ge, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmpgeq_<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -2889,7 +3063,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vcmpt.s%#<V_sz_elem>	gt, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmpgtq_n_<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -2905,7 +3080,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vcmpt.s%#<V_sz_elem>	gt, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmpgtq_<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -2921,7 +3097,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vcmpt.u%#<V_sz_elem>	hi, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmphiq_n_<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -2937,7 +3114,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vcmpt.u%#<V_sz_elem>	hi, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmphiq_<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -2953,7 +3131,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vcmpt.s%#<V_sz_elem>	le, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmpleq_n_<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -2969,7 +3148,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vcmpt.s%#<V_sz_elem>	le, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmpleq_<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -2985,7 +3165,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vcmpt.s%#<V_sz_elem>	lt, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmpltq_n_<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3001,7 +3182,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vcmpt.s%#<V_sz_elem>	lt, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmpltq_<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3017,7 +3199,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vcmpt.i%#<V_sz_elem>	ne, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmpneq_n_<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3033,7 +3216,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vcmpt.i%#<V_sz_elem>	ne, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmpneq_<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3049,8 +3233,9 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vdupt.%#<V_sz_elem>\t%q0, %2"
-  [(set_attr "type" "mve_move")
-   (set_attr "length""8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vdupq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
+  (set_attr "length""8")])
 
 ;;
 ;; [vmaxaq_m_s])
@@ -3065,7 +3250,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmaxat.s%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmaxaq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3081,7 +3267,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmaxavt.s%#<V_sz_elem>	%0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmaxavq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3097,7 +3284,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmaxvt.<supf>%#<V_sz_elem>	%0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmaxvq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3113,7 +3301,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vminat.s%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vminaq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3129,7 +3318,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vminavt.s%#<V_sz_elem>	%0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vminavq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3145,7 +3335,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vminvt.<supf>%#<V_sz_elem>\t%0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vminvq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3161,7 +3352,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmladava.<supf>%#<V_sz_elem>	%0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmladavaq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -3177,7 +3369,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmladavt.<supf>%#<V_sz_elem>\t%0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmladavq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3193,7 +3386,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmladavxt.s%#<V_sz_elem>\t%0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmladavxq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3209,7 +3403,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmla.<supf>%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlaq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -3225,7 +3420,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmlas.<supf>%#<V_sz_elem>	%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlasq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -3241,7 +3437,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmlsdavt.s%#<V_sz_elem>	%0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlsdavq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3257,7 +3454,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmlsdavxt.s%#<V_sz_elem>	%0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlsdavxq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3273,7 +3471,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmvnt %q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmvnq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3289,7 +3488,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vnegt.s%#<V_sz_elem>\t%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vnegq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3305,7 +3505,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpsel %q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vpselq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -3321,7 +3522,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqabst.s%#<V_sz_elem>\t%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqabsq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3337,7 +3539,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqdmlah.s%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqdmlahq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -3353,7 +3556,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqdmlash.s%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqdmlashq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -3369,7 +3573,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqnegt.s%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqnegq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3385,7 +3590,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqrdmladh.s%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrdmladhq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -3401,7 +3607,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqrdmladhx.s%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrdmladhxq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -3417,7 +3624,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqrdmlah.s%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrdmlahq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -3433,7 +3641,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqrdmlash.s%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrdmlashq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -3449,7 +3658,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqrdmlsdh.s%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrdmlsdhq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -3465,7 +3675,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqrdmlsdhx.s%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrdmlsdhxq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -3481,7 +3692,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqrshlt.<supf>%#<V_sz_elem>	%q0, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrshlq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3497,7 +3709,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqshlt.<supf>%#<V_sz_elem>\t%q0, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqshlq_r_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3513,7 +3726,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vrev64t.%#<V_sz_elem>\t%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrev64q_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3529,7 +3743,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vrshlt.<supf>%#<V_sz_elem>\t%q0, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrshlq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3545,7 +3760,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vshlt.<supf>%#<V_sz_elem>\t%q0, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vshlq_r_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3561,7 +3777,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vsli.%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vsliq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -3577,7 +3794,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vsri.%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vsriq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -3593,7 +3811,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqdmlsdhx.s%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqdmlsdhxq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -3609,7 +3828,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqdmlsdh.s%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqdmlsdhq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -3625,7 +3845,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqdmladhx.s%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqdmladhxq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -3641,7 +3862,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqdmladh.s%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqdmladhq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -3657,7 +3879,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmlsdavax.s%#<V_sz_elem>\t%0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlsdavaxq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -3673,7 +3896,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmlsdava.s%#<V_sz_elem>\t%0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlsdavaq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -3689,7 +3913,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmladavax.s%#<V_sz_elem>\t%0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmladavaxq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 ;;
 ;; [vabsq_m_f])
@@ -3704,7 +3929,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vabst.f%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vabsq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3720,8 +3946,10 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vaddlvat.<supf>32\t%Q0, %R0, %q2"
-  [(set_attr "type" "mve_move")
-   (set_attr "length""8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vaddlvaq_<supf>v4si"))
+  (set_attr "type" "mve_move")
+  (set_attr "length""8")])
+
 ;;
 ;; [vcmlaq, vcmlaq_rot90, vcmlaq_rot180, vcmlaq_rot270])
 ;;
@@ -3738,7 +3966,8 @@
   "@
    vcmul.f%#<V_sz_elem>	%q0, %q2, %q3, #<rot>
    vcmla.f%#<V_sz_elem>	%q0, %q2, %q3, #<rot>"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmlaq<mve_rot><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -3754,7 +3983,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcmpt.f%#<V_sz_elem>	eq, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmpeqq_n_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3770,7 +4000,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcmpt.f%#<V_sz_elem>	ge, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmpgeq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3786,7 +4017,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcmpt.f%#<V_sz_elem>	ge, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmpgeq_n_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3802,7 +4034,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcmpt.f%#<V_sz_elem>	gt, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmpgtq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3818,7 +4051,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcmpt.f%#<V_sz_elem>	gt, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmpgtq_n_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3834,7 +4068,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcmpt.f%#<V_sz_elem>	le, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmpleq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3850,7 +4085,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcmpt.f%#<V_sz_elem>	le, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmpleq_n_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3866,7 +4102,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcmpt.f%#<V_sz_elem>	lt, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmpltq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3882,7 +4119,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcmpt.f%#<V_sz_elem>	lt, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmpltq_n_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3898,7 +4136,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcmpt.f%#<V_sz_elem>	ne, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmpneq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3914,7 +4153,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcmpt.f%#<V_sz_elem>	ne, %q1, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmpneq_n_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3930,7 +4170,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcvtbt.f16.f32 %q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcvtbq_f16_f32v8hf"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3946,7 +4187,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcvtbt.f32.f16 %q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcvtbq_f32_f16v4sf"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3962,7 +4204,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcvttt.f16.f32 %q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcvttq_f16_f32v8hf"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3978,7 +4221,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcvttt.f32.f16 %q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcvttq_f32_f16v4sf"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -3994,8 +4238,9 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vdupt.%#<V_sz_elem>\t%q0, %2"
-  [(set_attr "type" "mve_move")
-   (set_attr "length""8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vdupq_n_f<mode>"))
+  (set_attr "type" "mve_move")
+  (set_attr "length""8")])
 
 ;;
 ;; [vfmaq_f])
@@ -4010,7 +4255,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vfma.f%#<V_sz_elem>	%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vfmaq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -4026,7 +4272,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vfma.f%#<V_sz_elem>	%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vfmaq_n_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -4042,7 +4289,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vfmas.f%#<V_sz_elem>	%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vfmasq_n_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 ;;
 ;; [vfmsq_f])
@@ -4057,7 +4305,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vfms.f%#<V_sz_elem>	%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vfmsq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -4073,7 +4322,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vmaxnmat.f%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmaxnmaq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 ;;
 ;; [vmaxnmavq_p_f])
@@ -4088,7 +4338,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vmaxnmavt.f%#<V_sz_elem>	%0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmaxnmavq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4104,7 +4355,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vmaxnmvt.f%#<V_sz_elem>	%0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmaxnmvq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 ;;
 ;; [vminnmaq_m_f])
@@ -4119,7 +4371,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vminnmat.f%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vminnmaq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4135,7 +4388,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vminnmavt.f%#<V_sz_elem>	%0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vminnmavq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 ;;
 ;; [vminnmvq_p_f])
@@ -4150,7 +4404,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vminnmvt.f%#<V_sz_elem>	%0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vminnmvq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4166,7 +4421,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmlaldava.<supf>%#<V_sz_elem>\t%Q0, %R0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlaldavaq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -4182,7 +4438,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmlaldavax.s%#<V_sz_elem>\t%Q0, %R0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlaldavaxq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -4198,7 +4455,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmlaldavt.<supf>%#<V_sz_elem> %Q0, %R0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlaldavq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4214,7 +4472,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmlaldavxt.s%#<V_sz_elem>\t%Q0, %R0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlaldavxq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 ;;
 ;; [vmlsldavaq_s])
@@ -4229,7 +4488,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmlsldava.s%#<V_sz_elem> %Q0, %R0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlsldavaq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -4245,7 +4505,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vmlsldavax.s%#<V_sz_elem> %Q0, %R0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlsldavaxq_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -4261,7 +4522,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmlsldavt.s%#<V_sz_elem> %Q0, %R0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlsldavq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4277,7 +4539,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmlsldavxt.s%#<V_sz_elem> %Q0, %R0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlsldavxq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 ;;
 ;; [vmovlbq_m_u, vmovlbq_m_s])
@@ -4292,7 +4555,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmovlbt.<supf>%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmovlbq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 ;;
 ;; [vmovltq_m_u, vmovltq_m_s])
@@ -4307,7 +4571,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmovltt.<supf>%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmovltq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 ;;
 ;; [vmovnbq_m_u, vmovnbq_m_s])
@@ -4322,7 +4587,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmovnbt.i%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmovnbq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4338,7 +4604,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmovntt.i%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmovntq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4354,7 +4621,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmvnt.i%#<V_sz_elem>	%q0, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmvnq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 ;;
 ;; [vnegq_m_f])
@@ -4369,7 +4637,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vnegt.f%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vnegq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4385,7 +4654,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vorrt.i%#<V_sz_elem>	%q0, %2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vorrq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 ;;
 ;; [vpselq_f])
@@ -4400,7 +4670,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpsel %q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vpselq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -4416,7 +4687,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqmovnbt.<supf>%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqmovnbq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4432,7 +4704,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqmovntt.<supf>%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqmovntq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4448,7 +4721,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqmovunbt.s%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqmovunbq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4464,7 +4738,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqmovuntt.s%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqmovuntq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4480,7 +4755,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqrshrnt.<supf>%#<V_sz_elem>	%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrshrntq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -4496,7 +4772,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqrshrunt.s%#<V_sz_elem>	%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrshruntq_n_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -4512,7 +4789,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqshrnb.<supf>%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqshrnbq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -4528,7 +4806,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqshrnt.<supf>%#<V_sz_elem>	%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqshrntq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -4544,7 +4823,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqshrunb.s%#<V_sz_elem>	%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqshrunbq_n_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -4560,7 +4840,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vqshrunt.s%#<V_sz_elem>	%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqshruntq_n_s<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -4576,7 +4857,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vrev32t.16 %q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrev32q_fv8hf"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4592,7 +4874,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vrev32t.%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrev32q_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4608,7 +4891,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vrev64t.%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrev64q_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4624,7 +4908,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vrmlaldavhax.s32 %Q0, %R0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrmlaldavhaxq_sv4si"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -4640,7 +4925,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vrmlaldavhxt.s32 %Q0, %R0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrmlaldavhxq_sv4si"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4656,7 +4942,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vrmlsldavhax.s32 %Q0, %R0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrmlsldavhaxq_sv4si"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -4672,7 +4959,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vrmlsldavht.s32 %Q0, %R0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrmlsldavhq_sv4si"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4688,7 +4976,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vrmlsldavhxt.s32 %Q0, %R0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrmlsldavhxq_sv4si"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4704,7 +4993,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vrintat.f%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrndaq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4720,7 +5010,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vrintmt.f%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrndmq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4736,7 +5027,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vrintnt.f%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrndnq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4752,7 +5044,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vrintpt.f%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrndpq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4768,7 +5061,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vrintxt.f%#<V_sz_elem>	%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrndxq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4784,7 +5078,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vrshrnb.i%#<V_sz_elem>	%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrshrnbq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -4800,7 +5095,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vrshrnt.i%#<V_sz_elem>	%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrshrntq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -4816,7 +5112,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vshrnb.i%#<V_sz_elem>	%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vshrnbq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -4832,7 +5129,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vshrnt.i%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vshrntq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -4848,7 +5146,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcvtmt.<supf>%#<V_sz_elem>.f%#<V_sz_elem>\t%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcvtmq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4864,7 +5163,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcvtpt.<supf>%#<V_sz_elem>.f%#<V_sz_elem>\t%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcvtpq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4880,7 +5180,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcvtnt.<supf>%#<V_sz_elem>.f%#<V_sz_elem>\t%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcvtnq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4897,7 +5198,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcvtt.<supf>%#<V_sz_elem>.f%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcvtq_n_from_f_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4913,7 +5215,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vrev16t.8 %q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrev16q_<supf>v16qi"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4929,7 +5232,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcvtt.<supf>%#<V_sz_elem>.f%#<V_sz_elem>\t%q0, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcvtq_from_f_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4945,7 +5249,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vrmlaldavht.<supf>32 %Q0, %R0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrmlaldavhq_<supf>v4si"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -4961,7 +5266,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vrmlsldavha.s32 %Q0, %R0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrmlsldavhaq_sv4si"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -4978,7 +5284,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vabavt.<supf>%#<V_sz_elem>\t%0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vabavq_<supf><mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -4995,7 +5302,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\n\tvqshlut.s%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqshluq_n_s<mode>"))
+  (set_attr "type" "mve_move")])
 
 ;;
 ;; [vshlq_m_s, vshlq_m_u])
@@ -5011,7 +5319,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vshlt.<supf>%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vshlq_<supf><mode>"))
+  (set_attr "type" "mve_move")])
 
 ;;
 ;; [vsriq_m_n_s, vsriq_m_n_u])
@@ -5027,7 +5336,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vsrit.%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vsriq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")])
 
 ;;
 ;; [vsubq_m_u, vsubq_m_s])
@@ -5043,7 +5353,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vsubt.i%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vsubq_<supf><mode>"))
+  (set_attr "type" "mve_move")])
 
 ;;
 ;; [vcvtq_m_n_to_f_u, vcvtq_m_n_to_f_s])
@@ -5059,7 +5370,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcvtt.f%#<V_sz_elem>.<supf>%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcvtq_n_to_f_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 ;;
 ;; [vabdq_m_s, vabdq_m_u])
@@ -5075,7 +5387,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vabdt.<supf>%#<V_sz_elem>	%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vabdq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5092,7 +5405,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vaddt.i%#<V_sz_elem>	%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vaddq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5109,7 +5423,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vaddt.i%#<V_sz_elem>	%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vaddq<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5126,7 +5441,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vandt %q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vandq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5143,7 +5459,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vbict %q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vbicq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5160,7 +5477,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vbrsrt.%#<V_sz_elem>	%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vbrsrq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5177,7 +5495,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vcaddt.i%#<V_sz_elem>	%q0, %q2, %q3, #270"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcaddq_rot270<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5194,7 +5513,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vcaddt.i%#<V_sz_elem>	%q0, %q2, %q3, #90"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcaddq_rot90<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5211,7 +5531,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;veort %q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_veorq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5228,7 +5549,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vhaddt.<supf>%#<V_sz_elem>	%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vhaddq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5245,7 +5567,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vhaddt.<supf>%#<V_sz_elem>	%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vhaddq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5262,7 +5585,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vhsubt.<supf>%#<V_sz_elem>	%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vhsubq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5279,7 +5603,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vhsubt.<supf>%#<V_sz_elem>	%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vhsubq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5296,7 +5621,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmaxt.<supf>%#<V_sz_elem>	%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmaxq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5313,7 +5639,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmint.<supf>%#<V_sz_elem>	%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vminq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5330,7 +5657,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmladavat.<supf>%#<V_sz_elem>	%0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmladavaq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5347,7 +5675,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmlat.<supf>%#<V_sz_elem>	%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlaq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5364,7 +5693,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmlast.<supf>%#<V_sz_elem>	%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlasq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5381,7 +5711,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmulht.<supf>%#<V_sz_elem>	%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmulhq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5398,7 +5729,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmullbt.<supf>%#<V_sz_elem>	%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmullbq_int_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5415,7 +5747,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmulltt.<supf>%#<V_sz_elem>	%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmulltq_int_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5432,7 +5765,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmult.i%#<V_sz_elem>	%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmulq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5449,7 +5783,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmult.i%#<V_sz_elem>	%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmulq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5466,7 +5801,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vornt %q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vornq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5483,7 +5819,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vorrt %q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vorrq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5500,7 +5837,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqaddt.<supf>%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqaddq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5517,7 +5855,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqaddt.<supf>%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqaddq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5534,7 +5873,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqdmlaht.s%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqdmlahq_n_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5551,7 +5891,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqdmlasht.s%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqdmlashq_n_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5568,7 +5909,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqrdmlaht.s%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrdmlahq_n_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5585,7 +5927,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqrdmlasht.s%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrdmlashq_n_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5602,7 +5945,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqrshlt.<supf>%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrshlq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5619,7 +5963,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqshlt.<supf>%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqshlq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5636,7 +5981,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqshlt.<supf>%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqshlq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5653,7 +5999,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqsubt.<supf>%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqsubq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5670,7 +6017,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqsubt.<supf>%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqsubq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5687,7 +6035,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vrhaddt.<supf>%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrhaddq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5704,7 +6053,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vrmulht.<supf>%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrmulhq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5721,7 +6071,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vrshlt.<supf>%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrshlq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5738,7 +6089,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vrshrt.<supf>%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrshrq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5755,7 +6107,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vshlt.<supf>%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vshlq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5772,7 +6125,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vshrt.<supf>%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vshrq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5789,7 +6143,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vslit.%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vsliq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5806,7 +6161,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vsubt.i%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vsubq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5823,7 +6179,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vhcaddt.s%#<V_sz_elem>\t%q0, %q2, %q3, #270"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vhcaddq_rot270_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5840,7 +6197,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vhcaddt.s%#<V_sz_elem>\t%q0, %q2, %q3, #90"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vhcaddq_rot90_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5857,7 +6215,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmladavaxt.s%#<V_sz_elem>\t%0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmladavaxq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5874,7 +6233,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmlsdavat.s%#<V_sz_elem>\t%0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlsdavaq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5891,7 +6251,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmlsdavaxt.s%#<V_sz_elem>\t%0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlsdavaxq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5908,7 +6269,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqdmladht.s%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqdmladhq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5925,7 +6287,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqdmladhxt.s%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqdmladhxq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5942,7 +6305,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqdmlsdht.s%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqdmlsdhq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5959,7 +6323,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqdmlsdhxt.s%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqdmlsdhxq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5976,7 +6341,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqdmulht.s%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqdmulhq_n_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -5993,7 +6359,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqdmulht.s%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqdmulhq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6010,7 +6377,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqrdmladht.s%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrdmladhq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6027,7 +6395,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqrdmladhxt.s%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrdmladhxq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6044,7 +6413,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqrdmlsdht.s%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrdmlsdhq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6061,7 +6431,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqrdmlsdhxt.s%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrdmlsdhxq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6078,7 +6449,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqrdmulht.s%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrdmulhq_n_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6095,7 +6467,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqrdmulht.s%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrdmulhq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6112,7 +6485,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmlaldavat.<supf>%#<V_sz_elem>	%Q0, %R0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlaldavaq_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6129,8 +6503,9 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmlaldavaxt.<supf>%#<V_sz_elem>\t%Q0, %R0, %q2, %q3"
-  [(set_attr "type" "mve_move")
-   (set_attr "length""8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlaldavaxq_<supf><mode>"))
+  (set_attr "type" "mve_move")
+  (set_attr "length""8")])
 
 ;;
 ;; [vqrshrnbq_m_n_u, vqrshrnbq_m_n_s])
@@ -6146,7 +6521,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqrshrnbt.<supf>%#<V_sz_elem>	%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrshrnbq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6163,7 +6539,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqrshrntt.<supf>%#<V_sz_elem>	%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrshrntq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6180,7 +6557,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\n\tvqshrnbt.<supf>%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqshrnbq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6197,7 +6575,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqshrntt.<supf>%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqshrntq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6214,7 +6593,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vrmlaldavhat.s32\t%Q0, %R0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrmlaldavhaq_sv4si"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6231,7 +6611,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vrshrnbt.i%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrshrnbq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6248,7 +6629,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vrshrntt.i%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrshrntq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6265,7 +6647,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vshllbt.<supf>%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vshllbq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6282,7 +6665,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vshlltt.<supf>%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vshlltq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6299,7 +6683,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vshrnbt.i%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vshrnbq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6316,7 +6701,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vshrntt.i%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vshrntq_n_<supf><mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6333,7 +6719,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmlsldavat.s%#<V_sz_elem>\t%Q0, %R0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlsldavaq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6350,7 +6737,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmlsldavaxt.s%#<V_sz_elem>\t%Q0, %R0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmlsldavaxq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6367,7 +6755,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmullbt.p%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmullbq_poly_p<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6384,7 +6773,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vmulltt.p%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmulltq_poly_p<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6401,7 +6791,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqdmullbt.s%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqdmullbq_n_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6418,7 +6809,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqdmullbt.s%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqdmullbq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6435,7 +6827,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqdmulltt.s%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqdmulltq_n_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6452,7 +6845,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqdmulltt.s%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqdmulltq_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6469,7 +6863,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqrshrunbt.s%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrshrunbq_n_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6486,7 +6881,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqrshruntt.s%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqrshruntq_n_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6503,7 +6899,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqshrunbt.s%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqshrunbq_n_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6520,7 +6917,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vqshruntt.s%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vqshruntq_n_s<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6537,7 +6935,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vrmlaldavhat.u32\t%Q0, %R0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrmlaldavhaq_uv4si"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6554,7 +6953,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vrmlaldavhaxt.s32\t%Q0, %R0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrmlaldavhaxq_sv4si"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6571,7 +6971,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vrmlsldavhat.s32\t%Q0, %R0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrmlsldavhaq_sv4si"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6588,7 +6989,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vrmlsldavhaxt.s32\t%Q0, %R0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vrmlsldavhaxq_sv4si"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 ;;
 ;; [vabdq_m_f])
@@ -6604,7 +7006,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vabdt.f%#<V_sz_elem>	%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vabdq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6621,7 +7024,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vaddt.f%#<V_sz_elem>	%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vaddq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6638,7 +7042,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vaddt.f%#<V_sz_elem>	%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vaddq_n_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6655,7 +7060,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vandt %q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vandq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6672,7 +7078,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vbict %q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vbicq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6689,7 +7096,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vbrsrt.%#<V_sz_elem>	%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vbrsrq_n_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6706,7 +7114,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcaddt.f%#<V_sz_elem>	%q0, %q2, %q3, #270"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcaddq_rot270<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6723,7 +7132,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcaddt.f%#<V_sz_elem>	%q0, %q2, %q3, #90"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcaddq_rot90<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6740,7 +7150,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcmlat.f%#<V_sz_elem>	%q0, %q2, %q3, #0"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmlaq<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6757,7 +7168,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcmlat.f%#<V_sz_elem>	%q0, %q2, %q3, #180"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmlaq_rot180<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6774,7 +7186,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcmlat.f%#<V_sz_elem>	%q0, %q2, %q3, #270"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmlaq_rot270<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6791,7 +7204,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcmlat.f%#<V_sz_elem>	%q0, %q2, %q3, #90"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmlaq_rot90<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6808,7 +7222,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcmult.f%#<V_sz_elem>	%q0, %q2, %q3, #0"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmulq<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6825,7 +7240,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcmult.f%#<V_sz_elem>	%q0, %q2, %q3, #180"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmulq_rot180<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6842,7 +7258,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcmult.f%#<V_sz_elem>	%q0, %q2, %q3, #270"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmulq_rot270<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6859,7 +7276,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vcmult.f%#<V_sz_elem>	%q0, %q2, %q3, #90"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vcmulq_rot90<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6876,7 +7294,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;veort %q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_veorq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6893,7 +7312,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vfmat.f%#<V_sz_elem>	%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vfmaq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6910,7 +7330,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vfmat.f%#<V_sz_elem>	%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vfmaq_n_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6927,7 +7348,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vfmast.f%#<V_sz_elem>	%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vfmasq_n_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6944,7 +7366,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vfmst.f%#<V_sz_elem>	%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vfmsq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6961,7 +7384,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vmaxnmt.f%#<V_sz_elem>	%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmaxnmq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6978,7 +7402,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vminnmt.f%#<V_sz_elem>	%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vminnmq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -6995,7 +7420,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vmult.f%#<V_sz_elem>	%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmulq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -7012,7 +7438,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vmult.f%#<V_sz_elem>	%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vmulq_n_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -7029,7 +7456,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vornt %q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vornq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -7046,7 +7474,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vorrt %q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vorrq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -7063,7 +7492,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vsubt.f%#<V_sz_elem>\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vsubq_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -7080,7 +7510,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vsubt.f%#<V_sz_elem>\t%q0, %q2, %3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vsubq_n_f<mode>"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -7100,7 +7531,8 @@
    output_asm_insn("vstrb.<V_sz_elem>\t%q1, %E0",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrbq_<supf><mode>"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vstrbq_scatter_offset_s vstrbq_scatter_offset_u]
@@ -7128,7 +7560,8 @@
 	  VSTRBSOQ))]
   "TARGET_HAVE_MVE"
   "vstrb.<V_sz_elem>\t%q2, [%0, %q1]"
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrbq_scatter_offset_<supf><mode>_insn"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vstrwq_scatter_base_s vstrwq_scatter_base_u]
@@ -7150,7 +7583,8 @@
    output_asm_insn("vstrw.u32\t%q2, [%q0, %1]",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrwq_scatter_base_<supf>v4si"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vldrbq_gather_offset_s vldrbq_gather_offset_u]
@@ -7173,7 +7607,8 @@
      output_asm_insn ("vldrb.<supf><V_sz_elem>\t%q0, [%m1, %q2]",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrbq_gather_offset_<supf><mode>"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vldrbq_s vldrbq_u]
@@ -7195,7 +7630,8 @@
      output_asm_insn ("vldrb.<supf><V_sz_elem>\t%q0, %E1",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrbq_<supf><mode>"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vldrwq_gather_base_s vldrwq_gather_base_u]
@@ -7215,7 +7651,8 @@
    output_asm_insn ("vldrw.u32\t%q0, [%q1, %2]",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrwq_gather_base_<supf>v4si"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vstrbq_scatter_offset_p_s vstrbq_scatter_offset_p_u]
@@ -7247,7 +7684,8 @@
 	  VSTRBSOQ))]
   "TARGET_HAVE_MVE"
   "vpst\;vstrbt.<V_sz_elem>\t%q2, [%0, %q1]"
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrbq_scatter_offset_<supf><mode>_insn"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vstrwq_scatter_base_p_s vstrwq_scatter_base_p_u]
@@ -7270,7 +7708,8 @@
    output_asm_insn ("vpst\n\tvstrwt.u32\t%q2, [%q0, %1]",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrwq_scatter_base_<supf>v4si"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vstrbq_p_s vstrbq_p_u]
@@ -7290,7 +7729,8 @@
    output_asm_insn ("vpst\;vstrbt.<V_sz_elem>\t%q1, %E0",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrbq_<supf><mode>"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vldrbq_gather_offset_z_s vldrbq_gather_offset_z_u]
@@ -7315,7 +7755,8 @@
      output_asm_insn ("vpst\n\tvldrbt.<supf><V_sz_elem>\t%q0, [%m1, %q2]",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrbq_gather_offset_<supf><mode>"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vldrbq_z_s vldrbq_z_u]
@@ -7338,7 +7779,8 @@
      output_asm_insn ("vpst\;vldrbt.<supf><V_sz_elem>\t%q0, %E1",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrbq_<supf><mode>"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vldrwq_gather_base_z_s vldrwq_gather_base_z_u]
@@ -7359,7 +7801,8 @@
    output_asm_insn ("vpst\n\tvldrwt.u32\t%q0, [%q1, %2]",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrwq_gather_base_<supf>v4si"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vldrhq_f]
@@ -7378,7 +7821,8 @@
    output_asm_insn ("vldrh.16\t%q0, %E1",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrhq_fv8hf"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vldrhq_gather_offset_s vldrhq_gather_offset_u]
@@ -7401,7 +7845,8 @@
      output_asm_insn ("vldrh.<supf><V_sz_elem>\t%q0, [%m1, %q2]",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrhq_gather_offset_<supf><mode>"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vldrhq_gather_offset_z_s vldrhq_gather_offset_z_u]
@@ -7426,7 +7871,8 @@
      output_asm_insn ("vpst\n\tvldrht.<supf><V_sz_elem>\t%q0, [%m1, %q2]",ops);
    return "";
 }
- [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrhq_gather_offset_<supf><mode>"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vldrhq_gather_shifted_offset_s vldrhq_gather_shifted_offset_u]
@@ -7449,7 +7895,8 @@
      output_asm_insn ("vldrh.<supf><V_sz_elem>\t%q0, [%m1, %q2, uxtw #1]",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrhq_gather_shifted_offset_<supf><mode>"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vldrhq_gather_shifted_offset_z_s vldrhq_gather_shited_offset_z_u]
@@ -7474,7 +7921,8 @@
      output_asm_insn ("vpst\n\tvldrht.<supf><V_sz_elem>\t%q0, [%m1, %q2, uxtw #1]",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrhq_gather_shifted_offset_<supf><mode>"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vldrhq_s, vldrhq_u]
@@ -7496,7 +7944,8 @@
      output_asm_insn ("vldrh.<supf><V_sz_elem>\t%q0, %E1",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrhq_<supf><mode>"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vldrhq_z_f]
@@ -7516,7 +7965,8 @@
    output_asm_insn ("vpst\;vldrht.16\t%q0, %E1",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrhq_fv8hf"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vldrhq_z_s vldrhq_z_u]
@@ -7539,7 +7989,8 @@
      output_asm_insn ("vpst\;vldrht.<supf><V_sz_elem>\t%q0, %E1",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrhq_<supf><mode>"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vldrwq_f]
@@ -7558,7 +8009,8 @@
    output_asm_insn ("vldrw.32\t%q0, %E1",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrwq_fv4sf"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vldrwq_s vldrwq_u]
@@ -7577,7 +8029,8 @@
    output_asm_insn ("vldrw.32\t%q0, %E1",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrwq_<supf>v4si"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vldrwq_z_f]
@@ -7597,7 +8050,8 @@
    output_asm_insn ("vpst\;vldrwt.32\t%q0, %E1",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrwq_fv4sf"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vldrwq_z_s vldrwq_z_u]
@@ -7617,7 +8071,8 @@
    output_asm_insn ("vpst\;vldrwt.32\t%q0, %E1",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrwq_<supf>v4si"))
+  (set_attr "length" "8")])
 
 (define_expand "mve_vld1q_f<mode>"
   [(match_operand:MVE_0 0 "s_register_operand")
@@ -7657,7 +8112,8 @@
    output_asm_insn ("vldrd.64\t%q0, [%q1, %2]",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrdq_gather_base_<supf>v2di"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vldrdq_gather_base_z_s vldrdq_gather_base_z_u]
@@ -7678,7 +8134,8 @@
    output_asm_insn ("vpst\n\tvldrdt.u64\t%q0, [%q1, %2]",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrdq_gather_base_<supf>v2di"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vldrdq_gather_offset_s vldrdq_gather_offset_u]
@@ -7698,7 +8155,8 @@
   output_asm_insn ("vldrd.u64\t%q0, [%m1, %q2]",ops);
   return "";
 }
- [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrdq_gather_offset_<supf>v2di"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vldrdq_gather_offset_z_s vldrdq_gather_offset_z_u]
@@ -7719,7 +8177,8 @@
   output_asm_insn ("vpst\n\tvldrdt.u64\t%q0, [%m1, %q2]",ops);
   return "";
 }
- [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrdq_gather_offset_<supf>v2di"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vldrdq_gather_shifted_offset_s vldrdq_gather_shifted_offset_u]
@@ -7739,7 +8198,8 @@
    output_asm_insn ("vldrd.u64\t%q0, [%m1, %q2, uxtw #3]",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrdq_gather_shifted_offset_<supf>v2di"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vldrdq_gather_shifted_offset_z_s vldrdq_gather_shifted_offset_z_u]
@@ -7760,7 +8220,8 @@
    output_asm_insn ("vpst\n\tvldrdt.u64\t%q0, [%m1, %q2, uxtw #3]",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrdq_gather_shifted_offset_<supf>v2di"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vldrhq_gather_offset_f]
@@ -7780,7 +8241,8 @@
    output_asm_insn ("vldrh.f16\t%q0, [%m1, %q2]",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrhq_gather_offset_fv8hf"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vldrhq_gather_offset_z_f]
@@ -7802,7 +8264,8 @@
    output_asm_insn ("vpst\n\tvldrht.f16\t%q0, [%m1, %q2]",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrhq_gather_offset_fv8hf"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vldrhq_gather_shifted_offset_f]
@@ -7822,7 +8285,8 @@
    output_asm_insn ("vldrh.f16\t%q0, [%m1, %q2, uxtw #1]",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrhq_gather_shifted_offset_fv8hf"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vldrhq_gather_shifted_offset_z_f]
@@ -7844,7 +8308,8 @@
    output_asm_insn ("vpst\n\tvldrht.f16\t%q0, [%m1, %q2, uxtw #1]",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrhq_gather_shifted_offset_fv8hf"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vldrwq_gather_base_f]
@@ -7864,7 +8329,8 @@
    output_asm_insn ("vldrw.u32\t%q0, [%q1, %2]",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrwq_gather_base_fv4sf"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vldrwq_gather_base_z_f]
@@ -7885,7 +8351,8 @@
    output_asm_insn ("vpst\n\tvldrwt.u32\t%q0, [%q1, %2]",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrwq_gather_base_fv4sf"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vldrwq_gather_offset_f]
@@ -7905,7 +8372,8 @@
    output_asm_insn ("vldrw.u32\t%q0, [%m1, %q2]",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrwq_gather_offset_fv4sf"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vldrwq_gather_offset_s vldrwq_gather_offset_u]
@@ -7925,7 +8393,8 @@
    output_asm_insn ("vldrw.u32\t%q0, [%m1, %q2]",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrwq_gather_offset_<supf>v4si"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vldrwq_gather_offset_z_f]
@@ -7947,7 +8416,8 @@
    output_asm_insn ("vpst\n\tvldrwt.u32\t%q0, [%m1, %q2]",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrwq_gather_offset_fv4sf"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vldrwq_gather_offset_z_s vldrwq_gather_offset_z_u]
@@ -7969,7 +8439,8 @@
    output_asm_insn ("vpst\n\tvldrwt.u32\t%q0, [%m1, %q2]",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrwq_gather_offset_<supf>v4si"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vldrwq_gather_shifted_offset_f]
@@ -7989,7 +8460,8 @@
    output_asm_insn ("vldrw.u32\t%q0, [%m1, %q2, uxtw #2]",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrwq_gather_shifted_offset_fv4sf"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vldrwq_gather_shifted_offset_s vldrwq_gather_shifted_offset_u]
@@ -8009,7 +8481,8 @@
    output_asm_insn ("vldrw.u32\t%q0, [%m1, %q2, uxtw #2]",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrwq_gather_shifted_offset_<supf>v4si"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vldrwq_gather_shifted_offset_z_f]
@@ -8031,7 +8504,8 @@
    output_asm_insn ("vpst\n\tvldrwt.u32\t%q0, [%m1, %q2, uxtw #2]",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrwq_gather_shifted_offset_fv4sf"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vldrwq_gather_shifted_offset_z_s vldrwq_gather_shifted_offset_z_u]
@@ -8053,7 +8527,8 @@
    output_asm_insn ("vpst\n\tvldrwt.u32\t%q0, [%m1, %q2, uxtw #2]",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrwq_gather_shifted_offset_<supf>v4si"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vstrhq_f]
@@ -8072,7 +8547,8 @@
    output_asm_insn ("vstrh.16\t%q1, %E0",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrhq_fv8hf"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vstrhq_p_f]
@@ -8092,7 +8568,8 @@
    output_asm_insn ("vpst\;vstrht.16\t%q1, %E0",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrhq_fv8hf"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vstrhq_p_s vstrhq_p_u]
@@ -8112,7 +8589,8 @@
    output_asm_insn ("vpst\;vstrht.<V_sz_elem>\t%q1, %E0",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrhq_<supf><mode>"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vstrhq_scatter_offset_p_s vstrhq_scatter_offset_p_u]
@@ -8144,7 +8622,8 @@
 	  VSTRHSOQ))]
   "TARGET_HAVE_MVE"
   "vpst\;vstrht.<V_sz_elem>\t%q2, [%0, %q1]"
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrhq_scatter_offset_<supf><mode>_insn"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vstrhq_scatter_offset_s vstrhq_scatter_offset_u]
@@ -8172,7 +8651,8 @@
 	  VSTRHSOQ))]
   "TARGET_HAVE_MVE"
   "vstrh.<V_sz_elem>\t%q2, [%0, %q1]"
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrhq_scatter_offset_<supf><mode>_insn"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vstrhq_scatter_shifted_offset_p_s vstrhq_scatter_shifted_offset_p_u]
@@ -8204,7 +8684,8 @@
 	  VSTRHSSOQ))]
   "TARGET_HAVE_MVE"
   "vpst\;vstrht.<V_sz_elem>\t%q2, [%0, %q1, uxtw #1]"
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrhq_scatter_shifted_offset_<supf><mode>_insn"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vstrhq_scatter_shifted_offset_s vstrhq_scatter_shifted_offset_u]
@@ -8233,7 +8714,8 @@
 	  VSTRHSSOQ))]
   "TARGET_HAVE_MVE"
   "vstrh.<V_sz_elem>\t%q2, [%0, %q1, uxtw #1]"
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrhq_scatter_shifted_offset_<supf><mode>_insn"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vstrhq_s, vstrhq_u]
@@ -8252,7 +8734,8 @@
    output_asm_insn ("vstrh.<V_sz_elem>\t%q1, %E0",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrhq_<supf><mode>"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vstrwq_f]
@@ -8271,7 +8754,8 @@
    output_asm_insn ("vstrw.32\t%q1, %E0",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrwq_fv4sf"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vstrwq_p_f]
@@ -8291,7 +8775,8 @@
    output_asm_insn ("vpst\;vstrwt.32\t%q1, %E0",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrwq_fv4sf"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vstrwq_p_s vstrwq_p_u]
@@ -8311,7 +8796,8 @@
    output_asm_insn ("vpst\;vstrwt.32\t%q1, %E0",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrwq_<supf>v4si"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vstrwq_s vstrwq_u]
@@ -8330,7 +8816,8 @@
    output_asm_insn ("vstrw.32\t%q1, %E0",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrwq_<supf>v4si"))
+  (set_attr "length" "4")])
 
 (define_expand "mve_vst1q_f<mode>"
   [(match_operand:<MVE_CNVT> 0 "mve_memory_operand")
@@ -8373,7 +8860,8 @@
    output_asm_insn ("vpst\;\tvstrdt.u64\t%q2, [%q0, %1]",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrdq_scatter_base_<supf>v2di"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vstrdq_scatter_base_s vstrdq_scatter_base_u]
@@ -8395,7 +8883,8 @@
    output_asm_insn ("vstrd.u64\t%q2, [%q0, %1]",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrdq_scatter_base_<supf>v2di"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vstrdq_scatter_offset_p_s vstrdq_scatter_offset_p_u]
@@ -8426,7 +8915,8 @@
 	  VSTRDSOQ))]
   "TARGET_HAVE_MVE"
   "vpst\;vstrdt.64\t%q2, [%0, %q1]"
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrdq_scatter_offset_<supf>v2di_insn"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vstrdq_scatter_offset_s vstrdq_scatter_offset_u]
@@ -8454,7 +8944,8 @@
 	  VSTRDSOQ))]
   "TARGET_HAVE_MVE"
   "vstrd.64\t%q2, [%0, %q1]"
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrdq_scatter_offset_<supf>v2di_insn"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vstrdq_scatter_shifted_offset_p_s vstrdq_scatter_shifted_offset_p_u]
@@ -8486,7 +8977,8 @@
 	  VSTRDSSOQ))]
   "TARGET_HAVE_MVE"
   "vpst\;vstrdt.64\t%q2, [%0, %q1, UXTW #3]"
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrdq_scatter_shifted_offset_<supf>v2di_insn"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vstrdq_scatter_shifted_offset_s vstrdq_scatter_shifted_offset_u]
@@ -8515,7 +9007,8 @@
 	  VSTRDSSOQ))]
   "TARGET_HAVE_MVE"
   "vstrd.64\t%q2, [%0, %q1, UXTW #3]"
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrdq_scatter_shifted_offset_<supf>v2di_insn"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vstrhq_scatter_offset_f]
@@ -8543,7 +9036,8 @@
 	  VSTRHQSO_F))]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vstrh.16\t%q2, [%0, %q1]"
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrhq_scatter_offset_fv8hf_insn"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vstrhq_scatter_offset_p_f]
@@ -8574,7 +9068,8 @@
 	  VSTRHQSO_F))]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vstrht.16\t%q2, [%0, %q1]"
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrhq_scatter_offset_fv8hf_insn"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vstrhq_scatter_shifted_offset_f]
@@ -8602,7 +9097,8 @@
 	  VSTRHQSSO_F))]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vstrh.16\t%q2, [%0, %q1, uxtw #1]"
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrhq_scatter_shifted_offset_fv8hf_insn"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vstrhq_scatter_shifted_offset_p_f]
@@ -8634,7 +9130,8 @@
 	  VSTRHQSSO_F))]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vstrht.16\t%q2, [%0, %q1, uxtw #1]"
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrhq_scatter_shifted_offset_fv8hf_insn"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vstrwq_scatter_base_f]
@@ -8656,7 +9153,8 @@
    output_asm_insn ("vstrw.u32\t%q2, [%q0, %1]",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrwq_scatter_base_fv4sf"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vstrwq_scatter_base_p_f]
@@ -8679,7 +9177,8 @@
    output_asm_insn ("vpst\n\tvstrwt.u32\t%q2, [%q0, %1]",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrwq_scatter_base_fv4sf"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vstrwq_scatter_offset_f]
@@ -8707,7 +9206,8 @@
 	  VSTRWQSO_F))]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vstrw.32\t%q2, [%0, %q1]"
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrwq_scatter_offset_fv4sf_insn"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vstrwq_scatter_offset_p_f]
@@ -8738,7 +9238,8 @@
 	  VSTRWQSO_F))]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vstrwt.32\t%q2, [%0, %q1]"
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrwq_scatter_offset_fv4sf_insn"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vstrwq_scatter_offset_s vstrwq_scatter_offset_u]
@@ -8769,7 +9270,8 @@
 	  VSTRWSOQ))]
   "TARGET_HAVE_MVE"
   "vpst\;vstrwt.32\t%q2, [%0, %q1]"
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrwq_scatter_offset_<supf>v4si_insn"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vstrwq_scatter_offset_s vstrwq_scatter_offset_u]
@@ -8797,7 +9299,8 @@
 	  VSTRWSOQ))]
   "TARGET_HAVE_MVE"
   "vstrw.32\t%q2, [%0, %q1]"
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrwq_scatter_offset_<supf>v4si_insn"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vstrwq_scatter_shifted_offset_f]
@@ -8825,7 +9328,8 @@
 	 VSTRWQSSO_F))]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vstrw.32\t%q2, [%0, %q1, uxtw #2]"
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrwq_scatter_shifted_offset_fv4sf_insn"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vstrwq_scatter_shifted_offset_p_f]
@@ -8857,7 +9361,8 @@
 	  VSTRWQSSO_F))]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vpst\;vstrwt.32\t%q2, [%0, %q1, uxtw #2]"
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrwq_scatter_shifted_offset_fv4sf_insn"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vstrwq_scatter_shifted_offset_p_s vstrwq_scatter_shifted_offset_p_u]
@@ -8889,7 +9394,8 @@
 	  VSTRWSSOQ))]
   "TARGET_HAVE_MVE"
   "vpst\;vstrwt.32\t%q2, [%0, %q1, uxtw #2]"
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrwq_scatter_shifted_offset_<supf>v4si_insn"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vstrwq_scatter_shifted_offset_s vstrwq_scatter_shifted_offset_u]
@@ -8918,7 +9424,8 @@
 	  VSTRWSSOQ))]
   "TARGET_HAVE_MVE"
   "vstrw.32\t%q2, [%0, %q1, uxtw #2]"
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrwq_scatter_shifted_offset_<supf>v4si_insn"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vaddq_s, vaddq_u])
@@ -8931,7 +9438,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vadd.i%#<V_sz_elem>\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vaddq<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -8945,7 +9453,8 @@
   ]
   "TARGET_HAVE_MVE && TARGET_HAVE_MVE_FLOAT"
   "vadd.f%#<V_sz_elem>\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vaddq_f<mode>"))
+  (set_attr "type" "mve_move")
 ])
 
 ;;
@@ -9014,7 +9523,8 @@
 		(match_operand:SI 6 "immediate_operand" "i")))]
  "TARGET_HAVE_MVE"
  "vpst\;\tvidupt.u%#<V_sz_elem>\t%q0, %2, %4"
- [(set_attr "length""8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vidupq_u<mode>_insn"))
+  (set_attr "length""8")])
 
 ;;
 ;; [vddupq_n_u])
@@ -9082,7 +9592,8 @@
 		 (match_operand:SI 6 "immediate_operand" "i")))]
  "TARGET_HAVE_MVE"
  "vpst\;vddupt.u%#<V_sz_elem>\t%q0, %2, %4"
- [(set_attr "length""8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vddupq_u<mode>_insn"))
+  (set_attr "length""8")])
 
 ;;
 ;; [vdwdupq_n_u])
@@ -9198,8 +9709,9 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vdwdupt.u%#<V_sz_elem>\t%q2, %3, %R4, %5"
-  [(set_attr "type" "mve_move")
-   (set_attr "length""8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vdwdupq_wb_u<mode>_insn"))
+  (set_attr "type" "mve_move")
+  (set_attr "length""8")])
 
 ;;
 ;; [viwdupq_n_u])
@@ -9315,7 +9827,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;\tviwdupt.u%#<V_sz_elem>\t%q2, %3, %R4, %5"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_viwdupq_wb_u<mode>_insn"))
+  (set_attr "type" "mve_move")
    (set_attr "length""8")])
 
 ;;
@@ -9341,7 +9854,8 @@
    output_asm_insn ("vstrw.u32\t%q2, [%q0, %1]!",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrwq_scatter_base_wb_<supf>v4si"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vstrwq_scatter_base_wb_p_s vstrwq_scatter_base_wb_p_u]
@@ -9367,7 +9881,8 @@
    output_asm_insn ("vpst\;\tvstrwt.u32\t%q2, [%q0, %1]!",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrwq_scatter_base_wb_<supf>v4si"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vstrwq_scatter_base_wb_f]
@@ -9392,7 +9907,8 @@
    output_asm_insn ("vstrw.u32\t%q2, [%q0, %1]!",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrwq_scatter_base_wb_fv4sf"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vstrwq_scatter_base_wb_p_f]
@@ -9418,7 +9934,8 @@
    output_asm_insn ("vpst\;\tvstrwt.u32\t%q2, [%q0, %1]!",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrwq_scatter_base_wb_fv4sf"))
+  (set_attr "length" "8")])
 
 ;;
 ;; [vstrdq_scatter_base_wb_s vstrdq_scatter_base_wb_u]
@@ -9443,7 +9960,8 @@
    output_asm_insn ("vstrd.u64\t%q2, [%q0, %1]!",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrdq_scatter_base_wb_<supf>v2di"))
+  (set_attr "length" "4")])
 
 ;;
 ;; [vstrdq_scatter_base_wb_p_s vstrdq_scatter_base_wb_p_u]
@@ -9469,7 +9987,8 @@
    output_asm_insn ("vpst;vstrdt.u64\t%q2, [%q0, %1]!",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vstrdq_scatter_base_wb_<supf>v2di"))
+  (set_attr "length" "8")])
 
 (define_expand "mve_vldrwq_gather_base_wb_<supf>v4si"
   [(match_operand:V4SI 0 "s_register_operand")
@@ -9521,7 +10040,8 @@
    output_asm_insn ("vldrw.u32\t%q0, [%q1, %2]!",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrwq_gather_base_wb_<supf>v4si_insn"))
+  (set_attr "length" "4")])
 
 (define_expand "mve_vldrwq_gather_base_wb_z_<supf>v4si"
   [(match_operand:V4SI 0 "s_register_operand")
@@ -9577,7 +10097,8 @@
    output_asm_insn ("vpst\;vldrwt.u32\t%q0, [%q1, %2]!",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrwq_gather_base_wb_<supf>v4si_insn"))
+  (set_attr "length" "8")])
 
 (define_expand "mve_vldrwq_gather_base_wb_fv4sf"
   [(match_operand:V4SI 0 "s_register_operand")
@@ -9629,7 +10150,8 @@
    output_asm_insn ("vldrw.u32\t%q0, [%q1, %2]!",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrwq_gather_base_wb_fv4sf_insn"))
+  (set_attr "length" "4")])
 
 (define_expand "mve_vldrwq_gather_base_wb_z_fv4sf"
   [(match_operand:V4SI 0 "s_register_operand")
@@ -9686,7 +10208,8 @@
    output_asm_insn ("vpst\;vldrwt.u32\t%q0, [%q1, %2]!",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrwq_gather_base_wb_fv4sf_insn"))
+  (set_attr "length" "8")])
 
 (define_expand "mve_vldrdq_gather_base_wb_<supf>v2di"
   [(match_operand:V2DI 0 "s_register_operand")
@@ -9739,7 +10262,8 @@
    output_asm_insn ("vldrd.64\t%q0, [%q1, %2]!",ops);
    return "";
 }
-  [(set_attr "length" "4")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrdq_gather_base_wb_<supf>v2di_insn"))
+  (set_attr "length" "4")])
 
 (define_expand "mve_vldrdq_gather_base_wb_z_<supf>v2di"
   [(match_operand:V2DI 0 "s_register_operand")
@@ -9778,7 +10302,7 @@
    (unspec:SI [(reg:SI VFPCC_REGNUM)] UNSPEC_GET_FPSCR_NZCVQC))]
  "TARGET_HAVE_MVE"
  "vmrs\\t%0, FPSCR_nzcvqc"
-  [(set_attr "type" "mve_move")])
+ [(set_attr "type" "mve_move")])
 
 (define_insn "set_fpscr_nzcvqc"
  [(set (reg:SI VFPCC_REGNUM)
@@ -9786,7 +10310,7 @@
     VUNSPEC_SET_FPSCR_NZCVQC))]
  "TARGET_HAVE_MVE"
  "vmsr\\tFPSCR_nzcvqc, %0"
-  [(set_attr "type" "mve_move")])
+ [(set_attr "type" "mve_move")])
 
 ;;
 ;; [vldrdq_gather_base_wb_z_s vldrdq_gather_base_wb_z_u]
@@ -9811,7 +10335,8 @@
    output_asm_insn ("vpst\;vldrdt.u64\t%q0, [%q1, %2]!",ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vldrdq_gather_base_wb_<supf>v2di_insn"))
+  (set_attr "length" "8")])
 ;;
 ;; [vadciq_m_s, vadciq_m_u])
 ;;
@@ -9828,7 +10353,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vadcit.i32\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vadciq_<supf>v4si"))
+  (set_attr "type" "mve_move")
    (set_attr "length" "8")])
 
 ;;
@@ -9845,7 +10371,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vadci.i32\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vadciq_<supf>v4si"))
+  (set_attr "type" "mve_move")
    (set_attr "length" "4")])
 
 ;;
@@ -9864,7 +10391,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vadct.i32\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vadcq_<supf>v4si"))
+  (set_attr "type" "mve_move")
    (set_attr "length" "8")])
 
 ;;
@@ -9881,7 +10409,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vadc.i32\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vadcq_<supf>v4si"))
+  (set_attr "type" "mve_move")
    (set_attr "length" "4")
    (set_attr "conds" "set")])
 
@@ -9901,7 +10430,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vsbcit.i32\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vsbciq_<supf>v4si"))
+  (set_attr "type" "mve_move")
    (set_attr "length" "8")])
 
 ;;
@@ -9918,7 +10448,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vsbci.i32\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vsbciq_<supf>v4si"))
+  (set_attr "type" "mve_move")
    (set_attr "length" "4")])
 
 ;;
@@ -9937,7 +10468,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vpst\;vsbct.i32\t%q0, %q2, %q3"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vsbcq_<supf>v4si"))
+  (set_attr "type" "mve_move")
    (set_attr "length" "8")])
 
 ;;
@@ -9954,7 +10486,8 @@
   ]
   "TARGET_HAVE_MVE"
   "vsbc.i32\t%q0, %q1, %q2"
-  [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vsbcq_<supf>v4si"))
+  (set_attr "type" "mve_move")
    (set_attr "length" "4")])
 
 ;;
@@ -9983,7 +10516,7 @@
 		    "vst21.<V_sz_elem>\t{%q0, %q1}, %3", ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set_attr "length" "8")])
 
 ;;
 ;; [vld2q])
@@ -10011,7 +10544,7 @@
 		    "vld21.<V_sz_elem>\t{%q0, %q1}, %3", ops);
    return "";
 }
-  [(set_attr "length" "8")])
+ [(set_attr "length" "8")])
 
 ;;
 ;; [vld4q])
@@ -10354,7 +10887,8 @@
  ]
  "TARGET_HAVE_MVE"
  "vpst\;vshlct\t%q0, %1, %4"
- [(set_attr "type" "mve_move")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_mve_vshlcq_<supf><mode>"))
+  (set_attr "type" "mve_move")
   (set_attr "length" "8")])
 
 ;; CDE instructions on MVE registers.
@@ -10366,7 +10900,8 @@
 	 UNSPEC_VCDE))]
   "TARGET_CDE && TARGET_HAVE_MVE"
   "vcx1\\tp%c1, %q0, #%c2"
-  [(set_attr "type" "coproc")]
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_arm_vcx1qv16qi"))
+  (set_attr "type" "coproc")]
 )
 
 (define_insn "arm_vcx1qav16qi"
@@ -10377,7 +10912,8 @@
 	 UNSPEC_VCDEA))]
   "TARGET_CDE && TARGET_HAVE_MVE"
   "vcx1a\\tp%c1, %q0, #%c3"
-  [(set_attr "type" "coproc")]
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_arm_vcx1qav16qi"))
+  (set_attr "type" "coproc")]
 )
 
 (define_insn "arm_vcx2qv16qi"
@@ -10388,7 +10924,8 @@
 	 UNSPEC_VCDE))]
   "TARGET_CDE && TARGET_HAVE_MVE"
   "vcx2\\tp%c1, %q0, %q2, #%c3"
-  [(set_attr "type" "coproc")]
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_arm_vcx2qv16qi"))
+  (set_attr "type" "coproc")]
 )
 
 (define_insn "arm_vcx2qav16qi"
@@ -10400,7 +10937,8 @@
 	 UNSPEC_VCDEA))]
   "TARGET_CDE && TARGET_HAVE_MVE"
   "vcx2a\\tp%c1, %q0, %q3, #%c4"
-  [(set_attr "type" "coproc")]
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_arm_vcx2qav16qi"))
+  (set_attr "type" "coproc")]
 )
 
 (define_insn "arm_vcx3qv16qi"
@@ -10412,7 +10950,8 @@
 	 UNSPEC_VCDE))]
   "TARGET_CDE && TARGET_HAVE_MVE"
   "vcx3\\tp%c1, %q0, %q2, %q3, #%c4"
-  [(set_attr "type" "coproc")]
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_arm_vcx3qv16qi"))
+  (set_attr "type" "coproc")]
 )
 
 (define_insn "arm_vcx3qav16qi"
@@ -10425,7 +10964,8 @@
 	 UNSPEC_VCDEA))]
   "TARGET_CDE && TARGET_HAVE_MVE"
   "vcx3a\\tp%c1, %q0, %q3, %q4, #%c5"
-  [(set_attr "type" "coproc")]
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_arm_vcx3qav16qi"))
+  (set_attr "type" "coproc")]
 )
 
 (define_insn "arm_vcx1q<a>_p_v16qi"
@@ -10437,7 +10977,8 @@
 	 CDE_VCX))]
   "TARGET_CDE && TARGET_HAVE_MVE"
   "vpst\;vcx1<a>t\\tp%c1, %q0, #%c3"
-  [(set_attr "type" "coproc")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_arm_vcx1q<a>v16qi"))
+  (set_attr "type" "coproc")
    (set_attr "length" "8")]
 )
 
@@ -10451,7 +10992,8 @@
 	 CDE_VCX))]
   "TARGET_CDE && TARGET_HAVE_MVE"
   "vpst\;vcx2<a>t\\tp%c1, %q0, %q3, #%c4"
-  [(set_attr "type" "coproc")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_arm_vcx2q<a>v16qi"))
+  (set_attr "type" "coproc")
    (set_attr "length" "8")]
 )
 
@@ -10466,7 +11008,8 @@
 	 CDE_VCX))]
   "TARGET_CDE && TARGET_HAVE_MVE"
   "vpst\;vcx3<a>t\\tp%c1, %q0, %q3, %q4, #%c5"
-  [(set_attr "type" "coproc")
+ [(set (attr "mve_unpredicated_insn") (symbol_ref "CODE_FOR_arm_vcx3q<a>v16qi"))
+  (set_attr "type" "coproc")
    (set_attr "length" "8")]
 )
 
