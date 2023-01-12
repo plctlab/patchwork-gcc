@@ -42,6 +42,7 @@ along with GCC; see the file COPYING3.  If not see
 /* Macros to create an enumeration identifier for a function prototype.  */
 #define RISCV_FTYPE_NAME0(A) RISCV_##A##_FTYPE
 #define RISCV_FTYPE_NAME1(A, B) RISCV_##A##_FTYPE_##B
+#define RISCV_FTYPE_NAME2(A, B, C) RISCV_##A##_FTYPE_##B##_##C
 
 /* Classifies the prototype of a built-in function.  */
 enum riscv_function_type {
@@ -98,6 +99,7 @@ AVAIL (zero32,  TARGET_ZICBOZ && !TARGET_64BIT)
 AVAIL (zero64,  TARGET_ZICBOZ && TARGET_64BIT)
 AVAIL (prefetchi32, TARGET_ZICBOP && !TARGET_64BIT)
 AVAIL (prefetchi64, TARGET_ZICBOP && TARGET_64BIT)
+AVAIL (zfa, TARGET_ZFA)
 AVAIL (always,     (!0))
 
 /* Construct a riscv_builtin_description from the given arguments.
@@ -135,6 +137,8 @@ AVAIL (always,     (!0))
 #define RISCV_ATYPE_SI intSI_type_node
 #define RISCV_ATYPE_DI intDI_type_node
 #define RISCV_ATYPE_VOID_PTR ptr_type_node
+#define RISCV_ATYPE_SF float_type_node
+#define RISCV_ATYPE_DF double_type_node
 
 /* RISCV_FTYPE_ATYPESN takes N RISCV_FTYPES-like type codes and lists
    their associated RISCV_ATYPEs.  */
@@ -142,6 +146,8 @@ AVAIL (always,     (!0))
   RISCV_ATYPE_##A
 #define RISCV_FTYPE_ATYPES1(A, B) \
   RISCV_ATYPE_##A, RISCV_ATYPE_##B
+#define RISCV_FTYPE_ATYPES2(A, B, C) \
+  RISCV_ATYPE_##A, RISCV_ATYPE_##B, RISCV_ATYPE_##C
 
 static const struct riscv_builtin_description riscv_builtins[] = {
   #include "riscv-cmo.def"
@@ -149,6 +155,11 @@ static const struct riscv_builtin_description riscv_builtins[] = {
   DIRECT_BUILTIN (frflags, RISCV_USI_FTYPE, hard_float),
   DIRECT_NO_TARGET_BUILTIN (fsflags, RISCV_VOID_FTYPE_USI, hard_float),
   DIRECT_NO_TARGET_BUILTIN (pause, RISCV_VOID_FTYPE, always),
+
+  RISCV_BUILTIN (fminmsf3, "fminmf", RISCV_BUILTIN_DIRECT, RISCV_SF_FTYPE_SF_SF, zfa),
+  RISCV_BUILTIN (fminmdf3, "fminm", RISCV_BUILTIN_DIRECT, RISCV_DF_FTYPE_DF_DF, zfa),
+  RISCV_BUILTIN (fmaxmsf3, "fmaxmf", RISCV_BUILTIN_DIRECT, RISCV_SF_FTYPE_SF_SF, zfa),
+  RISCV_BUILTIN (fmaxmdf3, "fmaxm", RISCV_BUILTIN_DIRECT, RISCV_DF_FTYPE_DF_DF, zfa),
 };
 
 /* Index I is the function declaration for riscv_builtins[I], or null if the
