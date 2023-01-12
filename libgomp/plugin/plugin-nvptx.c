@@ -1813,7 +1813,7 @@ static void
 cuda_callback_wrapper (CUstream stream, CUresult res, void *ptr)
 {
   if (res != CUDA_SUCCESS)
-    GOMP_PLUGIN_fatal ("%s error: %s", __FUNCTION__, cuda_error (res));
+    GOMP_PLUGIN_error ("%s error: %s", __FUNCTION__, cuda_error (res));
   struct nvptx_callback *cb = (struct nvptx_callback *) ptr;
   cb->fn (cb->ptr);
   free (ptr);
