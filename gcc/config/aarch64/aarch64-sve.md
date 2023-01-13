@@ -7636,6 +7636,26 @@
   [(set_attr "movprfx" "*,*,yes,yes,yes,yes")]
 )
 
+;; Swap the order of operand 1 and operand 2 so that it matches the above pattern
+(define_insn_and_split "@aarch64_sel_dup<mode>_vs"
+  [(set (match_operand:SVE_ALL 0 "register_operand" "=?w, w, ??w, ?&w, ??&w, ?&w")
+	(unspec:SVE_ALL
+	  [(match_operand:<VPRED> 3 "register_operand" "Upl, Upl, Upl, Upl, Upl, Upl")
+           (match_operand:SVE_ALL 1 "aarch64_simd_reg_or_zero" "0, 0, Dz, Dz, w, w")
+	   (vec_duplicate:SVE_ALL
+             (match_operand:<VEL> 2 "register_operand" "r, w, r, w, r, w"))]
+	  UNSPEC_SEL))]
+  "TARGET_SVE"
+  "#"
+  "&& 1"
+  [(set (match_dup 0)
+        (unspec:SVE_ALL
+          [(match_dup 3)
+           (vec_duplicate:SVE_ALL (match_dup 2))
+           (match_dup 1)]
+          UNSPEC_SEL))]
+)
+
 ;; -------------------------------------------------------------------------
 ;; ---- [INT,FP] Compare and select
 ;; -------------------------------------------------------------------------
