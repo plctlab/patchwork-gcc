@@ -342,6 +342,9 @@ fwprop_propagation::profitable_p () const
   if (CONSTANT_P (to))
     return true;
 
+  if (GET_CODE (to) == VEC_DUPLICATE)
+    return true;
+
   return false;
 }
 
@@ -351,6 +354,17 @@ static bool
 reg_single_def_p (rtx x)
 {
   return REG_P (x) && crtl->ssa->single_dominating_def (REGNO (x));
+}
+
+/* Check that X has a single def or a VEC_DUPLICATE expr whose elements have a
+   single def. */
+static bool
+reg_single_def_for_src_p (rtx x)
+{
+  if (GET_CODE (x) == VEC_DUPLICATE)
+    x = XEXP (x, 0);
+
+  return reg_single_def_p (x);
 }
 
 /* Return true if X contains a paradoxical subreg.  */
@@ -873,7 +887,7 @@ forward_propagate_into (use_info *use, bool reg_prop_only = false)
   if ((reg_prop_only
        || (def_loop != use_loop
 	   && !flow_loop_nested_p (use_loop, def_loop)))
-      && (!reg_single_def_p (dest) || !reg_single_def_p (src)))
+      && (!reg_single_def_p (dest) || !reg_single_def_for_src_p (src)))
     return false;
 
   /* Don't substitute into a non-local goto, this confuses CFG.  */
