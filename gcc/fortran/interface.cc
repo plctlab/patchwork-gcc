@@ -2858,6 +2858,7 @@ get_expr_storage_size (gfc_expr *e)
   if (e->ts.type == BT_CHARACTER)
     {
       if (e->ts.u.cl && e->ts.u.cl->length
+	  && e->ts.u.cl->length->ts.type == BT_INTEGER
           && e->ts.u.cl->length->expr_type == EXPR_CONSTANT)
 	strlen = mpz_get_si (e->ts.u.cl->length->value.integer);
       else if (e->expr_type == EXPR_CONSTANT
