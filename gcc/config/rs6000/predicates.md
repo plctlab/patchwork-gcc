@@ -1878,7 +1878,10 @@
 
   /* Handle sign/zero extend.  */
   if (GET_CODE (op) == ZERO_EXTEND
-      || (TARGET_P8_FUSION_SIGN && GET_CODE (op) == SIGN_EXTEND))
+      || (TARGET_P8_FUSION_SIGN
+	  && GET_CODE (op) == SIGN_EXTEND
+	  && (rs6000_isa_flags_explicit & OPTION_MASK_P8_FUSION_SIGN
+	      || optimize_function_for_speed_p (cfun))))
     {
       op = XEXP (op, 0);
       mode = GET_MODE (op);

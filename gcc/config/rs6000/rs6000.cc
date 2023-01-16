@@ -3997,8 +3997,7 @@ rs6000_option_override_internal (bool global_init_p)
   /* If we can shrink-wrap the TOC register save separately, then use
      -msave-toc-indirect unless explicitly disabled.  */
   if ((rs6000_isa_flags_explicit & OPTION_MASK_SAVE_TOC_INDIRECT) == 0
-      && flag_shrink_wrap_separate
-      && optimize_function_for_speed_p (cfun))
+      && flag_shrink_wrap_separate)
     rs6000_isa_flags |= OPTION_MASK_SAVE_TOC_INDIRECT;
 
   /* Enable power8 fusion if we are tuning for power8, even if we aren't
@@ -4032,7 +4031,6 @@ rs6000_option_override_internal (bool global_init_p)
      zero extending load, and an explicit sign extension.  */
   if (TARGET_P8_FUSION
       && !(rs6000_isa_flags_explicit & OPTION_MASK_P8_FUSION_SIGN)
-      && optimize_function_for_speed_p (cfun)
       && optimize >= 3)
     rs6000_isa_flags |= OPTION_MASK_P8_FUSION_SIGN;
 
@@ -25696,7 +25694,10 @@ rs6000_call_aix (rtx value, rtx func_desc, rtx tlsarg, rtx cookie)
 
 	  /* Can we optimize saving the TOC in the prologue or
 	     do we need to do it at every call?  */
-	  if (TARGET_SAVE_TOC_INDIRECT && !cfun->calls_alloca)
+	  if (TARGET_SAVE_TOC_INDIRECT
+	      && !cfun->calls_alloca
+	      && (rs6000_isa_flags_explicit & OPTION_MASK_SAVE_TOC_INDIRECT
+		  || optimize_function_for_speed_p (cfun)))
 	    cfun->machine->save_toc_in_prologue = true;
 	  else
 	    {
@@ -27563,7 +27564,10 @@ fusion_gpr_load_p (rtx addis_reg,	/* register set via addis.  */
 
   /* Allow sign/zero extension.  */
   if (GET_CODE (mem) == ZERO_EXTEND
-      || (GET_CODE (mem) == SIGN_EXTEND && TARGET_P8_FUSION_SIGN))
+      || (GET_CODE (mem) == SIGN_EXTEND
+	  && TARGET_P8_FUSION_SIGN
+	  && (rs6000_isa_flags_explicit & OPTION_MASK_P8_FUSION_SIGN
+	      || optimize_function_for_speed_p (cfun))))
     mem = XEXP (mem, 0);
 
   if (!MEM_P (mem))
@@ -27627,7 +27631,10 @@ expand_fusion_gpr_load (rtx *operands)
   enum rtx_code extend = UNKNOWN;
 
   if (GET_CODE (orig_mem) == ZERO_EXTEND
-      || (TARGET_P8_FUSION_SIGN && GET_CODE (orig_mem) == SIGN_EXTEND))
+      || (TARGET_P8_FUSION_SIGN
+	  && GET_CODE (orig_mem) == SIGN_EXTEND
+	  && (rs6000_isa_flags_explicit & OPTION_MASK_P8_FUSION_SIGN
+	      || optimize_function_for_speed_p (cfun))))
     {
       extend = GET_CODE (orig_mem);
       orig_mem = XEXP (orig_mem, 0);
