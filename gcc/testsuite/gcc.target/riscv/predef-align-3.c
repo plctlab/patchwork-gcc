@@ -1,10 +1,11 @@
 /* { dg-do compile } */
-/* { dg-options "-mriscv-attribute -mstrict-align" } */
-int foo()
-{
+/* { dg-options "-mtune=thead-c906 -mstrict-align" } */
+
+int main () {
 
 #if !defined(__riscv_strict_align)
 #error "__riscv_strict_align"
+#else
 #if __riscv_strict_align != 1
 #error "__riscv_strict_align != 1"
 #endif
@@ -12,4 +13,3 @@ int foo()
 
   return 0;
 }
-/* { dg-final { scan-assembler ".attribute unaligned_access, 0" } } */

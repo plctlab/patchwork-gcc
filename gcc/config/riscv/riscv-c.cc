@@ -102,6 +102,17 @@ riscv_cpu_cpp_builtins (cpp_reader *pfile)
 
     }
 
+  /* TARGET_STRICT_ALIGN does not cover all cases.  */
+  if (riscv_slow_unaligned_access_p)
+    {
+      /* Explicit -mstruct-align preceedes cpu tune param
+         slow_unaligned_access=true.  */
+      if (riscv_user_wants_strict_align)
+        builtin_define_with_int_value ("__riscv_strict_align", 1);
+      else
+        builtin_define_with_int_value ("__riscv_strict_align", 2);
+    }
+
   if (TARGET_MIN_VLEN != 0)
     builtin_define_with_int_value ("__riscv_v_min_vlen", TARGET_MIN_VLEN);
 
