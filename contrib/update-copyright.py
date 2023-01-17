@@ -408,7 +408,7 @@ class Copyright:
         line_filter = filter.get_line_filter (dir, filename)
         mode = None
         encoding = self.guess_encoding(pathname)
-        with open (pathname, 'r', encoding=encoding) as file:
+        with open (pathname, 'r', encoding=encoding, newline='\n') as file:
             prev = None
             mode = os.fstat (file.fileno()).st_mode
             for line in file:
@@ -434,7 +434,7 @@ class Copyright:
         # If something changed, write the new file out.
         if changed and self.errors.ok():
             tmp_pathname = pathname + '.tmp'
-            with open (tmp_pathname, 'w', encoding=encoding) as file:
+            with open (tmp_pathname, 'w', encoding=encoding, newline='\n') as file:
                 for line in lines:
                     file.write (line)
                 os.fchmod (file.fileno(), mode)
