@@ -839,6 +839,7 @@
     UNSPEC_FCMUL_CONJ	; Used in aarch64-simd.md.
     UNSPEC_FCMLA_CONJ	; Used in aarch64-simd.md.
     UNSPEC_FCMLA180_CONJ	; Used in aarch64-simd.md.
+    UNSPEC_SETZERO	; Used in aarch64-simd.md.
     UNSPEC_ASRD		; Used in aarch64-sve.md.
     UNSPEC_ADCLB	; Used in aarch64-sve2.md.
     UNSPEC_ADCLT	; Used in aarch64-sve2.md.

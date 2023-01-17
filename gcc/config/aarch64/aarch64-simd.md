@@ -1083,6 +1083,39 @@
   [(set_attr "type" "neon_ins<q>, neon_from_gp<q>, neon_load1_one_lane<q>")]
 )
 
+(define_insn "aarch64_simd_set_zero<mode>"
+  [(set (match_operand:VALL_F16 0 "register_operand" "=w")
+	(unspec:VALL_F16 [(match_operand:VALL_F16 1 "register_operand" "0")
+			  (match_operand:SI 2 "immediate_operand" "i")]
+			 UNSPEC_SETZERO))]
+  "TARGET_SIMD"
+  {
+    if (GET_MODE_INNER (<MODE>mode) == DImode)
+      return "ins\\t%0.<Vetype>[%p2], xzr";
+    return "ins\\t%0.<Vetype>[%p2], wzr";
+  }
+  [(set_attr "type" "neon_ins<q>")]
+)
+
+(define_insn_and_split "aarch64_simd_vec_set_zero<mode>"
+  [(set (match_operand:VALL_F16 0 "register_operand" "=w")
+	(vec_merge:VALL_F16
+	    (match_operand:VALL_F16 1 "const_dup0_operand" "w")
+	    (match_operand:VALL_F16 3 "register_operand" "0")
+	    (match_operand:SI 2 "immediate_operand" "i")))]
+  "TARGET_SIMD"
+  "#"
+  "&& 1"
+  [(const_int 0)]
+  {
+    int elt = ENDIAN_LANE_N (<nunits>, exact_log2 (INTVAL (operands[2])));
+    operands[2] = GEN_INT ((HOST_WIDE_INT) 1 << elt);
+    emit_insn (gen_aarch64_simd_set_zero<mode> (operands[0], operands[3], operands[2]));
+    DONE;
+  }
+  [(set_attr "type" "neon_ins<q>")]
+)
+
 (define_insn "@aarch64_simd_vec_copy_lane<mode>"
   [(set (match_operand:VALL_F16 0 "register_operand" "=w")
 	(vec_merge:VALL_F16

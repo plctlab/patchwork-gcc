@@ -49,6 +49,13 @@
   return CONST_INT_P (op) && IN_RANGE (INTVAL (op), 1, 3);
 })
 
+(define_predicate "const_dup0_operand"
+  (match_code "const_vector")
+{
+  op = unwrap_const_vec_duplicate (op);
+  return CONST_INT_P (op) && rtx_equal_p (op, const0_rtx);
+})
+
 (define_predicate "subreg_lowpart_operator"
   (ior (match_code "truncate")
        (and (match_code "subreg")
