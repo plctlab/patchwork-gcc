@@ -960,6 +960,7 @@ dse_classify_store (ao_ref *ref, gimple *stmt,
   auto_bitmap visited;
   std::unique_ptr<data_reference, void(*)(data_reference_p)>
     dra (nullptr, free_data_ref);
+  bool maybe_global = ref_may_alias_global_p (ref, false);
 
   if (by_clobber_p)
     *by_clobber_p = true;
@@ -1038,6 +1039,11 @@ dse_classify_store (ao_ref *ref, gimple *stmt,
 		      last_phi_def = as_a <gphi *> (use_stmt);
 		    }
 		}
+	      /* If the stmt can throw externally and the store is
+		 visible in the context unwound to the store is live.  */
+	      else if (maybe_global
+		       && stmt_can_throw_external (cfun, use_stmt))
+		return DSE_STORE_LIVE;
 	      /* If the statement is a use the store is not dead.  */
 	      else if (ref_maybe_used_by_stmt_p (use_stmt, ref))
 		{
@@ -1116,7 +1122,7 @@ dse_classify_store (ao_ref *ref, gimple *stmt,
 	 just pretend the stmt makes itself dead.  Otherwise fail.  */
       if (defs.is_empty ())
 	{
-	  if (ref_may_alias_global_p (ref, false))
+	  if (maybe_global)
 	    return DSE_STORE_LIVE;
 
 	  if (by_clobber_p)

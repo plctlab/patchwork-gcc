@@ -2633,6 +2633,11 @@ scan_insn (bb_info_t bb_info, rtx_insn *insn, int max_active_local_stores)
       return;
     }
 
+  /* An externally throwing statement may read any memory that is not
+     relative to the frame.  */
+  if (can_throw_external (insn))
+    add_non_frame_wild_read (bb_info);
+
   /* Assuming that there are sets in these insns, we cannot delete
      them.  */
   if ((GET_CODE (PATTERN (insn)) == CLOBBER)
