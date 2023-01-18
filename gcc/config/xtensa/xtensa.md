@@ -3024,3 +3024,65 @@ FALLTHRU:;
   operands[1] = GEN_INT (imm0);
   operands[2] = GEN_INT (imm1);
 })
+
+(define_peephole2
+  [(set (match_operand:SI 0 "register_operand")
+	(match_operand:SI 1 "reload_operand"))]
+  "!TARGET_WINDOWED_ABI && df
+   && epilogue_contains (insn)
+   && ! call_used_or_fixed_reg_p (REGNO (operands[0]))
+   && (!frame_pointer_needed
+       || REGNO (operands[0]) != HARD_FRAME_POINTER_REGNUM)"
+  [(const_int 0)]
+{
+  rtx reg = operands[0], pattern;
+  rtx_insn *insnP = NULL, *insnS = NULL, *insnR = NULL;
+  df_ref ref;
+  rtx_insn *insn;
+  for (ref = DF_REG_DEF_CHAIN (REGNO (reg));
+       ref; ref = DF_REF_NEXT_REG (ref))
+    if (DF_REF_CLASS (ref) != DF_REF_REGULAR
+	|| ! NONJUMP_INSN_P (insn = DF_REF_INSN (ref)))
+      continue;
+    else if (insn == curr_insn)
+      continue;
+    else if (GET_CODE (pattern = PATTERN (insn)) == SET
+	     && rtx_equal_p (SET_DEST (pattern), reg)
+	     && REG_P (SET_SRC (pattern)))
+      {
+	if (insnS)
+	  FAIL;
+	insnS = insn;
+	continue;
+      }
+    else
+      FAIL;
+  for (ref = DF_REG_USE_CHAIN (REGNO (reg));
+       ref; ref = DF_REF_NEXT_REG (ref))
+    if (DF_REF_CLASS (ref) != DF_REF_REGULAR
+	|| ! NONJUMP_INSN_P (insn = DF_REF_INSN (ref)))
+      continue;
+    else if (prologue_contains (insn))
+      {
+	insnP = insn;
+	continue;
+      }
+    else if (GET_CODE (pattern = PATTERN (insn)) == SET
+	     && rtx_equal_p (SET_SRC (pattern), reg)
+	     && REG_P (SET_DEST (pattern)))
+      {
+	if (insnR)
+	  FAIL;
+	insnR = insn;
+	continue;
+      }
+    else
+      FAIL;
+  if (!insnP || !insnS || !insnR)
+    FAIL;
+  SET_DEST (PATTERN (insnS)) = copy_rtx (operands[1]);
+  df_insn_rescan (insnS);
+  SET_SRC (PATTERN (insnR)) = copy_rtx (operands[1]);
+  df_insn_rescan (insnR);
+  set_insn_deleted (insnP);
+})
