@@ -358,7 +358,7 @@ can_backward_propagate_p (const function_info *ssa, const basic_block cfg_bb,
 	    reg = get_vl (insn->rtl ());
 	  else
 	    /* Check AVL operand for vsetvl zero,avl.  */
-	    reg = get_avl (insn->rtl ());
+	    reg = ::get_avl (insn->rtl ());
 	}
     }
 
