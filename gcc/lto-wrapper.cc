@@ -314,6 +314,8 @@ merge_and_complain (vec<cl_decoded_option> &decoded_options,
 	case OPT_fshow_column:
 	case OPT_fcommon:
 	case OPT_fgnu_tm:
+	case OPT_funwind_tables:
+	case OPT_fasynchronous_unwind_tables:
 	case OPT_g:
 	  /* Do what the old LTO code did - collect exactly one option
 	     setting per OPT code, we pick the first we encounter.
@@ -737,6 +739,8 @@ append_compiler_options (obstack *argv_obstack, vec<cl_decoded_option> opts)
 	case OPT_fopenacc_dim_:
 	case OPT_foffload_abi_:
 	case OPT_fcf_protection_:
+	case OPT_funwind_tables:
+	case OPT_fasynchronous_unwind_tables:
 	case OPT_g:
 	case OPT_O:
 	case OPT_Ofast:
