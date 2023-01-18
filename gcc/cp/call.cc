@@ -13850,7 +13850,38 @@ do_warn_dangling_reference (tree expr)
 	    if (TREE_CODE (arg) == ADDR_EXPR)
 	      arg = TREE_OPERAND (arg, 0);
 	    if (expr_represents_temporary_p (arg))
-	      return expr;
+	      {
+		/* An ugly attempt to reduce the number of -Wdangling-reference
+		   false positives concerning reference wrappers (c++/107532).
+		   Don't warn about s.a().b() but do warn about S().a().b(),
+		   supposing that the member function is returning a reference
+		   to a subobject of the (non-temporary) object.  */
+		if (DECL_NONSTATIC_MEMBER_FUNCTION_P (fndecl)
+		    && !DECL_OVERLOADED_OPERATOR_P (fndecl)
+		    && i == 0)
+		  {
+		    tree t = arg;
+		    while (handled_component_p (t))
+		      t = TREE_OPERAND (t, 0);
+		    t = TARGET_EXPR_INITIAL (arg);
+		    /* Quite likely we don't have a chain of member functions
+		       (like a().b().c()).  */
+		    if (TREE_CODE (t) != CALL_EXPR)
+		      return expr;
+		    /* Walk the call chain to the original object and see if
+		       it was a temporary.  */
+		    do
+		      t = tree_strip_nop_conversions (CALL_EXPR_ARG (t, 0));
+		    while (TREE_CODE (t) == CALL_EXPR);
+		    /* If the object argument is &TARGET_EXPR<>, we've started
+		       off the chain with a temporary and we want to warn.  */
+		    if (TREE_CODE (t) == ADDR_EXPR)
+		      t = TREE_OPERAND (t, 0);
+		    if (!expr_represents_temporary_p (t))
+		      break;
+		  }
+		return expr;
+	      }
 	  /* Don't warn about member function like:
 	      std::any a(...);
 	      S& s = a.emplace<S>({0}, 0);
