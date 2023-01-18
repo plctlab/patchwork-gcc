@@ -335,22 +335,30 @@ sub gen_logical_addsubf_scalar
   my $constraint = 'r';
 
   my @logicals = ( 'and', 'andc', 'eqv', 'nand', 'nor', 'or', 'orc', 'xor' );
+
+  # logical-logical
+  foreach my $outer_op ( @logicals ) {
+    foreach my $inner_op ( @logicals ) {
+      my $exp = logical_addsubf_make_exp ($outer_op, $inner_op, $mode,
+                                          $pred, $constraint);
+      logical_addsubf_emit_define ('logical-logical', 'scalar', $outer_op,
+                                   $inner_op, $mode, $pred, $constraint,
+                                   $exp, $fuse_type);
+    }
+  }
+
   # logical ops which can fuse with add/subf/rsubf
   my @logicals2 = ( 'and', 'nand', 'nor', 'or' );
   my @add_subf = ( 'add', 'subf' );
 
-  # {logical, add}-logical
-  foreach my $outer_op ( @logicals ) {
-    foreach my $inner_op ( @logicals, @add_subf ) {
-      my $ftype = 'logical-logical';
-      if (grep (/^$inner_op$/, @add_subf)) {
-         next unless grep (/^$outer_op$/, @logicals2);
-         $ftype = 'add-logical';
-      }
+  # add-logical
+  foreach my $outer_op ( @logicals2 ) {
+    foreach my $inner_op ( @add_subf ) {
       my $exp = logical_addsubf_make_exp ($outer_op, $inner_op, $mode,
                                           $pred, $constraint);
-      logical_addsubf_emit_define ($ftype, 'scalar', $outer_op, $inner_op,
-                                   $mode, $pred, $constraint, $exp, $fuse_type);
+      logical_addsubf_emit_define ('add-logical', 'scalar', $outer_op,
+                                   $inner_op, $mode, $pred, $constraint,
+                                   $exp, $fuse_type);
     }
   }
 
