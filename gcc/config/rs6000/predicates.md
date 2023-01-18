@@ -255,6 +255,19 @@
   (and (match_code "const_int")
        (match_test "INTVAL (op) >= 0 && INTVAL (op) <= 1023")))
 
+;; Return 1 if op is a 65-128 bits constant integer.
+(define_predicate "double_wide_cint_operand"
+  (match_operand 0 "const_scalar_int_operand")
+{
+  if (CONST_INT_P (op))
+    return 0;
+
+  if (CONST_WIDE_INT_NUNITS (op) == 2)
+    return 1;
+
+  return 0;
+})
+
 ;; Return 1 if op is a constant integer that can fit in a D field.
 (define_predicate "short_cint_operand"
   (and (match_code "const_int")
