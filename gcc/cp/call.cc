@@ -13832,6 +13832,38 @@ do_warn_dangling_reference (tree expr)
 	if (!(TYPE_REF_OBJ_P (rettype) || std_pair_ref_ref_p (rettype)))
 	  return NULL_TREE;
 
+	/* An attempt to reduce the number of -Wdangling-reference
+	   false positives concerning reference wrappers (c++/107532).
+	   If the enclosing class is a reference-like class, that is, has
+	   a reference member and a constructor taking the same reference type,
+	   we suppose that the member function is returning a reference
+	   to a non-temporary object.  */
+	if (DECL_NONSTATIC_MEMBER_FUNCTION_P (fndecl)
+	    && !DECL_OVERLOADED_OPERATOR_P (fndecl))
+	  {
+	    tree ctx = CP_DECL_CONTEXT (fndecl);
+	    for (tree fields = TYPE_FIELDS (ctx);
+		 fields;
+		 fields = DECL_CHAIN (fields))
+	      {
+		if (TREE_CODE (fields) != FIELD_DECL || DECL_ARTIFICIAL (fields))
+		  continue;
+		tree type = TREE_TYPE (fields);
+		if (!TYPE_REF_P (type))
+		  continue;
+		/* OK, the field is a reference member.  Do we have
+		   a constructor taking its type?  */
+		for (tree fn : ovl_range (CLASSTYPE_CONSTRUCTORS (ctx)))
+		  {
+		    tree args = FUNCTION_FIRST_USER_PARMTYPE (fn);
+		    if (args
+			&& same_type_p (TREE_VALUE (args), type)
+			&& TREE_CHAIN (args) == void_list_node)
+		      return NULL_TREE;
+		  }
+	      }
+	  }
+
 	/* Here we're looking to see if any of the arguments is a temporary
 	   initializing a reference parameter.  */
 	for (int i = 0; i < call_expr_nargs (expr); ++i)
