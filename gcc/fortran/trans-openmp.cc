@@ -5120,6 +5120,136 @@ typedef struct dovar_init_d {
   tree init;
 } dovar_init;
 
+static bool
+gfc_nonrect_loop_expr (stmtblock_t *pblock, gfc_se *sep, int loop_n,
+		       gfc_code *code, gfc_expr *expr, vec<dovar_init> *inits)
+{
+  int i;
+  for (i = 0; i < loop_n; i++)
+    {
+      gcc_assert (code->ext.iterator->var->expr_type == EXPR_VARIABLE);
+      if (gfc_find_sym_in_expr (code->ext.iterator->var->symtree->n.sym, expr))
+	break;
+      code = code->block->next;
+    }
+  if (i >= loop_n)
+    return false;
+
+  /* Canonic format: TREE_VEC with [var, multiplier, offset].  */
+  gfc_symbol *var = code->ext.iterator->var->symtree->n.sym;
+
+  gfc_se se;
+  tree tree_var, a1, a2;
+  a1 = integer_one_node;
+  a2 = integer_zero_node;
+
+  gfc_init_se (&se, NULL);
+  gfc_conv_expr_lhs (&se, code->ext.iterator->var);
+  gfc_add_block_to_block (pblock, &se.pre);
+  tree_var = se.expr;
+
+  {
+    /* FIXME: Handle non-unity iterations, cf. PR fortran/107424.
+       The issue is that for those a 'count' variable is used.  */
+    dovar_init *di;
+    unsigned ix;
+    tree t = tree_var;
+    while (TREE_CODE (t) == INDIRECT_REF)
+      t = TREE_OPERAND (t, 0);
+    FOR_EACH_VEC_ELT (*inits, ix, di)
+      {
+	tree t2 = di->var;
+	while (TREE_CODE (t2) == INDIRECT_REF)
+	  t2 = TREE_OPERAND (t2, 0);
+	if (t == t2)
+	  {
+	    HOST_WIDE_INT intval;
+	    if (gfc_extract_hwi (code->ext.iterator->step, &intval, 0) == 0
+		&& intval != 1 && intval != -1)
+	      sorry_at (gfc_get_location (&code->loc),
+			"non-rectangular loop nest with non-unit loop iteration"
+			" step for %qs", var->name);
+	    else
+	      sorry_at (gfc_get_location (&code->loc),
+			"non-rectangular loop nest with dummy-argument or "
+			"pointer, optional or allocatable do-variable %qs",
+			var->name);
+
+	    inform (gfc_get_location (&expr->where), "Used here");
+	    return false;
+	  }
+      }
+  }
+
+  if (expr->expr_type == EXPR_VARIABLE)
+    gcc_assert (expr->symtree->n.sym == var);
+  else if (expr->expr_type != EXPR_OP
+	   || (expr->value.op.op != INTRINSIC_TIMES
+	       && expr->value.op.op != INTRINSIC_PLUS
+	       && expr->value.op.op != INTRINSIC_MINUS))
+    gcc_unreachable ();
+  else
+    {
+      gfc_expr *et = NULL, *eo = NULL, *e = expr;
+      if (expr->value.op.op != INTRINSIC_TIMES)
+	{
+	  if (gfc_find_sym_in_expr (var, expr->value.op.op1))
+	    {
+	      e = expr->value.op.op1;
+	      eo = expr->value.op.op2;
+	    }
+	  else
+	    {
+	      eo = expr->value.op.op1;
+	      e = expr->value.op.op2;
+	    }
+	}
+      if (e->value.op.op == INTRINSIC_TIMES)
+	{
+	  if (e->value.op.op1->expr_type == EXPR_VARIABLE
+	      && e->value.op.op1->symtree->n.sym == var)
+	    et = e->value.op.op2;
+	  else
+	    {
+	      et = e->value.op.op1;
+	      gcc_assert (e->value.op.op2->expr_type == EXPR_VARIABLE
+			  && e->value.op.op2->symtree->n.sym == var);
+	    }
+	}
+      else
+	gcc_assert (e->expr_type == EXPR_VARIABLE && e->symtree->n.sym == var);
+      if (et != NULL)
+	{
+	  gfc_init_se (&se, NULL);
+	  gfc_conv_expr_val (&se, et);
+	  gfc_add_block_to_block (pblock, &se.pre);
+	  a1 = se.expr;
+	}
+      if (eo != NULL)
+	{
+	  gfc_init_se (&se, NULL);
+	  gfc_conv_expr_val (&se, eo);
+	  gfc_add_block_to_block (pblock, &se.pre);
+	  a2 = se.expr;
+	  if (expr->value.op.op == INTRINSIC_MINUS && expr->value.op.op2 == eo)
+	    /* outer-var - a2.  */
+	    a2 = fold_build1 (NEGATE_EXPR, TREE_TYPE (a2), a2);
+	  else if (expr->value.op.op == INTRINSIC_MINUS)
+	    /* a2 - outer-var.  */
+	    a1 = fold_build1 (NEGATE_EXPR, TREE_TYPE (a1), a1);
+	}
+      a1 = DECL_P (a1) ? a1 : gfc_evaluate_now (a1, pblock);
+      a2 = DECL_P (a2) ? a2 : gfc_evaluate_now (a2, pblock);
+    }
+
+  gfc_init_se (sep, NULL);
+  sep->expr = make_tree_vec (3);
+  TREE_VEC_ELT (sep->expr, 0) = tree_var;
+  TREE_VEC_ELT (sep->expr, 1) = fold_convert (TREE_TYPE (tree_var), a1);
+  TREE_VEC_ELT (sep->expr, 2) = fold_convert (TREE_TYPE (tree_var), a2);
+
+  return true;
+}
 
 static tree
 gfc_trans_omp_do (gfc_code *code, gfc_exec_op op, stmtblock_t *pblock,
@@ -5219,19 +5349,35 @@ gfc_trans_omp_do (gfc_code *code, gfc_exec_op op, stmtblock_t *pblock,
       gcc_assert (TREE_CODE (type) == INTEGER_TYPE);
 
       gfc_init_se (&se, NULL);
-      gfc_conv_expr_val (&se, code->ext.iterator->start);
-      gfc_add_block_to_block (pblock, &se.pre);
-      from = gfc_evaluate_now (se.expr, pblock);
+      if (!clauses->non_rectangular
+	  || !gfc_nonrect_loop_expr (pblock, &se, i, orig_code->block->next,
+				     code->ext.iterator->start, &inits))
+	{
+	  gfc_conv_expr_val (&se, code->ext.iterator->start);
+	  gfc_add_block_to_block (pblock, &se.pre);
+	  if (!DECL_P (se.expr))
+	    se.expr = gfc_evaluate_now (se.expr, pblock);
+	}
+      from = se.expr;
 
       gfc_init_se (&se, NULL);
-      gfc_conv_expr_val (&se, code->ext.iterator->end);
-      gfc_add_block_to_block (pblock, &se.pre);
-      to = gfc_evaluate_now (se.expr, pblock);
+      if (!clauses->non_rectangular
+	  || !gfc_nonrect_loop_expr (pblock, &se, i, orig_code->block->next,
+				     code->ext.iterator->end, &inits))
+	{
+	  gfc_conv_expr_val (&se, code->ext.iterator->end);
+	  gfc_add_block_to_block (pblock, &se.pre);
+	  if (!DECL_P (se.expr))
+	    se.expr = gfc_evaluate_now (se.expr, pblock);
+	}
+      to = se.expr;
 
       gfc_init_se (&se, NULL);
       gfc_conv_expr_val (&se, code->ext.iterator->step);
       gfc_add_block_to_block (pblock, &se.pre);
-      step = gfc_evaluate_now (se.expr, pblock);
+      if (!DECL_P (se.expr))
+	se.expr = gfc_evaluate_now (se.expr, pblock);
+      step = se.expr;
       dovar_decl = dovar;
 
       /* Special case simple loops.  */
@@ -5331,9 +5477,9 @@ gfc_trans_omp_do (gfc_code *code, gfc_exec_op op, stmtblock_t *pblock,
 	      OMP_CLAUSE_LINEAR_NO_COPYIN (tmp) = 1;
 	      OMP_CLAUSE_DECL (tmp) = dovar_decl;
 	      omp_clauses = gfc_trans_add_clause (tmp, omp_clauses);
+	      if (!simple)
+		dovar_found = 3;
 	    }
-	  if (!simple)
-	    dovar_found = 3;
 	}
       else if (!dovar_found && !simple)
 	{
@@ -5367,9 +5513,8 @@ gfc_trans_omp_do (gfc_code *code, gfc_exec_op op, stmtblock_t *pblock,
 		}
 	      else
 		{
-		  tmp = gfc_evaluate_now (step, pblock);
 		  tmp = fold_build2_loc (input_location, PLUS_EXPR, type,
-					 dovar, tmp);
+					 dovar, step);
 		}
 	      tmp = fold_build2_loc (input_location, MODIFY_EXPR, type,
 				     dovar, tmp);
