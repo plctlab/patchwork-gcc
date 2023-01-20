@@ -33,8 +33,8 @@ along with GCC; see the file COPYING3.  If not see
 #include "dominance.h"
 
 static const char *kind_string[VREL_LAST] =
-{ "varying", "undefined", "<", "<=", ">", ">=", "==", "!=", "pe8", "pe16",
-  "pe32", "pe64" };
+{ "varying", "undefined", "<", "<=", ">", ">=", "==", "!=", "unknown fp",
+  "pe8", "pe16", "pe32", "pe64" };
 
 // Print a relation_kind REL to file F.
 
@@ -47,7 +47,7 @@ print_relation (FILE *f, relation_kind rel)
 // This table is used to negate the operands.  op1 REL op2 -> !(op1 REL op2).
 relation_kind rr_negate_table[VREL_LAST] = {
   VREL_VARYING, VREL_UNDEFINED, VREL_GE, VREL_GT, VREL_LE, VREL_LT, VREL_NE,
-  VREL_EQ };
+  VREL_EQ, VREL_OTHER };
 
 // Negate the relation, as in logical negation.
 
@@ -60,7 +60,7 @@ relation_negate (relation_kind r)
 // This table is used to swap the operands.  op1 REL op2 -> op2 REL op1.
 relation_kind rr_swap_table[VREL_LAST] = {
   VREL_VARYING, VREL_UNDEFINED, VREL_GT, VREL_GE, VREL_LT, VREL_LE, VREL_EQ,
-  VREL_NE };
+  VREL_NE, VREL_OTHER };
 
 // Return the relation as if the operands were swapped.
 
@@ -75,28 +75,32 @@ relation_swap (relation_kind r)
 relation_kind rr_intersect_table[VREL_LAST][VREL_LAST] = {
 // VREL_VARYING
   { VREL_VARYING, VREL_UNDEFINED, VREL_LT, VREL_LE, VREL_GT, VREL_GE, VREL_EQ,
-    VREL_NE },
+    VREL_NE, VREL_OTHER },
 // VREL_UNDEFINED
   { VREL_UNDEFINED, VREL_UNDEFINED, VREL_UNDEFINED, VREL_UNDEFINED,
-    VREL_UNDEFINED, VREL_UNDEFINED, VREL_UNDEFINED, VREL_UNDEFINED },
+    VREL_UNDEFINED, VREL_UNDEFINED, VREL_UNDEFINED, VREL_UNDEFINED,
+    VREL_UNDEFINED },
 // VREL_LT
   { VREL_LT, VREL_UNDEFINED, VREL_LT, VREL_LT, VREL_UNDEFINED, VREL_UNDEFINED,
-    VREL_UNDEFINED, VREL_LT },
+    VREL_UNDEFINED, VREL_LT, VREL_OTHER },
 // VREL_LE
   { VREL_LE, VREL_UNDEFINED, VREL_LT, VREL_LE, VREL_UNDEFINED, VREL_EQ,
-    VREL_EQ, VREL_LT },
+    VREL_EQ, VREL_LT, VREL_OTHER },
 // VREL_GT
   { VREL_GT, VREL_UNDEFINED, VREL_UNDEFINED, VREL_UNDEFINED, VREL_GT, VREL_GT,
-    VREL_UNDEFINED, VREL_GT },
+    VREL_UNDEFINED, VREL_GT, VREL_OTHER },
 // VREL_GE
   { VREL_GE, VREL_UNDEFINED, VREL_UNDEFINED, VREL_EQ, VREL_GT, VREL_GE,
-    VREL_EQ, VREL_GT },
+    VREL_EQ, VREL_GT, VREL_OTHER },
 // VREL_EQ
   { VREL_EQ, VREL_UNDEFINED, VREL_UNDEFINED, VREL_EQ, VREL_UNDEFINED, VREL_EQ,
-    VREL_EQ, VREL_UNDEFINED },
+    VREL_EQ, VREL_UNDEFINED, VREL_OTHER },
 // VREL_NE
   { VREL_NE, VREL_UNDEFINED, VREL_LT, VREL_LT, VREL_GT, VREL_GT,
-    VREL_UNDEFINED, VREL_NE } };
+    VREL_UNDEFINED, VREL_NE, VREL_OTHER },
+// VREL_OTHER
+  { VREL_OTHER, VREL_UNDEFINED, VREL_OTHER, VREL_OTHER, VREL_OTHER,
+    VREL_OTHER, VREL_OTHER, VREL_OTHER, VREL_OTHER } };
 
 
 // Intersect relation R1 with relation R2 and return the resulting relation.
@@ -113,28 +117,31 @@ relation_intersect (relation_kind r1, relation_kind r2)
 relation_kind rr_union_table[VREL_LAST][VREL_LAST] = {
 // VREL_VARYING
   { VREL_VARYING, VREL_VARYING, VREL_VARYING, VREL_VARYING, VREL_VARYING,
-    VREL_VARYING, VREL_VARYING, VREL_VARYING },
+    VREL_VARYING, VREL_VARYING, VREL_VARYING, VREL_VARYING },
 // VREL_UNDEFINED
   { VREL_VARYING, VREL_UNDEFINED, VREL_LT, VREL_LE, VREL_GT, VREL_GE,
-    VREL_EQ, VREL_NE },
+    VREL_EQ, VREL_NE, VREL_OTHER },
 // VREL_LT
   { VREL_VARYING, VREL_LT, VREL_LT, VREL_LE, VREL_NE, VREL_VARYING, VREL_LE,
-    VREL_NE },
+    VREL_NE, VREL_OTHER },
 // VREL_LE
   { VREL_VARYING, VREL_LE, VREL_LE, VREL_LE, VREL_VARYING, VREL_VARYING,
-    VREL_LE, VREL_VARYING },
+    VREL_LE, VREL_VARYING, VREL_OTHER },
 // VREL_GT
   { VREL_VARYING, VREL_GT, VREL_NE, VREL_VARYING, VREL_GT, VREL_GE, VREL_GE,
-    VREL_NE },
+    VREL_NE, VREL_OTHER },
 // VREL_GE
   { VREL_VARYING, VREL_GE, VREL_VARYING, VREL_VARYING, VREL_GE, VREL_GE,
-    VREL_GE, VREL_VARYING },
+    VREL_GE, VREL_VARYING, VREL_OTHER },
 // VREL_EQ
   { VREL_VARYING, VREL_EQ, VREL_LE, VREL_LE, VREL_GE, VREL_GE, VREL_EQ,
-    VREL_VARYING },
+    VREL_VARYING, VREL_OTHER },
 // VREL_NE
   { VREL_VARYING, VREL_NE, VREL_NE, VREL_VARYING, VREL_NE, VREL_VARYING,
-    VREL_VARYING, VREL_NE } };
+    VREL_VARYING, VREL_NE, VREL_OTHER },
+// VREL_OTHER
+  { VREL_VARYING, VREL_OTHER, VREL_OTHER, VREL_OTHER, VREL_OTHER,
+    VREL_OTHER, VREL_OTHER, VREL_OTHER, VREL_OTHER } };
 
 // Union relation R1 with relation R2 and return the result.
 
@@ -151,28 +158,31 @@ relation_union (relation_kind r1, relation_kind r2)
 relation_kind rr_transitive_table[VREL_LAST][VREL_LAST] = {
 // VREL_VARYING
   { VREL_VARYING, VREL_VARYING, VREL_VARYING, VREL_VARYING, VREL_VARYING,
-    VREL_VARYING, VREL_VARYING, VREL_VARYING },
+    VREL_VARYING, VREL_VARYING, VREL_VARYING, VREL_VARYING },
 // VREL_UNDEFINED
   { VREL_VARYING, VREL_VARYING, VREL_VARYING, VREL_VARYING, VREL_VARYING,
-    VREL_VARYING, VREL_VARYING, VREL_VARYING },
+    VREL_VARYING, VREL_VARYING, VREL_VARYING, VREL_VARYING },
 // VREL_LT
   { VREL_VARYING, VREL_VARYING, VREL_LT, VREL_LT, VREL_VARYING, VREL_VARYING,
-    VREL_LT, VREL_VARYING },
+    VREL_LT, VREL_VARYING, VREL_VARYING },
 // VREL_LE
   { VREL_VARYING, VREL_VARYING, VREL_LT, VREL_LE, VREL_VARYING, VREL_VARYING,
-    VREL_LE, VREL_VARYING },
+    VREL_LE, VREL_VARYING, VREL_VARYING },
 // VREL_GT
   { VREL_VARYING, VREL_VARYING, VREL_VARYING, VREL_VARYING, VREL_GT, VREL_GT,
-    VREL_GT, VREL_VARYING },
+    VREL_GT, VREL_VARYING, VREL_VARYING },
 // VREL_GE
   { VREL_VARYING, VREL_VARYING, VREL_VARYING, VREL_VARYING, VREL_GT, VREL_GE,
-    VREL_GE, VREL_VARYING },
+    VREL_GE, VREL_VARYING, VREL_VARYING },
 // VREL_EQ
   { VREL_VARYING, VREL_VARYING, VREL_LT, VREL_LE, VREL_GT, VREL_GE, VREL_EQ,
-    VREL_VARYING },
+    VREL_VARYING, VREL_VARYING },
 // VREL_NE
   { VREL_VARYING, VREL_VARYING, VREL_VARYING, VREL_VARYING, VREL_VARYING,
-    VREL_VARYING, VREL_VARYING, VREL_VARYING } };
+    VREL_VARYING, VREL_VARYING, VREL_VARYING, VREL_VARYING },
+// VREL_OTHER
+  { VREL_VARYING, VREL_VARYING, VREL_VARYING, VREL_VARYING, VREL_VARYING,
+    VREL_VARYING, VREL_VARYING, VREL_VARYING, VREL_VARYING } };
 
 // Apply transitive operation between relation R1 and relation R2, and
 // return the resulting relation, if any.
@@ -187,7 +197,7 @@ relation_transitive (relation_kind r1, relation_kind r2)
 
 tree_code relation_to_code [VREL_LAST] = {
   ERROR_MARK, ERROR_MARK, LT_EXPR, LE_EXPR, GT_EXPR, GE_EXPR, EQ_EXPR,
-  NE_EXPR };
+  NE_EXPR, ERROR_MARK };
 
 // This routine validates that a relation can be applied to a specific set of
 // ranges.  In particular, floating point x == x may not be true if the NaN bit
@@ -784,17 +794,28 @@ value_relation::negate ()
 bool
 value_relation::intersect (const value_relation &p)
 {
-  // Save previous value
-  relation_kind old = related;
+  relation_kind k;
 
   if (p.op1 () == op1 () && p.op2 () == op2 ())
-    related = relation_intersect (kind (), p.kind ());
+    k = relation_intersect (kind (), p.kind ());
   else if (p.op2 () == op1 () && p.op1 () == op2 ())
-    related = relation_intersect (kind (), relation_swap (p.kind ()));
+    k = relation_intersect (kind (), relation_swap (p.kind ()));
   else
     return false;
 
-  return old != related;
+  if (related == k)
+    return false;
+
+  bool float_p = name1 && FLOAT_TYPE_P (TREE_TYPE (name1));
+  if (float_p && p.kind () != k && k == VREL_UNDEFINED)
+    {
+      if (relation_lt_le_gt_ge_p (kind ())
+	  || relation_lt_le_gt_ge_p (p.kind ()))
+	k = VREL_OTHER;
+    }
+
+  related = k;
+  return true;
 }
 
 // Perform a union between 2 relations. *this ||= p.
@@ -802,17 +823,36 @@ value_relation::intersect (const value_relation &p)
 bool
 value_relation::union_ (const value_relation &p)
 {
-  // Save previous value
-  relation_kind old = related;
+  relation_kind k;
 
   if (p.op1 () == op1 () && p.op2 () == op2 ())
-    related = relation_union (kind(), p.kind());
+    k = relation_union (kind (), p.kind ());
   else if (p.op2 () == op1 () && p.op1 () == op2 ())
-    related = relation_union (kind(), relation_swap (p.kind ()));
+    k = relation_union (kind (), relation_swap (p.kind ()));
   else
     return false;
 
-  return old != related;
+  if (related == k)
+    return false;
+
+  // (x < y) || (x > y) produces x != y, but this is not true with floats.
+  // (x <= y) || (x >= y) produces VARYING, which is also not true for floats.
+  // As they cannot be properly represented, use VREL_OTHER.
+  bool float_p = name1 && FLOAT_TYPE_P (TREE_TYPE (name1));
+  if (float_p && p.kind () != k)
+    {
+      if (kind () == VREL_LT && p.kind () == VREL_GT)
+	k = VREL_OTHER;
+      else if (kind () == VREL_GT && p.kind () == VREL_LT)
+	k = VREL_OTHER;
+      else if (kind () == VREL_LE && p.kind () == VREL_GE)
+	k = VREL_OTHER;
+      else if (kind () == VREL_GE && p.kind () == VREL_LE)
+	k = VREL_OTHER;
+    }
+
+  related = k;
+  return true;
 }
 
 // Identify and apply any transitive relations between REL

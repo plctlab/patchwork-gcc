@@ -70,6 +70,7 @@ typedef enum relation_kind_t
   VREL_GE,		// r1 >= r2
   VREL_EQ,		// r1 == r2
   VREL_NE,		// r1 != r2
+  VREL_OTHER,		// unrepresentatble floating point relation.
   VREL_PE8,		// 8 bit partial equivalency
   VREL_PE16,		// 16 bit partial equivalency
   VREL_PE32,		// 32 bit partial equivalency
