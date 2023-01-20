@@ -274,8 +274,8 @@ struct function
 struct function_addrs
 {
   /* Range is LOW <= PC < HIGH.  */
-  uint64_t low;
-  uint64_t high;
+  uintptr_t low;
+  uintptr_t high;
   /* Function for this address range.  */
   struct function *function;
 };
@@ -356,8 +356,8 @@ struct unit
 struct unit_addrs
 {
   /* Range is LOW <= PC < HIGH.  */
-  uint64_t low;
-  uint64_t high;
+  uintptr_t low;
+  uintptr_t high;
   /* Compilation unit for this address range.  */
   struct unit *u;
 };
@@ -1094,7 +1094,7 @@ resolve_addr_index (const struct dwarf_sections *dwarf_sections,
 		    uint64_t addr_base, int addrsize, int is_bigendian,
 		    uint64_t addr_index,
 		    backtrace_error_callback error_callback, void *data,
-		    uint64_t *address)
+		    uintptr_t *address)
 {
   uint64_t offset;
   struct dwarf_buf addr_buf;
@@ -1194,7 +1194,7 @@ function_addrs_search (const void *vkey, const void *ventry)
 
 static int
 add_unit_addr (struct backtrace_state *state, void *rdata,
-	       uint64_t lowpc, uint64_t highpc,
+	       uintptr_t lowpc, uintptr_t highpc,
 	       backtrace_error_callback error_callback, void *data,
 	       void *pvec)
 {
@@ -1530,10 +1530,10 @@ lookup_abbrev (struct abbrevs *abbrevs, uint64_t code,
    lowpc/highpc is set or ranges is set.  */
 
 struct pcrange {
-  uint64_t lowpc;		/* The low PC value.  */
+  uintptr_t lowpc;		/* The low PC value.  */
   int have_lowpc;		/* Whether a low PC value was found.  */
   int lowpc_is_addr_index;	/* Whether lowpc is in .debug_addr.  */
-  uint64_t highpc;		/* The high PC value.  */
+  uintptr_t highpc;		/* The high PC value.  */
   int have_highpc;		/* Whether a high PC value was found.  */
   int highpc_is_relative;	/* Whether highpc is relative to lowpc.  */
   int highpc_is_addr_index;	/* Whether highpc is in .debug_addr.  */
@@ -1613,16 +1613,16 @@ add_low_high_range (struct backtrace_state *state,
 		    uintptr_t base_address, int is_bigendian,
 		    struct unit *u, const struct pcrange *pcrange,
 		    int (*add_range) (struct backtrace_state *state,
-				      void *rdata, uint64_t lowpc,
-				      uint64_t highpc,
+				      void *rdata, uintptr_t lowpc,
+				      uintptr_t highpc,
 				      backtrace_error_callback error_callback,
 				      void *data, void *vec),
 		    void *rdata,
 		    backtrace_error_callback error_callback, void *data,
 		    void *vec)
 {
-  uint64_t lowpc;
-  uint64_t highpc;
+  uintptr_t lowpc;
+  uintptr_t highpc;
 
   lowpc = pcrange->lowpc;
   if (pcrange->lowpc_is_addr_index)
@@ -1663,7 +1663,7 @@ add_ranges_from_ranges (
     struct unit *u, uint64_t base,
     const struct pcrange *pcrange,
     int (*add_range) (struct backtrace_state *state, void *rdata,
-		      uint64_t lowpc, uint64_t highpc,
+		      uintptr_t lowpc, uintptr_t highpc,
 		      backtrace_error_callback error_callback, void *data,
 		      void *vec),
     void *rdata,
@@ -1727,10 +1727,10 @@ add_ranges_from_rnglists (
     struct backtrace_state *state,
     const struct dwarf_sections *dwarf_sections,
     uintptr_t base_address, int is_bigendian,
-    struct unit *u, uint64_t base,
+    struct unit *u, uintptr_t base,
     const struct pcrange *pcrange,
     int (*add_range) (struct backtrace_state *state, void *rdata,
-		      uint64_t lowpc, uint64_t highpc,
+		      uintptr_t lowpc, uintptr_t highpc,
 		      backtrace_error_callback error_callback, void *data,
 		      void *vec),
     void *rdata,
@@ -1796,8 +1796,8 @@ add_ranges_from_rnglists (
 	case DW_RLE_startx_endx:
 	  {
 	    uint64_t index;
-	    uint64_t low;
-	    uint64_t high;
+	    uintptr_t low;
+	    uintptr_t high;
 
 	    index = read_uleb128 (&rnglists_buf);
 	    if (!resolve_addr_index (dwarf_sections, u->addr_base,
@@ -1819,8 +1819,8 @@ add_ranges_from_rnglists (
 	case DW_RLE_startx_length:
 	  {
 	    uint64_t index;
-	    uint64_t low;
-	    uint64_t length;
+	    uintptr_t low;
+	    uintptr_t length;
 
 	    index = read_uleb128 (&rnglists_buf);
 	    if (!resolve_addr_index (dwarf_sections, u->addr_base,
@@ -1905,7 +1905,7 @@ add_ranges (struct backtrace_state *state,
 	    uintptr_t base_address, int is_bigendian,
 	    struct unit *u, uint64_t base, const struct pcrange *pcrange,
 	    int (*add_range) (struct backtrace_state *state, void *rdata, 
-			      uint64_t lowpc, uint64_t highpc,
+			      uintptr_t lowpc, uintptr_t highpc,
 			      backtrace_error_callback error_callback,
 			      void *data, void *vec),
 	    void *rdata,
@@ -3183,7 +3183,7 @@ read_referenced_name (struct dwarf_data *ddata, struct unit *u,
 
 static int
 add_function_range (struct backtrace_state *state, void *rdata,
-		    uint64_t lowpc, uint64_t highpc,
+		    uintptr_t lowpc, uintptr_t highpc,
 		    backtrace_error_callback error_callback, void *data,
 		    void *pvec)
 {
@@ -3223,7 +3223,7 @@ add_function_range (struct backtrace_state *state, void *rdata,
 
 static int
 read_function_entry (struct backtrace_state *state, struct dwarf_data *ddata,
-		     struct unit *u, uint64_t base, struct dwarf_buf *unit_buf,
+		     struct unit *u, uintptr_t base, struct dwarf_buf *unit_buf,
 		     const struct line_header *lhdr,
 		     backtrace_error_callback error_callback, void *data,
 		     struct function_vector *vec_function,
