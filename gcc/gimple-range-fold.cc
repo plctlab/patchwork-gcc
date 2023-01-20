@@ -1039,14 +1039,6 @@ fold_using_range::relation_fold_and_or (irange& lhs_range, gimple *s,
   if (!ssa1_dep1 || !ssa1_dep2 || !ssa2_dep1 || !ssa2_dep2)
     return;
 
-  // Make sure they are the same dependencies, and detect the order of the
-  // relationship.
-  bool reverse_op2 = true;
-  if (ssa1_dep1 == ssa2_dep1 && ssa1_dep2 == ssa2_dep2)
-    reverse_op2 = false;
-  else if (ssa1_dep1 != ssa2_dep2 || ssa1_dep2 != ssa2_dep1)
-    return;
-
   int_range<2> bool_one (boolean_true_node, boolean_true_node);
 
   relation_kind relation1 = handler1.op1_op2_relation (bool_one);
@@ -1054,15 +1046,16 @@ fold_using_range::relation_fold_and_or (irange& lhs_range, gimple *s,
   if (relation1 == VREL_VARYING || relation2 == VREL_VARYING)
     return;
 
-  if (reverse_op2)
-    relation2 = relation_negate (relation2);
+  value_relation vr1 (relation1, ssa1_dep1, ssa1_dep2);
+  value_relation vr2 (relation2, ssa2_dep1, ssa2_dep2);
 
+  // Only one of the follwoing intersection/unions is performed.
   // x && y is false if the relation intersection of the true cases is NULL.
-  if (is_and && relation_intersect (relation1, relation2) == VREL_UNDEFINED)
+  if (is_and && vr1.intersect (vr2) && vr1.kind () == VREL_UNDEFINED)
     lhs_range = int_range<2> (boolean_false_node, boolean_false_node);
   // x || y is true if the union of the true cases is NO-RELATION..
   // ie, one or the other being true covers the full range of possibilties.
-  else if (!is_and && relation_union (relation1, relation2) == VREL_VARYING)
+  else if (!is_and && vr1.union_ (vr2) && vr1.kind () == VREL_VARYING)
     lhs_range = bool_one;
   else
     return;

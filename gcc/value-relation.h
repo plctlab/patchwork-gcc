@@ -426,8 +426,8 @@ public:
   inline tree op1 () const { return name1; }
   inline tree op2 () const { return name2; }
 
-  bool union_ (value_relation &p);
-  bool intersect (value_relation &p);
+  bool union_ (const value_relation &p);
+  bool intersect (const value_relation &p);
   void negate ();
   bool apply_transitive (const value_relation &rel);
 

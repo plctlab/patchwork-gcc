@@ -782,7 +782,7 @@ value_relation::negate ()
 // Perform an intersection between 2 relations. *this &&= p.
 
 bool
-value_relation::intersect (value_relation &p)
+value_relation::intersect (const value_relation &p)
 {
   // Save previous value
   relation_kind old = related;
@@ -800,7 +800,7 @@ value_relation::intersect (value_relation &p)
 // Perform a union between 2 relations. *this ||= p.
 
 bool
-value_relation::union_ (value_relation &p)
+value_relation::union_ (const value_relation &p)
 {
   // Save previous value
   relation_kind old = related;
@@ -1118,8 +1118,7 @@ dom_oracle::set_one_relation (basic_block bb, relation_kind k, tree op1,
       // will be the aggregate of all the previous ones.
       curr = find_relation_dom (bb, v1, v2);
       if (curr != VREL_VARYING)
-	k = relation_intersect (curr, k);
-
+	vr.intersect (value_relation (curr, op1, op2));
       bitmap_set_bit (bm, v1);
       bitmap_set_bit (bm, v2);
       bitmap_set_bit (m_relation_set, v1);
@@ -1127,7 +1126,7 @@ dom_oracle::set_one_relation (basic_block bb, relation_kind k, tree op1,
 
       ptr = (relation_chain *) obstack_alloc (&m_chain_obstack,
 					      sizeof (relation_chain));
-      ptr->set_relation (k, op1, op2);
+      ptr->set_relation (vr.kind (), op1, op2);
       ptr->m_next = m_relations[bbi].m_head;
       m_relations[bbi].m_head = ptr;
     }
@@ -1528,9 +1527,9 @@ path_oracle::register_relation (basic_block bb, relation_kind k, tree ssa1,
   if (ssa1 == ssa2)
     return;
 
+  value_relation vr (k, ssa1, ssa2);
   if (dump_file && (dump_flags & TDF_DETAILS))
     {
-      value_relation vr (k, ssa1, ssa2);
       fprintf (dump_file, " Registering value_relation (path_oracle) ");
       vr.dump (dump_file);
       fprintf (dump_file, " (root: bb%d)\n", bb->index);
@@ -1538,9 +1537,9 @@ path_oracle::register_relation (basic_block bb, relation_kind k, tree ssa1,
 
   relation_kind curr = query_relation (bb, ssa1, ssa2);
   if (curr != VREL_VARYING)
-    k = relation_intersect (curr, k);
+    vr.intersect (value_relation (curr, ssa1, ssa2));
 
-  if (k == VREL_EQ)
+  if (vr.kind () == VREL_EQ)
     {
       register_equiv (bb, ssa1, ssa2);
       return;
@@ -1550,7 +1549,7 @@ path_oracle::register_relation (basic_block bb, relation_kind k, tree ssa1,
   bitmap_set_bit (m_relations.m_names, SSA_NAME_VERSION (ssa2));
   relation_chain *ptr = (relation_chain *) obstack_alloc (&m_chain_obstack,
 						      sizeof (relation_chain));
-  ptr->set_relation (k, ssa1, ssa2);
+  ptr->set_relation (vr.kind (), ssa1, ssa2);
   ptr->m_next = m_relations.m_head;
   m_relations.m_head = ptr;
 }
