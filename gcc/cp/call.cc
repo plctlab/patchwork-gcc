@@ -13777,6 +13777,45 @@ std_pair_ref_ref_p (tree t)
   return true;
 }
 
+/* Return true if a class CTYPE is either std::reference_wrapper or
+   std::ref_view, or a reference wrapper class.  We consider a class
+   a reference wrapper class if it has a reference member and a
+   constructor taking the same reference type.  */
+
+static bool
+reference_like_class_p (tree ctype)
+{
+  tree tdecl = TYPE_NAME (TYPE_MAIN_VARIANT (ctype));
+  if (decl_in_std_namespace_p (tdecl))
+    {
+      tree name = DECL_NAME (tdecl);
+      return (name
+	      && (id_equal (name, "reference_wrapper")
+		  || id_equal (name, "ref_view")));
+    }
+  for (tree fields = TYPE_FIELDS (ctype);
+       fields;
+       fields = DECL_CHAIN (fields))
+    {
+      if (TREE_CODE (fields) != FIELD_DECL || DECL_ARTIFICIAL (fields))
+	continue;
+      tree type = TREE_TYPE (fields);
+      if (!TYPE_REF_P (type))
+	continue;
+      /* OK, the field is a reference member.  Do we have a constructor
+	 taking its type?  */
+      for (tree fn : ovl_range (CLASSTYPE_CONSTRUCTORS (ctype)))
+	{
+	  tree args = FUNCTION_FIRST_USER_PARMTYPE (fn);
+	  if (args
+	      && same_type_p (TREE_VALUE (args), type)
+	      && TREE_CHAIN (args) == void_list_node)
+	    return true;
+	}
+    }
+  return false;
+}
+
 /* Helper for maybe_warn_dangling_reference to find a problematic CALL_EXPR
    that initializes the LHS (and at least one of its arguments represents
    a temporary, as outlined in maybe_warn_dangling_reference), or NULL_TREE
@@ -13830,6 +13869,15 @@ do_warn_dangling_reference (tree expr)
 	   which also creates a dangling reference, because std::minmax
 	   returns std::pair<const T&, const T&>(b, a).  */
 	if (!(TYPE_REF_OBJ_P (rettype) || std_pair_ref_ref_p (rettype)))
+	  return NULL_TREE;
+
+	/* An attempt to reduce the number of -Wdangling-reference
+	   false positives concerning reference wrappers (c++/107532).
+	   Here we suppose that a member function of such a reference
+	   wrapper class returns a reference to a non-temporary object.  */
+	if (DECL_NONSTATIC_MEMBER_FUNCTION_P (fndecl)
+	    && !DECL_OVERLOADED_OPERATOR_P (fndecl)
+	    && reference_like_class_p (CP_DECL_CONTEXT (fndecl)))
 	  return NULL_TREE;
 
 	/* Here we're looking to see if any of the arguments is a temporary
