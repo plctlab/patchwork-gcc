@@ -33,15 +33,30 @@ MA 02111-1307, USA. */
 #define MAX(h,i) ((h) > (i) ? (h) : (i))
 #endif
 
-#define BITS_PER_MP_LIMB (__SIZEOF_LONG__ * __CHAR_BIT__)
-#define BYTES_PER_MP_LIMB (BITS_PER_MP_LIMB / __CHAR_BIT__)
-typedef unsigned long int	mp_limb_t;
-typedef long int		mp_limb_signed_t;
+#ifdef __MINGW32__
+  /* for MinGW targets the Microsoft ABI requires that `long`
+     types will always have 32 bit, because of that we will use
+     `int32_t` for 32-bit builds and `int64_t` for 64-bit builds */
+# if __x86_64__
+   typedef          long long int mp_limb_signed_t;
+   typedef unsigned long long int mp_limb_t;
+#  define BITS_PER_MP_LIMB (__SIZEOF_LONG_LONG__ * __CHAR_BIT__)
+# else // !__x86_64__
+   typedef          long int mp_limb_signed_t;
+   typedef unsigned long int mp_limb_t;
+#  define BITS_PER_MP_LIMB (__SIZEOF_LONG__ * __CHAR_BIT__)
+# endif // __x86_64__
+#else // !__MINGW32__
+  typedef          long int mp_limb_signed_t;
+  typedef unsigned long int mp_limb_t;
+# define BITS_PER_MP_LIMB (__SIZEOF_LONG__ * __CHAR_BIT__)
+#endif // __MINGW32__
 
-typedef mp_limb_t *             mp_ptr;
-typedef const mp_limb_t *	mp_srcptr;
-typedef long int                mp_size_t;
-typedef long int                mp_exp_t;
+#define BYTES_PER_MP_LIMB (BITS_PER_MP_LIMB / __CHAR_BIT__)
+typedef long int                  mp_size_t;
+typedef long int                  mp_exp_t;
+typedef mp_limb_t                *mp_ptr;
+typedef const mp_limb_t          *mp_srcptr;
 
 /* Define stuff for longlong.h.  */
 typedef unsigned int UQItype	__attribute__ ((mode (QI)));
