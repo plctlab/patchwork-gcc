@@ -4076,6 +4076,11 @@ match_variable (gfc_expr **result, int equiv_flag, int host_flag)
 	  gfc_error ("Named constant at %C in an EQUIVALENCE");
 	  return MATCH_ERROR;
 	}
+      if (gfc_in_match_data())
+	{
+	  gfc_error ("PARAMETER %qs shall not appear in a DATA statement at %C",
+		      sym->name);
+	}
       /* Otherwise this is checked for and an error given in the
 	 variable definition context checks.  */
       break;
