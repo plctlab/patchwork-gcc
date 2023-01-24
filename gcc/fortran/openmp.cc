@@ -9056,7 +9056,9 @@ gfc_resolve_omp_do_blocks (gfc_code *code, gfc_namespace *ns)
 	}
       if (i < omp_current_do_collapse || omp_current_do_collapse <= 0)
 	omp_current_do_collapse = 1;
-      if (code->ext.omp_clauses->lists[OMP_LIST_REDUCTION_INSCAN])
+      if (code->op == EXEC_OMP_LOOP)
+	;  /* Already rejected in resolve_omp_clauses.  */
+      else if (code->ext.omp_clauses->lists[OMP_LIST_REDUCTION_INSCAN])
 	{
 	  locus *loc
 	    = &code->ext.omp_clauses->lists[OMP_LIST_REDUCTION_INSCAN]->where;
@@ -9224,6 +9226,7 @@ gfc_resolve_do_iterator (gfc_code *code, gfc_symbol *sym, bool add_clause)
 
       p = gfc_get_omp_namelist ();
       p->sym = sym;
+      p->where = omp_current_ctx->code->loc;
       p->next = omp_clauses->lists[OMP_LIST_PRIVATE];
       omp_clauses->lists[OMP_LIST_PRIVATE] = p;
     }
