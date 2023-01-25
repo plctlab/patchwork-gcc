@@ -158,6 +158,10 @@ struct _cpp_strbuf
    encoded as any of DF 80, E0 9F 80, F0 80 9F 80, F8 80 80 9F 80, or
    FC 80 80 80 9F 80.  Only the first is valid.
 
+   Additionally, Unicode declares that all codepoints above 0010FFFF are
+   invalid because they cannot be represented in UTF-16. As such, all 5- and
+   6-byte encodings are invalid.
+
    An implementation note: the transformation from UTF-16 to UTF-8, or
    vice versa, is easiest done by using UTF-32 as an intermediary.  */
 
@@ -216,7 +220,7 @@ one_utf8_to_cppchar (const uchar **inbufp, size_t *inbytesleftp,
   if (c <= 0x3FFFFFF && nbytes > 5) return EILSEQ;
 
   /* Make sure the character is valid.  */
-  if (c > 0x7FFFFFFF || (c >= 0xD800 && c <= 0xDFFF)) return EILSEQ;
+  if (c > 0x10FFFF || (c >= 0xD800 && c <= 0xDFFF)) return EILSEQ;
 
   *cp = c;
   *inbufp = inbuf;
@@ -320,7 +324,7 @@ one_utf32_to_utf8 (iconv_t bigend, const uchar **inbufp, size_t *inbytesleftp,
   s += inbuf[bigend ? 2 : 1] << 8;
   s += inbuf[bigend ? 3 : 0];
 
-  if (s >= 0x7FFFFFFF || (s >= 0xD800 && s <= 0xDFFF))
+  if (s > 0x10FFFF || (s >= 0xD800 && s <= 0xDFFF))
     return EILSEQ;
 
   rval = one_cppchar_to_utf8 (s, outbufp, outbytesleftp);
