@@ -18843,14 +18843,18 @@ set_defining_module (tree decl)
 }
 
 void
-set_originating_module (tree decl, bool friend_p ATTRIBUTE_UNUSED)
+set_originating_module (tree decl, bool friend_p /* = false */)
 {
   set_instantiating_module (decl);
 
   if (!DECL_NAMESPACE_SCOPE_P (decl))
     return;
 
-  gcc_checking_assert (friend_p || decl == get_originating_module_decl (decl));
+  if (!friend_p)
+    {
+      tree o = get_originating_module_decl (decl);
+      gcc_checking_assert (STRIP_TEMPLATE (o) == decl);
+    }
 
   if (module_attach_p ())
     {

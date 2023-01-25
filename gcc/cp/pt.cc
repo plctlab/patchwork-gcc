@@ -11520,6 +11520,9 @@ tsubst_friend_class (tree friend_tmpl, tree args)
 	  CLASSTYPE_TI_ARGS (TREE_TYPE (tmpl))
 	    = INNERMOST_TEMPLATE_ARGS (CLASSTYPE_TI_ARGS (TREE_TYPE (tmpl)));
 
+	  DECL_UNINSTANTIATED_TEMPLATE_FRIEND_P (tmpl) = false;
+	  set_originating_module (DECL_TEMPLATE_RESULT (tmpl));
+
 	  /* Substitute into and set the constraints on the new declaration.  */
 	  if (tree ci = get_constraints (friend_tmpl))
 	    {
