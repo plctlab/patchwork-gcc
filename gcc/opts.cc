@@ -2246,7 +2246,10 @@ parse_sanitizer_options (const char *p, location_t loc, int scode,
 		  flags |= sanitizer_opts[i].flag;
 	      }
 	    else
-	      flags &= ~sanitizer_opts[i].flag;
+	      /* Don't clear SANITIZE_ADDRESS if it was previously set;
+		 -fsanitize=address -fno-sanitize=kernel-address should
+		 leave SANITIZE_ADDRESS set.  */
+	      flags &= (~sanitizer_opts[i].flag | SANITIZE_ADDRESS);
 	    found = true;
 	    break;
 	  }
