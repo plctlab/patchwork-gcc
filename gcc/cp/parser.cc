@@ -13209,7 +13209,8 @@ cp_parser_selection_statement (cp_parser* parser, bool *if_p,
 	    /* Add the condition.  */
 	    condition = finish_if_stmt_cond (condition, statement);
 
-	    if (warn_duplicated_cond)
+	    if (warn_duplicated_cond
+		&& !instantiation_dependent_expression_p (condition))
 	      warn_duplicated_cond_add_or_warn (token->location, condition,
 						&chain);
 
