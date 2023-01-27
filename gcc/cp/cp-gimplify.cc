@@ -43,12 +43,20 @@ along with GCC; see the file COPYING3.  If not see
 #include "omp-general.h"
 #include "opts.h"
 
+/* Flags for cp_fold and cp_fold_r.  */
+
+enum fold_flags {
+  ff_none = 0,
+  /* Whether we're being called from cp_fold_function.  */
+  ff_genericize = 1 << 0,
+};
+
 /* Forward declarations.  */
 
 static tree cp_genericize_r (tree *, int *, void *);
 static tree cp_fold_r (tree *, int *, void *);
 static void cp_genericize_tree (tree*, bool);
-static tree cp_fold (tree);
+static tree cp_fold (tree, fold_flags);
 
 /* Genericize a TRY_BLOCK.  */
 
@@ -996,9 +1004,8 @@ struct cp_genericize_data
 struct cp_fold_data
 {
   hash_set<tree> pset;
-  bool genericize; // called from cp_fold_function?
-
-  cp_fold_data (bool g): genericize (g) {}
+  fold_flags flags;
+  cp_fold_data (fold_flags flags): flags (flags) {}
 };
 
 static tree
@@ -1039,7 +1046,7 @@ cp_fold_r (tree *stmt_p, int *walk_subtrees, void *data_)
       break;
     }
 
-  *stmt_p = stmt = cp_fold (*stmt_p);
+  *stmt_p = stmt = cp_fold (*stmt_p, data->flags);
 
   if (data->pset.add (stmt))
     {
@@ -1119,12 +1126,12 @@ cp_fold_r (tree *stmt_p, int *walk_subtrees, void *data_)
 	 here rather than in cp_genericize to avoid problems with the invisible
 	 reference transition.  */
     case INIT_EXPR:
-      if (data->genericize)
+      if (data->flags & ff_genericize)
 	cp_genericize_init_expr (stmt_p);
       break;
 
     case TARGET_EXPR:
-      if (data->genericize)
+      if (data->flags & ff_genericize)
 	cp_genericize_target_expr (stmt_p);
 
       /* Folding might replace e.g. a COND_EXPR with a TARGET_EXPR; in
@@ -1157,7 +1164,7 @@ cp_fold_r (tree *stmt_p, int *walk_subtrees, void *data_)
 void
 cp_fold_function (tree fndecl)
 {
-  cp_fold_data data (/*genericize*/true);
+  cp_fold_data data (ff_genericize);
   cp_walk_tree (&DECL_SAVED_TREE (fndecl), cp_fold_r, &data, NULL);
 }
 
@@ -2375,7 +2382,7 @@ cp_fold_maybe_rvalue (tree x, bool rval)
 {
   while (true)
     {
-      x = cp_fold (x);
+      x = cp_fold (x, ff_none);
       if (rval)
 	x = mark_rvalue_use (x);
       if (rval && DECL_P (x)
@@ -2434,7 +2441,7 @@ cp_fully_fold_init (tree x)
   if (processing_template_decl)
     return x;
   x = cp_fully_fold (x);
-  cp_fold_data data (/*genericize*/false);
+  cp_fold_data data (ff_none);
   cp_walk_tree (&x, cp_fold_r, &data, NULL);
   return x;
 }
@@ -2469,7 +2476,7 @@ clear_fold_cache (void)
     Function returns X or its folded variant.  */
 
 static tree
-cp_fold (tree x)
+cp_fold (tree x, fold_flags flags)
 {
   tree op0, op1, op2, op3;
   tree org_x = x, r = NULL_TREE;
@@ -2490,8 +2497,11 @@ cp_fold (tree x)
   if (fold_cache == NULL)
     fold_cache = hash_map<tree, tree>::create_ggc (101);
 
-  if (tree *cached = fold_cache->get (x))
-    return *cached;
+  bool cache_p = (flags == ff_none);
+
+  if (cache_p)
+    if (tree *cached = fold_cache->get (x))
+      return *cached;
 
   uid_sensitive_constexpr_evaluation_checker c;
 
@@ -2526,7 +2536,7 @@ cp_fold (tree x)
 	     Don't create a new tree if op0 != TREE_OPERAND (x, 0), the
 	     folding of the operand should be in the caches and if in cp_fold_r
 	     it will modify it in place.  */
-	  op0 = cp_fold (TREE_OPERAND (x, 0));
+	  op0 = cp_fold (TREE_OPERAND (x, 0), flags);
 	  if (op0 == error_mark_node)
 	    x = error_mark_node;
 	  break;
@@ -2571,7 +2581,7 @@ cp_fold (tree x)
 	{
 	  tree p = maybe_undo_parenthesized_ref (x);
 	  if (p != x)
-	    return cp_fold (p);
+	    return cp_fold (p, flags);
 	}
       goto unary;
 
@@ -2763,8 +2773,8 @@ cp_fold (tree x)
     case COND_EXPR:
       loc = EXPR_LOCATION (x);
       op0 = cp_fold_rvalue (TREE_OPERAND (x, 0));
-      op1 = cp_fold (TREE_OPERAND (x, 1));
-      op2 = cp_fold (TREE_OPERAND (x, 2));
+      op1 = cp_fold (TREE_OPERAND (x, 1), flags);
+      op2 = cp_fold (TREE_OPERAND (x, 2), flags);
 
       if (TREE_CODE (TREE_TYPE (x)) == BOOLEAN_TYPE)
 	{
@@ -2854,7 +2864,7 @@ cp_fold (tree x)
 	      {
 		if (!same_type_p (TREE_TYPE (x), TREE_TYPE (r)))
 		  r = build_nop (TREE_TYPE (x), r);
-		x = cp_fold (r);
+		x = cp_fold (r, flags);
 		break;
 	      }
 	  }
@@ -2908,7 +2918,7 @@ cp_fold (tree x)
 	int m = call_expr_nargs (x);
 	for (int i = 0; i < m; i++)
 	  {
-	    r = cp_fold (CALL_EXPR_ARG (x, i));
+	    r = cp_fold (CALL_EXPR_ARG (x, i), flags);
 	    if (r != CALL_EXPR_ARG (x, i))
 	      {
 		if (r == error_mark_node)
@@ -2931,7 +2941,7 @@ cp_fold (tree x)
 
 	if (TREE_CODE (r) != CALL_EXPR)
 	  {
-	    x = cp_fold (r);
+	    x = cp_fold (r, flags);
 	    break;
 	  }
 
@@ -2944,7 +2954,15 @@ cp_fold (tree x)
 	   constant, but the call followed by an INDIRECT_REF is.  */
 	if (callee && DECL_DECLARED_CONSTEXPR_P (callee)
 	    && !flag_no_inline)
-	  r = maybe_constant_value (x);
+	  {
+	    mce_value manifestly_const_eval = mce_unknown;
+	    if (flags & ff_genericize)
+	      /* At genericization time it's safe to fold
+		 __builtin_is_constant_evaluated to false.  */
+	      manifestly_const_eval = mce_false;
+	    r = maybe_constant_value (x, /*decl=*/NULL_TREE,
+				      manifestly_const_eval);
+	  }
 	optimize = sv;
 
         if (TREE_CODE (r) != CALL_EXPR)
@@ -2971,7 +2989,7 @@ cp_fold (tree x)
 	vec<constructor_elt, va_gc> *nelts = NULL;
 	FOR_EACH_VEC_SAFE_ELT (elts, i, p)
 	  {
-	    tree op = cp_fold (p->value);
+	    tree op = cp_fold (p->value, flags);
 	    if (op != p->value)
 	      {
 		if (op == error_mark_node)
@@ -3002,7 +3020,7 @@ cp_fold (tree x)
 
 	for (int i = 0; i < n; i++)
 	  {
-	    tree op = cp_fold (TREE_VEC_ELT (x, i));
+	    tree op = cp_fold (TREE_VEC_ELT (x, i), flags);
 	    if (op != TREE_VEC_ELT (x, i))
 	      {
 		if (!changed)
@@ -3019,10 +3037,10 @@ cp_fold (tree x)
     case ARRAY_RANGE_REF:
 
       loc = EXPR_LOCATION (x);
-      op0 = cp_fold (TREE_OPERAND (x, 0));
-      op1 = cp_fold (TREE_OPERAND (x, 1));
-      op2 = cp_fold (TREE_OPERAND (x, 2));
-      op3 = cp_fold (TREE_OPERAND (x, 3));
+      op0 = cp_fold (TREE_OPERAND (x, 0), flags);
+      op1 = cp_fold (TREE_OPERAND (x, 1), flags);
+      op2 = cp_fold (TREE_OPERAND (x, 2), flags);
+      op3 = cp_fold (TREE_OPERAND (x, 3), flags);
 
       if (op0 != TREE_OPERAND (x, 0)
 	  || op1 != TREE_OPERAND (x, 1)
@@ -3050,7 +3068,7 @@ cp_fold (tree x)
       /* A SAVE_EXPR might contain e.g. (0 * i) + (0 * j), which, after
 	 folding, evaluates to an invariant.  In that case no need to wrap
 	 this folded tree with a SAVE_EXPR.  */
-      r = cp_fold (TREE_OPERAND (x, 0));
+      r = cp_fold (TREE_OPERAND (x, 0), flags);
       if (tree_invariant_p (r))
 	x = r;
       break;
@@ -3069,7 +3087,7 @@ cp_fold (tree x)
       copy_warning (x, org_x);
     }
 
-  if (!c.evaluation_restricted_p ())
+  if (cache_p && !c.evaluation_restricted_p ())
     {
       fold_cache->put (org_x, x);
       /* Prevent that we try to fold an already folded result again.  */
