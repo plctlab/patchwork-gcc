@@ -273,6 +273,10 @@ Wreturn-type
 Modula-2
 ; Documented in common.opt
 
+Wreturn-type
+Modula-2
+; Documented in common.opt
+
 Wunused-variable
 Modula-2
 ; Documented in c.opt
