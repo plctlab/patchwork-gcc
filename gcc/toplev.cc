@@ -2252,7 +2252,7 @@ toplev::main (int argc, char **argv)
 
   initialize_plugins ();
 
-  if (version_flag)
+  if (version_flag && exit_after_options)
     print_version (stderr, "", true);
 
   if (help_flag)
