@@ -317,6 +317,21 @@ fwprop_propagation::folded_to_constants_p () const
   return !(result_flags & UNSIMPLIFIED) && (result_flags & CONSTANT);
 }
 
+/* Return the inner reg if x is wrappered by some specific operation. Like
+   VEC_DUPLICATE. It can be extended to let more specific operation be
+   forwarded. */
+
+rtx
+get_inner_reg (rtx x)
+{
+  switch (GET_CODE (x))
+    {
+    case VEC_DUPLICATE:
+      return XEXP (x, 0);
+    default:
+      return x;
+    }
+}
 
 /* Return true if it is worth keeping the result of the propagation,
    false if it would increase the complexity of the pattern too much.  */
@@ -331,15 +346,17 @@ fwprop_propagation::profitable_p () const
       && (result_flags & PROFITABLE))
     return true;
 
-  if (REG_P (to))
+  rtx new_to = get_inner_reg (to);
+
+  if (REG_P (new_to))
     return true;
 
-  if (GET_CODE (to) == SUBREG
-      && REG_P (SUBREG_REG (to))
-      && !paradoxical_subreg_p (to))
+  if (GET_CODE (new_to) == SUBREG
+      && REG_P (SUBREG_REG (new_to))
+      && !paradoxical_subreg_p (new_to))
     return true;
 
-  if (CONSTANT_P (to))
+  if (CONSTANT_P (new_to))
     return true;
 
   return false;
@@ -351,6 +368,23 @@ static bool
 reg_single_def_p (rtx x)
 {
   return REG_P (x) && crtl->ssa->single_dominating_def (REGNO (x));
+}
+
+/* Check that X has a single def although wrappered with other code. */
+
+static bool
+src_single_def_p (rtx x)
+{
+  x = get_inner_reg (x);
+
+  if (GET_CODE (x) == SUBREG)
+    {
+      if (!REG_P (SUBREG_REG (x)) || paradoxical_subreg_p (x))
+	return false;
+      x = SUBREG_REG (x);
+    }
+
+  return reg_single_def_p (x);
 }
 
 /* Return true if X contains a paradoxical subreg.  */
@@ -865,15 +899,15 @@ forward_propagate_into (use_info *use, bool reg_prop_only = false)
   rtx dest = SET_DEST (def_set);
   rtx src = SET_SRC (def_set);
 
-  /* Allow propagations into a loop only for reg-to-reg copies, since
-     replacing one register by another shouldn't increase the cost.
-     Propagations from inner loop to outer loop should also be ok.  */
+  if (reg_prop_only && (!reg_single_def_p (dest) || !reg_single_def_p (src)))
+    return false;
+
+  /* Allow propagations into a loop only for simgple-src-to-reg, maybe increase
+     the cost. Propagations from inner loop to outer loop should also be ok.  */
   struct loop *def_loop = def_insn->bb ()->cfg_bb ()->loop_father;
   struct loop *use_loop = use->bb ()->cfg_bb ()->loop_father;
-  if ((reg_prop_only
-       || (def_loop != use_loop
-	   && !flow_loop_nested_p (use_loop, def_loop)))
-      && (!reg_single_def_p (dest) || !reg_single_def_p (src)))
+  if ((def_loop != use_loop && !flow_loop_nested_p (use_loop, def_loop))
+      && (!reg_single_def_p (dest) || !src_single_def_p (src)))
     return false;
 
   /* Don't substitute into a non-local goto, this confuses CFG.  */
