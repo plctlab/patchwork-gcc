@@ -2529,13 +2529,14 @@ maybe_warn_unused_local_typedefs (void)
    of COND.  */
 
 void
-warn_duplicated_cond_add_or_warn (location_t loc, tree cond, vec<tree> **chain)
+warn_duplicated_cond_add_or_warn (location_t loc, tree cond, vec<tree> **chain,
+				  bool dependent_p /*=false*/)
 {
   /* No chain has been created yet.  Do nothing.  */
   if (*chain == NULL)
     return;
 
-  if (TREE_SIDE_EFFECTS (cond))
+  if (dependent_p || TREE_SIDE_EFFECTS (cond))
     {
       /* Uh-oh!  This condition has a side-effect, thus invalidates
 	 the whole chain.  */

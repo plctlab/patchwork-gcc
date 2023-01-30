@@ -13210,8 +13210,12 @@ cp_parser_selection_statement (cp_parser* parser, bool *if_p,
 	    condition = finish_if_stmt_cond (condition, statement);
 
 	    if (warn_duplicated_cond)
-	      warn_duplicated_cond_add_or_warn (token->location, condition,
-						&chain);
+	      {
+		const bool dep
+		  = instantiation_dependent_expression_p (condition);
+		warn_duplicated_cond_add_or_warn (token->location, condition,
+						  &chain, dep);
+	      }
 
 	    /* Parse the then-clause.  */
 	    in_statement = parser->in_statement;
