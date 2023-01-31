@@ -1748,7 +1748,40 @@ Flexible array members may only appear as the last member of a
 A structure containing a flexible array member, or a union containing
 such a structure (possibly recursively), may not be a member of a
 structure or an element of an array.  (However, these uses are
-permitted by GCC as extensions.)
+permitted by GCC as extensions, see details below.)
+@end itemize
+
+GCC extension accepts a structure containing a flexible array member, or
+a union containing such a structure (possibly recursively) to be a member
+of a structure.
+
+There are two situations:
+
+@itemize @bullet
+@item
+The structure with a flexible array member is the last field of another
+structure, for example:
+
+@smallexample
+struct flex  @{ int length; char data[]; @};
+
+struct out_flex @{ int m; struct flex flex_data; @};
+@end smallexample
+
+In the above, @code{flex_data.data[]} is considered as a flexible array too.
+
+@item
+The structure with a flexible array member is the middle field of another
+structure, for example:
+
+@smallexample
+struct flex  @{ int length; char data[]; @};
+
+struct mid_flex @{ int m; struct flex flex_data; int n; @};
+@end smallexample
+
+In the above, @code{flex_data.data[]} is allowed to be extended flexibly to
+the padding. E.g, up to 4 elements.
 @end itemize
 
 Non-empty initialization of zero-length
