@@ -1326,7 +1326,7 @@ extern const struct c_omp_directive *c_omp_categorize_directive (const char *,
 								 const char *);
 
 /* Return next tree in the chain for chain_next walking of tree nodes.  */
-static inline tree
+inline tree
 c_tree_chain_next (tree t)
 {
   /* TREE_CHAIN of a type is TYPE_STUB_DECL, which is different
