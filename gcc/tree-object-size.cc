@@ -500,6 +500,42 @@ decl_init_size (tree decl, bool min)
   return size;
 }
 
+/* Determine whether TYPE is a structure with a flexible array member
+   per -fstrict-flex-array or a union containing such a structure
+   (possibly recursively).  */
+static bool
+flexible_size_type_p (const_tree type)
+{
+  tree x = NULL_TREE;
+  tree last = NULL_TREE;
+  switch (TREE_CODE (type))
+    {
+    case RECORD_TYPE:
+      for (x = TYPE_FIELDS (type); x != NULL_TREE; x = DECL_CHAIN (x))
+	if (TREE_CODE (x) == FIELD_DECL)
+	  last = x;
+      if (last == NULL_TREE)
+	return false;
+      if (TREE_CODE (TREE_TYPE (last)) == ARRAY_TYPE
+	  && !DECL_NOT_FLEXARRAY (last))
+	return true;
+      else if (TREE_CODE (TREE_TYPE (last)) == RECORD_TYPE
+	       || TREE_CODE (TREE_TYPE (last)) == UNION_TYPE)
+	return flexible_size_type_p (TREE_TYPE (last));
+      return false;
+    case UNION_TYPE:
+      for (x = TYPE_FIELDS (type); x != NULL_TREE; x = DECL_CHAIN (x))
+	{
+	  if (TREE_CODE (x) == FIELD_DECL
+	      && flexible_array_type_p (TREE_TYPE (x)))
+	    return true;
+	}
+      return false;
+    default:
+      return false;
+  }
+}
+
 /* Compute __builtin_object_size for PTR, which is a ADDR_EXPR.
    OBJECT_SIZE_TYPE is the second argument from __builtin_object_size.
    If unknown, return size_unknown (object_size_type).  */
@@ -633,45 +669,68 @@ addr_object_size (struct object_size_info *osi, const_tree ptr,
 		    v = NULL_TREE;
 		    break;
 		  case COMPONENT_REF:
-		    if (TREE_CODE (TREE_TYPE (v)) != ARRAY_TYPE)
+		    /* When the ref is not to an array, a record or a union, it
+		       will not have flexible size, compute the object size
+		       directly.  */
+		    if ((TREE_CODE (TREE_TYPE (v)) != ARRAY_TYPE)
+			&& (TREE_CODE (TREE_TYPE (v)) != RECORD_TYPE)
+			&& (TREE_CODE (TREE_TYPE (v)) != UNION_TYPE))
 		      {
 			v = NULL_TREE;
 			break;
 		      }
-		    is_flexible_array_mem_ref = array_ref_flexible_size_p (v);
-		    while (v != pt_var && TREE_CODE (v) == COMPONENT_REF)
-		      if (TREE_CODE (TREE_TYPE (TREE_OPERAND (v, 0)))
-			  != UNION_TYPE
-			  && TREE_CODE (TREE_TYPE (TREE_OPERAND (v, 0)))
-			  != QUAL_UNION_TYPE)
-			break;
-		      else
-			v = TREE_OPERAND (v, 0);
-		    if (TREE_CODE (v) == COMPONENT_REF
-			&& TREE_CODE (TREE_TYPE (TREE_OPERAND (v, 0)))
-			   == RECORD_TYPE)
+		    /* if the record or union does not have flexible size
+		       compute the object size directly.  */
+		    if (TREE_CODE (TREE_TYPE (v)) == RECORD_TYPE
+			|| TREE_CODE (TREE_TYPE (v)) == UNION_TYPE)
 		      {
-			/* compute object size only if v is not a
-			   flexible array member.  */
-			if (!is_flexible_array_mem_ref)
+			if (!flexible_size_type_p (TREE_TYPE (v)))
 			  {
 			    v = NULL_TREE;
 			    break;
 			  }
-			v = TREE_OPERAND (v, 0);
+			else
+			  v = TREE_OPERAND (v, 0);
 		      }
-		    while (v != pt_var && TREE_CODE (v) == COMPONENT_REF)
-		      if (TREE_CODE (TREE_TYPE (TREE_OPERAND (v, 0)))
-			  != UNION_TYPE
-			  && TREE_CODE (TREE_TYPE (TREE_OPERAND (v, 0)))
-			  != QUAL_UNION_TYPE)
-			break;
-		      else
-			v = TREE_OPERAND (v, 0);
-		    if (v != pt_var)
-		      v = NULL_TREE;
 		    else
-		      v = pt_var;
+		      {
+			/* Now the ref is to an array type.  */
+			is_flexible_array_mem_ref
+			  = array_ref_flexible_size_p (v);
+			while (v != pt_var && TREE_CODE (v) == COMPONENT_REF)
+			if (TREE_CODE (TREE_TYPE (TREE_OPERAND (v, 0)))
+			      != UNION_TYPE
+			    && TREE_CODE (TREE_TYPE (TREE_OPERAND (v, 0)))
+				 != QUAL_UNION_TYPE)
+			  break;
+			else
+			  v = TREE_OPERAND (v, 0);
+			if (TREE_CODE (v) == COMPONENT_REF
+			    && TREE_CODE (TREE_TYPE (TREE_OPERAND (v, 0)))
+				 == RECORD_TYPE)
+			  {
+			    /* compute object size only if v is not a
+			       flexible array member.  */
+			    if (!is_flexible_array_mem_ref)
+			      {
+				v = NULL_TREE;
+				break;
+			      }
+			    v = TREE_OPERAND (v, 0);
+			  }
+			while (v != pt_var && TREE_CODE (v) == COMPONENT_REF)
+			  if (TREE_CODE (TREE_TYPE (TREE_OPERAND (v, 0)))
+				!= UNION_TYPE
+			      && TREE_CODE (TREE_TYPE (TREE_OPERAND (v, 0)))
+				   != QUAL_UNION_TYPE)
+			    break;
+			  else
+			    v = TREE_OPERAND (v, 0);
+			if (v != pt_var)
+			  v = NULL_TREE;
+			else
+			  v = pt_var;
+		      }
 		    break;
 		  default:
 		    v = pt_var;
