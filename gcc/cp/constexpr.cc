@@ -4301,9 +4301,13 @@ cxx_eval_array_reference (const constexpr_ctx *ctx, tree t,
   if (!SCALAR_TYPE_P (elem_type))
     {
       new_ctx = *ctx;
-      if (ctx->object)
+      if (ctx->object
+	  && !same_type_ignoring_top_level_qualifiers_p
+	      (elem_type, TREE_TYPE (ctx->object)))
 	/* If there was no object, don't add one: it could confuse us
-	   into thinking we're modifying a const object.  */
+	   into thinking we're modifying a const object.  Similarly, if
+	   the types are the same, replacing .object could lead to a
+	   failure to evaluate it (c++/108158).  */
 	new_ctx.object = t;
       new_ctx.ctor = build_constructor (elem_type, NULL);
       ctx = &new_ctx;
