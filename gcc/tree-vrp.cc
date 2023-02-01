@@ -1096,6 +1096,11 @@ execute_ranger_vrp (struct function *fun, bool warn_array_bounds_p,
   gimple_ranger *ranger = enable_ranger (fun, false);
   rvrp_folder folder (ranger);
   folder.substitute_and_fold ();
+
+  // SCEV needs to be reset for array bounds, and we do not wish to trigger
+  // any SCEV lookups when removing unreachable globals, so reset it here.
+  scev_reset ();
+
   // Remove tagged builtin-unreachable and maybe update globals.
   folder.m_unreachable.remove_and_update_globals (final_p);
   if (dump_file && (dump_flags & TDF_DETAILS))
@@ -1116,7 +1121,6 @@ execute_ranger_vrp (struct function *fun, bool warn_array_bounds_p,
 	    else
 	      e->flags |= EDGE_EXECUTABLE;
 	}
-      scev_reset ();
       array_bounds_checker array_checker (fun, ranger);
       array_checker.check ();
     }
