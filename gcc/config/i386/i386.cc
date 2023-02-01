@@ -22851,22 +22851,13 @@ ix86_stack_protect_fail (void)
 int
 asm_preferred_eh_data_format (int code, int global)
 {
-  /* PE-COFF is effectively always -fPIC because of the .reloc section.  */
-  if (flag_pic || TARGET_PECOFF || !ix86_direct_extern_access)
-    {
-      int type = DW_EH_PE_sdata8;
-      if (ptr_mode == SImode
-	  || ix86_cmodel == CM_SMALL_PIC
-	  || (ix86_cmodel == CM_MEDIUM_PIC && (global || code)))
-	type = DW_EH_PE_sdata4;
-      return (global ? DW_EH_PE_indirect : 0) | DW_EH_PE_pcrel | type;
-    }
-
-  if (ix86_cmodel == CM_SMALL
-      || (ix86_cmodel == CM_MEDIUM && code))
-    return DW_EH_PE_udata4;
-
-  return DW_EH_PE_absptr;
+  int type = DW_EH_PE_sdata8;
+  if (ptr_mode == SImode || ix86_cmodel == CM_SMALL ||
+      ix86_cmodel == CM_SMALL_PIC ||
+      (ix86_cmodel == CM_MEDIUM && code) ||
+      (ix86_cmodel == CM_MEDIUM_PIC && (global || code)))
+    type = DW_EH_PE_sdata4;
+  return (global ? DW_EH_PE_indirect : 0) | DW_EH_PE_pcrel | type;
 }
 
 /* Implement targetm.vectorize.builtin_vectorization_cost.  */
