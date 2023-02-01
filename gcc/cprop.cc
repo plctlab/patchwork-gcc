@@ -1749,7 +1749,7 @@ one_cprop_pass (void)
   int changed = 0;
 
   /* Return if there's nothing to do, or it is too expensive.  */
-  if (n_basic_blocks_for_fn (cfun) <= NUM_FIXED_BLOCKS + 1
+  if (n_basic_blocks_for_fn (cfun) <= NUM_FIXED_BLOCKS
       || gcse_or_cprop_is_too_expensive (_ ("const/copy propagation disabled")))
     return 0;
 
