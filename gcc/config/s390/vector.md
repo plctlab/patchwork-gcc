@@ -2947,6 +2947,45 @@
   ""
   [(set_attr "op_type"      "*,VRX,VRX")])
 
+;
+; Implement len_load/len_store optabs with vll/vstl.
+(define_expand "len_load_v16qi"
+  [(match_operand:V16QI 0 "register_operand")
+   (match_operand:V16QI 1 "memory_operand")
+   (match_operand:QI 2 "register_operand")
+   (match_operand:QI 3 "vll_bias_operand")
+  ]
+  "TARGET_VX && TARGET_64BIT"
+{
+  rtx src1 = XEXP (operands[1], 0);
+  rtx src = gen_reg_rtx (Pmode);
+  emit_move_insn (src, src1);
+  rtx mem = gen_rtx_MEM (BLKmode, src);
+
+  rtx len = gen_lowpart (SImode, operands[2]);
+  emit_insn (gen_vllv16qi (operands[0], len, mem));
+  DONE;
+})
+
+(define_expand "len_store_v16qi"
+  [(match_operand:V16QI 0 "memory_operand")
+   (match_operand:V16QI 1 "register_operand")
+   (match_operand:QI 2 "register_operand")
+   (match_operand:QI 3 "vll_bias_operand")
+  ]
+  "TARGET_VX && TARGET_64BIT"
+{
+  rtx dst1 = XEXP (operands[0], 0);
+  rtx dst = gen_reg_rtx (Pmode);
+  emit_move_insn (dst, dst1);
+  rtx mem = gen_rtx_MEM (BLKmode, dst);
+
+  rtx len = gen_lowpart (SImode, operands[2]);
+  emit_insn (gen_vstlv16qi (operands[1], len, mem));
+  DONE;
+});;
+
+
 ; reduc_smin
 ; reduc_smax
 ; reduc_umin
