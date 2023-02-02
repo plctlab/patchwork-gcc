@@ -149,6 +149,10 @@
     case CONST_POLY_INT:
       return known_eq (rtx_to_poly_int64 (op), BYTES_PER_RISCV_VECTOR);
 
+    case CONST_DOUBLE:
+      return const_0_operand (op, mode)
+	      || (riscv_float_const_rtx_index_for_fli (op) != -1);
+
     case CONST:
     case SYMBOL_REF:
     case LABEL_REF:
