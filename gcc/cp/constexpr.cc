@@ -7691,6 +7691,15 @@ cxx_eval_constant_expression (const constexpr_ctx *ctx, tree t,
 	    if (!same_type_ignoring_top_level_qualifiers_p (type, TREE_TYPE (op))
 		&& !can_convert_qual (type, op))
 	      op = cplus_expand_constant (op);
+	    if (TREE_CODE (op) == PTRMEM_CST && !TYPE_PTRMEM_P (type))
+	      {
+		if (!ctx->quiet)
+		  error_at (loc, "%qE is not a constant expression when the "
+			    "class %qT is still incomplete", op,
+			    PTRMEM_CST_CLASS (op));
+		*non_constant_p = true;
+		return t;
+	      }
 	    return cp_fold_convert (type, op);
 	  }
 
