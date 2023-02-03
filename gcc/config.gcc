@@ -2518,13 +2518,16 @@ mips*-*-linux*)				# Linux MIPS, either endian.
 	extra_options="${extra_options} linux-android.opt"
 	case ${target} in
 		mipsisa32r6*)
-			default_mips_arch=mips32r6
+			with_arch_32="mips32r6"
+			with_arch_64="mips64r6"
 			;;
 		mipsisa32r2*)
-			default_mips_arch=mips32r2
+			with_arch_32="mips32r2"
+			with_arch_64="mips64r2"
 			;;
 		mipsisa32*)
-			default_mips_arch=mips32
+			with_arch_32="mips32"
+			with_arch_64="mips64"
 			;;
 		mips64el-st-linux-gnu)
 			default_mips_abi=n32
@@ -2540,22 +2543,26 @@ mips*-*-linux*)				# Linux MIPS, either endian.
 			;;
 		mipsisa64r6*-*-linux-gnuabi64)
 			default_mips_abi=64
-			default_mips_arch=mips64r6
+			with_arch_32="mips32r6"
+			with_arch_64="mips64r6"
 			enable_mips_multilibs="yes"
 			;;
 		mipsisa64r6*-*-linux*)
 			default_mips_abi=n32
-			default_mips_arch=mips64r6
+			with_arch_32="mips32r6"
+			with_arch_64="mips64r6"
 			enable_mips_multilibs="yes"
 			;;
 		mipsisa64r2*-*-linux-gnuabi64)
 			default_mips_abi=64
-			default_mips_arch=mips64r2
+			with_arch_32="mips32r2"
+			with_arch_64="mips64r2"
 			enable_mips_multilibs="yes"
 			;;
 		mipsisa64r2*-*-linux*)
 			default_mips_abi=n32
-			default_mips_arch=mips64r2
+			with_arch_32="mips32r2"
+			with_arch_64="mips64r2"
 			enable_mips_multilibs="yes"
 			;;
 		mips64*-*-linux-gnuabi64 | mipsisa64*-*-linux-gnuabi64)
