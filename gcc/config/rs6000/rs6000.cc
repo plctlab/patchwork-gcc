@@ -10314,6 +10314,59 @@ can_be_built_by_li_lis_and_rotldi (HOST_WIDE_INT c, int *shift,
   return false;
 }
 
+/* Check if value C can be built by 2 instructions: one is 'li or lis',
+   another is rldicl.
+
+   If so, *SHIFT is set to the shift operand of rldicl, and *MASK is set to
+   the mask operand of rldicl, and return true.
+   Return false otherwise.  */
+static bool
+can_be_built_by_li_lis_and_rldicl (HOST_WIDE_INT c, int *shift,
+				   HOST_WIDE_INT *mask)
+{
+  /* Leading zeros maybe cleaned by rldicl with mask.  Change leading zeros
+     to ones and then recheck it.  */
+  int lz = clz_hwi (c);
+  HOST_WIDE_INT unmask_c
+    = c | (HOST_WIDE_INT_M1U << (HOST_BITS_PER_WIDE_INT - lz));
+  int n;
+  if (can_be_rotated_to_negative_li (unmask_c, &n)
+      || can_be_rotated_to_negative_lis (unmask_c, &n))
+    {
+      *mask = HOST_WIDE_INT_M1U >> lz;
+      *shift = n == 0 ? 0 : HOST_BITS_PER_WIDE_INT - n;
+      return true;
+    }
+
+  return false;
+}
+
+/* Check if value C can be built by 2 instructions: one is 'li or lis',
+   another is rldicr.
+
+   If so, *SHIFT is set to the shift operand of rldicr, and *MASK is set to
+   the mask operand of rldicr, and return true.
+   Return false otherwise.  */
+static bool
+can_be_built_by_li_lis_and_rldicr (HOST_WIDE_INT c, int *shift,
+				   HOST_WIDE_INT *mask)
+{
+  /* Tailing zeros maybe cleaned by rldicr with mask.  Change tailing zeros
+     to ones and then recheck it.  */
+  int tz = ctz_hwi (c);
+  HOST_WIDE_INT unmask_c = c | ((HOST_WIDE_INT_1U << tz) - 1);
+  int n;
+  if (can_be_rotated_to_negative_li (unmask_c, &n)
+      || can_be_rotated_to_negative_lis (unmask_c, &n))
+    {
+      *mask = HOST_WIDE_INT_M1U << tz;
+      *shift = HOST_BITS_PER_WIDE_INT - n;
+      return true;
+    }
+
+  return false;
+}
+
 /* Subroutine of rs6000_emit_set_const, handling PowerPC64 DImode.
    Output insns to set DEST equal to the constant C as a series of
    lis, ori and shl instructions.  */
@@ -10353,7 +10406,9 @@ rs6000_emit_set_long_const (rtx dest, HOST_WIDE_INT c)
       emit_move_insn (dest, gen_rtx_XOR (DImode, temp,
 					 GEN_INT ((ud2 ^ 0xffff) << 16)));
     }
-  else if (can_be_built_by_li_lis_and_rotldi (c, &shift, &mask))
+  else if (can_be_built_by_li_lis_and_rotldi (c, &shift, &mask)
+	   || can_be_built_by_li_lis_and_rldicl (c, &shift, &mask)
+	   || can_be_built_by_li_lis_and_rldicr (c, &shift, &mask))
     {
       temp = !can_create_pseudo_p () ? dest : gen_reg_rtx (DImode);
       unsigned HOST_WIDE_INT imm = (c | ~mask);
