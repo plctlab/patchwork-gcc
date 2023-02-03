@@ -22071,30 +22071,36 @@ aarch64_expand_vector_init (rtx target, rtx vals)
      and matches[X][1] with the count of duplicate elements (if X is the
      earliest element which has duplicates).  */
 
-  if (n_var == n_elts && n_elts <= 16)
+  int matches[16][2] = {0};
+  for (int i = 0; i < n_elts; i++)
     {
-      int matches[16][2] = {0};
-      for (int i = 0; i < n_elts; i++)
+      for (int j = 0; j <= i; j++)
 	{
-	  for (int j = 0; j <= i; j++)
+	  if (rtx_equal_p (XVECEXP (vals, 0, i), XVECEXP (vals, 0, j)))
 	    {
-	      if (rtx_equal_p (XVECEXP (vals, 0, i), XVECEXP (vals, 0, j)))
-		{
-		  matches[i][0] = j;
-		  matches[j][1]++;
-		  break;
-		}
+	      matches[i][0] = j;
+	      matches[j][1]++;
+	      break;
 	    }
 	}
-      int maxelement = 0;
-      int maxv = 0;
-      for (int i = 0; i < n_elts; i++)
-	if (matches[i][1] > maxv)
-	  {
-	    maxelement = i;
-	    maxv = matches[i][1];
-	  }
+    }
 
+  int maxelement = 0;
+  int maxv = 0;
+  for (int i = 0; i < n_elts; i++)
+    if (matches[i][1] > maxv)
+      {
+	maxelement = i;
+	maxv = matches[i][1];
+      }
+
+  rtx max_elem = XVECEXP (vals, 0, maxelement); 
+  if (n_elts <= 16
+      && ((n_var == n_elts)
+	   || (maxv >= (int)(0.8 * n_elts)
+	       && !CONST_INT_P (max_elem)
+	       && !CONST_DOUBLE_P (max_elem))))
+    {
       /* Create a duplicate of the most common element, unless all elements
 	 are equally useless to us, in which case just immediately set the
 	 vector register using the first element.  */
