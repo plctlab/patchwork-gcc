@@ -3579,8 +3579,13 @@ gomp_target_rev (uint64_t fn_ptr, uint64_t mapnum, uint64_t devaddrs_ptr,
 		      }
 		    int k;
 		    n2 = NULL;
-		    cdata[i].present = true;
+		    /* Dereference devaddrs[j] to get the device addr.  */
+		    assert (devaddrs[j]-sizes[j] == cdata[i].devaddr);
+		    devaddrs[j] = *(uint64_t *) (devaddrs[i] + sizes[j]);
+		    cdata[j].present = true;
 		    cdata[j].devaddr = devaddrs[j];
+		    if (devaddrs[j] == 0)
+		      continue;
 		    k = gomp_map_cdata_lookup (cdata, devaddrs, kinds, sizes, j,
 					       devaddrs[j],
 					       devaddrs[j] + sizeof (void*),
