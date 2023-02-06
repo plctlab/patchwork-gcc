@@ -1718,7 +1718,9 @@ struct GTY(()) tree_type_common {
   unsigned empty_flag : 1;
   unsigned indivisible_p : 1;
   unsigned no_named_args_stdarg_p : 1;
-  unsigned spare : 15;
+  /* TYPE_INCLUDE_FLEXARRAY flag for RECORD_TYPE and UNION_TYPE.  */
+  unsigned int type_include_flexarray : 1;
+  unsigned spare : 14;
 
   alias_set_type alias_set;
   tree pointer_to;

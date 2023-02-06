@@ -778,6 +778,12 @@ extern void omp_clause_range_check_failed (const_tree, const char *, int,
 #define TYPE_NO_NAMED_ARGS_STDARG_P(NODE) \
   (TYPE_CHECK (NODE)->type_common.no_named_args_stdarg_p)
 
+/* True if this RECORD_TYPE or UNION_TYPE includes a flexible array member
+   at the last field recursively.  */
+#define TYPE_INCLUDE_FLEXARRAY(NODE) \
+  (TYPE_CHECK (NODE)->type_common.type_include_flexarray)
+
+
 /* In an IDENTIFIER_NODE, this means that assemble_name was called with
    this string as an argument.  */
 #define TREE_SYMBOL_REFERENCED(NODE) \
