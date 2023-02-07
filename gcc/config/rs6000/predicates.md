@@ -1290,6 +1290,24 @@
   return vsx_register_operand (op, mode);
 })
 
+;; Return 1 if this operand is lowpart subreg
+(define_predicate "lowpart_subreg_operand"
+  (match_code "subreg,reg")
+{
+  if (REG_P (op))
+    return 1;
+
+  rtx inner_reg = SUBREG_REG (op);
+  if (!REG_P (inner_reg))
+    return 0;
+
+  machine_mode inner_mode = GET_MODE (inner_reg);
+  if (SUBREG_BYTE (op) != subreg_lowpart_offset (mode, inner_mode))
+    return 0;
+
+  return 1;
+})
+
 ;; Return true if operand is an operator used in rotate-and-mask instructions.
 (define_predicate "rotate_mask_operator"
   (match_code "rotate,ashift,lshiftrt"))
