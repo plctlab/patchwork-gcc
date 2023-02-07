@@ -12192,10 +12192,11 @@ proc check_effective_target_o_flag_in_section { } {
 # return 1 if LRA is supported.
 
 proc check_effective_target_lra { } {
-    if { [istarget hppa*-*-*] } {
-	return 0
-    }
-    return 1
+    # Iterating over extended basic blocks is new with LRA.  Also need
+    # a context to avoid spuriously matching a register name.
+    return [check_no_messages_and_pattern lra "EBB 2 3" rtl-reload {
+	void foo (void) { }
+    }]
 }
 
 # Test whether optimizations are enabled ('__OPTIMIZE__') per the
