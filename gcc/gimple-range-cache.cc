@@ -525,14 +525,14 @@ ssa_global_cache::set_global_range (tree name, const vrange &r)
   return m != NULL;
 }
 
-// Set the range for NAME to R in the glonbal cache.
+// Set the range for NAME to R in the global cache.
 
 void
 ssa_global_cache::clear_global_range (tree name)
 {
   unsigned v = SSA_NAME_VERSION (name);
   if (v >= m_tab.length ())
-    m_tab.safe_grow_cleared (num_ssa_names + 1);
+    return;
   m_tab[v] = NULL;
 }
 
@@ -577,6 +577,26 @@ ssa_global_cache::dump (FILE *f)
 
   if (!print_header)
     fputc ('\n', f);
+}
+
+
+// Set range of NAME to R in a lazy cache.  Return FALSE if it did not already
+// have a range.
+
+bool
+ssa_lazy_cache::set_global_range (tree name, const vrange &r)
+{
+  unsigned v = SSA_NAME_VERSION (name);
+  if (!bitmap_set_bit (active_p, v))
+    {
+      // There is already an entry, simply set it.
+      gcc_checking_assert (v < m_tab.length ());
+      return ssa_global_cache::set_global_range (name, r);
+    }
+  if (v >= m_tab.length ())
+    m_tab.safe_grow (num_ssa_names + 1);
+  m_tab[v] = m_range_allocator->clone (r);
+  return false;
 }
 
 // --------------------------------------------------------------------------
