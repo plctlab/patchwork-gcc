@@ -2140,6 +2140,7 @@ simple_dce_from_worklist (bitmap worklist)
 	remove_phi_node (&gsi, true);
       else
 	{
+	  unlink_stmt_vdef (t);
 	  gsi_remove (&gsi, true);
 	  release_defs (t);
 	}
