@@ -3880,20 +3880,15 @@ static tree
 gimplify_parm_type (tree *tp, int *walk_subtrees, void *data)
 {
   tree t = *tp;
-
   *walk_subtrees = 0;
   if (TYPE_P (t))
     {
-      if (POINTER_TYPE_P (t))
-	*walk_subtrees = 1;
-      else if (TYPE_SIZE (t) && !TREE_CONSTANT (TYPE_SIZE (t))
+      if (TYPE_SIZE (t) && !TREE_CONSTANT (TYPE_SIZE (t))
 	       && !TYPE_SIZES_GIMPLIFIED (t))
-	{
-	  gimplify_type_sizes (t, (gimple_seq *) data);
-	  *walk_subtrees = 1;
-	}
-    }
+	gimplify_type_sizes (t, (gimple_seq *) data);
 
+      *walk_subtrees = 1;
+    }
   return NULL;
 }
 
