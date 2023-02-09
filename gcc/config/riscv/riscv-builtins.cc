@@ -42,6 +42,7 @@ along with GCC; see the file COPYING3.  If not see
 /* Macros to create an enumeration identifier for a function prototype.  */
 #define RISCV_FTYPE_NAME0(A) RISCV_##A##_FTYPE
 #define RISCV_FTYPE_NAME1(A, B) RISCV_##A##_FTYPE_##B
+#define RISCV_FTYPE_NAME2(A, B, C) RISCV_##A##_FTYPE_##B##_##C
 
 /* Classifies the prototype of a built-in function.  */
 enum riscv_function_type {
@@ -99,6 +100,10 @@ AVAIL (zero64,  TARGET_ZICBOZ && TARGET_64BIT)
 AVAIL (prefetchi32, TARGET_ZICBOP && !TARGET_64BIT)
 AVAIL (prefetchi64, TARGET_ZICBOP && TARGET_64BIT)
 AVAIL (always,     (!0))
+AVAIL (nez32, TARGET_ZICOND && !TARGET_64BIT)
+AVAIL (nez64, TARGET_ZICOND && TARGET_64BIT)
+AVAIL (eqz32, TARGET_ZICOND && !TARGET_64BIT)
+AVAIL (eqz64, TARGET_ZICOND && TARGET_64BIT)
 
 /* Construct a riscv_builtin_description from the given arguments.
 
@@ -142,9 +147,12 @@ AVAIL (always,     (!0))
   RISCV_ATYPE_##A
 #define RISCV_FTYPE_ATYPES1(A, B) \
   RISCV_ATYPE_##A, RISCV_ATYPE_##B
+#define RISCV_FTYPE_ATYPES2(A, B, C) \
+  RISCV_ATYPE_##A, RISCV_ATYPE_##B, RISCV_ATYPE_##C
 
 static const struct riscv_builtin_description riscv_builtins[] = {
   #include "riscv-cmo.def"
+  #include "riscv-zicond.def"
 
   DIRECT_BUILTIN (frflags, RISCV_USI_FTYPE, hard_float),
   DIRECT_NO_TARGET_BUILTIN (fsflags, RISCV_VOID_FTYPE_USI, hard_float),

@@ -98,6 +98,10 @@
   UNSPECV_ZERO
   UNSPECV_PREI
 
+  ;;ZICOND instructions
+  UNSPECV_EQZ
+  UNSPECV_NEZ
+
   ;; Zihintpause unspec
   UNSPECV_PAUSE
 ])
@@ -3083,6 +3087,24 @@
               UNSPECV_PREI)]
   "TARGET_ZICBOP"
   "prefetch.i\t%a0"
+)
+
+(define_insn "riscv_eqz_<mode>"
+  [(set (match_operand:X 0 "register_operand" "=r")
+        (unspec_volatile:X [(match_operand:X 1 "register_operand" " r")
+          (match_operand:X 2 "register_operand" " r")]
+         UNSPECV_EQZ))]
+      "TARGET_ZICOND"
+      "czero.eqz\t%0,%1,%2"
+)
+
+(define_insn "riscv_nez_<mode>"
+  [(set (match_operand:X 0 "register_operand" "=r")
+        (unspec_volatile:X [(match_operand:X 1 "register_operand" " r")
+          (match_operand:X 2 "register_operand" " r")]
+         UNSPECV_NEZ))]
+      "TARGET_ZICOND"
+      "czero.nez\t%0,%1,%2"
 )
 
 (include "bitmanip.md")
