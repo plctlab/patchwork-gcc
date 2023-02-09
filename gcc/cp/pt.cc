@@ -20654,25 +20654,14 @@ tsubst_copy_and_build (tree t,
 	  op1 = TREE_TYPE (op1);
 	bool std_alignof = (TREE_CODE (t) == ALIGNOF_EXPR
 			    && ALIGNOF_EXPR_STD_P (t));
-        if (!args)
-	  {
-	    /* When there are no ARGS, we are trying to evaluate a
-	       non-dependent expression from the parser.  Trying to do
-	       the substitutions may not work.  */
-	    if (!TYPE_P (op1))
-	      op1 = TREE_TYPE (op1);
-	  }
+	++cp_unevaluated_operand;
+	++c_inhibit_evaluation_warnings;
+	if (TYPE_P (op1))
+	  op1 = tsubst (op1, args, complain, in_decl);
 	else
-	  {
-	    ++cp_unevaluated_operand;
-	    ++c_inhibit_evaluation_warnings;
-	    if (TYPE_P (op1))
-	      op1 = tsubst (op1, args, complain, in_decl);
-	    else
-	      op1 = tsubst_copy_and_build (op1, args, complain, in_decl);
-	    --cp_unevaluated_operand;
-	    --c_inhibit_evaluation_warnings;
-	  }
+	  op1 = tsubst_copy_and_build (op1, args, complain, in_decl);
+	--cp_unevaluated_operand;
+	--c_inhibit_evaluation_warnings;
         if (TYPE_P (op1))
 	  r = cxx_sizeof_or_alignof_type (input_location,
 					  op1, TREE_CODE (t), std_alignof,
