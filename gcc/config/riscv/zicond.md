@@ -39,7 +39,7 @@
 				(const_int 0)]))
 		(match_operand:DI 3 "immediate_operand")))
    (clobber (match_operand:DI 4 "register_operand"))]
-  "TARGET_ZICOND"
+  "TARGET_ZICOND || TARGET_XVENTANACONDOPS"
   [(set (match_dup 4) (match_dup 3))
    (set (match_dup 0) (and:DI (neg:DI (match_dup 1))
 			      (match_dup 4)))]
@@ -60,7 +60,7 @@
 			      (match_operand:X 3 "arith_operand")]))
 	       (match_operand:X 4 "register_operand")))
    (clobber (match_operand:X 5 "register_operand"))]
-  "TARGET_ZICOND"
+  "TARGET_ZICOND || TARGET_XVENTANACONDOPS"
   [(set (match_dup 5) (match_dup 6))
    (set (match_dup 0) (and:X (neg:X (eq:X (match_dup 5) (const_int 0)))
 			     (match_dup 4)))]
@@ -77,7 +77,7 @@
 			      (match_operand:X 3 "arith_operand")]))
 	       (match_operand:X 4 "register_operand")))
    (clobber (match_operand:X 5 "register_operand"))]
-  "TARGET_ZICOND"
+  "TARGET_ZICOND || TARGET_XVENTANACONDOPS"
   [(set (match_dup 5) (match_dup 1))
    (set (match_dup 0) (and:X (neg:X (ne:X (match_dup 5) (const_int 0)))
 			     (match_dup 4)))])
@@ -90,7 +90,7 @@
 			      (match_operand:X 3 "arith_operand")]))
 	       (match_operand:X 4 "register_operand")))
    (clobber (match_operand:X 5 "register_operand"))]
-  "TARGET_ZICOND"
+  "TARGET_ZICOND || TARGET_XVENTANACONDOPS"
   [(set (match_dup 5) (match_dup 6))
    (set (match_dup 0) (and:X (neg:X (eq:X (match_dup 5) (const_int 0)))
 			     (match_dup 4)))]
@@ -123,7 +123,7 @@
 			       (match_operand 2 "immediate_operand"))
 	       (match_operand:X 3 "register_operand")))
    (clobber (match_operand:X 4 "register_operand"))]
-  "TARGET_ZICOND && TARGET_ZBS"
+  "(TARGET_ZICOND || TARGET_XVENTANACONDOPS) && TARGET_ZBS"
   [(set (match_dup 4) (zero_extract:X (match_dup 1) (const_int 1) (match_dup 2)))
    (set (match_dup 0) (and:X (neg:X (ne:X (match_dup 4) (const_int 0)))
 			     (match_dup 3)))])
@@ -136,7 +136,8 @@
 			       (match_operand 2 "immediate_operand"))
 	       (match_operand:X 3 "register_operand")))
    (clobber (match_operand:X 4 "register_operand"))]
-  "TARGET_ZICOND && !TARGET_ZBS && (UINTVAL (operands[2]) < 11)"
+  "(TARGET_ZICOND || TARGET_XVENTANACONDOPS)
+   && !TARGET_ZBS && (UINTVAL (operands[2]) < 11)"
   [(set (match_dup 4) (and:X (match_dup 1) (match_dup 2)))
    (set (match_dup 0) (and:X (neg:X (ne:X (match_dup 4) (const_int 0)))
 			     (match_dup 3)))]
@@ -150,6 +151,6 @@
 				     (const_int 1)
 				     (match_operand 2 "immediate_operand"))
 		     (const_int 0))))]
-  "!TARGET_ZICOND && TARGET_ZBS"
+  "!(TARGET_ZICOND || TARGET_XVENTANACONDOPS) && TARGET_ZBS"
   [(set (match_dup 0) (zero_extract:X (match_dup 1) (const_int 1) (match_dup 2)))
    (set (match_dup 0) (plus:X (match_dup 0) (const_int -1)))])

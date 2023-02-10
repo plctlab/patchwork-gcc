@@ -2331,8 +2331,8 @@ riscv_rtx_costs (rtx x, machine_mode mode, int outer_code, int opno ATTRIBUTE_UN
       return false;
 
     case AND:
-      /* czero.eqz/nez */
-      if ((TARGET_ZICOND)
+      /* czero.eqz/nez or vt.maskc/vt.maskcn */
+      if ((TARGET_ZICOND || TARGET_XVENTANACONDOPS)
 	  && mode == word_mode
 	  && GET_CODE (XEXP (x, 0)) == NEG)
 	{

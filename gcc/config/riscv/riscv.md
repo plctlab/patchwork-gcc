@@ -2537,7 +2537,7 @@
 	(match_operator:GPR 1 "anyle_operator"
 	       [(match_operand:X 2 "register_operand")
 		(match_operand:X 3 "register_operand")]))]
-  "TARGET_ZICOND"
+  "TARGET_ZICOND || TARGET_XVENTANACONDOPS"
   [(set (match_dup 0) (match_dup 4))
    (set (match_dup 0) (eq:GPR (match_dup 0) (const_int 0)))]
  {
@@ -2571,7 +2571,7 @@
 	(match_operator:GPR 1 "anyge_operator"
 	       [(match_operand:X 2 "register_operand")
 		(match_operand:X 3 "register_operand")]))]
-  "TARGET_ZICOND"
+  "TARGET_ZICOND || TARGET_XVENTANACONDOPS"
   [(set (match_dup 0) (match_dup 4))
    (set (match_dup 0) (eq:GPR (match_dup 0) (const_int 0)))]
 {
@@ -3119,3 +3119,4 @@
 (include "sifive-7.md")
 (include "vector.md")
 (include "zicond.md")
+(include "xventanacondops.md")
