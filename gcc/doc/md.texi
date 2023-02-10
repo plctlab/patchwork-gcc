@@ -8347,6 +8347,23 @@ operand of @code{mult} is also a shift, then that is extended also.
 This transformation is only applied when it can be proven that the
 original operation had sufficient precision to prevent overflow.
 
+@cindex @code{conditional-zero}, canonicalization of
+@item
+A machine that has an instruction that performs a conditional-zero
+operation (i.e., an instruction that moves a register value or puts 0
+into the destination register) should specify the pattern for that
+instruction as:
+@smallexample
+(define_insn ""
+  [(set (match_operand:@var{m} 0 @dots{})
+        (and:@var{m}
+          (neg:@var{m} (@var{eq_or_ne} (match_operand:@var{m} 1 @dots{})
+                                       (const_int 0)))
+          (match_operand:@var{m} 2 @dots{})))]
+  "@dots{}"
+  "@dots{}")
+@end smallexample
+
 @end itemize
 
 Further canonicalization rules are defined in the function
