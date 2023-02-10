@@ -8850,6 +8850,9 @@ aarch64_gen_store_pair (machine_mode mode, rtx mem1, rtx reg1, rtx mem2,
 {
   switch (mode)
     {
+    case E_SImode:
+      return gen_store_pair_sw_sisi (mem1, reg1, mem2, reg2);
+
     case E_DImode:
       return gen_store_pair_dw_didi (mem1, reg1, mem2, reg2);
 
@@ -24896,42 +24899,49 @@ aarch64_expand_cpymem (rtx *operands)
    SRC is a register we have created with the duplicated value to be set.  */
 static void
 aarch64_set_one_block_and_progress_pointer (rtx src, rtx *dst,
-					    machine_mode mode)
+					    machine_mode mode, bool use_pairs)
 {
+  rtx reg = src;
   /* If we are copying 128bits or 256bits, we can do that straight from
      the SIMD register we prepared.  */
-  if (known_eq (GET_MODE_BITSIZE (mode), 256))
-    {
-      mode = GET_MODE (src);
-      /* "Cast" the *dst to the correct mode.  */
-      *dst = adjust_address (*dst, mode, 0);
-      /* Emit the memset.  */
-      emit_insn (aarch64_gen_store_pair (mode, *dst, src,
-					 aarch64_progress_pointer (*dst), src));
-
-      /* Move the pointers forward.  */
-      *dst = aarch64_move_pointer (*dst, 32);
-      return;
-    }
   if (known_eq (GET_MODE_BITSIZE (mode), 128))
-    {
-      /* "Cast" the *dst to the correct mode.  */
-      *dst = adjust_address (*dst, GET_MODE (src), 0);
-      /* Emit the memset.  */
-      emit_move_insn (*dst, src);
-      /* Move the pointers forward.  */
-      *dst = aarch64_move_pointer (*dst, 16);
-      return;
-    }
-  /* For copying less, we have to extract the right amount from src.  */
-  rtx reg = lowpart_subreg (mode, src, GET_MODE (src));
+    mode = GET_MODE(src);
+  else
+    /* For copying less, we have to extract the right amount from src.  */
+    reg = lowpart_subreg (mode, src, GET_MODE (src));
 
   /* "Cast" the *dst to the correct mode.  */
   *dst = adjust_address (*dst, mode, 0);
   /* Emit the memset.  */
-  emit_move_insn (*dst, reg);
+  if (use_pairs)
+    emit_insn (aarch64_gen_store_pair (mode, *dst, reg,
+				       aarch64_progress_pointer (*dst),
+				       reg));
+  else
+    emit_move_insn (*dst, reg);
+
   /* Move the pointer forward.  */
   *dst = aarch64_progress_pointer (*dst);
+  if (use_pairs)
+    *dst = aarch64_progress_pointer (*dst);
+}
+
+/* Returns true if size can be used as a store/load pair.
+   This is a helper function for aarch64_expand_setmem and others. */
+static bool
+aarch64_can_use_pair_load_stores (unsigned HOST_WIDE_INT size)
+{
+  /* For DI and SI modes, we can use store pairs.  */
+  if (size == GET_MODE_BITSIZE (DImode)
+      || size == GET_MODE_BITSIZE (SImode))
+    return true;
+  /* For TI mode, we will use store pairs only if
+     the target wants to. */
+  else if (size == GET_MODE_BITSIZE (TImode)
+      && !(aarch64_tune_params.extra_tuning_flags
+	   & AARCH64_EXTRA_TUNE_NO_LDP_STP_QREGS))
+    return true;
+  return false;
 }
 
 /* Expand a setmem using the MOPS instructions.  OPERANDS are the same
@@ -24974,9 +24984,21 @@ aarch64_expand_setmem (rtx *operands)
 
   bool size_p = optimize_function_for_size_p (cfun);
 
-  /* Default the maximum to 256-bytes when considering only libcall vs
-     SIMD broadcast sequence.  */
-  unsigned max_set_size = 256;
+  /* Maximum amount to copy in one go (without taking into account store pairs).  */
+  int copy_limit = GET_MODE_BITSIZE (TImode);
+
+  /* For strict alignment case, restrict the copy limit to the compiler time
+     known alignment of the memory.  */
+  if (STRICT_ALIGNMENT)
+    copy_limit = MIN (copy_limit, (int)MEM_ALIGN (dst));
+
+  bool use_pairs = aarch64_can_use_pair_load_stores (copy_limit);
+
+  /* The max set size is 8 instructions of the copy_limit sized stores
+     (also taking into account using pair stores or not);
+     for the non strict alignment, this is 256 bytes.  */
+  unsigned max_set_size;
+  max_set_size = (copy_limit * (use_pairs ? 2 : 1) * 8) / BITS_PER_UNIT;
 
   len = INTVAL (operands[1]);
   if (len > max_set_size && !TARGET_MOPS)
@@ -24990,8 +25012,10 @@ aarch64_expand_setmem (rtx *operands)
     (zero constants can use XZR directly).  */
   unsigned mops_cost = 3 + 1 + cst_val;
   /* A libcall to memset in the worst case takes 3 instructions to prepare
-     the arguments + 1 for the call.  */
-  unsigned libcall_cost = 4;
+     the arguments + 1 for the call.
+     In the case of not optimizing for size the cost of doing a libcall
+     is 17 instructions . */
+  unsigned libcall_cost = size_p ? 4 : 17;
 
   /* Upper bound check.  For large constant-sized setmem use the MOPS sequence
      when available.  */
@@ -25001,12 +25025,12 @@ aarch64_expand_setmem (rtx *operands)
 
   /* Attempt a sequence with a vector broadcast followed by stores.
      Count the number of operations involved to see if it's worth it
-     against the alternatives.  A simple counter simd_ops on the
+     against the alternatives.  A simple counter inlined_ops on the
      algorithmically-relevant operations is used rather than an rtx_insn count
      as all the pointer adjusmtents and mode reinterprets will be optimized
      away later.  */
   start_sequence ();
-  unsigned simd_ops = 0;
+  unsigned inlined_ops = 0;
 
   base = copy_to_mode_reg (Pmode, XEXP (dst, 0));
   dst = adjust_automodify_address (dst, VOIDmode, base, 0);
@@ -25014,15 +25038,9 @@ aarch64_expand_setmem (rtx *operands)
   /* Prepare the val using a DUP/MOVI v0.16B, val.  */
   src = expand_vector_broadcast (V16QImode, val);
   src = force_reg (V16QImode, src);
-  simd_ops++;
+  inlined_ops++;
   /* Convert len to bits to make the rest of the code simpler.  */
   n = len * BITS_PER_UNIT;
-
-  /* Maximum amount to copy in one go.  We allow 256-bit chunks based on the
-     AARCH64_EXTRA_TUNE_NO_LDP_STP_QREGS tuning parameter.  */
-  const int copy_limit = (aarch64_tune_params.extra_tuning_flags
-			  & AARCH64_EXTRA_TUNE_NO_LDP_STP_QREGS)
-			  ? GET_MODE_BITSIZE (TImode) : 256;
 
   while (n > 0)
     {
@@ -25036,15 +25054,18 @@ aarch64_expand_setmem (rtx *operands)
       gcc_assert (cur_mode != BLKmode);
 
       mode_bits = GET_MODE_BITSIZE (cur_mode).to_constant ();
-      aarch64_set_one_block_and_progress_pointer (src, &dst, cur_mode);
-      simd_ops++;
-      n -= mode_bits;
+      bool pairs = aarch64_can_use_pair_load_stores (mode_bits);
+      if (n < (mode_bits * 2))
+	pairs = false;
+      aarch64_set_one_block_and_progress_pointer (src, &dst, cur_mode, pairs);
+      inlined_ops++;
+      n -= mode_bits * (pairs ? 2 : 1);
 
       /* Do certain trailing copies as overlapping if it's going to be
 	 cheaper.  i.e. less instructions to do so.  For instance doing a 15
 	 byte copy it's more efficient to do two overlapping 8 byte copies than
 	 8 + 4 + 2 + 1.  Only do this when -mstrict-align is not supplied.  */
-      if (n > 0 && n < copy_limit / 2 && !STRICT_ALIGNMENT)
+      if (n > 0 && n < copy_limit && !STRICT_ALIGNMENT)
 	{
 	  next_mode = smallest_mode_for_size (n, MODE_INT);
 	  int n_bits = GET_MODE_BITSIZE (next_mode).to_constant ();
@@ -25056,24 +25077,17 @@ aarch64_expand_setmem (rtx *operands)
   rtx_insn *seq = get_insns ();
   end_sequence ();
 
-  if (size_p)
-    {
-      /* When optimizing for size we have 3 options: the SIMD broadcast sequence,
-	 call to memset or the MOPS expansion.  */
-      if (TARGET_MOPS
-	  && mops_cost <= libcall_cost
-	  && mops_cost <= simd_ops)
-	return aarch64_expand_setmem_mops (operands);
-      /* If MOPS is not available or not shorter pick a libcall if the SIMD
-	 sequence is too long.  */
-      else if (libcall_cost < simd_ops)
-	return false;
-      emit_insn (seq);
-      return true;
-    }
+  /* When optimizing for size we have 3 options: the inlined sequence,
+     call to memset or the MOPS expansion.  */
+  if (size_p
+      && TARGET_MOPS
+      && mops_cost <= libcall_cost
+      && mops_cost <= inlined_ops)
+    return aarch64_expand_setmem_mops (operands);
+  /* Pick a libcall if the inlined sequence is too long.  */
+  else if (libcall_cost < inlined_ops)
+    return false;
 
-  /* At this point the SIMD broadcast sequence is the best choice when
-     optimizing for speed.  */
   emit_insn (seq);
   return true;
 }
