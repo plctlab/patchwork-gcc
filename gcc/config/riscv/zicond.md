@@ -48,3 +48,53 @@
   if (!rtx_equal_p (operands[0], operands[2]))
      operands[4] = operands[0];
 })
+
+;; Make order operators digestible to the vt.maskc<n> logic by
+;; wrapping their result in a comparison against (const_int 0).
+
+;; "a >= b" is "!(a < b)"
+(define_split
+  [(set (match_operand:X 0 "register_operand")
+	(and:X (neg:X (match_operator:X 1 "anyge_operator"
+			     [(match_operand:X 2 "register_operand")
+			      (match_operand:X 3 "arith_operand")]))
+	       (match_operand:X 4 "register_operand")))
+   (clobber (match_operand:X 5 "register_operand"))]
+  "TARGET_ZICOND"
+  [(set (match_dup 5) (match_dup 6))
+   (set (match_dup 0) (and:X (neg:X (eq:X (match_dup 5) (const_int 0)))
+			     (match_dup 4)))]
+{
+  operands[6] = gen_rtx_fmt_ee (GET_CODE (operands[1]) == GE ? LT : LTU,
+				<X:MODE>mode, operands[2], operands[3]);
+})
+
+;; "a > b"
+(define_split
+  [(set (match_operand:X 0 "register_operand")
+	(and:X (neg:X (match_operator:X 1 "anygt_operator"
+			     [(match_operand:X 2 "register_operand")
+			      (match_operand:X 3 "arith_operand")]))
+	       (match_operand:X 4 "register_operand")))
+   (clobber (match_operand:X 5 "register_operand"))]
+  "TARGET_ZICOND"
+  [(set (match_dup 5) (match_dup 1))
+   (set (match_dup 0) (and:X (neg:X (ne:X (match_dup 5) (const_int 0)))
+			     (match_dup 4)))])
+
+;; "a <= b" is "!(a > b)"
+(define_split
+  [(set (match_operand:X 0 "register_operand")
+	(and:X (neg:X (match_operator:X 1 "anyle_operator"
+			     [(match_operand:X 2 "register_operand")
+			      (match_operand:X 3 "arith_operand")]))
+	       (match_operand:X 4 "register_operand")))
+   (clobber (match_operand:X 5 "register_operand"))]
+  "TARGET_ZICOND"
+  [(set (match_dup 5) (match_dup 6))
+   (set (match_dup 0) (and:X (neg:X (eq:X (match_dup 5) (const_int 0)))
+			     (match_dup 4)))]
+{
+  operands[6] = gen_rtx_fmt_ee (GET_CODE (operands[1]) == LE ? GT : GTU,
+				<X:MODE>mode, operands[2], operands[3]);
+})
