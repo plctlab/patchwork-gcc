@@ -28,3 +28,23 @@
 		(match_operand:DI 2 "register_operand" "r")))]
   "TARGET_ZICOND"
   "czero.<eqz>\t%0,%2,%1")
+
+;; Zicond does not have immediate forms, so we need to do extra work
+;; to support these: if we encounter a vt.maskc/n with an immediate,
+;; we split this into a load-immediate followed by a czero.eqz/nez.
+(define_split
+  [(set (match_operand:DI 0 "register_operand")
+	(and:DI (neg:DI (match_operator:DI 1 "equality_operator"
+			       [(match_operand:DI 2 "register_operand")
+				(const_int 0)]))
+		(match_operand:DI 3 "immediate_operand")))
+   (clobber (match_operand:DI 4 "register_operand"))]
+  "TARGET_ZICOND"
+  [(set (match_dup 4) (match_dup 3))
+   (set (match_dup 0) (and:DI (neg:DI (match_dup 1))
+			      (match_dup 4)))]
+{
+  /* Eliminate the clobber/temporary, if it is not needed. */
+  if (!rtx_equal_p (operands[0], operands[2]))
+     operands[4] = operands[0];
+})
