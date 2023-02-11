@@ -1003,6 +1003,27 @@ riscv_v_adjust_nunits (machine_mode mode, int scale)
   return scale;
 }
 
+/* Call from ADJUST_BYTESIZE in riscv-modes.def.  Return the correct
+   BYTES size for corresponding machine_mode.  */
+
+poly_int64
+riscv_v_adjust_bytesize (machine_mode mode, int scale)
+{
+  gcc_assert (GET_MODE_CLASS (mode) == MODE_VECTOR_BOOL);
+
+  if (riscv_v_ext_vector_mode_p (mode))
+    {
+      poly_uint16 mode_size = GET_MODE_SIZE (mode);
+
+      if (known_lt (mode_size, BYTES_PER_RISCV_VECTOR))
+	return mode_size;
+      else
+	return BYTES_PER_RISCV_VECTOR;
+    }
+
+  return scale;
+}
+
 /* Return true if X is a valid address for machine mode MODE.  If it is,
    fill in INFO appropriately.  STRICT_P is true if REG_OK_STRICT is in
    effect.  */
@@ -5807,11 +5828,22 @@ riscv_hard_regno_mode_ok (unsigned int regno, machine_mode mode)
 /* Implement TARGET_MODES_TIEABLE_P.
 
    Don't allow floating-point modes to be tied, since type punning of
-   single-precision and double-precision is implementation defined.  */
+   single-precision and double-precision is implementation defined.
+
+   Don't allow different vbool*_t modes to be tied, since the type
+   size is determinated by vl.  */
 
 static bool
 riscv_modes_tieable_p (machine_mode mode1, machine_mode mode2)
 {
+  if (riscv_v_ext_vector_mode_p (mode1) && riscv_v_ext_vector_mode_p (mode2))
+    {
+      if (VECTOR_BOOL_MODE_P (mode1) || VECTOR_BOOL_MODE_P (mode2))
+	return mode1 == mode2;
+
+	return known_eq (GET_MODE_SIZE (mode1), GET_MODE_SIZE (mode2));
+    }
+
   return (mode1 == mode2
 	  || !(GET_MODE_CLASS (mode1) == MODE_FLOAT
 	       && GET_MODE_CLASS (mode2) == MODE_FLOAT));
