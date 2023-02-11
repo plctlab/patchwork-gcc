@@ -1748,7 +1748,63 @@ Flexible array members may only appear as the last member of a
 A structure containing a flexible array member, or a union containing
 such a structure (possibly recursively), may not be a member of a
 structure or an element of an array.  (However, these uses are
-permitted by GCC as extensions.)
+permitted by GCC as extensions, see details below.)
+@end itemize
+
+GCC extension accepts a structure containing a ISO C99 @dfn{flexible array
+member}, or a union containing such a structure (possibly recursively)
+to be a member of a structure.
+
+There are three situations:
+
+@itemize @bullet
+@item
+The structure with a C99 flexible array member is the last field of another
+structure, for example:
+
+@smallexample
+struct flex  @{ int length; char data[]; @};
+
+struct out_flex @{ int m; struct flex flex_data; @};
+@end smallexample
+
+In the above, @code{flex_data.data[]} is considered as a flexible array too.
+
+@item
+The structure with a C99 flexible array member is the field of
+another union, for example:
+
+@smallexample
+struct flex1  @{ int length1; char data1[]; @}
+struct flex2  @{ int length2; char data2[]; @}
+
+union out_flex @{ struct flex1 flex_data1; struct flex2 flex_data2; @}
+@end smallexample
+
+In the above, @code{flex_data1.data1[]} or @code{flex_data2.data2[]}
+is considered as flexible arrays too.
+
+@item
+The structure with a C99 flexible array member is the middle field of another
+structure, for example:
+
+@smallexample
+struct flex  @{ int length; char data[]; @};
+
+struct mid_flex @{ int m; struct flex flex_data; int n; @};
+@end smallexample
+
+In the above, @code{flex_data.data[]} is allowed to be extended flexibly to
+the padding.  E.g, up to 4 elements.
+
+However, relying on space in struct padding is a bad programming practice,
+compilers do not handle such extension consistently, Any code relying on
+this behavior should be modified to ensure that flexible array members
+only end up at the ends of structures.
+
+Please use warning option  @option{-Wgnu-variable-sized-type-not-at-end} to
+identify all such cases in the source code and modify them.  This extension
+will be deprecated from gcc in the next release.
 @end itemize
 
 Non-empty initialization of zero-length
