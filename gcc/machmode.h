@@ -242,6 +242,9 @@ extern const unsigned char mode_class[NUM_MACHINE_MODES];
    || CLASS == MODE_ACCUM                      \
    || CLASS == MODE_UACCUM)
 
+/* Nonzero if MODE is an vector bool mode.  */
+#define VECTOR_BOOL_MODE_P(MODE) (GET_MODE_CLASS(MODE) == MODE_VECTOR_BOOL)
+
 /* An optional T (i.e. a T or nothing), where T is some form of mode class.  */
 template<typename T>
 class opt_mode

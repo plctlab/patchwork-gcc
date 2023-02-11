@@ -43,6 +43,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "gimple-fold.h"
 #include "tree-eh.h"
 #include "gimplify.h"
+#include "target.h"
 #include "flags.h"
 #include "dojump.h"
 #include "explow.h"
@@ -5657,10 +5658,16 @@ visit_reference_op_load (tree lhs, tree op, gimple *stmt)
   if (result
       && !useless_type_conversion_p (TREE_TYPE (result), TREE_TYPE (op)))
     {
+      machine_mode result_mode = TYPE_MODE (TREE_TYPE (result));
+      machine_mode op_mode = TYPE_MODE (TREE_TYPE (op));
+      poly_uint16 result_mode_precision = GET_MODE_PRECISION (result_mode);
+      poly_uint16 op_mode_precision = GET_MODE_PRECISION (op_mode);
+
       /* Avoid the type punning in case the result mode has padding where
-	 the op we lookup has not.  */
-      if (maybe_lt (GET_MODE_PRECISION (TYPE_MODE (TREE_TYPE (result))),
-		    GET_MODE_PRECISION (TYPE_MODE (TREE_TYPE (op)))))
+	 the op we lookup has not.
+	 Avoid the type punning in case the target mode cannot be tied.  */
+      if (maybe_lt (result_mode_precision, op_mode_precision)
+		    || !targetm.modes_tieable_p (result_mode, op_mode))
 	result = NULL_TREE;
       else
 	{
