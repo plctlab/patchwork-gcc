@@ -149,3 +149,51 @@ static inline int64_t __riscv_aes64esm(int64_t rs1, int64_t rs2)
 	{ return _RVK_INTRIN_IMPL(aes64esm)(rs1, rs2); }		//	AES64ESM
 #endif
 
+//	=== (mapping)	Zknh:	NIST Suite: Hash Function Instructions
+
+static inline long __riscv_sha256sig0(long rs1)
+	{ return _RVK_INTRIN_IMPL(sha256sig0)(rs1); }			//	SHA256SIG0
+
+static inline long __riscv_sha256sig1(long rs1)
+	{ return _RVK_INTRIN_IMPL(sha256sig1)(rs1); }			//	SHA256SIG1
+
+static inline long __riscv_sha256sum0(long rs1)
+	{ return _RVK_INTRIN_IMPL(sha256sum0)(rs1); }			//	SHA256SUM0
+
+static inline long __riscv_sha256sum1(long rs1)
+	{ return _RVK_INTRIN_IMPL(sha256sum1)(rs1); }			//	SHA256SUM1
+
+#ifdef RVKINTRIN_RV32
+static inline int32_t __riscv_sha512sig0h(int32_t rs1, int32_t rs2)
+	{ return _RVK_INTRIN_IMPL(sha512sig0h)(rs1, rs2); }		//	SHA512SIG0H
+
+static inline int32_t __riscv_sha512sig0l(int32_t rs1, int32_t rs2)
+	{ return _RVK_INTRIN_IMPL(sha512sig0l)(rs1, rs2); }		//	SHA512SIG0L
+
+static inline int32_t __riscv_sha512sig1h(int32_t rs1, int32_t rs2)
+	{ return _RVK_INTRIN_IMPL(sha512sig1h)(rs1, rs2); }		//	SHA512SIG1H
+
+static inline int32_t __riscv_sha512sig1l(int32_t rs1, int32_t rs2)
+	{ return _RVK_INTRIN_IMPL(sha512sig1l)(rs1, rs2); }		//	SHA512SIG1L
+
+static inline int32_t __riscv_sha512sum0r(int32_t rs1, int32_t rs2)
+	{ return _RVK_INTRIN_IMPL(sha512sum0r)(rs1, rs2); }		//	SHA512SUM0R
+
+static inline int32_t __riscv_sha512sum1r(int32_t rs1, int32_t rs2)
+	{ return _RVK_INTRIN_IMPL(sha512sum1r)(rs1, rs2); }		//	SHA512SUM1R
+#endif
+
+#ifdef RVKINTRIN_RV64
+static inline int64_t __riscv_sha512sig0(int64_t rs1)
+	{ return _RVK_INTRIN_IMPL(sha512sig0)(rs1); }			//	SHA512SIG0
+
+static inline int64_t __riscv_sha512sig1(int64_t rs1)
+	{ return _RVK_INTRIN_IMPL(sha512sig1)(rs1); }			//	SHA512SIG1
+
+static inline int64_t __riscv_sha512sum0(int64_t rs1)
+	{ return _RVK_INTRIN_IMPL(sha512sum0)(rs1); }			//	SHA512SUM0
+
+static inline int64_t __riscv_sha512sum1(int64_t rs1)
+	{ return _RVK_INTRIN_IMPL(sha512sum1)(rs1); }			//	SHA512SUM1
+#endif
+
