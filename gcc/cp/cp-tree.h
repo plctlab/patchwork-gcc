@@ -6845,7 +6845,7 @@ extern tree define_label			(location_t, tree);
 extern void check_goto				(tree);
 extern bool check_omp_return			(void);
 extern tree make_typename_type			(tree, tree, enum tag_types, tsubst_flags_t,
-						 bool = false, bool = false);
+						 bool = false, bool = false, bool = false);
 extern tree build_typename_type			(tree, tree, tree, tag_types);
 extern tree make_unbound_class_template		(tree, tree, tree, tsubst_flags_t);
 extern tree make_unbound_class_template_raw	(tree, tree, tree);

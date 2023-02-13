@@ -13949,12 +13949,12 @@ tsubst_aggr_type_1 (tree t,
     return t;
 }
 
-/* Substitute ARGS into the TYPENAME_TYPE T.  The flag TEMPLATE_OK
-   is passed to make_typename_type.  */
+/* Substitute ARGS into the TYPENAME_TYPE T.  The flags TEMPLATE_OK and
+   TYPE_ONLY are passed to make_typename_type.  */
 
 static tree
 tsubst_typename_type (tree t, tree args, tsubst_flags_t complain, tree in_decl,
-		      bool template_ok = false)
+		      bool template_ok = false, bool type_only = false)
 {
   tree ctx = TYPE_CONTEXT (t);
   if (TREE_CODE (ctx) == TYPE_PACK_EXPANSION)
@@ -13972,6 +13972,10 @@ tsubst_typename_type (tree t, tree args, tsubst_flags_t complain, tree in_decl,
 	}
       ctx = TREE_VEC_ELT (ctx, 0);
     }
+  else if (TREE_CODE (ctx) == TYPENAME_TYPE
+	   && !typedef_variant_p (ctx))
+    ctx = tsubst_typename_type (ctx, args, complain, in_decl,
+				/*template_ok=*/false, /*type_only=*/true);
   else
     ctx = tsubst_aggr_type (ctx, args, complain, in_decl,
 			    /*entering_scope=*/1);
@@ -14004,7 +14008,7 @@ tsubst_typename_type (tree t, tree args, tsubst_flags_t complain, tree in_decl,
     }
 
   f = make_typename_type (ctx, f, typename_type, complain,
-			  /*keep_type_decl=*/true, template_ok);
+			  /*keep_type_decl=*/true, template_ok, type_only);
   if (f == error_mark_node)
     return f;
   if (TREE_CODE (f) == TYPE_DECL)
@@ -15094,6 +15098,11 @@ tsubst_decl (tree t, tree args, tsubst_flags_t complain)
 	      scope = tsubst_pack_expansion (scope, args, complain, in_decl);
 	      variadic_p = true;
 	    }
+	  else if (TREE_CODE (scope) == TYPENAME_TYPE
+		   && !typedef_variant_p (scope))
+	    scope = tsubst_typename_type (scope, args, complain, in_decl,
+					  /*template_ok=*/false,
+					  /*type_only=*/true);
 	  else
 	    scope = tsubst_copy (scope, args, complain, in_decl);
 
@@ -16885,7 +16894,12 @@ tsubst_qualified_id (tree qualified_id, tree args,
   scope = TREE_OPERAND (qualified_id, 0);
   if (args)
     {
-      scope = tsubst (scope, args, complain, in_decl);
+      if (TREE_CODE (scope) == TYPENAME_TYPE
+	  && !typedef_variant_p (scope))
+	scope = tsubst_typename_type (scope, args, complain, in_decl,
+				      /*template_ok=*/false, /*type_only=*/true);
+      else
+	scope = tsubst (scope, args, complain, in_decl);
       expr = tsubst_copy (name, args, complain, in_decl);
     }
   else
