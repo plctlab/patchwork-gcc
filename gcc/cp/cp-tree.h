@@ -5573,8 +5573,7 @@ enum tsubst_flags {
   tf_error = 1 << 0,		 /* give error messages  */
   tf_warning = 1 << 1,	 	 /* give warnings too  */
   tf_ignore_bad_quals = 1 << 2,	 /* ignore bad cvr qualifiers */
-  tf_keep_type_decl = 1 << 3,	 /* retain typedef type decls
-				    (make_typename_type use) */
+  /* 1 << 3 available */
   tf_ptrmem_ok = 1 << 4,	 /* pointers to member ok (internal
 				    instantiate_type use) */
   tf_user = 1 << 5,		 /* found template must be a user template
@@ -5594,8 +5593,7 @@ enum tsubst_flags {
 				(build_target_expr and friends) */
   tf_norm = 1 << 11,		 /* Build diagnostic information during
 				    constraint normalization.  */
-  tf_tst_ok = 1 << 12,		 /* Allow a typename-specifier to name
-				    a template (C++17 or later).  */
+  /* 1 << 12 available */
   tf_dguide = 1 << 13,		/* Building a deduction guide from a ctor.  */
   /* Convenient substitution flags combinations.  */
   tf_warning_or_error = tf_warning | tf_error
@@ -6846,7 +6844,8 @@ extern tree declare_local_label			(tree);
 extern tree define_label			(location_t, tree);
 extern void check_goto				(tree);
 extern bool check_omp_return			(void);
-extern tree make_typename_type			(tree, tree, enum tag_types, tsubst_flags_t);
+extern tree make_typename_type			(tree, tree, enum tag_types, tsubst_flags_t,
+						 bool = false, bool = false);
 extern tree build_typename_type			(tree, tree, tree, tag_types);
 extern tree make_unbound_class_template		(tree, tree, tree, tsubst_flags_t);
 extern tree make_unbound_class_template_raw	(tree, tree, tree);
