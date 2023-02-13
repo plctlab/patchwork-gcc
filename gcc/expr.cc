@@ -7944,10 +7944,10 @@ get_inner_reference (tree exp, poly_int64_pod *pbitsize,
 
   if (size_tree != 0)
     {
-      if (! tree_fits_uhwi_p (size_tree))
+      if (! tree_fits_poly_uint64_p (size_tree))
 	mode = BLKmode, *pbitsize = -1;
       else
-	*pbitsize = tree_to_uhwi (size_tree);
+	*pbitsize = tree_to_poly_uint64 (size_tree);
     }
 
   *preversep = reverse_storage_order_for_component_p (exp);
