@@ -104,3 +104,48 @@ static inline long __riscv_xperm4(long rs1, long rs2)
 	{ return _RVK_INTRIN_IMPL(xperm4_64)(rs1, rs2); }		//	XPERM4
 
 
+//	=== (mapping)	Zknd:	NIST Suite: AES Decryption
+
+#ifdef RVKINTRIN_RV32
+static inline int32_t __riscv_aes32dsi(int32_t rs1, int32_t rs2, int bs)
+	{ return _RVK_INTRIN_IMPL(aes32dsi)(rs1, rs2, bs); }	//	AES32DSI
+
+static inline int32_t __riscv_aes32dsmi(int32_t rs1, int32_t rs2, int bs)
+	{ return _RVK_INTRIN_IMPL(aes32dsmi)(rs1, rs2, bs); }	//	AES32DSMI
+#endif
+
+#ifdef RVKINTRIN_RV64
+static inline int64_t __riscv_aes64ds(int64_t rs1, int64_t rs2)
+	{ return _RVK_INTRIN_IMPL(aes64ds)(rs1, rs2); }			//	AES64DS
+
+static inline int64_t __riscv_aes64dsm(int64_t rs1, int64_t rs2)
+	{ return _RVK_INTRIN_IMPL(aes64dsm)(rs1, rs2); }		//	AES64DSM
+
+static inline int64_t __riscv_aes64im(int64_t rs1)
+	{ return _RVK_INTRIN_IMPL(aes64im)(rs1); }				//	AES64IM
+
+static inline int64_t __riscv_aes64ks1i(int64_t rs1, int rnum)
+	{ return _RVK_INTRIN_IMPL(aes64ks1i)(rs1, rnum); }		//	AES64KS1I
+
+static inline int64_t __riscv_aes64ks2(int64_t rs1, int64_t rs2)
+	{ return _RVK_INTRIN_IMPL(aes64ks2)(rs1, rs2); }		//	AES64KS2
+#endif
+
+//	=== (mapping)	Zkne:	NIST Suite: AES Encryption
+
+#ifdef RVKINTRIN_RV32
+static inline int32_t __riscv_aes32esi(int32_t rs1, int32_t rs2, int bs)
+	{ return _RVK_INTRIN_IMPL(aes32esi)(rs1, rs2, bs); }	//	AES32ESI
+
+static inline int32_t __riscv_aes32esmi(int32_t rs1, int32_t rs2, int bs)
+	{ return _RVK_INTRIN_IMPL(aes32esmi)(rs1, rs2, bs); }	//	AES32ESMI
+#endif
+
+#ifdef RVKINTRIN_RV64
+static inline int64_t __riscv_aes64es(int64_t rs1, int64_t rs2)
+	{ return _RVK_INTRIN_IMPL(aes64es)(rs1, rs2); }			//	AES64ES
+
+static inline int64_t __riscv_aes64esm(int64_t rs1, int64_t rs2)
+	{ return _RVK_INTRIN_IMPL(aes64esm)(rs1, rs2); }		//	AES64ESM
+#endif
+
