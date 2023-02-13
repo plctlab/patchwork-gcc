@@ -1313,7 +1313,6 @@ eliminate_unnecessary_stmts (bool aggressive)
   basic_block bb;
   gimple_stmt_iterator gsi, psi;
   gimple *stmt;
-  tree call;
   auto_vec<edge> to_remove_edges;
 
   if (dump_file && (dump_flags & TDF_DETAILS))
@@ -1416,50 +1415,58 @@ eliminate_unnecessary_stmts (bool aggressive)
 	      remove_dead_stmt (&gsi, bb, to_remove_edges);
 	      continue;
 	    }
-	  else if (is_gimple_call (stmt))
+	  else if (gcall *call = dyn_cast <gcall *> (stmt))
 	    {
-	      tree name = gimple_call_lhs (stmt);
+	      tree name = gimple_call_lhs (call);
 
-	      notice_special_calls (as_a <gcall *> (stmt));
+	      bool saved_calls_setjmp = cfun->calls_setjmp;
+	      notice_special_calls (call);
+	      /* Ignore ECF_RETURNS_TWICE from calls not marked as
+		 control altering.  */
+	      if (!saved_calls_setjmp
+		  && cfun->calls_setjmp
+		  && !gimple_call_ctrl_altering_p (call))
+		cfun->calls_setjmp = false;
 
 	      /* When LHS of var = call (); is dead, simplify it into
 		 call (); saving one operand.  */
+	      tree fndecl;
 	      if (name
 		  && TREE_CODE (name) == SSA_NAME
 		  && !bitmap_bit_p (processed, SSA_NAME_VERSION (name))
 		  /* Avoid doing so for allocation calls which we
 		     did not mark as necessary, it will confuse the
 		     special logic we apply to malloc/free pair removal.  */
-		  && (!(call = gimple_call_fndecl (stmt))
-		      || ((DECL_BUILT_IN_CLASS (call) != BUILT_IN_NORMAL
-			   || (DECL_FUNCTION_CODE (call) != BUILT_IN_ALIGNED_ALLOC
-			       && DECL_FUNCTION_CODE (call) != BUILT_IN_MALLOC
-			       && DECL_FUNCTION_CODE (call) != BUILT_IN_CALLOC
+		  && (!(fndecl = gimple_call_fndecl (call))
+		      || ((DECL_BUILT_IN_CLASS (fndecl) != BUILT_IN_NORMAL
+			   || (DECL_FUNCTION_CODE (fndecl) != BUILT_IN_ALIGNED_ALLOC
+			       && DECL_FUNCTION_CODE (fndecl) != BUILT_IN_MALLOC
+			       && DECL_FUNCTION_CODE (fndecl) != BUILT_IN_CALLOC
 			       && !ALLOCA_FUNCTION_CODE_P
-			       (DECL_FUNCTION_CODE (call))))
-			  && !DECL_IS_REPLACEABLE_OPERATOR_NEW_P (call))))
+				     (DECL_FUNCTION_CODE (fndecl))))
+			  && !DECL_IS_REPLACEABLE_OPERATOR_NEW_P (fndecl))))
 		{
 		  something_changed = true;
 		  if (dump_file && (dump_flags & TDF_DETAILS))
 		    {
 		      fprintf (dump_file, "Deleting LHS of call: ");
-		      print_gimple_stmt (dump_file, stmt, 0, TDF_SLIM);
+		      print_gimple_stmt (dump_file, call, 0, TDF_SLIM);
 		      fprintf (dump_file, "\n");
 		    }
 
-		  gimple_call_set_lhs (stmt, NULL_TREE);
-		  maybe_clean_or_replace_eh_stmt (stmt, stmt);
-		  update_stmt (stmt);
+		  gimple_call_set_lhs (call, NULL_TREE);
+		  maybe_clean_or_replace_eh_stmt (call, call);
+		  update_stmt (call);
 		  release_ssa_name (name);
 
 		  /* GOMP_SIMD_LANE (unless three argument) or ASAN_POISON
 		     without lhs is not needed.  */
-		  if (gimple_call_internal_p (stmt))
-		    switch (gimple_call_internal_fn (stmt))
+		  if (gimple_call_internal_p (call))
+		    switch (gimple_call_internal_fn (call))
 		      {
 		      case IFN_GOMP_SIMD_LANE:
-			if (gimple_call_num_args (stmt) >= 3
-			    && !integer_nonzerop (gimple_call_arg (stmt, 2)))
+			if (gimple_call_num_args (call) >= 3
+			    && !integer_nonzerop (gimple_call_arg (call, 2)))
 			  break;
 			/* FALLTHRU */
 		      case IFN_ASAN_POISON:
@@ -1469,8 +1476,8 @@ eliminate_unnecessary_stmts (bool aggressive)
 			break;
 		      }
 		}
-	      else if (gimple_call_internal_p (stmt))
-		switch (gimple_call_internal_fn (stmt))
+	      else if (gimple_call_internal_p (call))
+		switch (gimple_call_internal_fn (call))
 		  {
 		  case IFN_ADD_OVERFLOW:
 		    maybe_optimize_arith_overflow (&gsi, PLUS_EXPR);
