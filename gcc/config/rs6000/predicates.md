@@ -2064,3 +2064,8 @@
   else
     return false;
 })
+
+(define_predicate "lowpart_subreg_operator"
+  (and (match_code "subreg")
+       (match_test "subreg_lowpart_offset (mode, GET_MODE (SUBREG_REG (op)))
+		    == SUBREG_BYTE (op)")))
