@@ -13949,6 +13949,94 @@ tsubst_aggr_type_1 (tree t,
     return t;
 }
 
+/* Substitute ARGS into the TYPENAME_TYPE T.  The flag TEMPLATE_OK
+   is passed to make_typename_type.  */
+
+static tree
+tsubst_typename_type (tree t, tree args, tsubst_flags_t complain, tree in_decl,
+		      bool template_ok = false)
+{
+  tree ctx = TYPE_CONTEXT (t);
+  if (TREE_CODE (ctx) == TYPE_PACK_EXPANSION)
+    {
+      ctx = tsubst_pack_expansion (ctx, args, complain, in_decl);
+      if (ctx == error_mark_node
+	  || TREE_VEC_LENGTH (ctx) > 1)
+	return error_mark_node;
+      if (TREE_VEC_LENGTH (ctx) == 0)
+	{
+	  if (complain & tf_error)
+	    error ("%qD is instantiated for an empty pack",
+		   TYPENAME_TYPE_FULLNAME (t));
+	  return error_mark_node;
+	}
+      ctx = TREE_VEC_ELT (ctx, 0);
+    }
+  else
+    ctx = tsubst_aggr_type (ctx, args, complain, in_decl,
+			    /*entering_scope=*/1);
+  if (ctx == error_mark_node)
+    return error_mark_node;
+
+  tree f = tsubst_copy (TYPENAME_TYPE_FULLNAME (t), args,
+			complain, in_decl);
+  if (f == error_mark_node)
+    return error_mark_node;
+
+  if (!MAYBE_CLASS_TYPE_P (ctx))
+    {
+      if (complain & tf_error)
+	error ("%qT is not a class, struct, or union type", ctx);
+      return error_mark_node;
+    }
+  else if (!uses_template_parms (ctx) && !TYPE_BEING_DEFINED (ctx))
+    {
+      /* Normally, make_typename_type does not require that the CTX
+	 have complete type in order to allow things like:
+
+	   template <class T> struct S { typename S<T>::X Y; };
+
+	 But, such constructs have already been resolved by this
+	 point, so here CTX really should have complete type, unless
+	 it's a partial instantiation.  */
+      if (!complete_type_or_maybe_complain (ctx, NULL_TREE, complain))
+	return error_mark_node;
+    }
+
+  f = make_typename_type (ctx, f, typename_type, complain,
+			  /*keep_type_decl=*/true, template_ok);
+  if (f == error_mark_node)
+    return f;
+  if (TREE_CODE (f) == TYPE_DECL)
+    {
+      complain |= tf_ignore_bad_quals;
+      f = TREE_TYPE (f);
+    }
+
+  if (TREE_CODE (f) != TYPENAME_TYPE)
+    {
+      if (TYPENAME_IS_ENUM_P (t) && TREE_CODE (f) != ENUMERAL_TYPE)
+	{
+	  if (complain & tf_error)
+	    error ("%qT resolves to %qT, which is not an enumeration type",
+		   t, f);
+	  else
+	    return error_mark_node;
+	}
+      else if (TYPENAME_IS_CLASS_P (t) && !CLASS_TYPE_P (f))
+	{
+	  if (complain & tf_error)
+	    error ("%qT resolves to %qT, which is not a class type",
+		   t, f);
+	  else
+	    return error_mark_node;
+	}
+    }
+
+  return cp_build_qualified_type
+    (f, cp_type_quals (f) | cp_type_quals (t), complain);
+}
+
 /* Map from a FUNCTION_DECL to a vec of default argument instantiations,
    indexed in reverse order of the parameters.  */
 
@@ -15193,10 +15281,13 @@ tsubst_decl (tree t, tree args, tsubst_flags_t complain)
 		&& VAR_HAD_UNKNOWN_BOUND (t)
 		&& type != error_mark_node)
 	      type = strip_array_domain (type);
-	    tsubst_flags_t tcomplain = complain;
-	    if (VAR_P (t))
-	      tcomplain |= tf_tst_ok;
-	    type = tsubst (type, args, tcomplain, in_decl);
+	    if (VAR_P (t)
+		&& TREE_CODE (type) == TYPENAME_TYPE
+		&& !typedef_variant_p (type))
+	      type = tsubst_typename_type (type, args, complain, in_decl,
+					   /*template_ok=*/true);
+	    else
+	      type = tsubst (type, args, complain, in_decl);
 	    /* Substituting the type might have recursively instantiated this
 	       same alias (c++/86171).  */
 	    if (gen_tmpl && DECL_ALIAS_TEMPLATE_P (gen_tmpl)
@@ -15889,9 +15980,6 @@ tsubst (tree t, tree args, tsubst_flags_t complain, tree in_decl)
   bool fndecl_type = (complain & tf_fndecl_type);
   complain &= ~tf_fndecl_type;
 
-  bool tst_ok = (complain & tf_tst_ok);
-  complain &= ~tf_tst_ok;
-
   if (type
       && code != TYPENAME_TYPE
       && code != TEMPLATE_TYPE_PARM
@@ -16424,89 +16512,7 @@ tsubst (tree t, tree args, tsubst_flags_t complain, tree in_decl)
       }
 
     case TYPENAME_TYPE:
-      {
-	tree ctx = TYPE_CONTEXT (t);
-	if (TREE_CODE (ctx) == TYPE_PACK_EXPANSION)
-	  {
-	    ctx = tsubst_pack_expansion (ctx, args, complain, in_decl);
-	    if (ctx == error_mark_node
-		|| TREE_VEC_LENGTH (ctx) > 1)
-	      return error_mark_node;
-	    if (TREE_VEC_LENGTH (ctx) == 0)
-	      {
-		if (complain & tf_error)
-		  error ("%qD is instantiated for an empty pack",
-			 TYPENAME_TYPE_FULLNAME (t));
-		return error_mark_node;
-	      }
-	    ctx = TREE_VEC_ELT (ctx, 0);
-	  }
-	else
-	  ctx = tsubst_aggr_type (ctx, args, complain, in_decl,
-				  /*entering_scope=*/1);
-	if (ctx == error_mark_node)
-	  return error_mark_node;
-
-	tree f = tsubst_copy (TYPENAME_TYPE_FULLNAME (t), args,
-			      complain, in_decl);
-	if (f == error_mark_node)
-	  return error_mark_node;
-
-	if (!MAYBE_CLASS_TYPE_P (ctx))
-	  {
-	    if (complain & tf_error)
-	      error ("%qT is not a class, struct, or union type", ctx);
-	    return error_mark_node;
-	  }
-	else if (!uses_template_parms (ctx) && !TYPE_BEING_DEFINED (ctx))
-	  {
-	    /* Normally, make_typename_type does not require that the CTX
-	       have complete type in order to allow things like:
-
-		 template <class T> struct S { typename S<T>::X Y; };
-
-	       But, such constructs have already been resolved by this
-	       point, so here CTX really should have complete type, unless
-	       it's a partial instantiation.  */
-	    if (!complete_type_or_maybe_complain (ctx, NULL_TREE, complain))
-	      return error_mark_node;
-	  }
-
-	tsubst_flags_t tcomplain = complain | tf_keep_type_decl;
-	if (tst_ok)
-	  tcomplain |= tf_tst_ok;
-	f = make_typename_type (ctx, f, typename_type, tcomplain);
-	if (f == error_mark_node)
-	  return f;
-	if (TREE_CODE (f) == TYPE_DECL)
-	  {
-	    complain |= tf_ignore_bad_quals;
-	    f = TREE_TYPE (f);
-	  }
-
-	if (TREE_CODE (f) != TYPENAME_TYPE)
-	  {
-	    if (TYPENAME_IS_ENUM_P (t) && TREE_CODE (f) != ENUMERAL_TYPE)
-	      {
-		if (complain & tf_error)
-		  error ("%qT resolves to %qT, which is not an enumeration type",
-			 t, f);
-		else
-		  return error_mark_node;
-	      }
-	    else if (TYPENAME_IS_CLASS_P (t) && !CLASS_TYPE_P (f))
-	      {
-		if (complain & tf_error)
-		  error ("%qT resolves to %qT, which is not a class type",
-			 t, f);
-		else
-		  return error_mark_node;
-	      }
-	  }
-
-	return cp_build_qualified_type
-	  (f, cp_type_quals (f) | cp_type_quals (t), complain);
-      }
+      return tsubst_typename_type (t, args, complain, in_decl);
 
     case UNBOUND_CLASS_TEMPLATE:
       {
@@ -17391,10 +17397,14 @@ tsubst_copy (tree t, tree args, tsubst_flags_t complain, tree in_decl)
     case IMPLICIT_CONV_EXPR:
     CASE_CONVERT:
       {
-	tsubst_flags_t tcomplain = complain;
-	if (code == CAST_EXPR)
-	  tcomplain |= tf_tst_ok;
-	tree type = tsubst (TREE_TYPE (t), args, tcomplain, in_decl);
+	tree type = TREE_TYPE (t);
+	if (code == CAST_EXPR
+	    && TREE_CODE (type) == TYPENAME_TYPE
+	    && !typedef_variant_p (type))
+	  type = tsubst_typename_type (type, args, complain, in_decl,
+				       /*template_ok=*/true);
+	else
+	  type = tsubst (type, args, complain, in_decl);
 	tree op0 = tsubst_copy (TREE_OPERAND (t, 0), args, complain, in_decl);
 	return build1 (code, type, op0);
       }
@@ -20430,13 +20440,16 @@ tsubst_copy_and_build (tree t,
     case DYNAMIC_CAST_EXPR:
     case STATIC_CAST_EXPR:
       {
-	tree type;
+	tree type = TREE_TYPE (t);
 	tree op, r = NULL_TREE;
 
-	tsubst_flags_t tcomplain = complain;
-	if (TREE_CODE (t) == CAST_EXPR)
-	  tcomplain |= tf_tst_ok;
-	type = tsubst (TREE_TYPE (t), args, tcomplain, in_decl);
+	if (TREE_CODE (t) == CAST_EXPR
+	    && TREE_CODE (type) == TYPENAME_TYPE
+	    && !typedef_variant_p (type))
+	  type = tsubst_typename_type (type, args, complain, in_decl,
+				       /*template_ok=*/true);
+	else
+	  type = tsubst (type, args, complain, in_decl);
 
 	op = RECUR (TREE_OPERAND (t, 0));
 
@@ -21421,10 +21434,14 @@ tsubst_copy_and_build (tree t,
         bool need_copy_p = false;
 	tree r;
 
-	tsubst_flags_t tcomplain = complain;
-	if (COMPOUND_LITERAL_P (t))
-	  tcomplain |= tf_tst_ok;
-	tree type = tsubst (TREE_TYPE (t), args, tcomplain, in_decl);
+	tree type = TREE_TYPE (t);
+	if (COMPOUND_LITERAL_P (t)
+	    && TREE_CODE (type) == TYPENAME_TYPE
+	    && !typedef_variant_p (type))
+	  type = tsubst_typename_type (type, args, complain, in_decl,
+				       /*template_ok=*/true);
+	else
+	  type = tsubst (type, args, complain, in_decl);
 	if (type == error_mark_node)
 	  RETURN (error_mark_node);
 

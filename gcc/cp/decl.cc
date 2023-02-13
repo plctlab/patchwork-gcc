@@ -4228,14 +4228,17 @@ build_typename_type (tree context, tree name, tree fullname,
 /* Resolve `typename CONTEXT::NAME'.  TAG_TYPE indicates the tag
    provided to name the type.  Returns an appropriate type, unless an
    error occurs, in which case error_mark_node is returned.  If we
-   locate a non-artificial TYPE_DECL and TF_KEEP_TYPE_DECL is set, we
+   locate a non-artificial TYPE_DECL and KEEP_TYPE_DECL is true, we
    return that, rather than the _TYPE it corresponds to, in other
-   cases we look through the type decl.  If TF_ERROR is set, complain
-   about errors, otherwise be quiet.  */
+   cases we look through the type decl.  If TEMPLATE_OK is true and
+   we found a TEMPLATE_DECL then we return a CTAD placeholder for the
+   TEMPLATE_DECL.  If TF_ERROR is set, complain about errors, otherwise
+   be quiet.  */
 
 tree
 make_typename_type (tree context, tree name, enum tag_types tag_type,
-		    tsubst_flags_t complain)
+		    tsubst_flags_t complain, bool keep_type_decl /* = false */,
+		    bool template_ok /* = false */)
 {
   tree fullname;
   tree t;
@@ -4352,8 +4355,8 @@ make_typename_type (tree context, tree name, enum tag_types tag_type,
     }
   if (!want_template && TREE_CODE (t) != TYPE_DECL)
     {
-      if ((complain & tf_tst_ok) && cxx_dialect >= cxx17
-	  && DECL_TYPE_TEMPLATE_P (t))
+      if (template_ok && DECL_TYPE_TEMPLATE_P (t)
+	  && cxx_dialect >= cxx17)
 	/* The caller permits this typename-specifier to name a template
 	   (because it appears in a CTAD-enabled context).  */;
       else
@@ -4383,7 +4386,7 @@ make_typename_type (tree context, tree name, enum tag_types tag_type,
       t = TYPE_NAME (t);
     }
   
-  if (DECL_ARTIFICIAL (t) || !(complain & tf_keep_type_decl))
+  if (DECL_ARTIFICIAL (t) || !keep_type_decl)
     t = TREE_TYPE (t);
 
   maybe_record_typedef_use (t);
