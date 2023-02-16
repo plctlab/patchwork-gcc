@@ -1376,6 +1376,17 @@
   [(set_attr "type" "mve_move")
 ])
 
+(define_insn "@mve_vmulq_n_<mode>2"
+  [
+   (set (match_operand:MVE_VLD_ST 0 "s_register_operand" "=w")
+	(mult:MVE_VLD_ST (vec_duplicate:MVE_VLD_ST (match_operand:<V_elem> 1 "s_register_operand" "r"))
+						   (match_operand:MVE_VLD_ST 2 "s_register_operand" "w")))
+  ]
+  "TARGET_HAVE_MVE"
+  "vmul.%#<V_if_elem>\t%q0, %q2, %r1"
+  [(set_attr "type" "mve_move")
+])
+
 ;;
 ;; [vmulq_u, vmulq_s])
 ;;

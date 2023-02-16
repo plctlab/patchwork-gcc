@@ -102,12 +102,22 @@
 (define_expand "mul<mode>3"
   [(set (match_operand:VDQWH 0 "s_register_operand")
 	(mult:VDQWH (match_operand:VDQWH 1 "s_register_operand")
-		    (match_operand:VDQWH 2 "s_register_operand")))]
+		    (match_operand:VDQWH 2 "reg_or_mve_replicated_const_operand")))]
   "ARM_HAVE_<MODE>_ARITH
    && (!TARGET_REALLY_IWMMXT
        || <MODE>mode == V4HImode
        || <MODE>mode == V2SImode)"
-)
+{
+  if ((GET_CODE (operands[2]) == CONST_VECTOR) && can_create_pseudo_p ()
+       && (VALID_MVE_SI_MODE (<MODE>mode) || VALID_MVE_SF_MODE (<MODE>mode)))
+  {
+    rtx tmp = gen_reg_rtx (<V_elem>mode);
+    emit_move_insn (tmp, neon_vdup_constant (operands[2], 0));
+    emit_insn (maybe_gen_mve_vmulq_n_2 (<MODE>mode, operands[0], tmp,
+					operands[1]));
+    DONE;
+  }
+})
 
 (define_expand "smin<mode>3"
   [(set (match_operand:VALLW 0 "s_register_operand")

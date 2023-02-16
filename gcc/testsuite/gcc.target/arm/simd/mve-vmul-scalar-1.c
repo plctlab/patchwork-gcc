@@ -24,9 +24,9 @@ FUNC_IMM(u, uint, 8, 16, *, vmulimm)
 
 /* For the moment we do not select the T2 vmul variant operating on a scalar
    final argument.  */
-/* { dg-final { scan-assembler-times {vmul\.i32\tq[0-9]+, q[0-9]+, r[0-9]+} 2 { xfail *-*-* } } } */
-/* { dg-final { scan-assembler-times {vmul\.i16\tq[0-9]+, q[0-9]+, r[0-9]+} 2 { xfail *-*-* } } } */
-/* { dg-final { scan-assembler-times {vmul\.i8\tq[0-9]+, q[0-9]+, r[0-9]+} 2 { xfail *-*-* } } } */
+/* { dg-final { scan-assembler-times {vmul\.i32\tq[0-9]+, q[0-9]+, r[0-9]+} 2 } } */
+/* { dg-final { scan-assembler-times {vmul\.i16\tq[0-9]+, q[0-9]+, r[0-9]+} 2 } } */
+/* { dg-final { scan-assembler-times {vmul\.i8\tq[0-9]+, q[0-9]+, r[0-9]+} 2 } } */
 
 void test_vmul_f32 (float * dest, float * a, float * b) {
   int i;
@@ -40,16 +40,15 @@ void test_vmulimm_f32 (float * dest, float * a) {
     dest[i] = a[i] * 5.0;
   }
 }
-/* { dg-final { scan-assembler-times {vmul\.f32\tq[0-9]+, q[0-9]+, r[0-9]+} 2 { xfail *-*-* } } } */
+/* { dg-final { scan-assembler-times {vmul\.f32\tq[0-9]+, q[0-9]+, r[0-9]+} 2 } } */
 
 void test_vmul_f16 (__fp16 * dest, __fp16 * a, __fp16 * b) {
   int i;
   for (i=0; i<8; i++) {
-    dest[i] = a[i] * b[i];
+    dest[i] = a[i] * b[1];
   }
 }
 
-/* Note that dest[i] = a[i] * 5.0f16 is not vectorized.  */
 void test_vmulimm_f16 (__fp16 * dest, __fp16 * a) {
   int i;
   __fp16 b = 5.0f16;
@@ -57,4 +56,4 @@ void test_vmulimm_f16 (__fp16 * dest, __fp16 * a) {
     dest[i] = a[i] * b;
   }
 }
-/* { dg-final { scan-assembler-times {vmul\.f16\tq[0-9]+, q[0-9]+, r[0-9]+} 2 { xfail *-*-* } } } */
+/* { dg-final { scan-assembler-times {vmul\.f16\tq[0-9]+, q[0-9]+, r[0-9]+} 2 } } */

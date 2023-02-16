@@ -199,6 +199,7 @@ extern rtx arm_load_tp (rtx);
 extern bool arm_coproc_builtin_available (enum unspecv);
 extern bool arm_coproc_ldc_stc_legitimate_address (rtx);
 extern rtx arm_stack_protect_tls_canary_mem (bool);
+extern rtx neon_vdup_constant (rtx, bool);
 
 
 #if defined TREE_CODE

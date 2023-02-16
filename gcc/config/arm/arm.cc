@@ -13303,7 +13303,7 @@ neon_pairwise_reduce (rtx op0, rtx op1, machine_mode mode,
    If this is the case, and GENERATE is set, we also generate
    instructions to do this and return an RTX to assign to the register.  */
 
-static rtx
+rtx
 neon_vdup_constant (rtx vals, bool generate)
 {
   machine_mode mode = GET_MODE (vals);

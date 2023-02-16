@@ -113,6 +113,14 @@
           && neon_immediate_valid_for_logic (op, mode, 1, NULL, NULL));
 })
 
+(define_predicate "reg_or_mve_replicated_const_operand"
+  (if_then_else (and (match_test "TARGET_HAVE_MVE")
+		     (match_code "const_vector")
+		     (match_test "const_vec_duplicate_p (op)"))
+		(match_operand 0 "immediate_operand")
+		(match_operand 0 "s_register_operand"))
+)
+
 (define_predicate "neon_inv_logic_op2"
   (ior (match_operand 0 "imm_for_neon_inv_logic_operand")
        (match_operand 0 "s_register_operand")))
