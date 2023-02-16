@@ -3448,6 +3448,45 @@ skip_constraint_modifiers (const char *str)
       }
 }
 
+/*  Takes a string of 0 or more comma-separated constraints and the
+    constraint_num correspondig to the first constraint.  When more
+    than one constraint present, evaluate whether they all correspond
+    to a single, repeated constraint (e.g. "r,r") or whether we have
+    more than one distinct constraints (e.g. "r,m").  */
+static bool
+constraint_unique (const char *cstr, enum constraint_num ca)
+{
+   enum constraint_num cb;
+   for (;;)
+     {
+       /* Skip past current constraint and any whitespace which may
+	  precede the end-of-line or separator characters.  */
+       cstr = skip_constraint_modifiers (cstr
+					 + CONSTRAINT_LEN (cstr[0], cstr));
+       /* If end of string reached and no disagreement found, we have
+	  uniqueness.  */
+       if (*cstr == '\0')
+	 return true;
+       /* skip_constraint_modifiers does not handle commas, handle
+	  case manually.  */
+       if (*cstr == ',')
+	 cstr++;
+       /* Get next constraint.  */
+       cstr =  skip_constraint_modifiers (cstr);
+       cb = lookup_constraint ((*cstr == '\0' || *cstr == ',') ? "X" : cstr);
+
+       /* If mismatch found, break out of loop.  */
+       if (cb != ca)
+	 return false;
+
+       /* If *cstr == '\0', we don't want to reach the
+	  skip_constraint_modifiers statement again as that will
+	  advance the pointer past the end of the string.  */
+       if (*cstr == '\0')
+	 return true;
+     }
+}
+
 /* Major function to make reloads for an address in operand NOP or
    check its correctness (If CHECK_ONLY_P is true). The supported
    cases are:
@@ -3507,9 +3546,7 @@ process_address_1 (int nop, bool check_only_p,
      operand has one address constraint, probably all others constraints are
      address ones.  */
   if (constraint[0] != '\0' && get_constraint_type (cn) != CT_ADDRESS
-      && *skip_constraint_modifiers (constraint
-				     + CONSTRAINT_LEN (constraint[0],
-						       constraint)) != '\0')
+      && !constraint_unique (constraint, cn))
     cn = CONSTRAINT__UNKNOWN;
   if (insn_extra_address_constraint (cn)
       /* When we find an asm operand with an address constraint that
