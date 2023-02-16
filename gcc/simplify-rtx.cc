@@ -7664,7 +7664,7 @@ simplify_context::simplify_subreg (machine_mode outermode, rtx op,
 			    0).exists (&int_outermode))
     {
       rtx tem = simplify_subreg (int_outermode, op, innermode, byte);
-      if (tem)
+      if (tem && GET_MODE (tem) != VOIDmode)
 	return simplify_gen_subreg (outermode, tem, GET_MODE (tem), 0);
     }
 
