@@ -196,3 +196,23 @@ static inline int64_t __riscv_sha512sum0(int64_t rs1)
 static inline int64_t __riscv_sha512sum1(int64_t rs1)
 	{ return _RVK_INTRIN_IMPL(sha512sum1)(rs1); }			//	SHA512SUM1
 #endif
+
+//	=== (mapping)	Zksed:	ShangMi Suite: SM4 Block Cipher Instructions
+
+static inline long __riscv_sm4ks(long rs1, long rs2, int bs)
+	{ return _RVK_INTRIN_IMPL(sm4ks)(rs1, rs2, bs); }		//	SM4KS
+
+static inline long __riscv_sm4ed(long rs1, long rs2, int bs)
+	{ return _RVK_INTRIN_IMPL(sm4ed)(rs1, rs2, bs); }		//	SM4ED
+
+//	=== (mapping)	Zksh:	ShangMi Suite: SM3 Hash Function Instructions
+
+static inline long __riscv_sm3p0(long rs1)
+	{ return _RVK_INTRIN_IMPL(sm3p0)(rs1); }				//	SM3P0
+
+static inline long __riscv_sm3p1(long rs1)
+	{ return _RVK_INTRIN_IMPL(sm3p1)(rs1); }				//	SM3P1
+
+#ifdef __cplusplus
+}
+#endif
