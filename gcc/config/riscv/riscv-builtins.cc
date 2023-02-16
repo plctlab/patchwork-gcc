@@ -100,6 +100,12 @@ AVAIL (zero32,  TARGET_ZICBOZ && !TARGET_64BIT)
 AVAIL (zero64,  TARGET_ZICBOZ && TARGET_64BIT)
 AVAIL (prefetchi32, TARGET_ZICBOP && !TARGET_64BIT)
 AVAIL (prefetchi64, TARGET_ZICBOP && TARGET_64BIT)
+AVAIL (crypto_zbkb32, TARGET_ZBKB && !TARGET_64BIT)
+AVAIL (crypto_zbkb64, TARGET_ZBKB && TARGET_64BIT)
+AVAIL (crypto_zbkc32, TARGET_ZBKC && !TARGET_64BIT)
+AVAIL (crypto_zbkc64, TARGET_ZBKC && TARGET_64BIT)
+AVAIL (crypto_zbkx32, TARGET_ZBKX && !TARGET_64BIT)
+AVAIL (crypto_zbkx64, TARGET_ZBKX && TARGET_64BIT)
 AVAIL (always,     (!0))
 
 /* Construct a riscv_builtin_description from the given arguments.
@@ -152,6 +158,7 @@ AVAIL (always,     (!0))
   RISCV_ATYPE_##A, RISCV_ATYPE_##B, RISCV_ATYPE_##C, RISCV_ATYPE_##D
 
 static const struct riscv_builtin_description riscv_builtins[] = {
+  #include "riscv-crypto.def"
   #include "riscv-cmo.def"
 
   DIRECT_BUILTIN (frflags, RISCV_USI_FTYPE, hard_float),
