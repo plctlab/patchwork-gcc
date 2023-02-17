@@ -52,4 +52,5 @@ main()
   test01();
   test02();
   test03();
+  __gthread_join(0, NULL);
 }
