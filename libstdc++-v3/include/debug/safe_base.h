@@ -203,7 +203,15 @@ namespace __gnu_debug
     // Initialize with a version number of 1 and no iterators
     _Safe_sequence_base() _GLIBCXX_NOEXCEPT
     : _M_iterators(0), _M_const_iterators(0), _M_version(1)
-    { }
+    {
+      // Make sure the mutex_pool machinery is initialized before any
+      // full object containing a _Safe_sequence_base completes
+      // construction, so that any local static mutexes in the mutex
+      // pool won't be destructed before our destructor runs;
+      // _M_detach_all could fail otherwise, on targets whose mutexes
+      // stop working after being destroyed.
+      (void)this->_M_get_mutex();
+    }
 
 #if __cplusplus >= 201103L
     _Safe_sequence_base(const _Safe_sequence_base&) noexcept
