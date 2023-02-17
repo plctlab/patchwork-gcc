@@ -2,6 +2,10 @@
 /* { dg-require-effective-target arm_crypto_ok } */
 /* { dg-add-options arm_crypto } */
 /* { dg-additional-options "-mcpu=cortex-a72 -O3 -dp" } */
+/* The mitigation applies to a72 by default, and protects the CRYPTO_AES
+   inputs, such as the explicit xor ops, from being combined like test used to
+   expect.  */
+/* { dg-additional-options "-mno-fix-cortex-a57-aes-1742098" } */
 
 #include <arm_neon.h>
 
