@@ -1700,6 +1700,7 @@ var_to_maybe_prune (tree cap)
     return NULL_TREE;
 
   tree init = TREE_VALUE (cap);
+  STRIP_ANY_LOCATION_WRAPPER (init);
   if (is_normal_capture_proxy (init))
     init = DECL_CAPTURED_VARIABLE (init);
   if (decl_constant_var_p (init))
