@@ -19992,6 +19992,10 @@ tsubst_lambda_expr (tree t, tree args, tsubst_flags_t complain, tree in_decl)
 	  if (id_equal (DECL_NAME (field), "__this"))
 	    LAMBDA_EXPR_THIS_CAPTURE (r) = field;
 	}
+
+      if (LAMBDA_EXPR_CAPTURE_LIST (r))
+	LAMBDA_CAPTURE_EXPLICIT_P (LAMBDA_EXPR_CAPTURE_LIST (r))
+	  = LAMBDA_CAPTURE_EXPLICIT_P (LAMBDA_EXPR_CAPTURE_LIST (t));
     }
 
   tree type = begin_lambda_type (r);
