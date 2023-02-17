@@ -361,6 +361,86 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     void
     _M_finalize_state(tm* __tm);
 
+  private:
+    void
+    _M_state_tm(tm* __tm, bool __totm)
+    {
+      // Check we don't invade the in-range tm bits, even if int is
+      // 16-bits wide.
+#define _M_min_shift_tm_sec 6
+#define _M_min_shift_tm_min 6
+#define _M_min_shift_tm_hour 5
+#define _M_min_shift_tm_mday 5
+#define _M_min_shift_tm_mon 4
+#define _M_min_shift_tm_year 16 // 14, but signed, so avoid it.
+#define _M_min_shift_tm_wday 3
+#define _M_min_shift_tm_yday 9
+#define _M_min_shift_tm_isdst 1
+      // Represent __STF in __WDT bits of __TMF up to the __MSB bit.
+      // In __MSB, 0 stands for the most significant bit of __TMF,
+      // 1 the bit next to it, and so on.
+#define _M_time_get_state_bitfield_inout(__tmf, __msb, __wdt, __stf)	\
+  do									\
+  {									\
+    const unsigned __shift = (sizeof (__tm->__tmf) * __CHAR_BIT__	\
+			      - (__msb) - (__wdt));			\
+    static char __attribute__ ((__unused__))				\
+      __check_parms_##__tmf[(__msb) >= 0 && (__wdt) > 0			\
+			    && __shift >= (_M_min_shift_##__tmf		\
+					   + (sizeof (__tm->__tmf)	\
+					      * __CHAR_BIT__) - 16)	\
+			    ? 1 : -1];					\
+    const unsigned __mask = ((1 << (__wdt)) - 1) << __shift;		\
+    if (!__totm)							\
+      this->__stf = (__tm->__tmf & __mask) >> __shift;			\
+    __tm->__tmf &= ~__mask;						\
+    if (__totm)								\
+      __tm->__tmf |= ((unsigned)this->__stf << __shift) & __mask;	\
+    }									\
+  while (0)
+
+      _M_time_get_state_bitfield_inout (tm_hour,  0, 1, _M_have_I);
+      _M_time_get_state_bitfield_inout (tm_wday,  0, 1, _M_have_wday);
+      _M_time_get_state_bitfield_inout (tm_yday,  0, 1, _M_have_yday);
+      _M_time_get_state_bitfield_inout (tm_mon,   0, 1, _M_have_mon);
+      _M_time_get_state_bitfield_inout (tm_mday,  0, 1, _M_have_mday);
+      _M_time_get_state_bitfield_inout (tm_yday,  1, 1, _M_have_uweek);
+      _M_time_get_state_bitfield_inout (tm_yday,  2, 1, _M_have_wweek);
+      _M_time_get_state_bitfield_inout (tm_isdst, 0, 1, _M_have_century);
+      _M_time_get_state_bitfield_inout (tm_hour,  1, 1, _M_is_pm);
+      _M_time_get_state_bitfield_inout (tm_isdst, 1, 1, _M_want_century);
+      _M_time_get_state_bitfield_inout (tm_yday,  3, 1, _M_want_xday);
+      // _M_pad1
+      _M_time_get_state_bitfield_inout (tm_wday,  1, 6, _M_week_no);
+      // _M_pad2
+      _M_time_get_state_bitfield_inout (tm_mon,   1, 8, _M_century);
+      // _M_pad3
+
+#undef _M_min_shift_tm_hour
+#undef _M_min_shift_tm_sec
+#undef _M_min_shift_tm_min
+#undef _M_min_shift_tm_hour
+#undef _M_min_shift_tm_mday
+#undef _M_min_shift_tm_mon
+#undef _M_min_shift_tm_year
+#undef _M_min_shift_tm_wday
+#undef _M_min_shift_tm_yday
+#undef _M_min_shift_tm_isdst
+#undef _M_time_get_state_bitfield_inout
+    }
+  public:
+    // Encode *THIS into scratch bits of __TM.
+    void
+    _M_save_to(tm* __tm) {
+      _M_state_tm (__tm, true);
+    }
+
+    // Decode and zero out scratch bits of __TM back into *THIS.
+    void
+    _M_restore_from(tm* __tm) {
+      _M_state_tm (__tm, false);
+    }
+
     unsigned int _M_have_I : 1;
     unsigned int _M_have_wday : 1;
     unsigned int _M_have_yday : 1;

@@ -1464,21 +1464,8 @@ _GLIBCXX_END_NAMESPACE_LDBL_OR_CXX11
       const locale& __loc = __io._M_getloc();
       ctype<_CharT> const& __ctype = use_facet<ctype<_CharT> >(__loc);
       __err = ios_base::goodbit;
-      bool __use_state = false;
-#if __GNUC__ >= 5 && !defined(__clang__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpmf-conversions"
-      // Nasty hack.  The C++ standard mandates that get invokes the do_get
-      // virtual method, but unfortunately at least without an ABI change
-      // for the facets we can't keep state across the different do_get
-      // calls.  So e.g. if __fmt is "%p %I:%M:%S", we can't handle it
-      // properly, because we first handle the %p am/pm specifier and only
-      // later the 12-hour format specifier.
-      if ((void*)(this->*(&time_get::do_get)) == (void*)(&time_get::do_get))
-	__use_state = true;
-#pragma GCC diagnostic pop
-#endif
       __time_get_state __state = __time_get_state();
+      __state._M_save_to (__tm);
       while (__fmt != __fmtend &&
              __err == ios_base::goodbit)
         {
@@ -1510,26 +1497,8 @@ _GLIBCXX_END_NAMESPACE_LDBL_OR_CXX11
                   __err = ios_base::failbit;
                   break;
                 }
-	      if (__use_state)
-		{
-		  char_type __new_fmt[4];
-		  __new_fmt[0] = __fmt_start[0];
-		  __new_fmt[1] = __fmt_start[1];
-		  if (__mod)
-		    {
-		      __new_fmt[2] = __fmt_start[2];
-		      __new_fmt[3] = char_type();
-		    }
-		  else
-		    __new_fmt[2] = char_type();
-		  __s = _M_extract_via_format(__s, __end, __io, __err, __tm,
-					      __new_fmt, __state);
-		  if (__s == __end)
-		    __err |= ios_base::eofbit;
-		}
-	      else
-		__s = this->do_get(__s, __end, __io, __err, __tm, __format,
-				   __mod);
+	      __s = this->do_get(__s, __end, __io, __err, __tm,
+				 __format, __mod);
               ++__fmt;
             }
           else if (__ctype.is(ctype_base::space, *__fmt))
@@ -1556,8 +1525,8 @@ _GLIBCXX_END_NAMESPACE_LDBL_OR_CXX11
               break;
             }
         }
-      if (__use_state)
-	__state._M_finalize_state(__tm);
+      __state._M_restore_from (__tm);
+      __state._M_finalize_state(__tm);
       return __s;
     }
 
@@ -1588,9 +1557,11 @@ _GLIBCXX_END_NAMESPACE_LDBL_OR_CXX11
         }
 
       __time_get_state __state = __time_get_state();
+      __state._M_restore_from (__tm);
       __beg = _M_extract_via_format(__beg, __end, __io, __err, __tm, __fmt,
 				    __state);
       __state._M_finalize_state(__tm);
+      __state._M_save_to (__tm);
       if (__beg == __end)
 	__err |= ios_base::eofbit;
       return __beg;

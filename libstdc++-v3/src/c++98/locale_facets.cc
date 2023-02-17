@@ -181,12 +181,16 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   __time_get_state::
   _M_finalize_state(tm* tm)
   {
-    if (_M_have_I && _M_is_pm)
+    if (_M_have_I && _M_is_pm && (unsigned) tm->tm_hour < 12)
       tm->tm_hour += 12;
     if (_M_have_century)
       {
 	if (_M_want_century)
-	  tm->tm_year = tm->tm_year % 100;
+	  {
+	    tm->tm_year = tm->tm_year % 100;
+	    if (tm->tm_year < 0)
+	      tm->tm_year += 100;
+	  }
 	else
 	  tm->tm_year = 0;
 	tm->tm_year += (_M_century - 19) * 100;
