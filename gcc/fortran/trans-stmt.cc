@@ -3895,7 +3895,7 @@ forall_make_variable_temp (gfc_code *c, stmtblock_t *pre, stmtblock_t *post)
 	{
 	  tse.string_length = rse.string_length;
 	  tmp = gfc_get_character_type_len (gfc_default_character_kind,
-					    tse.string_length);
+					    tse.string_length, e->ts.deferred);
 	  tse.expr = gfc_conv_string_tmp (&tse, build_pointer_type (tmp),
 					  rse.string_length);
 	  gfc_add_block_to_block (pre, &tse.pre);
@@ -4676,7 +4676,7 @@ gfc_trans_assign_need_temp (gfc_expr * expr1, gfc_expr * expr2,
 	  gfc_init_se (&ssse, NULL);
 	  gfc_conv_expr (&ssse, expr1);
 	  type = gfc_get_character_type_len (gfc_default_character_kind,
-					     ssse.string_length);
+					     ssse.string_length, false);
 	}
       else
 	{
@@ -4689,7 +4689,8 @@ gfc_trans_assign_need_temp (gfc_expr * expr1, gfc_expr * expr2,
 	      expr1->ts.u.cl->backend_decl = tse.expr;
 	    }
 	  type = gfc_get_character_type_len (gfc_default_character_kind,
-					     expr1->ts.u.cl->backend_decl);
+					     expr1->ts.u.cl->backend_decl,
+					     false);
 	}
     }
   else

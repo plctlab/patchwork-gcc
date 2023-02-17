@@ -8548,7 +8548,8 @@ gfc_conv_intrinsic_transfer (gfc_se * se, gfc_expr * expr)
     case BT_CHARACTER:
       tmp = size_of_string_in_bytes (arg->expr->ts.kind, argse.string_length);
       mold_type = gfc_get_character_type_len (arg->expr->ts.kind,
-					      argse.string_length);
+					      argse.string_length,
+					      arg->expr->ts.deferred);
       break;
     case BT_CLASS:
       tmp = gfc_class_vtab_size_get (argse.expr);
@@ -9325,7 +9326,7 @@ gfc_conv_intrinsic_repeat (gfc_se * se, gfc_expr * expr)
   dlen = fold_build2_loc (input_location, MULT_EXPR, gfc_charlen_type_node,
 			  fold_convert (gfc_charlen_type_node, slen),
 			  fold_convert (gfc_charlen_type_node, ncopies));
-  type = gfc_get_character_type (expr->ts.kind, expr->ts.u.cl);
+  type = gfc_get_character_type (expr->ts.kind, expr->ts.u.cl, false);
   dest = gfc_conv_string_tmp (se, build_pointer_type (type), dlen);
 
   /* Generate the code to do the repeat operation:

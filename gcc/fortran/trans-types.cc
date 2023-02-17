@@ -1112,32 +1112,52 @@ gfc_get_pchar_type (int kind)
 }
 
 
-/* Create a character type with the given kind and length.  */
+/* Create a character type with the given kind and length; 'deferred' affects
+   the following: If 'len' is a variable/non-constant expression, it can be
+   either for
+
+   * a stack-allocated variable where the length is taken from the outside
+   ('VLA') (global variable, dummy argument, variable from before a BLOCK) - in
+   this case, the value on entry needs to be preserved -> SAVE_EXPR.
+
+   * or, 'len' is the hidden variable of a deferred-length ('len=:') variable,
+   such that the current value after the last pointer-assignment or allocation
+   must be used. In this case, there shall not be a SAVE_EXPR.  */
 
 tree
-gfc_get_character_type_len_for_eltype (tree eltype, tree len)
+gfc_get_character_type_len_for_eltype (tree eltype, tree len, bool deferred)
 {
   tree bounds, type;
 
   bounds = build_range_type (gfc_charlen_type_node, gfc_index_one_node, len);
   type = build_array_type (eltype, bounds);
   TYPE_STRING_FLAG (type) = 1;
-
+  if (len && deferred && TREE_CODE (TYPE_SIZE (type)) == SAVE_EXPR)
+    {
+      /* TODO: A more middle-end friendly alternative would be to use NULL_TREE
+	 as upper bound and store the value elsewhere; caveat: this requires
+	 some cleanup throughout the code to consistently use some wrapper
+	 function.  */
+      gcc_assert (TREE_CODE (TYPE_SIZE_UNIT (type)) == SAVE_EXPR);
+      TYPE_SIZE (type) = TREE_OPERAND (TYPE_SIZE (type), 0);
+      TYPE_SIZE_UNIT (type) = TREE_OPERAND (TYPE_SIZE_UNIT (type), 0);
+    }
   return type;
 }
 
 tree
-gfc_get_character_type_len (int kind, tree len)
+gfc_get_character_type_len (int kind, tree len, bool deferred)
 {
   gfc_validate_kind (BT_CHARACTER, kind, false);
-  return gfc_get_character_type_len_for_eltype (gfc_get_char_type (kind), len);
+  return gfc_get_character_type_len_for_eltype (gfc_get_char_type (kind), len,
+						deferred);
 }
 
 
 /* Get a type node for a character kind.  */
 
 tree
-gfc_get_character_type (int kind, gfc_charlen * cl)
+gfc_get_character_type (int kind, gfc_charlen * cl, bool deferred)
 {
   tree len;
 
@@ -1145,7 +1165,7 @@ gfc_get_character_type (int kind, gfc_charlen * cl)
   if (len && POINTER_TYPE_P (TREE_TYPE (len)))
     len = build_fold_indirect_ref (len);
 
-  return gfc_get_character_type_len (kind, len);
+  return gfc_get_character_type_len (kind, len, deferred);
 }
 
 /* Convert a basic type.  This will be an array for character types.  */
@@ -1189,13 +1209,14 @@ gfc_typenode_for_spec (gfc_typespec * spec, int codim)
       break;
 
     case BT_CHARACTER:
-      basetype = gfc_get_character_type (spec->kind, spec->u.cl);
+      basetype = gfc_get_character_type (spec->kind, spec->u.cl,
+					 spec->deferred);
       break;
 
     case BT_HOLLERITH:
       /* Since this cannot be used, return a length one character.  */
       basetype = gfc_get_character_type_len (gfc_default_character_kind,
-					     gfc_index_one_node);
+					     gfc_index_one_node, false);
       break;
 
     case BT_UNION:

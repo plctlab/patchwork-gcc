@@ -2589,7 +2589,7 @@ gfc_conv_substring (gfc_se * se, gfc_ref * ref, int kind,
   char *msg;
   mpz_t length;
 
-  type = gfc_get_character_type (kind, ref->u.ss.length);
+  type = gfc_get_character_type (kind, ref->u.ss.length, false);
   type = build_pointer_type (type);
 
   gfc_init_se (&start, se);
@@ -3709,7 +3709,7 @@ gfc_conv_concat_op (gfc_se * se, gfc_expr * expr)
   gfc_add_block_to_block (&se->pre, &lse.pre);
   gfc_add_block_to_block (&se->pre, &rse.pre);
 
-  type = gfc_get_character_type (expr->ts.kind, expr->ts.u.cl);
+  type = gfc_get_character_type (expr->ts.kind, expr->ts.u.cl, false);
   len = TYPE_MAX_VALUE (TYPE_DOMAIN (type));
   if (len == NULL_TREE)
     {
@@ -4474,7 +4474,7 @@ gfc_add_interface_mapping (gfc_interface_mapping * mapping,
      convert it to a boundless character type.  */
   else if (!sym->attr.dimension && sym->ts.type == BT_CHARACTER)
     {
-      tmp = gfc_get_character_type_len (sym->ts.kind, NULL);
+      tmp = gfc_get_character_type_len (sym->ts.kind, NULL, sym->ts.deferred);
       tmp = build_pointer_type (tmp);
       if (sym->attr.pointer)
         value = build_fold_indirect_ref_loc (input_location,
@@ -7614,7 +7614,7 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
       else if (ts.type == BT_CHARACTER)
 	{
 	  /* Pass the string length.  */
-	  type = gfc_get_character_type (ts.kind, ts.u.cl);
+	  type = gfc_get_character_type (ts.kind, ts.u.cl, false);
 	  type = build_pointer_type (type);
 
 	  /* Emit a DECL_EXPR for the VLA type.  */
@@ -8240,7 +8240,7 @@ gfc_conv_statement_function (gfc_se * se, gfc_expr * expr)
 	     fsym->ts.u.cl->backend_decl
 		= gfc_conv_constant_to_tree (fsym->ts.u.cl->length);
 
-	  type = gfc_get_character_type (fsym->ts.kind, fsym->ts.u.cl);
+	  type = gfc_get_character_type (fsym->ts.kind, fsym->ts.u.cl, false);
 	  temp_vars[n] = gfc_create_var (type, fsym->name);
 
 	  arglen = TYPE_MAX_VALUE (TYPE_DOMAIN (type));
@@ -8289,7 +8289,7 @@ gfc_conv_statement_function (gfc_se * se, gfc_expr * expr)
 	  || tree_int_cst_lt (se->string_length,
 			      sym->ts.u.cl->backend_decl))
 	{
-	  type = gfc_get_character_type (sym->ts.kind, sym->ts.u.cl);
+	  type = gfc_get_character_type (sym->ts.kind, sym->ts.u.cl, false);
 	  tmp = gfc_create_var (type, sym->name);
 	  tmp = gfc_build_addr_expr (build_pointer_type (type), tmp);
 	  gfc_trans_string_copy (&se->pre, sym->ts.u.cl->backend_decl, tmp,
@@ -10391,7 +10391,8 @@ gfc_conv_string_parameter (gfc_se * se)
 	  if (TREE_CODE (type) == ARRAY_TYPE)
 	    type = TREE_TYPE (type);
 	  type = gfc_get_character_type_len_for_eltype (type,
-							se->string_length);
+							se->string_length,
+							false);
 	  type = build_pointer_type (type);
 	  se->expr = gfc_build_addr_expr (type, se->expr);
 	}

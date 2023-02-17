@@ -1480,7 +1480,7 @@ gfc_trans_create_temp_array (stmtblock_t * pre, stmtblock_t * post, gfc_ss * ss,
       elemsize = gfc_resize_class_size_with_len (pre, class_expr, elemsize);
       /* Casting the data as a character of the dynamic length ensures that
 	 assignment of elements works when needed.  */
-      eltype = gfc_get_character_type_len (1, elemsize);
+      eltype = gfc_get_character_type_len (1, elemsize, true);
     }
 
   memset (from, 0, sizeof (from));
@@ -2823,7 +2823,8 @@ trans_array_constructor (gfc_ss * ss, locus * where)
 
       store_backend_decl (&expr->ts.u.cl, ss_info->string_length, force_new_cl);
 
-      type = gfc_get_character_type_len (expr->ts.kind, ss_info->string_length);
+      type = gfc_get_character_type_len (expr->ts.kind, ss_info->string_length,
+					 expr->ts.deferred);
       if (const_string)
 	type = build_pointer_type (type);
     }
@@ -5492,7 +5493,7 @@ gfc_conv_loop_setup (gfc_loopinfo * loop, locus * where)
 	tmp_ss_info->data.temp.type
 		= gfc_get_character_type_len_for_eltype
 			(TREE_TYPE (tmp_ss_info->data.temp.type),
-			 tmp_ss_info->string_length);
+			 tmp_ss_info->string_length, false);
 
       tmp = tmp_ss_info->data.temp.type;
       memset (&tmp_ss_info->data.array, 0, sizeof (gfc_array_info));
@@ -5737,7 +5738,7 @@ gfc_array_init_size (tree descriptor, int rank, int corank, tree * poffset,
       tmp = fold_build3_loc (input_location, COMPONENT_REF, TREE_TYPE (tmp),
 			     TREE_OPERAND (descriptor, 0), tmp, NULL_TREE);
       tmp = fold_convert (gfc_charlen_type_node, tmp);
-      type = gfc_get_character_type_len (expr->ts.kind, tmp);
+      type = gfc_get_character_type_len (expr->ts.kind, tmp, expr->ts.deferred);
       tmp = gfc_conv_descriptor_dtype (descriptor);
       gfc_add_modify (pblock, tmp, gfc_get_dtype_rank_type (rank, type));
     }
@@ -10908,7 +10909,7 @@ gfc_alloc_allocatable_for_assignment (gfc_loopinfo *loop,
       if (expr2->ts.type != BT_CLASS)
 	type = gfc_typenode_for_spec (&expr2->ts);
       else
-	type = gfc_get_character_type_len (1, elemsize2);
+	type = gfc_get_character_type_len (1, elemsize2, true);
 
       gfc_add_modify (&fblock, tmp,
 		      gfc_get_dtype_rank_type (expr2->rank,type));
