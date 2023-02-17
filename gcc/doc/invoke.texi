@@ -4720,7 +4720,7 @@ instead of pointers.  This approach obviates needing to adjust the stored
 pointers after reallocation.
 @end table
 
-@option{-Wuse-after-free=2} is included in @option{-Wall}.
+@option{-Wuse-after-free=3} is included in @option{-Wall}.
 
 @item -Wuseless-cast @r{(C++ and Objective-C++ only)}
 @opindex Wuseless-cast

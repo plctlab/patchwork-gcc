@@ -1411,11 +1411,11 @@ C ObjC C++ ObjC++ Joined RejectNegative UInteger Var(warn_unused_const_variable)
 Warn when a const variable is unused.
 
 ; Defining this option here in addition to common.opt is necessary
-; in order for the default -Wall setting of -Wuse-after-free=2 to take
+; in order for the default -Wall setting of -Wuse-after-free=3 to take
 ; effect.
 
 Wuse-after-free=
-LangEnabledBy(C ObjC C++ LTO ObjC++, Wall,2,0)
+LangEnabledBy(C ObjC C++ LTO ObjC++, Wall,3,0)
 ; in common.opt
 
 Wvariadic-macros
