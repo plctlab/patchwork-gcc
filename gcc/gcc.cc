@@ -46,6 +46,7 @@ compilation is specified by a string called a "spec".  */
 #include "spellcheck.h"
 #include "opts-jobserver.h"
 #include "common/common-target.h"
+#include <vector>
 
 
 
@@ -1773,6 +1774,8 @@ static const struct spec_function static_spec_functions[] =
 #endif
   { 0, 0 }
 };
+
+static std::vector<struct spec_function *>lang_spec_functions;
 
 static int processing_spec_function;
 
@@ -6825,7 +6828,23 @@ lookup_spec_function (const char *name)
     if (strcmp (sf->name, name) == 0)
       return sf;
 
+  for (auto *sf : lang_spec_functions)
+    if (strcmp (sf->name, name) == 0)
+      return sf;
+
   return NULL;
+}
+
+/* Add a new spec function.  */
+
+void
+add_spec_function (const char *name,
+		   const char *(*func) (int, const char **))
+{
+  struct spec_function *sf = XNEW (struct spec_function);
+  sf->name = name;
+  sf->func = func;
+  lang_spec_functions.push_back (sf);
 }
 
 /* Evaluate a spec function.  */
