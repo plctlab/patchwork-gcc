@@ -2295,35 +2295,56 @@ variables.
 
 @item OMP_FOR
 
-Represents @code{#pragma omp for [clause1 @dots{} clauseN]}.  It has
-six operands:
+Represents @code{#pragma omp for [clause1 @dots{} clauseN]}.
+A single @code{OMP_FOR} node represents an entire nest of collapsed loops;
+as noted below, some of its arguments are vectors of length equal to the
+collapse depth, and the corresponding elements holding data specific to a
+particular loop in the nest.  These vectors are numbered so that the
+outermost loop is element 0.
+
+@code{OMP_FOR} has seven operands:
 
 Operand @code{OMP_FOR_BODY} contains the loop body.
 
 Operand @code{OMP_FOR_CLAUSES} is the list of clauses
 associated with the directive.
 
-Operand @code{OMP_FOR_INIT} is the loop initialization code of
-the form @code{VAR = N1}.
+Operand @code{OMP_FOR_INIT} is a vector containing iteration variable
+initializations of the form @code{VAR = N1}.
 
-Operand @code{OMP_FOR_COND} is the loop conditional expression
+Operand @code{OMP_FOR_COND} is vector containing loop conditional expressions
 of the form @code{VAR @{<,>,<=,>=@} N2}.
 
-Operand @code{OMP_FOR_INCR} is the loop index increment of the
-form @code{VAR @{+=,-=@} INCR}.
+Operand @code{OMP_FOR_INCR} is a vector containing loop index increment
+expressions of the form @code{VAR @{+=,-=@} INCR}.
 
 Operand @code{OMP_FOR_PRE_BODY} contains side effect code from
 operands @code{OMP_FOR_INIT}, @code{OMP_FOR_COND} and
-@code{OMP_FOR_INC}.  These side effects are part of the
+@code{OMP_FOR_INCR}.  These side effects are part of the
 @code{OMP_FOR} block but must be evaluated before the start of
-loop body.
+loop body.  @code{OMP_FOR_PRE_BODY} specifically
+includes @code{DECL_EXPR}s for iteration variables that are declared
+in the nested @code{for} expressions.  Note this field is not a vector;
+it may be null, but otherwise is usually a statement list collecting the
+side effect code from all the collapsed loops.
+
+Operand @code{OMP_FOR_ORIG_DECLS} holds @code{VAR_DECLS} for the
+original user-specified iterator variables in the source code.
+In some cases, like C++ class iterators or range for with decomposition,
+the @code{for} loop is rewritten by the front end to use a temporary
+iteration variable.  The purpose of this field is to make the original
+variables available to the gimplifier so it can adjust their data-sharing
+attributes and diagnose errors.  @code{OMP_FOR_ORIG_DECLS} is a vector
+field, with each element holding a list of @code{VAR_DECLS} for the
+corresponding collapse level.
 
 The loop index variable @code{VAR} must be a signed integer variable,
 which is implicitly private to each thread.  Bounds
 @code{N1} and @code{N2} and the increment expression
-@code{INCR} are required to be loop invariant integer
-expressions that are evaluated without any synchronization. The
-evaluation order, frequency of evaluation and side effects are
+@code{INCR} are required to be loop-invariant integer
+expressions that are evaluated without any synchronization, except for
+the forms of non-rectangular loops permitted by the OpenMP standard. The
+evaluation order, frequency of evaluation and side effects are otherwise
 unspecified by the standard.
 
 @item OMP_SECTIONS
