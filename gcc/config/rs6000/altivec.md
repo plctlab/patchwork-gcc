@@ -2529,6 +2529,35 @@
   "vsldoi %0,%1,%2,%3"
   [(set_attr "type" "vecperm")])
 
+(define_insn_and_split "*altivec_vsldoi_dup_<mode>"
+  [(set (match_operand:VM 0 "register_operand" "=v")
+	(unspec:VM [(unspec:VM [(match_operand:VM 1 "register_operand" "v")
+				(match_operand:VM 2 "register_operand" "v")
+				(match_operand:QI 3 "immediate_operand" "i")]
+			       UNSPEC_VSLDOI)
+		    (unspec:VM [(match_dup 1)
+				(match_dup 2)
+				(match_dup 3)]
+			       UNSPEC_VSLDOI)
+		    (match_operand:QI 4 "immediate_operand" "i")]
+		   UNSPEC_VSLDOI))]
+  "TARGET_ALTIVEC"
+  "#"
+  "&& 1"
+  [(const_int 0)]
+{
+  unsigned int shift1 = UINTVAL (operands[3]);
+  unsigned int shift2 = UINTVAL (operands[4]);
+
+  unsigned int shift = (shift1 + shift2) % 16;
+  if (shift)
+    emit_insn (gen_altivec_vsldoi_<mode> (operands[0], operands[1],
+					  operands[1], GEN_INT (shift)));
+  else
+    emit_move_insn (operands[0], operands[1]);
+  DONE;
+})
+
 (define_insn "altivec_vupkhs<VU_char>"
   [(set (match_operand:VP 0 "register_operand" "=v")
 	(unspec:VP [(match_operand:<VP_small> 1 "register_operand" "v")]
