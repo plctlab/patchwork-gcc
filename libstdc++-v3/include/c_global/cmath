@@ -1767,6 +1767,117 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 #if __cplusplus >= 201103L
 
+#undef acosf
+#undef acosl
+#undef asinf
+#undef asinl
+#undef atanf
+#undef atanl
+#undef atan2f
+#undef atan2l
+#undef ceilf
+#undef ceill
+#undef cosf
+#undef cosl
+#undef coshf
+#undef coshl
+#undef expf
+#undef expl
+#undef fabsf
+#undef fabsl
+#undef floorf
+#undef floorl
+#undef fmodf
+#undef fmodl
+#undef frexpf
+#undef frexpl
+#undef ldexpf
+#undef ldexpl
+#undef logf
+#undef logl
+#undef log10f
+#undef log10l
+#undef modff
+#undef modfl
+#undef powf
+#undef powl
+#undef sinf
+#undef sinl
+#undef sinhf
+#undef sinhl
+#undef sqrtf
+#undef sqrtl
+#undef tanf
+#undef tanl
+#undef tanhf
+#undef tanhl
+
+  using ::acosf;
+  using ::acosl;
+
+  using ::asinf;
+  using ::asinl;
+
+  using ::atanf;
+  using ::atanl;
+
+  using ::atan2f;
+  using ::atan2l;
+
+  using ::ceilf;
+  using ::ceill;
+
+  using ::cosf;
+  using ::cosl;
+
+  using ::coshf;
+  using ::coshl;
+
+  using ::expf;
+  using ::expl;
+
+  using ::fabsf;
+  using ::fabsl;
+
+  using ::floorf;
+  using ::floorl;
+
+  using ::fmodf;
+  using ::fmodl;
+
+  using ::frexpf;
+  using ::frexpl;
+
+  using ::ldexpf;
+  using ::ldexpl;
+
+  using ::logf;
+  using ::logl;
+
+  using ::log10f;
+  using ::log10l;
+
+  using ::modff;
+  using ::modfl;
+
+  using ::powf;
+  using ::powl;
+
+  using ::sinf;
+  using ::sinl;
+
+  using ::sinhf;
+  using ::sinhl;
+
+  using ::sqrtf;
+  using ::sqrtl;
+
+  using ::tanf;
+  using ::tanl;
+
+  using ::tanhf;
+  using ::tanhl;
+
 #ifdef _GLIBCXX_USE_C99_MATH_TR1
 
 #undef acosh
