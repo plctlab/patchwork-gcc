@@ -73,6 +73,8 @@ struct spec_function
 extern int do_spec (const char *);
 extern void record_temp_file (const char *, int, int);
 extern void set_input (const char *);
+extern void add_spec_function (const char *name,
+			       const char *(*func) (int, const char **));
 
 /* Spec files linked with gcc.cc must provide definitions for these.  */
 
