@@ -2203,7 +2203,10 @@ expand_default_init (tree binfo, tree true_exp, tree exp, tree init, int flags,
       tree fn = get_callee_fndecl (rval);
       if (fn && DECL_DECLARED_CONSTEXPR_P (fn))
 	{
-	  tree e = maybe_constant_init (rval, exp);
+	  bool manifestly_const_eval = false;
+	  if (VAR_P (exp) && TREE_STATIC (exp))
+	    manifestly_const_eval = true;
+	  tree e = maybe_constant_init (rval, exp, manifestly_const_eval);
 	  if (TREE_CONSTANT (e))
 	    rval = cp_build_init_expr (exp, e);
 	}
