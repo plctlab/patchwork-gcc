@@ -2447,8 +2447,8 @@ cp_fold_rvalue (tree x)
 
 /* Perform folding on expression X.  */
 
-tree
-cp_fully_fold (tree x)
+static tree
+cp_fully_fold (tree x, mce_value manifestly_const_eval)
 {
   if (processing_template_decl)
     return x;
@@ -2456,7 +2456,7 @@ cp_fully_fold (tree x)
      have to call both.  */
   if (cxx_dialect >= cxx11)
     {
-      x = maybe_constant_value (x);
+      x = maybe_constant_value (x, /*decl=*/NULL_TREE, manifestly_const_eval);
       /* Sometimes we are given a CONSTRUCTOR but the call above wraps it into
 	 a TARGET_EXPR; undo that here.  */
       if (TREE_CODE (x) == TARGET_EXPR)
@@ -2469,6 +2469,12 @@ cp_fully_fold (tree x)
   return cp_fold_rvalue (x);
 }
 
+tree
+cp_fully_fold (tree x)
+{
+  return cp_fully_fold (x, mce_unknown);
+}
+
 /* Likewise, but also fold recursively, which cp_fully_fold doesn't perform
    in some cases.  */
 
@@ -2477,7 +2483,7 @@ cp_fully_fold_init (tree x)
 {
   if (processing_template_decl)
     return x;
-  x = cp_fully_fold (x);
+  x = cp_fully_fold (x, mce_false);
   cp_fold_data data (ff_mce_false);
   cp_walk_tree (&x, cp_fold_r, &data, NULL);
   return x;
