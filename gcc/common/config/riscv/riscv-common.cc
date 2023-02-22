@@ -331,10 +331,9 @@ riscv_subset_list::match_score (riscv_subset_list *list) const
   /* list must be subset of current this list, otherwise it not safe to
      link.
      TODO: We might give different weight for each extension, but the rule could
-	   be complicated.
-     TODO: We might consider the version of each extension.  */
+	   be complicated.  */
   for (s = list->m_head; s != NULL; s = s->next)
-    if (this->lookup (s->name.c_str ()) != NULL)
+    if (this->lookup (s->name.c_str (), s->major_version, s->minor_version) != NULL)
       score++;
     else
       return 0;
