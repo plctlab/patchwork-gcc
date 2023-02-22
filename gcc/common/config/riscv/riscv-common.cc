@@ -274,9 +274,6 @@ struct riscv_multi_lib_info_t {
 		     const std::vector<std::string> &);
 };
 
-/* Flag for checking if there is no suitable multi-lib found.  */
-static bool riscv_no_matched_multi_lib;
-
 /* Used for record value of -march and -mabi.  */
 static std::string riscv_current_arch_str;
 static std::string riscv_current_abi_str;
@@ -1396,21 +1393,6 @@ riscv_expand_arch_from_cpu (int argc ATTRIBUTE_UNUSED,
   return xasprintf ("-march=%s", arch.c_str());
 }
 
-/* Report error if not found suitable multilib.  */
-const char *
-riscv_multi_lib_check (int argc ATTRIBUTE_UNUSED,
-		       const char **argv ATTRIBUTE_UNUSED)
-{
-  if (riscv_no_matched_multi_lib)
-    fatal_error (
-      input_location,
-      "Cannot find suitable multilib set for %<-march=%s%>/%<-mabi=%s%>",
-      riscv_current_arch_str.c_str (),
-      riscv_current_abi_str.c_str ());
-
-  return "";
-}
-
 /* We only override this in bare-metal toolchain.  */
 #ifdef RISCV_USE_CUSTOMISED_MULTI_LIB
 
@@ -1583,7 +1565,6 @@ riscv_compute_multilib (
   const char *this_path;
   size_t this_path_len;
   bool result;
-  riscv_no_matched_multi_lib = false;
   riscv_subset_list *subset_list = NULL;
 
   std::vector<riscv_multi_lib_info_t> multilib_infos;
@@ -1709,7 +1690,11 @@ riscv_compute_multilib (
 
   if (best_match_multi_lib == -1)
     {
-      riscv_no_matched_multi_lib = true;
+      fatal_error (
+	input_location,
+	"Cannot find suitable multilib set for %<-march=%s%>/%<-mabi=%s%>",
+	riscv_current_arch_str.c_str (),
+	riscv_current_abi_str.c_str ());
       return multilib_dir;
     }
   else

@@ -28,8 +28,7 @@ along with GCC; see the file COPYING3.  If not see
    Handle the circular dependence between libc and libgloss. */
 #undef  LIB_SPEC
 #define LIB_SPEC \
-  "--start-group -lc %{!specs=nosys.specs:-lgloss} --end-group " \
-  "%{!nostartfiles:%{!nodefaultlibs:%{!nolibc:%{!nostdlib:%:riscv_multi_lib_check()}}}}"
+  "--start-group -lc %{!specs=nosys.specs:-lgloss} --end-group"
 
 #undef  STARTFILE_SPEC
 #define STARTFILE_SPEC "crt0%O%s crtbegin%O%s"
