@@ -125,15 +125,15 @@ namespace __detail
 	{ return std::forward<_Kt>(__k); }
     };
 
-  template<typename _Value>
-    struct _ConvertToValueType<_Select1st, _Value>
+  template<typename _Key, typename _Value>
+    struct _ConvertToValueType<_Select1st, std::pair<_Key, _Value>>
     {
-      constexpr _Value&&
-      operator()(_Value&& __x) const noexcept
+      constexpr std::pair<_Key, _Value>&&
+      operator()(std::pair<_Key, _Value>&& __x) const noexcept
       { return std::move(__x); }
 
-      constexpr const _Value&
-      operator()(const _Value& __x) const noexcept
+      constexpr const std::pair<_Key, _Value>&
+      operator()(const std::pair<_Key, _Value>& __x) const noexcept
       { return __x; }
 
       template<typename _Kt, typename _Val>
@@ -145,6 +145,26 @@ namespace __detail
 	constexpr const std::pair<_Kt, _Val>&
 	operator()(const std::pair<_Kt, _Val>& __x) const noexcept
 	{ return __x; }
+
+      template<typename _Kt>
+	using __is_cons = std::is_constructible<_Key, _Kt&&>;
+
+      template<typename _Kt>
+	using _IFcons = std::enable_if<__is_cons<_Kt>::value>;
+
+      template<typename _Kt>
+	using _IFconsp = typename _IFcons<_Kt>::type;
+
+      template<typename _Kt, typename = _IFconsp<_Kt>>
+	std::pair<_Kt, _Value>
+	operator()(_Kt&& __kt) const
+	{
+	  return {
+	    std::piecewise_construct,
+	    std::forward_as_tuple(std::forward<_Kt>(__kt)),
+	    std::tuple<>()
+	  };
+	}
     };
 
   template<typename _ExKey>
