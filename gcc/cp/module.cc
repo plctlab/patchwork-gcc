@@ -5371,6 +5371,7 @@ trees_out::core_bools (tree t)
       WB (t->type_common.lang_flag_5);
       WB (t->type_common.lang_flag_6);
       WB (t->type_common.typeless_storage);
+      WB (t->type_common.type_include_flexarray);
     }
 
   if (CODE_CONTAINS_STRUCT (code, TS_DECL_COMMON))
@@ -5551,6 +5552,7 @@ trees_in::core_bools (tree t)
       RB (t->type_common.lang_flag_5);
       RB (t->type_common.lang_flag_6);
       RB (t->type_common.typeless_storage);
+      RB (t->type_common.type_include_flexarray);
     }
 
   if (CODE_CONTAINS_STRUCT (code, TS_DECL_COMMON))
