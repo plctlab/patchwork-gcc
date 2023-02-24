@@ -631,6 +631,11 @@ print_node (FILE *file, const char *prefix, tree node, int indent,
 	  && TYPE_CXX_ODR_P (node))
 	fputs (" cxx-odr-p", file);
 
+      if ((code == RECORD_TYPE
+	   || code == UNION_TYPE)
+	  && TYPE_INCLUDE_FLEXARRAY (node))
+	fputs (" include-flexarray", file);
+
       /* The transparent-union flag is used for different things in
 	 different nodes.  */
       if ((code == UNION_TYPE || code == RECORD_TYPE)

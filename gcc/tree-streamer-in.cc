@@ -390,6 +390,7 @@ unpack_ts_type_common_value_fields (struct bitpack_d *bp, tree expr)
       TYPE_TRANSPARENT_AGGR (expr) = (unsigned) bp_unpack_value (bp, 1);
       TYPE_FINAL_P (expr) = (unsigned) bp_unpack_value (bp, 1);
       TYPE_CXX_ODR_P (expr) = (unsigned) bp_unpack_value (bp, 1);
+      TYPE_INCLUDE_FLEXARRAY (expr) = (unsigned) bp_unpack_value (bp, 1);
     }
   else if (TREE_CODE (expr) == ARRAY_TYPE)
     TYPE_NONALIASED_COMPONENT (expr) = (unsigned) bp_unpack_value (bp, 1);

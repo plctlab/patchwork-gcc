@@ -9255,6 +9255,18 @@ finish_struct (location_t loc, tree t, tree fieldlist, tree attributes,
       /* Set DECL_NOT_FLEXARRAY flag for FIELD_DECL x.  */
       DECL_NOT_FLEXARRAY (x) = !is_flexible_array_member_p (is_last_field, x);
 
+      /* Set TYPE_INCLUDE_FLEXARRAY for the context of x, t
+       * when x is an array.  */
+      if (TREE_CODE (TREE_TYPE (x)) == ARRAY_TYPE)
+	TYPE_INCLUDE_FLEXARRAY (t) = flexible_array_member_type_p (TREE_TYPE (x)) ;
+      /* Recursively set TYPE_INCLUDE_FLEXARRAY for the context of x, t
+	 when x is the last field.  */
+      else if ((TREE_CODE (TREE_TYPE (x)) == RECORD_TYPE
+		|| TREE_CODE (TREE_TYPE (x)) == UNION_TYPE)
+	       && TYPE_INCLUDE_FLEXARRAY (TREE_TYPE (x))
+	       && is_last_field)
+	TYPE_INCLUDE_FLEXARRAY (t) = true;
+
       if (DECL_NAME (x)
 	  || RECORD_OR_UNION_TYPE_P (TREE_TYPE (x)))
 	saw_named_field = true;
