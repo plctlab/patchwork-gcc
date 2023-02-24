@@ -10,5 +10,5 @@
 
 struct foo {
   char bar;
-  long baz; /* { dg-warning "padding struct to align" ""  { target { ! default_packed } } } */
+  long baz; /* { dg-warning "padding struct with" ""  { target { ! default_packed } } } */
 } futz;

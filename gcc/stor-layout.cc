@@ -1346,7 +1346,7 @@ place_field (record_layout_info rli, tree field)
       if (!targetm.ms_bitfield_layout_p (rli->t)
 	  && DECL_SOURCE_LOCATION (field) != BUILTINS_LOCATION
 	  && !TYPE_ARTIFICIAL (rli->t))
-	warning (OPT_Wpadded, "padding struct to align %q+D", field);
+	warning (OPT_Wpadded, "padding struct with %d bytes to align %q+D", (desired_align - known_align)/8, field);
 
       /* If the alignment is still within offset_align, just align
 	 the bit position.  */

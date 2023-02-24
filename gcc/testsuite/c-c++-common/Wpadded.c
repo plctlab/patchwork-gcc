@@ -11,4 +11,5 @@
  * 4 byte fields to 2 byte boundary.
  */
 struct S { __UINT32_TYPE__ i; char c; } __attribute__((aligned(4))); /* { dg-warning "padding struct size to alignment boundary with 3 bytes" } */
+struct R { char c; __UINT32_TYPE__ i; } __attribute__((aligned(4))); /* { dg-warning "padding struct with" } */
 
