@@ -9267,6 +9267,13 @@ finish_struct (location_t loc, tree t, tree fieldlist, tree attributes,
 	       && is_last_field)
 	TYPE_INCLUDE_FLEXARRAY (t) = true;
 
+      if (warn_variable_sized_type_not_at_end
+	  && !is_last_field
+	  && TYPE_INCLUDE_FLEXARRAY (TREE_TYPE (x)))
+	warning_at (DECL_SOURCE_LOCATION (x),
+		    OPT_Wgnu_variable_sized_type_not_at_end,
+		    "variable sized type not at the end of a struct");
+
       if (DECL_NAME (x)
 	  || RECORD_OR_UNION_TYPE_P (TREE_TYPE (x)))
 	saw_named_field = true;

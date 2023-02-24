@@ -737,6 +737,11 @@ Wformat-truncation=
 C ObjC C++ LTO ObjC++ Joined RejectNegative UInteger Var(warn_format_trunc) Warning LangEnabledBy(C ObjC C++ LTO ObjC++,Wformat=, warn_format >= 1, 0) IntegerRange(0, 2)
 Warn about calls to snprintf and similar functions that truncate output.
 
+Wgnu-variable-sized-type-not-at-end
+C C++ Var(warn_variable_sized_type_not_at_end) Warning
+Warn about structures or unions with C99 flexible array members are not
+at the end of a structure.
+
 Wif-not-aligned
 C ObjC C++ ObjC++ Var(warn_if_not_aligned) Init(1) Warning
 Warn when the field in a struct is not aligned.
