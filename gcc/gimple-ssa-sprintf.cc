@@ -1082,7 +1082,7 @@ get_int_range (tree arg, gimple *stmt,
 	  value_range vr;
 	  query->range_of_expr (vr, arg, stmt);
 
-	  if (!vr.undefined_p () && !vr.varying_p ())
+	  if (range_int_cst_p (&vr))
 	    {
 	      HOST_WIDE_INT type_min
 		= (TYPE_UNSIGNED (argtype)
@@ -1391,7 +1391,7 @@ format_integer (const directive &dir, tree arg, pointer_query &ptr_qry)
       value_range vr;
       ptr_qry.rvals->range_of_expr (vr, arg, dir.info->callstmt);
 
-      if (!vr.varying_p () && !vr.undefined_p ())
+      if (range_int_cst_p (&vr))
 	{
 	  argmin = wide_int_to_tree (TREE_TYPE (arg), vr.lower_bound ());
 	  argmax = wide_int_to_tree (TREE_TYPE (arg), vr.upper_bound ());
@@ -4623,7 +4623,7 @@ handle_printf_call (gimple_stmt_iterator *gsi, pointer_query &ptr_qry)
 	  value_range vr;
 	  ptr_qry.rvals->range_of_expr (vr, size, info.callstmt);
 
-	  if (!vr.undefined_p ())
+	  if (!vr.undefined_p () && vr.kind () != VR_ANTI_RANGE)
 	    {
 	      tree type = TREE_TYPE (size);
 	      tree tmin = wide_int_to_tree (type, vr.lower_bound ());

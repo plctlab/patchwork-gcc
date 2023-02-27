@@ -426,7 +426,7 @@ add_param_constraints (scop_p scop, graphite_dim_t p, tree parameter)
 
   if (INTEGRAL_TYPE_P (type)
       && get_range_query (cfun)->range_of_expr (r, parameter)
-      && !r.undefined_p ())
+      && range_int_cst_p (&r))
     {
       min = r.lower_bound ();
       max = r.upper_bound ();

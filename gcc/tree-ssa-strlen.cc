@@ -1936,7 +1936,7 @@ set_strlen_range (tree lhs, wide_int min, wide_int max,
 	{
 	  value_range r;
 	  get_range_query (cfun)->range_of_expr (r, bound);
-	  if (!r.undefined_p ())
+	  if (range_int_cst_p (&r))
 	    {
 	      /* For a bound in a known range, adjust the range determined
 		 above as necessary.  For a bound in some anti-range or
