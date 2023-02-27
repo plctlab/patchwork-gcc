@@ -319,6 +319,9 @@ extern void   *__gnat_lwp_self			   (void);
 
 /* Routines for interface to required CPU set primitives */
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include <sched.h>
 
 extern cpu_set_t *__gnat_cpu_alloc                 (size_t);
