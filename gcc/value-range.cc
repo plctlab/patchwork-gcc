@@ -1190,60 +1190,52 @@ irange::verify_range ()
     }
 }
 
-// Return the lower bound for a sub-range.  PAIR is the sub-range in
-// question.
+// Return the lower bound for a sub-range.
 
 wide_int
-irange::legacy_lower_bound (unsigned pair) const
+irange::legacy_lower_bound () const
 {
   gcc_checking_assert (legacy_mode_p ());
   if (symbolic_p ())
     {
       value_range numeric_range (*this);
       numeric_range.normalize_symbolics ();
-      return numeric_range.legacy_lower_bound (pair);
+      return numeric_range.legacy_lower_bound ();
     }
-  gcc_checking_assert (m_num_ranges > 0);
-  gcc_checking_assert (pair + 1 <= num_pairs ());
   if (m_kind == VR_ANTI_RANGE)
     {
       tree typ = type (), t;
-      gcc_checking_assert (pair == 0);
       if (vrp_val_is_min (min ()))
 	t = wide_int_to_tree (typ, wi::to_wide (max ()) + 1);
       else
 	t = vrp_val_min (typ);
       return wi::to_wide (t);
     }
- return wi::to_wide (tree_lower_bound (pair));
+ return wi::to_wide (min ());
 }
 
-// Return the upper bound for a sub-range.  PAIR is the sub-range in
-// question.
+// Return the upper bound for a sub-range.
 
 wide_int
-irange::legacy_upper_bound (unsigned pair) const
+irange::legacy_upper_bound () const
 {
   gcc_checking_assert (legacy_mode_p ());
   if (symbolic_p ())
     {
       value_range numeric_range (*this);
       numeric_range.normalize_symbolics ();
-      return numeric_range.legacy_upper_bound (pair);
+      return numeric_range.legacy_upper_bound ();
     }
-  gcc_checking_assert (m_num_ranges > 0);
-  gcc_checking_assert (pair + 1 <= num_pairs ());
   if (m_kind == VR_ANTI_RANGE)
     {
       tree typ = type (), t;
-      gcc_checking_assert (pair == 0);
       if (!vrp_val_is_max (max ()))
 	t = vrp_val_max (typ);
       else
 	t = wide_int_to_tree (typ, wi::to_wide (min ()) - 1);
       return wi::to_wide (t);
     }
-  return wi::to_wide (tree_upper_bound (pair));
+  return wi::to_wide (max ());
 }
 
 bool

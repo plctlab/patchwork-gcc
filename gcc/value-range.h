@@ -193,8 +193,8 @@ protected:
   void legacy_union (irange *, const irange *);
   void legacy_intersect (irange *, const irange *);
   void verify_range ();
-  wide_int legacy_lower_bound (unsigned = 0) const;
-  wide_int legacy_upper_bound (unsigned) const;
+  wide_int legacy_lower_bound () const;
+  wide_int legacy_upper_bound () const;
   int value_inside_range (tree) const;
   bool maybe_anti_range () const;
   void copy_to_legacy (const irange &);
@@ -918,10 +918,13 @@ irange::set_varying (tree type)
 inline wide_int
 irange::lower_bound (unsigned pair) const
 {
-  if (legacy_mode_p ())
-    return legacy_lower_bound (pair);
   gcc_checking_assert (m_num_ranges > 0);
   gcc_checking_assert (pair + 1 <= num_pairs ());
+  if (legacy_mode_p ())
+    {
+      gcc_checking_assert (pair == 0);
+      return legacy_lower_bound ();
+    }
   return wi::to_wide (tree_lower_bound (pair));
 }
 
@@ -931,10 +934,13 @@ irange::lower_bound (unsigned pair) const
 inline wide_int
 irange::upper_bound (unsigned pair) const
 {
-  if (legacy_mode_p ())
-    return legacy_upper_bound (pair);
   gcc_checking_assert (m_num_ranges > 0);
   gcc_checking_assert (pair + 1 <= num_pairs ());
+  if (legacy_mode_p ())
+    {
+      gcc_checking_assert (pair == 0);
+      return legacy_upper_bound ();
+    }
   return wi::to_wide (tree_upper_bound (pair));
 }
 
