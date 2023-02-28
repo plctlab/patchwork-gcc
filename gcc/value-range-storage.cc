@@ -182,7 +182,7 @@ irange_storage_slot::get_irange (irange &r, tree type) const
 size_t
 irange_storage_slot::size (const irange &r)
 {
-  gcc_checking_assert (!r.undefined_p ());
+  gcc_checking_assert (!r.undefined_p () && r.kind () != VR_ANTI_RANGE);
 
   unsigned prec = TYPE_PRECISION (r.type ());
   unsigned n = num_wide_ints_needed (r);
