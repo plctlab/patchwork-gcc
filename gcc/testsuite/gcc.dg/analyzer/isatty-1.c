@@ -1,4 +1,4 @@
-/* { dg-skip-if "" { powerpc*-*-aix* } } */
+/* { dg-skip-if "" { powerpc*-*-aix* || newlib } } */
 
 #include <errno.h>
 #include "analyzer-decls.h"
