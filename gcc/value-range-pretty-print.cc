@@ -64,7 +64,7 @@ vrange_printer::visit (const irange &r) const
       return;
     }
   // Handle legacy symbolics.
-  if (!r.constant_p ())
+  if (!r.constant_p () || r.kind () == VR_ANTI_RANGE)
     {
       if (r.kind () == VR_ANTI_RANGE)
 	pp_character (pp, '~');
