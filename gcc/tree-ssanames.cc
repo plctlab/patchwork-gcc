@@ -127,6 +127,9 @@ range_info_get_range (tree name, vrange &r)
 inline bool
 range_info_set_range (tree name, const vrange &r)
 {
+  if (r.kind () == VR_ANTI_RANGE)
+    return range_info_set_range (name, int_range<2> (as_a <irange> (r)));
+
   if (!range_info_p (name) || !range_info_fits_p (name, r))
     {
       if (range_info_p (name))
