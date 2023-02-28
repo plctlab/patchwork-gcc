@@ -614,10 +614,7 @@ vrange::kind () const
 inline unsigned
 irange::num_pairs () const
 {
-  if (m_kind == VR_ANTI_RANGE)
-    return constant_p () ? 2 : 1;
-  else
-    return m_num_ranges;
+  return m_num_ranges;
 }
 
 inline tree

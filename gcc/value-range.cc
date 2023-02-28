@@ -1208,7 +1208,8 @@ irange::legacy_lower_bound (unsigned pair) const
   if (m_kind == VR_ANTI_RANGE)
     {
       tree typ = type (), t;
-      if (pair == 1 || vrp_val_is_min (min ()))
+      gcc_checking_assert (pair == 0);
+      if (vrp_val_is_min (min ()))
 	t = wide_int_to_tree (typ, wi::to_wide (max ()) + 1);
       else
 	t = vrp_val_min (typ);
@@ -1235,7 +1236,8 @@ irange::legacy_upper_bound (unsigned pair) const
   if (m_kind == VR_ANTI_RANGE)
     {
       tree typ = type (), t;
-      if (pair == 1 || vrp_val_is_min (min ()))
+      gcc_checking_assert (pair == 0);
+      if (!vrp_val_is_max (max ()))
 	t = vrp_val_max (typ);
       else
 	t = wide_int_to_tree (typ, wi::to_wide (min ()) - 1);
