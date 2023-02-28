@@ -164,7 +164,7 @@ static edge gimple_redirect_edge_and_branch (edge, basic_block);
 static edge gimple_try_redirect_by_replacing_jump (edge, basic_block);
 
 /* Various helpers.  */
-static inline bool stmt_starts_bb_p (gimple *, gimple *);
+static inline bool stmt_starts_bb_p (gimple *, gimple *, hash_set<tree> *);
 static int gimple_verify_flow_info (void);
 static void gimple_make_forwarder_block (edge);
 static gimple *first_non_label_stmt (basic_block);
@@ -521,6 +521,68 @@ gimple_call_initialize_ctrl_altering (gimple *stmt)
     gimple_call_set_ctrl_altering (stmt, false);
 }
 
+/* Compute target labels to save useful labels.  */
+static void
+compute_target_labels (gimple_seq seq, hash_set<tree> *target_labels)
+{
+  gimple *stmt = NULL;
+  gimple_stmt_iterator j = gsi_start (seq);
+
+  while (!gsi_end_p (j))
+  {
+      stmt = gsi_stmt (j);
+
+      switch (gimple_code (stmt))
+      {
+	case GIMPLE_COND:
+	  {
+	    gcond *cstmt = as_a <gcond *> (stmt);
+	    tree true_label = gimple_cond_true_label (cstmt);
+	    tree false_label = gimple_cond_false_label (cstmt);
+	    target_labels->add (true_label);
+	    target_labels->add (false_label);
+	  }
+	  break;
+	case GIMPLE_SWITCH:
+	  {
+	    gswitch *gstmt = as_a <gswitch *> (stmt);
+	    size_t i, n = gimple_switch_num_labels (gstmt);
+	    tree elt, label;
+	    for (i = 0; i < n; i++)
+	    {
+	      elt = gimple_switch_label (gstmt, i);
+	      label = CASE_LABEL (elt);
+	      target_labels->add (label);
+	    }
+	  }
+	  break;
+	case GIMPLE_GOTO:
+	  if (!computed_goto_p (stmt))
+	    {
+	      tree dest = gimple_goto_dest (stmt);
+	      target_labels->add (dest);
+	    }
+	  break;
+	case GIMPLE_ASM:
+	  {
+	    gasm *asm_stmt = as_a <gasm *> (stmt);
+	    int i, n = gimple_asm_nlabels (asm_stmt);
+	    for (i = 0; i < n; ++i)
+	    {
+	      tree cons = gimple_asm_label_op (asm_stmt, i);
+	      target_labels->add (cons);
+	    }
+	  }
+	  break;
+
+	default:
+	  break;
+      }
+
+      gsi_next (&j);
+  }
+}
+
 
 /* Insert SEQ after BB and build a flowgraph.  */
 
@@ -532,6 +594,10 @@ make_blocks_1 (gimple_seq seq, basic_block bb)
   gimple *prev_stmt = NULL;
   bool start_new_block = true;
   bool first_stmt_of_seq = true;
+  hash_set<tree> target_labels;
+
+  if (!optimize)
+    compute_target_labels (seq, &target_labels);
 
   while (!gsi_end_p (i))
     {
@@ -553,7 +619,7 @@ make_blocks_1 (gimple_seq seq, basic_block bb)
       /* If the statement starts a new basic block or if we have determined
 	 in a previous pass that we need to create a new block for STMT, do
 	 so now.  */
-      if (start_new_block || stmt_starts_bb_p (stmt, prev_stmt))
+      if (start_new_block || stmt_starts_bb_p (stmt, prev_stmt, &target_labels))
 	{
 	  if (!first_stmt_of_seq)
 	    gsi_split_seq_before (&i, &seq);
@@ -565,6 +631,9 @@ make_blocks_1 (gimple_seq seq, basic_block bb)
       /* Now add STMT to BB and create the subgraphs for special statement
 	 codes.  */
       gimple_set_bb (stmt, bb);
+
+      if (!optimize && gimple_code (stmt) == GIMPLE_LABEL)
+	target_labels.add (gimple_label_label (as_a<glabel *> (stmt)));
 
       /* If STMT is a basic block terminator, set START_NEW_BLOCK for the
 	 next iteration.  */
@@ -852,6 +921,12 @@ make_edges_bb (basic_block bb, struct omp_region **pcur_region, int *pomp_index)
   gimple *last = last_stmt (bb);
   bool fallthru = false;
   int ret = 0;
+
+  if (!optimize && !last)
+    {
+      make_edge (bb, bb->next_bb, EDGE_FALLTHRU);
+      return 0;
+    }
 
   if (!last)
     return ret;
@@ -1151,6 +1226,10 @@ static bool
 same_line_p (location_t locus1, expanded_location *from, location_t locus2)
 {
   expanded_location to;
+
+  if (LOCATION_LOCUS (locus1) == UNKNOWN_LOCATION
+      && LOCATION_LOCUS (locus2) == UNKNOWN_LOCATION)
+    return false;
 
   if (locus1 == locus2)
     return true;
@@ -2832,7 +2911,8 @@ simple_goto_p (gimple *t)
    label.  */
 
 static inline bool
-stmt_starts_bb_p (gimple *stmt, gimple *prev_stmt)
+stmt_starts_bb_p (gimple *stmt, gimple *prev_stmt,
+		  hash_set<tree> *target_labels)
 {
   if (stmt == NULL)
     return false;
@@ -2858,6 +2938,17 @@ stmt_starts_bb_p (gimple *stmt, gimple *prev_stmt)
 	{
 	  if (DECL_NONLOCAL (gimple_label_label (plabel))
 	      || !DECL_ARTIFICIAL (gimple_label_label (plabel)))
+	    return true;
+
+	  location_t prev_locus = gimple_location (plabel);
+	  location_t locus = gimple_location (label_stmt);
+	  expanded_location locus_e = expand_location (locus);
+
+	  if (!optimize
+	      && target_labels->contains (gimple_label_label (label_stmt))
+	      && (LOCATION_LOCUS (locus) != UNKNOWN_LOCATION
+		|| LOCATION_LOCUS (prev_locus) != UNKNOWN_LOCATION)
+	      && !same_line_p (locus, &locus_e, prev_locus))
 	    return true;
 
 	  cfg_stats.num_merged_labels++;

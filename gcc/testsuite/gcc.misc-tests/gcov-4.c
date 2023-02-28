@@ -122,7 +122,7 @@ top:
       }
     else
       {
-else_:				/* count(1) */
+else_:				/* count(2) */
 	j = do_something (j);	/* count(2) */
 	if (j)			/* count(2) */
 	  {

@@ -263,7 +263,7 @@ test_switch (int i, int j)
       case 2:
         result = do_something (1024);
         break;
-      case 3:				/* count(3) */
+      case 3:				/* count(2) */
       case 4:
 					/* branch(67) */
         if (j == 2)			/* count(3) */

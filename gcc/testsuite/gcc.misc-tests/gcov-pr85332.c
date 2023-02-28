@@ -7,7 +7,7 @@ int doit(int sel, int n, void *p)
 
   switch (sel)
   {
-    case 0: /* count(3) */
+    case 0: /* count(1) */
       do {*p0 += *p0;} while (--n); /* count(3) */
       return *p0 == 0; /* count(1) */
 
