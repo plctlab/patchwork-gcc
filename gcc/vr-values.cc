@@ -2189,11 +2189,12 @@ bool
 simplify_using_ranges::two_valued_val_range_p (tree var, tree *a, tree *b,
 					       gimple *s)
 {
-  value_range vr = *query->get_value_range (var, s);
-  vr.normalize_symbolics ();
-  if (vr.varying_p () || vr.undefined_p ())
+  value_range r = *query->get_value_range (var, s);
+  r.normalize_symbolics ();
+  if (r.varying_p () || r.undefined_p ())
     return false;
 
+  int_range<2> vr (r);
   if ((vr.num_pairs () == 1 && vr.upper_bound () - vr.lower_bound () == 1)
       || (vr.num_pairs () == 2
 	  && vr.lower_bound (0) == vr.upper_bound (0)
