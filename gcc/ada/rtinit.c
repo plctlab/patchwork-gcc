@@ -481,8 +481,7 @@ __gnat_runtime_initialize (int install_handler)
 
 		     FindClose (hDir);
 
-		     if (dir != NULL)
-		       free (dir);
+		     free (dir);
 		   }
 	       }
 	     else

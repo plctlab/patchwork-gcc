@@ -187,8 +187,7 @@ reconcat (char *optr, const char *first, ...)
   /* Now copy the individual pieces to the result string. */
   va_start (args, first);
   vconcat_copy (newstr, first, args);
-  if (optr) /* Done before VA_CLOSE so optr stays in scope for K&R C.  */
-    free (optr);
+  free (optr);
   va_end (args);
 
   return newstr;

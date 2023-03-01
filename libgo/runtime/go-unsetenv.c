@@ -42,6 +42,5 @@ unsetenv_c (String k)
 
 #endif /* !defined(HAVE_UNSETENV) */
 
-  if (kn != NULL)
-    free (kn);
+  free (kn);
 }

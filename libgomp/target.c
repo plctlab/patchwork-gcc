@@ -1860,8 +1860,7 @@ gomp_remove_splay_tree_key (splay_tree sp, splay_tree_key k)
     {
       if (k->aux->link_key)
 	splay_tree_insert (sp, (splay_tree_node) k->aux->link_key);
-      if (k->aux->attach_count)
-	free (k->aux->attach_count);
+      free (k->aux->attach_count);
       free (k->aux);
       k->aux = NULL;
     }

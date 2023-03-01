@@ -72,8 +72,6 @@ setenv_c (String k, String v)
 
 #endif /* !defined(HAVE_SETENV) */
 
-  if (kn != NULL)
-    free (kn);
-  if (vn != NULL)
-    free (vn);
+  free (kn);
+  free (vn);
 }

@@ -189,10 +189,8 @@ local void cleanup(void)
                 free(done[n].vec);
         free(done);
     }
-    if (num != NULL)
-        free(num);
-    if (code != NULL)
-        free(code);
+    free (num);
+    free (code);
 }
 
 /* Return the number of possible Huffman codes using bit patterns of lengths

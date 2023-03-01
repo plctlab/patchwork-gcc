@@ -690,7 +690,7 @@ int main(int argc, char **argv)
                 outname[len] = 0;
             }
             ret = gunzip(&strm, *argv, outname, test);
-            if (outname != NULL) free(outname);
+            free (outname);
             if (ret) break;
         } while (argv++, --argc);
     else

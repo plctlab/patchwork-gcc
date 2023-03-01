@@ -89,8 +89,7 @@ local void bclose(bin *in)
     if (in != NULL) {
         if (in->fd != -1)
             close(in->fd);
-        if (in->buf != NULL)
-            free(in->buf);
+        free (in->buf);
         free(in);
     }
 }

@@ -494,12 +494,9 @@ test_large (struct backtrace_state *state ATTRIBUTE_UNUSED)
   printf ("FAIL: zstd large\n");
   ++failures;
 
-  if (orig_buf != NULL)
-    free (orig_buf);
-  if (compressed_buf != NULL)
-    free (compressed_buf);
-  if (uncompressed_buf != NULL)
-    free (uncompressed_buf);
+  free (orig_buf);
+  free (compressed_buf);
+  free (uncompressed_buf);
 
 #else /* !HAVE_ZSTD */
 

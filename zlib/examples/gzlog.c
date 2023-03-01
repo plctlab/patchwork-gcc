@@ -787,8 +787,7 @@ local int log_recover(struct log *log, int op)
     log_log(log, op, ret ? "failure" : "complete");
 
     /* clean up */
-    if (data != NULL)
-        free(data);
+    free (data);
     return ret;
 }
 
@@ -1051,8 +1050,7 @@ int gzlog_close(gzlog *logd)
     log_close(log);
 
     /* free structure and return */
-    if (log->path != NULL)
-        free(log->path);
+    free (log->path);
     strcpy(log->id, "bad");
     free(log);
     return 0;
