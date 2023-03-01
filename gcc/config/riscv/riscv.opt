@@ -205,35 +205,125 @@ long riscv_stack_protector_guard_offset = 0
 TargetVariable
 int riscv_zi_subext
 
+Mask(ZICSR) in TargetVariable(riscv_zi_subext)
+
+Mask(ZIFENCEI) in TargetVariable(riscv_zi_subext)
+
 TargetVariable
 int riscv_za_subext
+
+Mask(ZAWRS) in TargetVariable(riscv_za_subext)
 
 TargetVariable
 int riscv_zb_subext
 
+Mask(ZBA) in TargetVariable(riscv_zb_subext)
+
+Mask(ZBB) in TargetVariable(riscv_zb_subext)
+
+Mask(ZBC) in TargetVariable(riscv_zb_subext)
+
+Mask(ZBS) in TargetVariable(riscv_zb_subext)
+
 TargetVariable
 int riscv_zinx_subext
+
+Mask(ZFINX) in TargetVariable(riscv_zinx_subext)
+
+Mask(ZDINX) in TargetVariable(riscv_zinx_subext)
+
+Mask(ZHINX) in TargetVariable(riscv_zinx_subext)
+
+Mask(ZHINXMIN) in TargetVariable(riscv_zinx_subext)
 
 TargetVariable
 int riscv_zk_subext
 
+Mask(ZBKB) in TargetVariable(riscv_zk_subext)
+
+Mask(ZBKC) in TargetVariable(riscv_zk_subext)
+
+Mask(ZBKX) in TargetVariable(riscv_zk_subext)
+
+Mask(ZKNE) in TargetVariable(riscv_zk_subext)
+
+Mask(ZKND) in TargetVariable(riscv_zk_subext)
+
+Mask(ZKNH) in TargetVariable(riscv_zk_subext)
+
+Mask(ZKR) in TargetVariable(riscv_zk_subext)
+
+Mask(ZKSED) in TargetVariable(riscv_zk_subext)
+
+Mask(ZKSH) in TargetVariable(riscv_zk_subext)
+
+Mask(ZKT) in TargetVariable(riscv_zk_subext)
+
 TargetVariable
 int riscv_vector_elen_flags
+
+Mask(VECTOR_ELEN_32) in TargetVariable(riscv_vector_elen_flags)
+
+Mask(VECTOR_ELEN_64) in TargetVariable(riscv_vector_elen_flags)
+
+Mask(VECTOR_ELEN_FP_32) in TargetVariable(riscv_vector_elen_flags)
+
+Mask(VECTOR_ELEN_FP_64) in TargetVariable(riscv_vector_elen_flags)
 
 TargetVariable
 int riscv_zvl_flags
 
+Mask(ZVL32B) in TargetVariable(riscv_zvl_flags)
+
+Mask(ZVL64B) in TargetVariable(riscv_zvl_flags)
+
+Mask(ZVL128B) in TargetVariable(riscv_zvl_flags)
+
+Mask(ZVL256B) in TargetVariable(riscv_zvl_flags)
+
+Mask(ZVL512B) in TargetVariable(riscv_zvl_flags)
+
+Mask(ZVL1024B) in TargetVariable(riscv_zvl_flags)
+
+Mask(ZVL2048B) in TargetVariable(riscv_zvl_flags)
+
+Mask(ZVL4096B) in TargetVariable(riscv_zvl_flags)
+
+Mask(ZVL8192B) in TargetVariable(riscv_zvl_flags)
+
+Mask(ZVL16384B) in TargetVariable(riscv_zvl_flags)
+
+Mask(ZVL32768B) in TargetVariable(riscv_zvl_flags)
+
+Mask(ZVL65536B) in TargetVariable(riscv_zvl_flags)
+
 TargetVariable
 int riscv_zicmo_subext
+
+Mask(ZICBOZ) in TargetVariable(riscv_zicmo_subext)
+
+Mask(ZICBOM) in TargetVariable(riscv_zicmo_subext)
+
+Mask(ZICBOP) in TargetVariable(riscv_zicmo_subext)
 
 TargetVariable
 int riscv_zf_subext
 
+Mask(ZFHMIN) in TargetVariable(riscv_zf_subext)
+
+Mask(ZFH) in TargetVariable(riscv_zf_subext)
+
 TargetVariable
 int riscv_zm_subext
 
+Mask(ZMMUL) in TargetVariable(riscv_zm_subext)
+
 TargetVariable
 int riscv_sv_subext
+
+Mask(SVINVAL) in TargetVariable(riscv_sv_subext)
+
+Mask(SVNAPOT) in TargetVariable(riscv_sv_subext)
 
 Enum
 Name(isa_spec_class) Type(enum riscv_isa_spec_class)
