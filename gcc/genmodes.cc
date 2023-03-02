@@ -114,6 +114,7 @@ static struct mode_adjust *adj_alignment;
 static struct mode_adjust *adj_format;
 static struct mode_adjust *adj_ibit;
 static struct mode_adjust *adj_fbit;
+static struct mode_adjust *adj_precision;
 
 /* Mode class operations.  */
 static enum mode_class
@@ -819,6 +820,7 @@ make_vector_mode (enum mode_class bclass,
 #define ADJUST_NUNITS(M, X)    _ADD_ADJUST (nunits, M, X, RANDOM, RANDOM)
 #define ADJUST_BYTESIZE(M, X)  _ADD_ADJUST (bytesize, M, X, RANDOM, RANDOM)
 #define ADJUST_ALIGNMENT(M, X) _ADD_ADJUST (alignment, M, X, RANDOM, RANDOM)
+#define ADJUST_PRECISION(M, X) _ADD_ADJUST (precision, M, X, RANDOM, RANDOM)
 #define ADJUST_FLOAT_FORMAT(M, X)    _ADD_ADJUST (format, M, X, FLOAT, FLOAT)
 #define ADJUST_IBIT(M, X)  _ADD_ADJUST (ibit, M, X, ACCUM, UACCUM)
 #define ADJUST_FBIT(M, X)  _ADD_ADJUST (fbit, M, X, FRACT, UACCUM)
@@ -1829,8 +1831,9 @@ emit_mode_adjustments (void)
 	      " (mode_precision[E_%smode], mode_nunits[E_%smode]);\n",
 	      m->name, m->name);
       printf ("    mode_precision[E_%smode] = ps * old_factor;\n", m->name);
-      printf ("    mode_size[E_%smode] = exact_div (mode_precision[E_%smode],"
-	      " BITS_PER_UNIT);\n", m->name, m->name);
+      printf ("    if (!multiple_p (mode_precision[E_%smode],"
+	      " BITS_PER_UNIT, &mode_size[E_%smode]))\n", m->name, m->name);
+      printf ("      mode_size[E_%smode] = -1;\n", m->name);
       printf ("    mode_nunits[E_%smode] = ps;\n", m->name);
       printf ("    adjust_mode_mask (E_%smode);\n", m->name);
       printf ("  }\n");
@@ -1962,6 +1965,19 @@ emit_mode_adjustments (void)
   for (a = adj_format; a; a = a->next)
     printf ("\n  /* %s:%d */\n  REAL_MODE_FORMAT (E_%smode) = %s;\n",
 	    a->file, a->line, a->mode->name, a->adjustment);
+
+  /* Adjust precision to the actual bits size.  */
+  for (a = adj_precision; a; a = a->next)
+    switch (a->mode->cl)
+      {
+	case MODE_VECTOR_BOOL:
+	  printf ("\n  /* %s:%d.  */\n  ps = %s;\n", a->file, a->line,
+		  a->adjustment);
+	  printf ("  mode_precision[E_%smode] = ps;\n", a->mode->name);
+	  break;
+	default:
+	  break;
+      }
 
   puts ("}");
 }
