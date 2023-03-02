@@ -205,6 +205,8 @@ public:
   /* Execution count.  */
   gcov_type count;
 
+  unsigned id;
+
   /* Branches from blocks that end on this line.  */
   vector<arc_info *> branches;
 
@@ -216,8 +218,8 @@ public:
   unsigned has_unexecuted_block : 1;
 };
 
-line_info::line_info (): count (0), branches (), blocks (), exists (false),
-  unexceptional (0), has_unexecuted_block (0)
+line_info::line_info (): count (0), id (0), branches (), blocks (),
+  exists (false), unexceptional (0), has_unexecuted_block (0)
 {
 }
 
@@ -2370,7 +2372,7 @@ solve_flow_graph (function_info *fn)
 
   /* If the graph has been correctly solved, every block will have a
      valid count.  */
-  for (unsigned i = 0; ix < fn->blocks.size (); i++)
+  for (unsigned i = 0; i < fn->blocks.size (); i++)
     if (!fn->blocks[i].count_valid)
       {
 	fnotice (stderr, "%s:graph is unsolvable for '%s'\n",
@@ -2730,6 +2732,7 @@ add_line_counts (coverage_info *coverage, function_info *fn)
 		    }
 		  line->count += block->count;
 		}
+	      line->id = ln;
 	    }
 
 	  has_any_line = true;

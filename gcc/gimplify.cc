@@ -3915,7 +3915,8 @@ shortcut_cond_r (tree pred, tree *true_label_p, tree *false_label_p,
 	false_label_p = &local_label;
 
       /* Keep the original source location on the first 'if'.  */
-      t = shortcut_cond_r (TREE_OPERAND (pred, 0), NULL, false_label_p, locus);
+      tree op0 = TREE_OPERAND (pred, 0);
+      t = shortcut_cond_r (op0, NULL, false_label_p, EXPR_LOCATION (op0));
       append_to_statement_list (t, &expr);
 
       /* Set the source location of the && on the second 'if'.  */
@@ -3938,7 +3939,8 @@ shortcut_cond_r (tree pred, tree *true_label_p, tree *false_label_p,
 	true_label_p = &local_label;
 
       /* Keep the original source location on the first 'if'.  */
-      t = shortcut_cond_r (TREE_OPERAND (pred, 0), true_label_p, NULL, locus);
+      tree op0 = TREE_OPERAND (pred, 0);
+      t = shortcut_cond_r (op0, true_label_p, NULL, EXPR_LOCATION (op0));
       append_to_statement_list (t, &expr);
 
       /* Set the source location of the || on the second 'if'.  */
