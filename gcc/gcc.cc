@@ -1278,7 +1278,7 @@ static const char *asm_options =
 #if HAVE_GNU_AS
 /* If GNU AS is used, then convert -w (no warnings), -I, and -v
    to the assembler equivalents.  */
-"%{v} %{w:-W} %{I*} "
+"%{v} %{w:-W} %@{I*} "
 #endif
 "%(asm_debug_option)"
 ASM_COMPRESS_DEBUG_SPEC
