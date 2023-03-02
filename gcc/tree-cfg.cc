@@ -3009,7 +3009,7 @@ split_edge_bb_loc (edge edge_in)
   if (dest_prev)
     {
       edge e = find_edge (dest_prev, dest);
-      if (e && !(e->flags & EDGE_COMPLEX))
+      if ((e && !(e->flags & EDGE_COMPLEX)) || edge_in->src == edge_in->dest)
 	return edge_in->src;
     }
   return dest_prev;
