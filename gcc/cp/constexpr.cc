@@ -8948,6 +8948,24 @@ check_for_return_continue (tree *tp, int *walk_subtrees, void *data)
   return NULL_TREE;
 }
 
+/* Return true iff TYPE is a class with constexpr operator().  */
+
+static bool
+is_constexpr_function_object (tree type)
+{
+  if (!CLASS_TYPE_P (type))
+    return false;
+
+  for (tree f = TYPE_FIELDS (type); f; f = DECL_CHAIN (f))
+    if (TREE_CODE (f) == FUNCTION_DECL
+	&& DECL_OVERLOADED_OPERATOR_P (f)
+	&& DECL_OVERLOADED_OPERATOR_IS (f, CALL_EXPR)
+	&& DECL_DECLARED_CONSTEXPR_P (f))
+      return true;
+
+  return false;
+}
+
 /* Return true if T denotes a potentially constant expression.  Issue
    diagnostic as appropriate under control of FLAGS.  If WANT_RVAL is true,
    an lvalue-rvalue conversion is implied.  If NOW is true, we want to
@@ -9179,7 +9197,10 @@ potential_constant_expression_1 (tree t, bool want_rval, bool strict, bool now,
 	  }
 	else if (fun)
           {
-	    if (RECUR (fun, rval))
+	    if (VAR_P (fun)
+		&& is_constexpr_function_object (TREE_TYPE (fun)))
+	      /* Could be an object with constexpr operator().  */;
+	    else if (RECUR (fun, rval))
 	      /* Might end up being a constant function pointer.  */;
 	    else
 	      return false;
