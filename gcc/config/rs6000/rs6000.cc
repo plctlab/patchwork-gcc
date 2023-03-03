@@ -1760,6 +1760,9 @@ static const struct attribute_spec rs6000_attribute_table[] =
 
 #undef TARGET_UPDATE_IPA_FN_TARGET_INFO
 #define TARGET_UPDATE_IPA_FN_TARGET_INFO rs6000_update_ipa_fn_target_info
+
+#undef TARGET_CALL_OFFSET_RETURN_LABEL
+#define TARGET_CALL_OFFSET_RETURN_LABEL rs6000_call_offset_return_label
 
 
 /* Processor table.  */
@@ -14591,6 +14594,40 @@ rs6000_assemble_integer (rtx x, unsigned int size, int aligned_p)
     }
 #endif /* RELOCATABLE_NEEDS_FIXUP */
   return default_assemble_integer (x, size, aligned_p);
+}
+
+/* Return the offset to be added to the label output after CALL_INSN
+   to compute the address to be placed in DW_AT_call_return_pc.  Some
+   call insns output nop or l after bl, so the return address would be
+   wrong without this offset.  */
+
+static int
+rs6000_call_offset_return_label (rtx_insn *call_insn)
+{
+  /* We don't expect SEQUENCEs in this port.  */
+  gcc_checking_assert (GET_CODE (call_insn) == CALL_INSN);
+
+  enum attr_call_needs_return_offset cnro
+    = get_attr_call_needs_return_offset (call_insn);
+
+  if (cnro == CALL_NEEDS_RETURN_OFFSET_NONE)
+    return 0;
+
+  if (rs6000_pcrel_p ())
+    return 0;
+  else if (DEFAULT_ABI == ABI_AIX || DEFAULT_ABI == ABI_ELFv2)
+    /* rs6000_call_template_1 outputs a nop after non-sibcall insns;
+       we mark sibcall insns with NONE rather than DIRECT, so we
+       should have returned zero above.
+       rs6000_indirect_call_template_1 outputs an l insn after
+       indirect calls in these ABIs.  */
+    return -4;
+  else if (DEFAULT_ABI == ABI_V4)
+    return 0;
+  else if (DEFAULT_ABI == ABI_DARWIN)
+    return 0;
+  else
+    return 0;
 }
 
 /* Return a template string for assembly to emit when making an
