@@ -7288,7 +7288,17 @@ expand_compound_operation (rtx x)
 	  && (STORE_FLAG_VALUE & ~GET_MODE_MASK (inner_mode)) == 0)
 	return SUBREG_REG (XEXP (x, 0));
 
+      /* If ZERO_EXTEND is cheap on this target, do nothing,
+	 i.e. don't attempt to convert it to a pair of shifts.  */
+      if (set_src_cost (x, mode, optimize_this_for_speed_p)
+	  <= COSTS_N_INSNS (1))
+	return x;
     }
+  /* Likewise, if SIGN_EXTEND is cheap, do nothing.  */
+  else if (GET_CODE (x) == SIGN_EXTEND
+	   && set_src_cost (x, mode, optimize_this_for_speed_p)
+	      <= COSTS_N_INSNS (1))
+    return x;
 
   /* If we reach here, we want to return a pair of shifts.  The inner
      shift is a left shift of BITSIZE - POS - LEN bits.  The outer
