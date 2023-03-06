@@ -701,6 +701,20 @@ extern int vsnprintf (char *, size_t, const char *, va_list);
 /* Do not introduce a gmp.h dependency on the build system.  */
 #ifndef GENERATOR_FILE
 #include <gmp.h>
+
+class auto_mpz
+{
+public:
+  auto_mpz () { mpz_init (m_mpz); }
+  ~auto_mpz () { mpz_clear (m_mpz); }
+
+  operator mpz_t& () { return m_mpz; }
+
+  auto_mpz (const auto_mpz &) = delete;
+
+private:
+  mpz_t m_mpz;
+};
 #endif
 
 /* Get libiberty declarations.  */
