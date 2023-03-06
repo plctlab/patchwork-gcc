@@ -8188,28 +8188,52 @@ make_compound_operation_int (scalar_int_mode mode, rtx *x_ptr,
       /* If the one operand is a paradoxical subreg of a register or memory and
 	 the constant (limited to the smaller mode) has only zero bits where
 	 the sub expression has known zero bits, this can be expressed as
-	 a zero_extend.  */
-      else if (GET_CODE (XEXP (x, 0)) == SUBREG)
+	 a zero_extend.
+
+	 Look also for the case where the operand is such a subreg that
+	 is multiplied by 2**N:
+
+	   (and (mult ... 2**N) M) --> (mult (and ... M>>N) 2**N) -> ...  */
+      else
 	{
-	  rtx sub;
-
-	  sub = XEXP (XEXP (x, 0), 0);
-	  machine_mode sub_mode = GET_MODE (sub);
-	  int sub_width;
-	  if ((REG_P (sub) || MEM_P (sub))
-	      && GET_MODE_PRECISION (sub_mode).is_constant (&sub_width)
-	      && sub_width < mode_width)
+	  rtx y = XEXP (x, 0);
+	  rtx top = y;
+	  int shift = 0;
+	  if (GET_CODE (y) == MULT
+	      && CONST_INT_P (XEXP (y, 1))
+	      && pow2p_hwi (INTVAL (XEXP (y, 1))))
 	    {
-	      unsigned HOST_WIDE_INT mode_mask = GET_MODE_MASK (sub_mode);
-	      unsigned HOST_WIDE_INT mask;
+	      shift = exact_log2 (INTVAL (XEXP (y, 1)));
+	      y = XEXP (y, 0);
+	    }
+	  if (GET_CODE (y) == SUBREG)
+	    {
+	      rtx sub;
 
-	      /* original AND constant with all the known zero bits set */
-	      mask = UINTVAL (XEXP (x, 1)) | (~nonzero_bits (sub, sub_mode));
-	      if ((mask & mode_mask) == mode_mask)
+	      sub = XEXP (y, 0);
+	      machine_mode sub_mode = GET_MODE (sub);
+	      int sub_width;
+	      if ((REG_P (sub) || MEM_P (sub))
+		  && GET_MODE_PRECISION (sub_mode).is_constant (&sub_width)
+		  && sub_width < mode_width)
 		{
-		  new_rtx = make_compound_operation (sub, next_code);
-		  new_rtx = make_extraction (mode, new_rtx, 0, 0, sub_width,
-					     1, 0, in_code == COMPARE);
+		  unsigned HOST_WIDE_INT mode_mask = GET_MODE_MASK (sub_mode);
+		  unsigned HOST_WIDE_INT mask;
+
+		  /* The shifted AND constant with all the known zero
+		     bits set.  */
+		  mask = ((UINTVAL (XEXP (x, 1)) >> shift)
+			  | ~nonzero_bits (sub, sub_mode));
+		  if ((mask & mode_mask) == mode_mask)
+		    {
+		      new_rtx = make_compound_operation (sub, next_code);
+		      new_rtx = make_extraction (mode, new_rtx,
+						 0, 0, sub_width,
+						 1, 0, in_code == COMPARE);
+		      if (shift)
+			new_rtx = gen_rtx_fmt_ee (GET_CODE (top), mode,
+						  new_rtx, XEXP (top, 1));
+		    }
 		}
 	    }
 	}
