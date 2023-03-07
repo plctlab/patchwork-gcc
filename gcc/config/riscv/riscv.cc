@@ -3205,7 +3205,11 @@ riscv_emit_float_compare (enum rtx_code *code, rtx *op0, rtx *op1)
       else if (GET_MODE (cmp_op0) == HFmode && TARGET_64BIT)		\
 	emit_insn (gen_f##CMP##_quiethfdi4 (*op0, cmp_op0, cmp_op1));	\
       else if (GET_MODE (cmp_op0) == HFmode)				\
-	emit_insn (gen_f##CMP##_quiethfsi4 (*op0, cmp_op0, cmp_op1));	\
+	emit_insn (gen_f##CMP##_quietbfsi4 (*op0, cmp_op0, cmp_op1));	\
+      else if (GET_MODE (cmp_op0) == BFmode && TARGET_64BIT)		\
+	emit_insn (gen_f##CMP##_quietbfdi4 (*op0, cmp_op0, cmp_op1));	\
+      else if (GET_MODE (cmp_op0) == BFmode)				\
+	emit_insn (gen_f##CMP##_quietbfsi4 (*op0, cmp_op0, cmp_op1));	\
       else								\
 	gcc_unreachable ();						\
       *op1 = const0_rtx;						\
@@ -6712,7 +6716,13 @@ riscv_mangle_type (const_tree type)
 {
   /* Half-precision float, _Float16 is "DF16_".  */
   if (TREE_CODE (type) == REAL_TYPE && TYPE_PRECISION (type) == 16)
-    return "DF16_";
+  {
+    if (TYPE_MAIN_VARIANT (type) == float16_type_node)
+	return "DF16_";
+    
+    if (TYPE_MODE (type) == BFmode)
+	return "DF16b";
+  } 
 
   /* Mangle all vector type for vector extension.  */
   /* The mangle name follows the rule of RVV LLVM
@@ -6733,19 +6743,19 @@ riscv_mangle_type (const_tree type)
 static bool
 riscv_scalar_mode_supported_p (scalar_mode mode)
 {
-  if (mode == HFmode)
+  if (mode == HFmode || mode == BFmode)
     return true;
   else
     return default_scalar_mode_supported_p (mode);
 }
 
 /* Implement TARGET_LIBGCC_FLOATING_MODE_SUPPORTED_P - return TRUE
-   if MODE is HFmode, and punt to the generic implementation otherwise.  */
+   if MODE is HFmode or BFmode, and punt to the generic implementation otherwise.  */
 
 static bool
 riscv_libgcc_floating_mode_supported_p (scalar_float_mode mode)
 {
-  if (mode == HFmode)
+  if (mode == HFmode || mode == BFmode)
     return true;
   else
     return default_libgcc_floating_mode_supported_p (mode);
@@ -6817,6 +6827,23 @@ riscv_init_libfuncs (void)
   set_optab_libfunc (ge_optab, HFmode, NULL);
   set_optab_libfunc (gt_optab, HFmode, NULL);
   set_optab_libfunc (unord_optab, HFmode, NULL);
+
+  /* Bfloat16*/
+  /* Arithmetic.  */
+  set_optab_libfunc (add_optab, BFmode, NULL);
+  set_optab_libfunc (sdiv_optab, BFmode, NULL);
+  set_optab_libfunc (smul_optab, BFmode, NULL);
+  set_optab_libfunc (neg_optab, BFmode, NULL);
+  set_optab_libfunc (sub_optab, BFmode, NULL);
+
+  /* Comparisons.  */
+  set_optab_libfunc (eq_optab, BFmode, NULL);
+  set_optab_libfunc (ne_optab, BFmode, NULL);
+  set_optab_libfunc (lt_optab, BFmode, NULL);
+  set_optab_libfunc (le_optab, BFmode, NULL);
+  set_optab_libfunc (ge_optab, BFmode, NULL);
+  set_optab_libfunc (gt_optab, BFmode, NULL);
+  set_optab_libfunc (unord_optab, BFmode, NULL);
 }
 
 #if CHECKING_P

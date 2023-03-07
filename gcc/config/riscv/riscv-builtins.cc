@@ -189,6 +189,7 @@ static GTY(()) int riscv_builtin_decl_index[NUM_INSN_CODES];
   riscv_builtin_decls[riscv_builtin_decl_index[(CODE)]]
 
 tree riscv_float16_type_node = NULL_TREE;
+tree riscv_bfloat16_type_node = NULL_TREE;
 
 /* Return the function type associated with function prototype TYPE.  */
 
@@ -216,7 +217,7 @@ riscv_build_function_type (enum riscv_function_type type)
 }
 
 static void
-riscv_init_builtin_types (void)
+riscv_fp16_builtin_type (void)
 {
   /* Provide the _Float16 type and float16_type_node if needed.  */
   if (!float16_type_node)
@@ -232,6 +233,32 @@ riscv_init_builtin_types (void)
   if (!maybe_get_identifier ("_Float16"))
     lang_hooks.types.register_builtin_type (riscv_float16_type_node,
 					    "_Float16");
+}
+
+static void
+riscv_bf16_builtin_type (void)
+{
+  /* Provide the _bf16 type and bfloat16_type_node if needed.  */
+  if (!bfloat16_type_node)
+    {
+      riscv_bfloat16_type_node = make_node (REAL_TYPE);
+      TYPE_PRECISION (riscv_bfloat16_type_node) = 16;
+      SET_TYPE_MODE (riscv_bfloat16_type_node, BFmode);
+      layout_type (riscv_bfloat16_type_node);
+    }
+  else
+    riscv_bfloat16_type_node = bfloat16_type_node;
+
+  if (!maybe_get_identifier ("__bf16"))
+    lang_hooks.types.register_builtin_type (riscv_bfloat16_type_node,
+					    "__bf16");
+}
+
+static void
+riscv_init_builtin_types (void)
+{
+  riscv_fp16_builtin_type ();
+  riscv_bf16_builtin_type ();
 }
 
 /* Implement TARGET_INIT_BUILTINS.  */

@@ -158,7 +158,7 @@
   (const_string "unknown"))
 
 ;; Main data type used by the insn
-(define_attr "mode" "unknown,none,QI,HI,SI,DI,TI,HF,SF,DF,TF,
+(define_attr "mode" "unknown,none,QI,HI,SI,DI,TI,BF,HF,SF,DF,TF,
   VNx1BI,VNx2BI,VNx4BI,VNx8BI,VNx16BI,VNx32BI,VNx64BI,
   VNx1QI,VNx2QI,VNx4QI,VNx8QI,VNx16QI,VNx32QI,VNx64QI,
   VNx1HI,VNx2HI,VNx4HI,VNx8HI,VNx16HI,VNx32HI,
@@ -1335,15 +1335,25 @@
   [(set_attr "type" "fcvt")
    (set_attr "mode" "HF")])
 
-(define_insn "truncdfhf2"
-  [(set (match_operand:HF     0 "register_operand" "=f")
-       (float_truncate:HF
+(define_insn "truncsfbf2"
+  [(set (match_operand:BF     0 "register_operand" "=f")
+       (float_truncate:BF
+           (match_operand:SF 1 "register_operand" " f")))]
+  "TARGET_ZFBFMIN"
+  "fcvt.bf16.s\t%0,%1"
+  [(set_attr "type" "fcvt")
+   (set_attr "mode" "BF")])
+
+(define_insn "truncdf<BFHF:mode>2"
+  [(set (match_operand:BFHF     0 "register_operand" "=f")
+       (float_truncate:BFHF
            (match_operand:DF 1 "register_operand" " f")))]
   "(TARGET_ZFHMIN && TARGET_DOUBLE_FLOAT) ||
-   (TARGET_ZHINXMIN && TARGET_ZDINX)"
+   (TARGET_ZHINXMIN && TARGET_ZDINX) || 
+   (TARGET_ZFBFMIN && TARGET_DOUBLE_FLOAT)"
   "fcvt.h.d\t%0,%1"
   [(set_attr "type" "fcvt")
-   (set_attr "mode" "HF")])
+   (set_attr "mode" "<BFHF:MODE>")])
 
 ;;
 ;;  ....................
@@ -1471,6 +1481,15 @@
   [(set_attr "type" "fcvt")
    (set_attr "mode" "SF")])
 
+(define_insn "extendbfsf2"
+  [(set (match_operand:SF     0 "register_operand" "=f")
+       (float_extend:SF
+           (match_operand:BF 1 "register_operand" " f")))]
+  "TARGET_ZFBFMIN"
+  "fcvt.s.bf16\t%0,%1"
+  [(set_attr "type" "fcvt")
+   (set_attr "mode" "SF")])
+
 (define_insn "extendsfdf2"
   [(set (match_operand:DF     0 "register_operand" "=f")
 	(float_extend:DF
@@ -1480,15 +1499,16 @@
   [(set_attr "type" "fcvt")
    (set_attr "mode" "DF")])
 
-(define_insn "extendhfdf2"
+(define_insn "extend<BFHF:mode>df2"
   [(set (match_operand:DF     0 "register_operand" "=f")
        (float_extend:DF
-           (match_operand:HF 1 "register_operand" " f")))]
+           (match_operand:BFHF 1 "register_operand" " f")))]
   "(TARGET_ZFHMIN && TARGET_DOUBLE_FLOAT) ||
-   (TARGET_ZHINXMIN && TARGET_ZDINX)"
+   (TARGET_ZHINXMIN && TARGET_ZDINX) ||
+   (TARGET_ZFBFMIN && TARGET_DOUBLE_FLOAT)"
   "fcvt.d.h\t%0,%1"
   [(set_attr "type" "fcvt")
-   (set_attr "mode" "DF")])
+   (set_attr "mode" "<BFHF:MODE>")])
 
 ;; 16-bit floating point moves
 (define_expand "movhf"
@@ -1519,6 +1539,35 @@
   { return riscv_output_move (operands[0], operands[1]); }
   [(set_attr "move_type" "fmove,move,load,store,mtc,mfc")
    (set_attr "mode" "HF")])
+
+(define_expand "movbf"
+  [(set (match_operand:BF 0 "")
+	(match_operand:BF 1 ""))]
+  ""
+{
+  if (riscv_legitimize_move (BFmode, operands[0], operands[1]))
+    DONE;
+})
+
+(define_insn "*movbf_hardfloat"
+  [(set (match_operand:BF 0 "nonimmediate_operand" "=f,f,f,m,m,*f,*r,  *r,*r,*m")
+	(match_operand:BF 1 "move_operand"         " f,G,m,f,G,*r,*f,*G*r,*m,*r"))]
+  "TARGET_ZFBFMIN
+   && (register_operand (operands[0], BFmode)
+       || reg_or_0_operand (operands[1], BFmode))"
+  { return riscv_output_move (operands[0], operands[1]); }
+  [(set_attr "move_type" "fmove,mtc,fpload,fpstore,store,mtc,mfc,move,load,store")
+   (set_attr "mode" "BF")])
+
+(define_insn "*movbf_softfloat"
+  [(set (match_operand:BF 0 "nonimmediate_operand" "=f, r,r,m,*f,*r")
+	(match_operand:BF 1 "move_operand"         " f,Gr,m,r,*r,*f"))]
+  "!TARGET_ZFHMIN
+   && (register_operand (operands[0], BFmode)
+       || reg_or_0_operand (operands[1], BFmode))"
+  { return riscv_output_move (operands[0], operands[1]); }
+  [(set_attr "move_type" "fmove,move,load,store,mtc,mfc")
+   (set_attr "mode" "BF")])
 
 ;;
 ;;  ....................

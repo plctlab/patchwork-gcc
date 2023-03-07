@@ -61,10 +61,15 @@
 ;; Iterator for hardware-supported floating-point modes.
 (define_mode_iterator ANYF [(SF "TARGET_HARD_FLOAT || TARGET_ZFINX")
 			    (DF "TARGET_DOUBLE_FLOAT || TARGET_ZDINX")
-			    (HF "TARGET_ZFH || TARGET_ZHINX")])
+			    (HF "TARGET_ZFH || TARGET_ZHINX") 
+				(BF "TARGET_ZFBFMIN")])
+
+;; Iterator for HImode constant generation.
+(define_mode_iterator BFHF [BF HF])
 
 ;; Iterator for floating-point modes that can be loaded into X registers.
-(define_mode_iterator SOFTF [SF (DF "TARGET_64BIT") (HF "TARGET_ZFHMIN")])
+(define_mode_iterator SOFTF [SF (DF "TARGET_64BIT") (HF "TARGET_ZFHMIN")
+				(BF "TARGET_ZFBFMIN")])
 
 
 ;; -------------------------------------------------------------------
@@ -76,27 +81,27 @@
 (define_mode_attr size [(QI "b") (HI "h")])
 
 ;; Mode attributes for loads.
-(define_mode_attr load [(QI "lb") (HI "lh") (SI "lw") (DI "ld") (HF "flh") (SF "flw") (DF "fld")])
+(define_mode_attr load [(QI "lb") (HI "lh") (SI "lw") (DI "ld") (BF "flh") (HF "flh") (SF "flw") (DF "fld")])
 
 ;; Instruction names for integer loads that aren't explicitly sign or zero
 ;; extended.  See riscv_output_move and LOAD_EXTEND_OP.
 (define_mode_attr default_load [(QI "lbu") (HI "lhu") (SI "lw") (DI "ld")])
 
 ;; Mode attribute for FP loads into integer registers.
-(define_mode_attr softload [(HF "lh") (SF "lw") (DF "ld")])
+(define_mode_attr softload [(BF "lh") (HF "lh") (SF "lw") (DF "ld")])
 
 ;; Instruction names for stores.
-(define_mode_attr store [(QI "sb") (HI "sh") (SI "sw") (DI "sd") (HF "fsh") (SF "fsw") (DF "fsd")])
+(define_mode_attr store [(QI "sb") (HI "sh") (SI "sw") (DI "sd") (BF "fsh") (HF "fsh") (SF "fsw") (DF "fsd")])
 
 ;; Instruction names for FP stores from integer registers.
-(define_mode_attr softstore [(HF "sh") (SF "sw") (DF "sd")])
+(define_mode_attr softstore [(BF "sh") (HF "sh") (SF "sw") (DF "sd")])
 
 ;; This attribute gives the best constraint to use for registers of
 ;; a given mode.
 (define_mode_attr reg [(SI "d") (DI "d") (CC "d")])
 
 ;; This attribute gives the format suffix for floating-point operations.
-(define_mode_attr fmt [(HF "h") (SF "s") (DF "d")])
+(define_mode_attr fmt [(BF "h") (HF "h") (SF "s") (DF "d")])
 
 ;; This attribute gives the integer suffix for floating-point conversions.
 (define_mode_attr ifmt [(SI "w") (DI "l")])
@@ -106,7 +111,7 @@
 
 ;; This attribute gives the upper-case mode name for one unit of a
 ;; floating-point mode.
-(define_mode_attr UNITMODE [(HF "HF") (SF "SF") (DF "DF")])
+(define_mode_attr UNITMODE [(BF "BF") (HF "HF") (SF "SF") (DF "DF")])
 
 ;; This attribute gives the integer mode that has half the size of
 ;; the controlling mode.

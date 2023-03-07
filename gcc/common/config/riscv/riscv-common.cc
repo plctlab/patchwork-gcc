@@ -102,6 +102,8 @@ static const riscv_implied_info_t riscv_implied_info[] =
   {"zvl32768b", "zvl16384b"},
   {"zvl65536b", "zvl32768b"},
 
+  {"zfbfmin", "zfhmin"},
+
   {"zfh", "zfhmin"},
   {"zfhmin", "f"},
   
@@ -1239,6 +1241,8 @@ static const riscv_ext_flag_table_t riscv_ext_flag_table[] =
   {"zvl16384b", &gcc_options::x_riscv_zvl_flags, MASK_ZVL16384B},
   {"zvl32768b", &gcc_options::x_riscv_zvl_flags, MASK_ZVL32768B},
   {"zvl65536b", &gcc_options::x_riscv_zvl_flags, MASK_ZVL65536B},
+  
+  {"zfbfmin",    &gcc_options::x_riscv_zf_subext, MASK_ZFBFMIN},
 
   {"zfhmin",    &gcc_options::x_riscv_zf_subext, MASK_ZFHMIN},
   {"zfh",       &gcc_options::x_riscv_zf_subext, MASK_ZFH},
