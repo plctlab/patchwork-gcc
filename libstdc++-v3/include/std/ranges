@@ -8078,26 +8078,42 @@ namespace views::__adaptor
     end() requires ((!__detail::__simple_view<_First> || ... || !__detail::__simple_view<_Vs>)
 		    && __detail::__cartesian_product_is_common<_First, _Vs...>)
     {
-      bool __empty_tail = [this]<size_t... _Is>(index_sequence<_Is...>) {
-	return (ranges::empty(std::get<1 + _Is>(_M_bases)) || ...);
+      auto __it = [this]<size_t... _Is>(index_sequence<_Is...>) {
+	bool __empty_tail = (ranges::empty(std::get<1 + _Is>(_M_bases)) || ...);
+	auto& __first = std::get<0>(_M_bases);
+	auto __first_it = __empty_tail
+	  ? ranges::begin(__first)
+	  : __detail::__cartesian_common_arg_end(__first);
+	// N.B. When implementing P2165R4 this should be changed to always return tuple.
+	if constexpr (sizeof...(_Is) == 1)
+	  return std::make_pair(std::move(__first_it),
+				 ranges::begin(std::get<1 + _Is>(_M_bases))...);
+	else
+	  return std::make_tuple(std::move(__first_it),
+				 ranges::begin(std::get<1 + _Is>(_M_bases))...);
       }(make_index_sequence<sizeof...(_Vs)>{});
 
-      auto __it = __detail::__tuple_transform(ranges::begin, _M_bases);
-      if (!__empty_tail)
-	std::get<0>(__it) = __detail::__cartesian_common_arg_end(std::get<0>(_M_bases));
       return _Iterator<false>{*this, std::move(__it)};
     }
 
     constexpr _Iterator<true>
     end() const requires __detail::__cartesian_product_is_common<const _First, const _Vs...>
     {
-      bool __empty_tail = [this]<size_t... _Is>(index_sequence<_Is...>) {
-	return (ranges::empty(std::get<1 + _Is>(_M_bases)) || ...);
+      auto __it = [this]<size_t... _Is>(index_sequence<_Is...>) {
+	bool __empty_tail = (ranges::empty(std::get<1 + _Is>(_M_bases)) || ...);
+	auto& __first = std::get<0>(_M_bases);
+	auto __first_it = __empty_tail
+	  ? ranges::begin(__first)
+	  : __detail::__cartesian_common_arg_end(__first);
+	// N.B. When implementing P2165R4 this should be changed to always return tuple.
+	if constexpr (sizeof...(_Is) == 1)
+	  return std::make_pair(std::move(__first_it),
+				 ranges::begin(std::get<1 + _Is>(_M_bases))...);
+	else
+	  return std::make_tuple(std::move(__first_it),
+				 ranges::begin(std::get<1 + _Is>(_M_bases))...);
       }(make_index_sequence<sizeof...(_Vs)>{});
 
-      auto __it = __detail::__tuple_transform(ranges::begin, _M_bases);
-      if (!__empty_tail)
-	std::get<0>(__it) = __detail::__cartesian_common_arg_end(std::get<0>(_M_bases));
       return _Iterator<true>{*this, std::move(__it)};
     }
 

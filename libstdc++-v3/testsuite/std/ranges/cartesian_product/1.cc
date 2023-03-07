@@ -3,6 +3,7 @@
 
 #include <ranges>
 #include <algorithm>
+#include <sstream>
 #include <testsuite_hooks.h>
 #include <testsuite_iterators.h>
 
@@ -178,6 +179,26 @@ test06()
   return true;
 }
 
+void
+test07()
+{
+  // PR libstdc++/107572
+  static std::istringstream ints("0 1 2 3 4");
+  struct istream_range
+  {
+    auto begin() { return std::istream_iterator<int>{ints}; }
+    auto end() { return std::istream_iterator<int>{}; }
+  };
+  istream_range r;
+  int i = 0;
+  for (auto [v] : views::cartesian_product(r))
+    {
+      VERIFY( v == i );
+      ++i;
+    };
+  VERIFY( i == 5 );
+}
+
 int
 main()
 {
@@ -187,4 +208,5 @@ main()
   test04();
   test05();
   static_assert(test06());
+  test07();
 }
