@@ -39,9 +39,11 @@
 #include "emit-rtl.h"
 #include "tm_p.h"
 #include "target.h"
+#include "targhooks.h"
 #include "expr.h"
 #include "optabs.h"
 #include "tm-constrs.h"
+#include "riscv-vector-builtins.h"
 #include "rtx-vector-builder.h"
 
 using namespace riscv_vector;
@@ -109,6 +111,41 @@ const_vec_all_same_in_range_p (rtx x, HOST_WIDE_INT minval,
 	  && IN_RANGE (INTVAL (elt), minval, maxval));
 }
 
+/* Return the vlmul field for a specific machine mode.  */
+unsigned int
+riscv_classify_vlmul_field (enum machine_mode mode)
+{
+  /* Make the decision based on the mode's enum value rather than its
+     properties, so that we keep the correct classification regardless
+     of -mriscv-vector-bits.  */
+  switch (mode)
+    {
+    case E_VNx8BImode:
+      return VLMUL_FIELD_111;
+
+    case E_VNx4BImode:
+      return VLMUL_FIELD_110;
+
+    case E_VNx2BImode:
+      return VLMUL_FIELD_101;
+
+    case E_VNx16BImode:
+      return VLMUL_FIELD_000;
+
+    case E_VNx32BImode:
+      return VLMUL_FIELD_001;
+
+    case E_VNx64BImode:
+      return VLMUL_FIELD_010;
+
+    default:
+      break;
+    }
+
+  /* we don't care about VLMUL for Mask.  */
+  return VLMUL_FIELD_000;
+}
+
 rtx
 emit_vlmax_vsetvl (machine_mode vmode)
 {
@@ -161,6 +198,64 @@ calculate_ratio (unsigned int sew, enum vlmul_type vlmul)
       gcc_unreachable ();
     }
   return ratio;
+}
+
+/* Implement TARGET_VECTORIZE_PREFERRED_SIMD_MODE for RVV.  */
+
+machine_mode
+riscv_vector_preferred_simd_mode (scalar_mode mode, unsigned vf)
+{
+  if (!TARGET_VECTOR)
+    return word_mode;
+
+  switch (mode)
+    {
+    case E_QImode:
+      return vf == 1   ? VNx8QImode
+	     : vf == 2 ? VNx16QImode
+	     : vf == 4 ? VNx32QImode
+		       : VNx64QImode;
+      break;
+    case E_HImode:
+      return vf == 1   ? VNx4HImode
+	     : vf == 2 ? VNx8HImode
+	     : vf == 4 ? VNx16HImode
+		       : VNx32HImode;
+      break;
+    case E_SImode:
+      return vf == 1   ? VNx2SImode
+	     : vf == 2 ? VNx4SImode
+	     : vf == 4 ? VNx8SImode
+		       : VNx16SImode;
+      break;
+    case E_DImode:
+      if (riscv_vector_elen_flags != MASK_VECTOR_ELEN_32
+	  && riscv_vector_elen_flags != MASK_VECTOR_ELEN_FP_32)
+	return vf == 1	 ? VNx1DImode
+	       : vf == 2 ? VNx2DImode
+	       : vf == 4 ? VNx4DImode
+			 : VNx8DImode;
+      break;
+    case E_SFmode:
+      if (TARGET_HARD_FLOAT && riscv_vector_elen_flags != MASK_VECTOR_ELEN_32
+	  && riscv_vector_elen_flags != MASK_VECTOR_ELEN_64)
+	return vf == 1	 ? VNx2SFmode
+	       : vf == 2 ? VNx4SFmode
+	       : vf == 4 ? VNx8SFmode
+			 : VNx16SFmode;
+      break;
+    case E_DFmode:
+      if (TARGET_DOUBLE_FLOAT && TARGET_VECTOR_ELEN_FP_64)
+	return vf == 1	 ? VNx1DFmode
+	       : vf == 2 ? VNx2DFmode
+	       : vf == 4 ? VNx4DFmode
+			 : VNx8DFmode;
+      break;
+    default:
+      break;
+    }
+
+  return word_mode;
 }
 
 /* Emit an RVV unmask && vl mov from SRC to DEST.  */
@@ -373,6 +468,87 @@ rtx
 get_avl_type_rtx (enum avl_type type)
 {
   return gen_int_mode (type, Pmode);
+}
+
+rtx
+get_mask_policy_no_pred ()
+{
+  return get_mask_policy_for_pred (PRED_TYPE_none);
+}
+
+rtx
+get_tail_policy_no_pred ()
+{
+  return get_mask_policy_for_pred (PRED_TYPE_none);
+}
+
+/* Return true if it is a RVV tuple mode.  */
+bool
+riscv_tuple_mode_p (machine_mode mode ATTRIBUTE_UNUSED)
+{
+  return false;
+}
+
+/* Return nf for a machine mode.  */
+int
+riscv_classify_nf (machine_mode mode)
+{
+  switch (mode)
+    {
+
+    default:
+      break;
+    }
+
+  return 1;
+}
+
+/* Return vlmul register size for a machine mode.  */
+int
+riscv_vlmul_regsize (machine_mode mode)
+{
+  if (GET_MODE_CLASS (mode) == MODE_VECTOR_BOOL)
+    return 1;
+  switch (riscv_classify_vlmul_field (mode))
+    {
+    case VLMUL_FIELD_001:
+      return 2;
+    case VLMUL_FIELD_010:
+      return 4;
+    case VLMUL_FIELD_011:
+      return 8;
+    case VLMUL_FIELD_100:
+      gcc_unreachable ();
+    default:
+      return 1;
+    }
+}
+
+/* Return true if it is a RVV mask mode.  */
+bool
+riscv_vector_mask_mode_p (machine_mode mode)
+{
+  return (mode == VNx1BImode || mode == VNx2BImode || mode == VNx4BImode
+	  || mode == VNx8BImode || mode == VNx16BImode || mode == VNx32BImode
+	  || mode == VNx64BImode);
+}
+
+/* Implement TARGET_VECTORIZE_GET_MASK_MODE for RVV.  */
+
+opt_machine_mode
+riscv_vector_get_mask_mode (machine_mode mode)
+{
+  machine_mode mask_mode;
+  int nf = 1;
+  if (riscv_tuple_mode_p (mode))
+    nf = riscv_classify_nf (mode);
+
+  FOR_EACH_MODE_IN_CLASS (mask_mode, MODE_VECTOR_BOOL)
+  if (GET_MODE_INNER (mask_mode) == BImode
+      && known_eq (GET_MODE_NUNITS (mask_mode) * nf, GET_MODE_NUNITS (mode))
+      && riscv_vector_mask_mode_p (mask_mode))
+    return mask_mode;
+  return default_get_mask_mode (mode);
 }
 
 /* Return the RVV vector mode that has NUNITS elements of mode INNER_MODE.
