@@ -1,4 +1,5 @@
 // { dg-do run { target c++20 } }
+// { dg-additional-options "-flto" { target lto } } (PR107897)
 
 template<typename T>
 concept C1 = __is_same_as(T, int)
