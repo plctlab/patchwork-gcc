@@ -26,8 +26,6 @@
 ;; - Auto-vectorization (TBD)
 ;; - Combine optimization (TBD)
 
-(include "vector-iterators.md")
-
 (define_constants [
    (INVALID_ATTRIBUTE            255)
    (X0_REGNUM                      0)
@@ -349,6 +347,8 @@
 	 (eq_attr "type" "vmpop,vmffs")
 	   (symbol_ref "INTVAL (operands[4])")]
 	(const_int INVALID_ATTRIBUTE)))
+
+(include "vector-auto.md")
 
 ;; -----------------------------------------------------------------
 ;; ---- Miscellaneous Operations
