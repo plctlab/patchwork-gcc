@@ -2249,6 +2249,8 @@ initialize_env (void)
     wait_policy = none->icvs.wait_policy;
   else if (all != NULL && gomp_get_icv_flag (all->flags, GOMP_ICV_WAIT_POLICY))
     wait_policy = all->icvs.wait_policy;
+  else
+    wait_policy = -1;
 
   if (!parse_spincount ("GOMP_SPINCOUNT", &gomp_spin_count_var))
     {
