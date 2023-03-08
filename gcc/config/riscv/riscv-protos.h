@@ -217,4 +217,19 @@ const unsigned int RISCV_BUILTIN_SHIFT = 1;
 /* Mask that selects the riscv_builtin_class part of a function code.  */
 const unsigned int RISCV_BUILTIN_CLASS = (1 << RISCV_BUILTIN_SHIFT) - 1;
 
+/* Routines implemented in riscv-v.cc.  */
+
+namespace riscv_vector {
+extern unsigned int riscv_classify_vlmul_field (enum machine_mode m);
+extern machine_mode riscv_vector_preferred_simd_mode (scalar_mode mode,
+						      unsigned vf);
+extern bool riscv_tuple_mode_p (machine_mode);
+extern bool riscv_vector_mask_mode_p (machine_mode);
+extern int riscv_classify_nf (machine_mode);
+extern int riscv_vlmul_regsize (machine_mode);
+extern opt_machine_mode riscv_vector_get_mask_mode (machine_mode mode);
+extern rtx emit_vlmax_vsetvl (machine_mode vmode);
+extern rtx get_mask_policy_no_pred ();
+extern rtx get_tail_policy_no_pred ();
+}
 #endif /* ! GCC_RISCV_PROTOS_H */
