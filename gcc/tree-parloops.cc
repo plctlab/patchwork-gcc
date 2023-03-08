@@ -2526,14 +2526,16 @@ try_transform_to_exit_first_loop_alt (class loop *loop,
   tree nit_type = TREE_TYPE (nit);
 
   /* Figure out whether nit + 1 overflows.  */
-  if (TREE_CODE (nit) == INTEGER_CST)
+  if (TREE_CODE (nit) == INTEGER_CST
+      || TREE_CODE (nit) == POLY_INT_CST)
     {
       if (!tree_int_cst_equal (nit, TYPE_MAX_VALUE (nit_type)))
 	{
 	  alt_bound = fold_build2_loc (UNKNOWN_LOCATION, PLUS_EXPR, nit_type,
 				       nit, build_one_cst (nit_type));
 
-	  gcc_assert (TREE_CODE (alt_bound) == INTEGER_CST);
+	  gcc_assert (TREE_CODE (alt_bound) == INTEGER_CST
+		      || TREE_CODE (alt_bound) == POLY_INT_CST);
 	  transform_to_exit_first_loop_alt (loop, reduction_list, alt_bound);
 	  return true;
 	}
