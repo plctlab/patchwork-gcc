@@ -109,7 +109,7 @@ const_vec_all_same_in_range_p (rtx x, HOST_WIDE_INT minval,
 	  && IN_RANGE (INTVAL (elt), minval, maxval));
 }
 
-static rtx
+rtx
 emit_vlmax_vsetvl (machine_mode vmode)
 {
   rtx vl = gen_reg_rtx (Pmode);
