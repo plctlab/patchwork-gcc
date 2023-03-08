@@ -4872,6 +4872,10 @@ xtensa_trampoline_init (rtx m_tramp, tree fndecl, rtx chain)
 static bool
 xtensa_legitimate_constant_p (machine_mode mode ATTRIBUTE_UNUSED, rtx x)
 {
+  if (lra_in_progress && CONST_INT_P (x))
+    return TARGET_AUTO_LITPOOLS || TARGET_CONST16
+	   || xtensa_simm12b (INTVAL (x));
+
   return !xtensa_tls_referenced_p (x);
 }
 
