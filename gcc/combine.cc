@@ -7996,6 +7996,23 @@ make_compound_operation_and (scalar_int_mode mode, rtx x,
 	break;
       }
 
+    case MULT:
+      /* Recurse through a power of 2 multiplication (as can be found
+	 in an address), using the relationship:
+
+	 (and (mult X 2**N1) N2) == (mult (and X (lshifrt N2 N1)) 2**N1).  */
+      if (CONST_INT_P (XEXP (x, 1))
+	  && pow2p_hwi (INTVAL (XEXP (x, 1))))
+	{
+	  int shift = exact_log2 (INTVAL (XEXP (x, 1)));
+	  rtx sub = make_compound_operation_and (mode, XEXP (x, 0),
+						 mask >> shift, in_code,
+						 next_code);
+	  if (sub)
+	    return gen_rtx_MULT (mode, sub, XEXP (x, 1));
+	}
+      break;
+
     default:
       break;
     }
