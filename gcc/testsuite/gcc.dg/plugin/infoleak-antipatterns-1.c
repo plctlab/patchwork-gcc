@@ -90,21 +90,21 @@ int infoleak_heap_missing_a_field(void __user *dst, u32 v)
 
 struct infoleak_3
 {
-  u8 a; /* { dg-message "padding after field 'a' is uninitialized \\(3 bytes\\)" } */
+  u8 a; /* { dg-message "padding after field 'a' is uninitialized \\(3 bytes\\)" "padding" { target { ! default_packed } } } */
   /* padding here */
   u32 b;
 };
 
 int infoleak_stack_padding(void __user *dst, u8 p, u32 q)
 {
-  struct infoleak_3 st; /* { dg-message "region created on stack here" "where" } */
-  /* { dg-message "capacity: 8 bytes" "capacity" { target *-*-* } .-1 } */
+  struct infoleak_3 st; /* { dg-message "region created on stack here" "where" { target { ! default_packed } } } */
+  /* { dg-message "capacity: 8 bytes" "capacity" { target { ! default_packed } } .-1 } */
 
   st.a = p;
   st.b = q;
   /* No initialization of padding.  */
-  if (copy_to_user(dst, &st, sizeof(st))) /* { dg-warning "potential exposure of sensitive information by copying uninitialized data from stack" "warning" } */
-    /* { dg-message "3 bytes are uninitialized" "note how much" { target *-*-* } .-1 } */
+  if (copy_to_user(dst, &st, sizeof(st))) /* { dg-warning "potential exposure of sensitive information by copying uninitialized data from stack" "warning" { target { ! default_packed } } } */
+    /* { dg-message "3 bytes are uninitialized" "note how much" { target { ! default_packed } } .-1 } */
     return -EFAULT;
   return 0;
 }
