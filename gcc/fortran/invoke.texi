@@ -549,15 +549,16 @@ Fortran standard that includes all of the extensions supported by GNU
 Fortran, although warnings will be given for obsolete extensions not
 recommended for use in new code.  The @samp{legacy} value is
 equivalent but without the warnings for obsolete extensions, and may
-be useful for old non-standard programs.  The @samp{f95},
-@samp{f2003}, @samp{f2008}, and @samp{f2018} values specify strict
-conformance to the Fortran 95, Fortran 2003, Fortran 2008 and Fortran
-2018 standards, respectively; errors are given for all extensions
-beyond the relevant language standard, and warnings are given for the
-Fortran 77 features that are permitted but obsolescent in later
-standards. The deprecated option @samp{-std=f2008ts} acts as an alias for
-@samp{-std=f2018}. It is only present for backwards compatibility with
-earlier gfortran versions and should not be used any more.
+be useful for old non-standard programs.  It also sets
+@option{-fwrapv}.  The @samp{f95}, @samp{f2003}, @samp{f2008}, and
+@samp{f2018} values specify strict conformance to the Fortran 95,
+Fortran 2003, Fortran 2008 and Fortran 2018 standards, respectively;
+errors are given for all extensions beyond the relevant language
+standard, and warnings are given for the Fortran 77 features that are
+permitted but obsolescent in later standards. The deprecated option
+@samp{-std=f2008ts} acts as an alias for @samp{-std=f2018}. It is only
+present for backwards compatibility with earlier gfortran versions and
+should not be used any more.
 
 @opindex @code{ftest-forall-temp}
 @item -ftest-forall-temp

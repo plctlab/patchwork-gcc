@@ -797,6 +797,8 @@ gfc_handle_option (size_t scode, const char *arg, HOST_WIDE_INT value,
     case OPT_std_legacy:
       set_default_std_flags ();
       gfc_option.warn_std = 0;
+      /* -std=legacy implies -fwapv, but the user can override it.  */
+      flag_wrapv = 1;
       break;
 
     case OPT_fshort_enums:
