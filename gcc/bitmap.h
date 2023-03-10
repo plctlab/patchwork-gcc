@@ -945,7 +945,7 @@ bmp_iter_and_compl (bitmap_iterator *bi, unsigned *bit_no)
 /* A class that ties the lifetime of a bitmap to its scope.  */
 class auto_bitmap
 {
- public:
+public:
   auto_bitmap (ALONE_CXX_MEM_STAT_INFO)
     { bitmap_initialize (&m_bits, &bitmap_default_obstack PASS_MEM_STAT); }
   explicit auto_bitmap (bitmap_obstack *o CXX_MEM_STAT_INFO)
@@ -954,12 +954,9 @@ class auto_bitmap
   // Allow calling bitmap functions on our bitmap.
   operator bitmap () { return &m_bits; }
 
- private:
-  // Prevent making a copy that references our bitmap.
-  auto_bitmap (const auto_bitmap &);
-  auto_bitmap &operator = (const auto_bitmap &);
-  auto_bitmap (auto_bitmap &&);
-  auto_bitmap &operator = (auto_bitmap &&);
+  // Prevent shallow copies.
+  auto_bitmap (const auto_bitmap &) = delete;
+  auto_bitmap &operator = (const auto_bitmap &) = delete;
 
   bitmap_head m_bits;
 };

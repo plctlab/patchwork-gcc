@@ -247,8 +247,9 @@ class auto_timevar
       m_timer->pop (m_tv);
   }
 
-  // Disallow copies.
+  // Prevent shallow copies.
   auto_timevar (const auto_timevar &) = delete;
+  auto_timevar &operator= (const auto_timevar &) = delete;
 
  private:
   timer *m_timer;
@@ -279,8 +280,9 @@ class auto_cond_timevar
       m_timer->cond_stop (m_tv);
   }
 
-  // Disallow copies.
+  // Prevent shallow copies.
   auto_cond_timevar (const auto_cond_timevar &) = delete;
+  auto_cond_timevar &operator= (const auto_cond_timevar &) = delete;
 
  private:
   void start()
