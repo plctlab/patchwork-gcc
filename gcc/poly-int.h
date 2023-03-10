@@ -2219,6 +2219,23 @@ multiple_p (const poly_int_pod<N, Ca> &a, const poly_int_pod<N, Cb> &b,
   return constant_multiple_p (a, b, multiple);
 }
 
+/* Return true, if A is known to be a multiple of B.  */
+
+template<unsigned int N, typename Ca, typename Cb>
+inline bool
+exact_div_p (const poly_int_pod<N, Ca> &a, Cb b)
+{
+  typedef POLY_CONST_COEFF (Ca, Cb) C;
+  poly_int<N, C> r;
+  for (unsigned int i = 0; i < N; i++)
+    {
+      if ((a.coeffs[i] % b) != 0)
+	return false;
+
+    }
+  return true;
+}
+
 /* Return A / B, given that A is known to be a multiple of B.  */
 
 template<unsigned int N, typename Ca, typename Cb>

@@ -426,7 +426,8 @@ can_duplicate_and_interleave_p (vec_info *vinfo, unsigned int count,
 	  if (vector_type
 	      && VECTOR_MODE_P (TYPE_MODE (vector_type))
 	      && known_eq (GET_MODE_SIZE (TYPE_MODE (vector_type)),
-			   GET_MODE_SIZE (base_vector_mode)))
+			   GET_MODE_SIZE (base_vector_mode))
+	      && exact_div_p (GET_MODE_NUNITS (TYPE_MODE (vector_type)), 2))
 	    {
 	      /* Try fusing consecutive sequences of COUNT / NVECTORS elements
 		 together into elements of type INT_TYPE and using the result
