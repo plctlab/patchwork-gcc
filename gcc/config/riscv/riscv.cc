@@ -799,6 +799,108 @@ static int riscv_symbol_insns (enum riscv_symbol_type type)
     }
 }
 
+/* Immediate values loaded by the FLI.S instruction in Chapter 25 of the latest RISC-V ISA
+   Manual draft. For details, please see:
+   https://github.com/riscv/riscv-isa-manual/releases/tag/draft-20221217-cb3b9d1 */
+
+unsigned HOST_WIDE_INT fli_value_hf[32] =
+{
+  0xbc00, 0x400, 0x100, 0x200, 0x1c00, 0x2000, 0x2c00, 0x3000,
+  0x3400, 0x3500, 0x3600, 0x3700, 0x3800, 0x3900, 0x3a00, 0x3b00,
+  0x3c00, 0x3d00, 0x3e00, 0x3f00, 0x4000, 0x4100, 0x4200, 0x4400,
+  0x4800, 0x4c00, 0x5800, 0x5c00, 0x7800,
+  /* Only used for filling, ensuring that 29 and 30 of HF are the same. */
+  0x7800,
+  0x7c00, 0x7e00,
+};
+
+unsigned HOST_WIDE_INT fli_value_sf[32] =
+{
+  0xbf800000, 0x00800000, 0x37800000, 0x38000000, 0x3b800000, 0x3c000000, 0x3d800000, 0x3e000000,
+  0x3e800000, 0x3ea00000, 0x3ec00000, 0x3ee00000, 0x3f000000, 0x3f200000, 0x3f400000, 0x3f600000,
+  0x3f800000, 0x3fa00000, 0x3fc00000, 0x3fe00000, 0x40000000, 0x40200000, 0x40400000, 0x40800000,
+  0x41000000, 0x41800000, 0x43000000, 0x43800000, 0x47000000, 0x47800000, 0x7f800000, 0x7fc00000
+};
+
+unsigned HOST_WIDE_INT fli_value_df[32] =
+{
+  0xbff0000000000000, 0x10000000000000, 0x3ef0000000000000, 0x3f00000000000000,
+  0x3f70000000000000, 0x3f80000000000000, 0x3fb0000000000000, 0x3fc0000000000000,
+  0x3fd0000000000000, 0x3fd4000000000000, 0x3fd8000000000000, 0x3fdc000000000000,
+  0x3fe0000000000000, 0x3fe4000000000000, 0x3fe8000000000000, 0x3fec000000000000,
+  0x3ff0000000000000, 0x3ff4000000000000, 0x3ff8000000000000, 0x3ffc000000000000,
+  0x4000000000000000, 0x4004000000000000, 0x4008000000000000, 0x4010000000000000,
+  0x4020000000000000, 0x4030000000000000, 0x4060000000000000, 0x4070000000000000,
+  0x40e0000000000000, 0x40f0000000000000, 0x7ff0000000000000, 0x7ff8000000000000,
+};
+
+/* Find the index of TARGET in ARRAY, and return -1 if not found. */
+
+static int
+find_index_in_array (unsigned HOST_WIDE_INT target, unsigned HOST_WIDE_INT *array, int len)
+{
+  if (array == NULL)
+    return -1;
+
+  for (int i = 0; i < len; i++)
+    {
+      if (target == array[i])
+	return i;
+    }
+  return -1;
+}
+
+/* Return index of the FLI instruction table if rtx X is an immediate constant that
+   can be moved using a single FLI instruction in zfa extension. -1 otherwise. */
+
+int
+riscv_float_const_rtx_index_for_fli (rtx x)
+{
+  machine_mode mode = GET_MODE (x);
+
+  if (!TARGET_ZFA || mode == VOIDmode
+      || !CONST_DOUBLE_P(x)
+      || (mode == HFmode && !TARGET_ZFH)
+      || (mode == SFmode && !TARGET_HARD_FLOAT)
+      || (mode == DFmode && !TARGET_DOUBLE_FLOAT))
+    return -1;
+
+  if (!SCALAR_FLOAT_MODE_P (mode)
+      || GET_MODE_BITSIZE (mode).to_constant () > HOST_BITS_PER_WIDE_INT
+      /* Only support up to DF mode.  */
+      || GET_MODE_BITSIZE (mode).to_constant () > GET_MODE_BITSIZE (DFmode))
+    return -1;
+
+  unsigned HOST_WIDE_INT ival = 0;
+
+  long res[2];
+  real_to_target (res,
+		  CONST_DOUBLE_REAL_VALUE (x),
+		  REAL_MODE_FORMAT (mode));
+
+  if (mode == DFmode)
+    {
+      int order = BYTES_BIG_ENDIAN ? 1 : 0;
+      ival = zext_hwi (res[order], 32);
+      ival |= (zext_hwi (res[1 - order], 32) << 32);
+    }
+  else
+      ival = zext_hwi (res[0], 32);
+
+  switch (mode)
+    {
+      case SFmode:
+	return find_index_in_array (ival, fli_value_sf, 32);
+      case DFmode:
+	return find_index_in_array (ival, fli_value_df, 32);
+      case HFmode:
+	return find_index_in_array (ival, fli_value_hf, 32);
+      default:
+	break;
+    }
+  return -1;
+}
+
 /* Implement TARGET_LEGITIMATE_CONSTANT_P.  */
 
 static bool
@@ -825,6 +927,9 @@ riscv_cannot_force_const_mem (machine_mode mode ATTRIBUTE_UNUSED, rtx x)
      high part.  */
   if (GET_CODE (x) == HIGH)
     return true;
+
+  if (riscv_float_const_rtx_index_for_fli (x) != -1)
+   return true;
 
   split_const (x, &base, &offset);
   if (riscv_symbolic_constant_p (base, &type))
@@ -1191,6 +1296,8 @@ riscv_const_insns (rtx x)
       }
 
     case CONST_DOUBLE:
+      if (riscv_float_const_rtx_index_for_fli (x) != -1)
+	return 4;
     case CONST_VECTOR:
       /* We can use x0 to load floating-point zero.  */
       return x == CONST0_RTX (GET_MODE (x)) ? 1 : 0;
@@ -1724,6 +1831,12 @@ riscv_legitimize_const_move (machine_mode mode, rtx dest, rtx src)
   if (splittable_const_int_operand (src, mode))
     {
       riscv_move_integer (dest, dest, INTVAL (src), mode, FALSE);
+      return;
+    }
+
+  if (riscv_float_const_rtx_index_for_fli (src) != -1)
+    {
+      riscv_emit_set (dest, src);
       return;
     }
 
@@ -2739,12 +2852,19 @@ riscv_split_64bit_move_p (rtx dest, rtx src)
   if (TARGET_64BIT)
     return false;
 
+  /* There is no need to split if the FLI instruction in the `Zfa` extension can be used. */
+  if (TARGET_ZFA && (riscv_float_const_rtx_index_for_fli (src) != -1))
+    return false;
+
   /* Allow FPR <-> FPR and FPR <-> MEM moves, and permit the special case
      of zeroing an FPR with FCVT.D.W.  */
   if (TARGET_DOUBLE_FLOAT
       && ((FP_REG_RTX_P (src) && FP_REG_RTX_P (dest))
 	  || (FP_REG_RTX_P (dest) && MEM_P (src))
 	  || (FP_REG_RTX_P (src) && MEM_P (dest))
+	  || (TARGET_ZFA
+	      && ((FP_REG_RTX_P (dest) && GP_REG_RTX_P (src))
+	      || (FP_REG_RTX_P (src) && GP_REG_RTX_P (dest))))
 	  || (FP_REG_RTX_P (dest) && src == CONST0_RTX (GET_MODE (src)))))
     return false;
 
@@ -2808,6 +2928,8 @@ riscv_output_move (rtx dest, rtx src)
 	  case 4:
 	    return "fmv.x.s\t%0,%1";
 	  case 8:
+	    if (!TARGET_64BIT && TARGET_ZFA)
+	      return "fmv.x.w\t%0,%1\n\tfmvh.x.d\t%N0,%1";
 	    return "fmv.x.d\t%0,%1";
 	  }
 
@@ -2867,6 +2989,8 @@ riscv_output_move (rtx dest, rtx src)
 	      case 8:
 		if (TARGET_64BIT)
 		  return "fmv.d.x\t%0,%z1";
+		else if (TARGET_ZFA && src != CONST0_RTX (mode))
+		  return "fmvp.d.x\t%0,%1,%N1";
 		/* in RV32, we can emulate fmv.d.x %0, x0 using fcvt.d.w */
 		gcc_assert (src == CONST0_RTX (mode));
 		return "fcvt.d.w\t%0,x0";
@@ -2918,6 +3042,14 @@ riscv_output_move (rtx dest, rtx src)
 	    return "flw\t%0,%1";
 	  case 8:
 	    return "fld\t%0,%1";
+	  }
+
+      if (src_code == CONST_DOUBLE && (riscv_float_const_rtx_index_for_fli (src) != -1))
+	switch (width)
+	  {
+	    case 2: return "fli.h\t%0,%1";
+	    case 4: return "fli.s\t%0,%1";
+	    case 8: return "fli.d\t%0,%1";
 	  }
     }
   if (dest_code == REG && GP_REG_P (REGNO (dest)) && src_code == CONST_POLY_INT)
@@ -4222,6 +4354,7 @@ riscv_memmodel_needs_release_fence (enum memmodel model)
    'S'	Print shift-index of single-bit mask OP.
    'T'	Print shift-index of inverted single-bit mask OP.
    '~'	Print w if TARGET_64BIT is true; otherwise not print anything.
+   'N'  Print next register.
 
    Note please keep this list and the list in riscv.md in sync.  */
 
@@ -4406,6 +4539,9 @@ riscv_print_operand (FILE *file, rtx op, int letter)
 	output_addr_const (file, newop);
 	break;
       }
+    case 'N':
+      fputs (reg_names[REGNO (op) + 1], file);
+      break;
     default:
       switch (code)
 	{
@@ -4421,6 +4557,35 @@ riscv_print_operand (FILE *file, rtx op, int letter)
 	  else
 	    output_address (mode, XEXP (op, 0));
 	  break;
+
+	case CONST_DOUBLE:
+	  {
+	    if (letter == 'z' && op == CONST0_RTX (GET_MODE (op)))
+	      {
+		fputs (reg_names[GP_REG_FIRST], file);
+		break;
+	      }
+
+	    int fli_index = riscv_float_const_rtx_index_for_fli (op);
+	    if (fli_index == -1 || fli_index > 31)
+	      {
+		output_operand_lossage ("invalid use of '%%%c'", letter);
+		break;
+	      }
+
+	    switch (fli_index)
+	      {
+		case 1:
+		  asm_fprintf (file, "%s", "min");break;
+		case 30:
+		  asm_fprintf (file, "%s", "inf");break;
+		case 31:
+		  asm_fprintf (file, "%s", "nan");break;
+		default:
+		  asm_fprintf (file, "%d", fli_index);break;
+	      }
+	    break;
+	  }
 
 	default:
 	  if (letter == 'z' && op == CONST0_RTX (GET_MODE (op)))
@@ -5734,7 +5899,8 @@ riscv_secondary_memory_needed (machine_mode mode, reg_class_t class1,
 {
   return (!riscv_v_ext_vector_mode_p (mode)
 	  && GET_MODE_SIZE (mode).to_constant () > UNITS_PER_WORD
-	  && (class1 == FP_REGS) != (class2 == FP_REGS));
+	  && (class1 == FP_REGS) != (class2 == FP_REGS)
+	  && !TARGET_ZFA);
 }
 
 /* Implement TARGET_REGISTER_MOVE_COST.  */

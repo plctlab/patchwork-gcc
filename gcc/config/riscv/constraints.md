@@ -118,6 +118,13 @@
   (and (match_operand 0 "move_operand")
        (match_test "CONSTANT_P (op)")))
 
+;; Zfa constraints.
+
+(define_constraint "Zf"
+  "A floating point number that can be loaded using instruction `fli` in zfa."
+  (and (match_code "const_double")
+       (match_test "(riscv_float_const_rtx_index_for_fli (op) != -1)")))
+
 ;; Vector constraints.
 
 (define_register_constraint "vr" "TARGET_VECTOR ? V_REGS : NO_REGS"
