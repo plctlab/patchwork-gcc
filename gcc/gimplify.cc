@@ -9103,6 +9103,7 @@ omp_get_attachment (omp_mapping_group *grp)
 
 	  case GOMP_MAP_ATTACH_DETACH:
 	  case GOMP_MAP_ATTACH_ZERO_LENGTH_ARRAY_SECTION:
+	  case GOMP_MAP_DETACH:
 	    return OMP_CLAUSE_DECL (node);
 
 	  default:
@@ -9178,23 +9179,43 @@ omp_group_last (tree *start_p)
 		     == GOMP_MAP_POINTER_TO_ZERO_LENGTH_ARRAY_SECTION)
 		 || (OMP_CLAUSE_MAP_KIND (nc)
 		     == GOMP_MAP_ATTACH_ZERO_LENGTH_ARRAY_SECTION)
+		 || OMP_CLAUSE_MAP_KIND (nc) == GOMP_MAP_DETACH
 		 || OMP_CLAUSE_MAP_KIND (nc) == GOMP_MAP_ALWAYS_POINTER
 		 || OMP_CLAUSE_MAP_KIND (nc) == GOMP_MAP_TO_PSET))
 	{
-	  grp_last_p = &OMP_CLAUSE_CHAIN (c);
-	  c = nc;
 	  tree nc2 = OMP_CLAUSE_CHAIN (nc);
+	  if (OMP_CLAUSE_MAP_KIND (nc) == GOMP_MAP_DETACH)
+	    {
+	      /* In the specific case we're doing "exit data" on an array
+		 slice of a reference-to-pointer struct component, we will see
+		 DETACH followed by ATTACH_DETACH here.  We want to treat that
+		 as a single group. In other cases DETACH might represent a
+		 stand-alone "detach" clause, so we don't want to consider
+		 that part of the group.  */
+	      if (nc2
+		  && OMP_CLAUSE_CODE (nc2) == OMP_CLAUSE_MAP
+		  && OMP_CLAUSE_MAP_KIND (nc2) == GOMP_MAP_ATTACH_DETACH)
+		goto consume_two_nodes;
+	      else
+		break;
+	    }
 	  if (nc2
 	      && OMP_CLAUSE_CODE (nc2) == OMP_CLAUSE_MAP
 	      && (OMP_CLAUSE_MAP_KIND (nc)
 		  == GOMP_MAP_POINTER_TO_ZERO_LENGTH_ARRAY_SECTION)
 	      && OMP_CLAUSE_MAP_KIND (nc2) == GOMP_MAP_ATTACH)
 	    {
+	    consume_two_nodes:
 	      grp_last_p = &OMP_CLAUSE_CHAIN (nc);
 	      c = nc2;
-	      nc2 = OMP_CLAUSE_CHAIN (nc2);
+	      nc = OMP_CLAUSE_CHAIN (nc2);
 	    }
-	   nc = nc2;
+	  else
+	    {
+	      grp_last_p = &OMP_CLAUSE_CHAIN (c);
+	      c = nc;
+	      nc = nc2;
+	    }
 	}
       break;
 
@@ -9337,6 +9358,7 @@ omp_group_base (omp_mapping_group *grp, unsigned int *chained,
 	  case GOMP_MAP_ALWAYS_POINTER:
 	  case GOMP_MAP_ATTACH_DETACH:
 	  case GOMP_MAP_ATTACH_ZERO_LENGTH_ARRAY_SECTION:
+	  case GOMP_MAP_DETACH:
 	    return *grp->grp_start;
 
 	  default:
