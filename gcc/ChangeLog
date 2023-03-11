@@ -1,3 +1,8 @@
+2023-03-11  Sam James  <sam@gentoo.org>
+
+	* config/riscv/genrvv-type-indexer.cc: Avoid calloc() poisoning on musl by
+	adding <pthread.h> include.
+
 2023-03-10  Jakub Jelinek  <jakub@redhat.com>
 
 	PR target/107703
