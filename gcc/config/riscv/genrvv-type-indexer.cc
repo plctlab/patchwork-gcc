@@ -14,6 +14,7 @@ along with GCC; see the file COPYING3.  If not see
 <http://www.gnu.org/licenses/>.  */
 
 #include "bconfig.h"
+#define INCLUDE_PTHREAD_H
 #include "system.h"
 #include "errors.h"
 
