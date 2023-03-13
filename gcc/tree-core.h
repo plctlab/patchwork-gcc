@@ -2298,6 +2298,7 @@ struct tree_code_type_tmpl {
 
 template <int N>
 constexpr enum tree_code_class tree_code_type_tmpl<N>::tree_code_type[];
+static constexpr auto &tree_code_type = tree_code_type_tmpl<0>::tree_code_type;
 #else
 constexpr inline enum tree_code_class tree_code_type[] = {
 #include "all-tree.def"
@@ -2326,6 +2327,8 @@ struct tree_code_length_tmpl {
 
 template <int N>
 constexpr unsigned char tree_code_length_tmpl<N>::tree_code_length[];
+static constexpr auto &tree_code_length
+= tree_code_length_tmpl<0>::tree_code_length;
 #else
 constexpr inline unsigned char tree_code_length[] = {
 #include "all-tree.def"
