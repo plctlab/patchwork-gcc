@@ -10,17 +10,17 @@
 **  csrr\tt0,vlenb
 **  sub\tsp,sp,t0
 **  vsetvli\ta5,zero,e32,mf2,ta,ma
-**  vle32.v\tv24,0\(a0\)
+**  vle32.v\tv[0-9]+,0\(a0\)
 **  csrr\ta3,vlenb
 **  srli\ta3,a3,1
 **  add\ta3,a3,sp
-**  vse32.v\tv24,0\(a3\)
+**  vse32.v\tv[0-9]+,0\(a3\)
 **  ...
 **  csrr\ta3,vlenb
 **  srli\ta3,a3,1
 **  add\ta3,a3,sp
-**  vle32.v\tv24,0\(a3\)
-**  vse32.v\tv24,0\(a1\)
+**  vle32.v\tv[0-9]+,0\(a3\)
+**  vse32.v\tv[0-9]+,0\(a1\)
 **  csrr\tt0,vlenb
 **  add\tsp,sp,t0
 **  ...
@@ -39,7 +39,7 @@ spill_3 (float *in, float *out)
 **  csrr\tt0,vlenb
 **  sub\tsp,sp,t0
 **  ...
-**  vs1r.v\tv24,0\(sp\)
+**  vs1r.v\tv[0-9]+,0\(sp\)
 **  ...
 **  vl1re32.v\tv2,0\(sp\)
 **  vs1r.v\tv2,0\(a1\)
@@ -63,7 +63,7 @@ spill_4 (float *in, float *out)
 **  slli\tt1,t0,1
 **  sub\tsp,sp,t1
 **  ...
-**  vs2r.v\tv24,0\(sp\)
+**  vs2r.v\tv[0-9]+,0\(sp\)
 **  ...
 **  vl2re32.v\tv4,0\(sp\)
 **  vs2r.v\tv4,0\(a1\)
@@ -87,7 +87,7 @@ spill_5 (float *in, float *out)
 **  slli\tt1,t0,2
 **  sub\tsp,sp,t1
 **  ...
-**  vs4r.v\tv24,0\(sp\)
+**  vs4r.v\tv[0-9]+,0\(sp\)
 **  ...
 **  vl4re32.v\tv8,0\(sp\)
 **  vs4r.v\tv8,0\(a1\)
@@ -111,7 +111,7 @@ spill_6 (float *in, float *out)
 **  slli\tt1,t0,3
 **  sub\tsp,sp,t1
 **  ...
-**  vs8r.v\tv24,0\(sp\)
+**  vs8r.v\tv[0-9]+,0\(sp\)
 **  ...
 **  vl8re32.v\tv16,0\(sp\)
 **  vs8r.v\tv16,0\(a1\)
