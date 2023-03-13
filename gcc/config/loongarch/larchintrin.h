@@ -145,6 +145,7 @@ __asrtgt_d (long int _1, long int _2)
 #error "Unsupported ABI."
 #endif
 
+#ifdef __loongarch64
 /* Assembly instruction format:	rd, rj, rk.  */
 /* Data types in instruction templates:  SI, QI, SI.  */
 extern __inline int
@@ -172,7 +173,6 @@ __crc_w_w_w (int _1, int _2)
   return (int) __builtin_loongarch_crc_w_w_w ((int) _1, (int) _2);
 }
 
-#ifdef __loongarch64
 /* Assembly instruction format:	rd, rj, rk.  */
 /* Data types in instruction templates:  SI, DI, SI.  */
 extern __inline int
@@ -181,7 +181,6 @@ __crc_w_d_w (long int _1, int _2)
 {
   return (int) __builtin_loongarch_crc_w_d_w ((long int) _1, (int) _2);
 }
-#endif
 
 /* Assembly instruction format:	rd, rj, rk.  */
 /* Data types in instruction templates:  SI, QI, SI.  */
@@ -210,7 +209,6 @@ __crcc_w_w_w (int _1, int _2)
   return (int) __builtin_loongarch_crcc_w_w_w ((int) _1, (int) _2);
 }
 
-#ifdef __loongarch64
 /* Assembly instruction format:	rd, rj, rk.  */
 /* Data types in instruction templates:  SI, DI, SI.  */
 extern __inline int

@@ -3539,7 +3539,7 @@
 	(unspec:SI [(match_operand:QHSD 1 "register_operand" "r")
 		   (match_operand:SI 2 "register_operand" "r")]
 		     UNSPEC_CRC))]
-  ""
+  "TARGET_64BIT"
   "crc.w.<size>.w\t%0,%1,%2"
   [(set_attr "type" "unknown")
    (set_attr "mode" "<MODE>")])
@@ -3549,7 +3549,7 @@
 	(unspec:SI [(match_operand:QHSD 1 "register_operand" "r")
 		   (match_operand:SI 2 "register_operand" "r")]
 		     UNSPEC_CRCC))]
-  ""
+  "TARGET_64BIT"
   "crcc.w.<size>.w\t%0,%1,%2"
   [(set_attr "type" "unknown")
    (set_attr "mode" "<MODE>")])
