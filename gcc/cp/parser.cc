@@ -5577,6 +5577,7 @@ cp_parser_fold_expression (cp_parser *parser, tree expr1)
      __is_std_layout ( type-id )
      __is_trivial ( type-id )
      __is_union ( type-id )
+     __is_scalar ( type-id )
 
    Objective-C++ Extension:
 

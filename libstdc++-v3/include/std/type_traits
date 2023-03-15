@@ -678,11 +678,18 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     struct is_member_pointer;
 
   /// is_scalar
+#if __has_builtin(__is_scalar)
+  template<typename _Tp>
+    struct is_scalar
+    : public __bool_constant<__is_scalar(_Tp)>
+    { };
+#else
   template<typename _Tp>
     struct is_scalar
     : public __or_<is_arithmetic<_Tp>, is_enum<_Tp>, is_pointer<_Tp>,
                    is_member_pointer<_Tp>, is_null_pointer<_Tp>>::type
     { };
+#endif
 
   /// is_compound
   template<typename _Tp>
