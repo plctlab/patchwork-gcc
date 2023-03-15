@@ -437,7 +437,8 @@ pp_cxx_userdef_literal (cxx_pretty_printer *pp, tree t)
      __is_polymorphic ( type-id )
      __is_std_layout ( type-id )
      __is_trivial ( type-id )
-     __is_union ( type-id )  */
+     __is_union ( type-id )
+     __is_scalar ( type-id )  */
 
 void
 cxx_pretty_printer::primary_expression (tree t)
