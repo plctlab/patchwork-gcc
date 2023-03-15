@@ -1889,6 +1889,7 @@ process_init_constructor_record (tree type, tree init, int nested, int flags,
 	  CONSTRUCTOR_PLACEHOLDER_BOUNDARY (init) = 1;
 	  CONSTRUCTOR_PLACEHOLDER_BOUNDARY (next) = 0;
 	}
+      STRIP_ANY_LOCATION_WRAPPER (next);
       CONSTRUCTOR_APPEND_ELT (v, field, next);
     }
 
