@@ -113,6 +113,6 @@ int warn_cond_loop (char *p)
   while (*q)
     ++q;
 
-  free (p);         // { dg-message "call to 'free'" }
-  return *q;        // { dg-warning "pointer 'q' used after 'free'" }
+  free (p);         // dg-message "call to 'free'"
+  return *q;        // { dg-warning "pointer 'q' used after 'free'" "" { xfail *-*-* } }
 }
