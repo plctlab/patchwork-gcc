@@ -3862,13 +3862,7 @@ pass_waccess::use_after_inval_p (gimple *inval_stmt, gimple *use_stmt,
        to consecutive statements in it.  Use the ids to determine which
        precedes which.  This avoids the linear traversal on subsequent
        visits to the same block.  */
-    for (auto si = gsi_start_bb (inval_bb); !gsi_end_p (si);
-	 gsi_next_nondebug (&si))
-      {
-	gimple *stmt = gsi_stmt (si);
-	unsigned uid = inc_gimple_stmt_max_uid (m_func);
-	gimple_set_uid (stmt, uid);
-      }
+    renumber_gimple_stmt_uids_in_block (m_func, inval_bb);
 
   return gimple_uid (inval_stmt) < gimple_uid (use_stmt);
 }
