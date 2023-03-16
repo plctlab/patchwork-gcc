@@ -282,6 +282,13 @@
   (and (match_code "const_int")
        (match_test "(0x80000000 + UINTVAL (op)) >> 32 == 0")))
 
+;; Return 1 if op is a 32-bit but not 16-bit constant signed integer
+(define_predicate "add_2insn_cint_operand"
+  (and (match_code "const_int")
+       (and (match_operand 0 "s32bit_cint_operand")
+	    (and (not (match_operand 0 "short_cint_operand"))
+		 (not (match_operand 0 "upper16_cint_operand"))))))
+
 ;; Return 1 if op is a constant 32-bit unsigned
 (define_predicate "c32bit_cint_operand"
   (and (match_code "const_int")
