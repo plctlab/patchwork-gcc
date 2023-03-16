@@ -373,12 +373,13 @@ rhs_to_tree (tree type, gimple *stmt)
 /* Combine OP0 CODE OP1 in the context of a COND_EXPR.  Returns
    the folded result in a form suitable for COND_EXPR_COND or
    NULL_TREE, if there is no suitable simplified form.  If
-   INVARIANT_ONLY is true only gimple_min_invariant results are
-   considered simplified.  */
+   ALWAYS_COMBINE is false then only combine it the resulting
+   expression is gimple_min_invariant or considered simplified
+   compared to the original.  */
 
 static tree
 combine_cond_expr_cond (gimple *stmt, enum tree_code code, tree type,
-			tree op0, tree op1, bool invariant_only)
+			tree op0, tree op1, bool always_combine)
 {
   tree t;
 
@@ -398,17 +399,31 @@ combine_cond_expr_cond (gimple *stmt, enum tree_code code, tree type,
   /* Canonicalize the combined condition for use in a COND_EXPR.  */
   t = canonicalize_cond_expr_cond (t);
 
-  /* Bail out if we required an invariant but didn't get one.  */
-  if (!t || (invariant_only && !is_gimple_min_invariant (t)))
+  if (!t)
     {
       fold_undefer_overflow_warnings (false, NULL, 0);
       return NULL_TREE;
     }
 
-  bool nowarn = warning_suppressed_p (stmt, OPT_Wstrict_overflow);
-  fold_undefer_overflow_warnings (!nowarn, stmt, 0);
+  if (always_combine || is_gimple_min_invariant (t))
+    {
+      bool nowarn = warning_suppressed_p (stmt, OPT_Wstrict_overflow);
+      fold_undefer_overflow_warnings (!nowarn, stmt, 0);
+      return t;
+    }
 
-  return t;
+  /* If the result of folding is a zero comparison treat it preferentially.  */
+  if (TREE_CODE_CLASS (TREE_CODE (t)) == tcc_comparison
+      && integer_zerop (TREE_OPERAND (t, 1))
+      && !integer_zerop (op1))
+    {
+      bool nowarn = warning_suppressed_p (stmt, OPT_Wstrict_overflow);
+      fold_undefer_overflow_warnings (!nowarn, stmt, 0);
+      return t;
+    }
+
+  fold_undefer_overflow_warnings (false, NULL, 0);
+  return NULL_TREE;
 }
 
 /* Combine the comparison OP0 CODE OP1 at LOC with the defining statements
@@ -432,7 +447,7 @@ forward_propagate_into_comparison_1 (gimple *stmt,
       if (def_stmt && can_propagate_from (def_stmt))
 	{
 	  enum tree_code def_code = gimple_assign_rhs_code (def_stmt);
-	  bool invariant_only_p = !single_use0_p;
+	  bool always_combine = single_use0_p;
 
 	  rhs0 = rhs_to_tree (TREE_TYPE (op1), def_stmt);
 
@@ -442,10 +457,10 @@ forward_propagate_into_comparison_1 (gimple *stmt,
 		   && TREE_CODE (TREE_TYPE (TREE_OPERAND (rhs0, 0)))
 		      == BOOLEAN_TYPE)
 		  || TREE_CODE_CLASS (def_code) == tcc_comparison))
-	    invariant_only_p = false;
+	    always_combine = true;
 
 	  tmp = combine_cond_expr_cond (stmt, code, type,
-					rhs0, op1, invariant_only_p);
+					rhs0, op1, always_combine);
 	  if (tmp)
 	    return tmp;
 	}
@@ -459,7 +474,7 @@ forward_propagate_into_comparison_1 (gimple *stmt,
 	{
 	  rhs1 = rhs_to_tree (TREE_TYPE (op0), def_stmt);
 	  tmp = combine_cond_expr_cond (stmt, code, type,
-					op0, rhs1, !single_use1_p);
+					op0, rhs1, single_use1_p);
 	  if (tmp)
 	    return tmp;
 	}
@@ -470,7 +485,7 @@ forward_propagate_into_comparison_1 (gimple *stmt,
       && rhs1 != NULL_TREE)
     tmp = combine_cond_expr_cond (stmt, code, type,
 				  rhs0, rhs1,
-				  !(single_use0_p && single_use1_p));
+				  single_use0_p && single_use1_p);
 
   return tmp;
 }
