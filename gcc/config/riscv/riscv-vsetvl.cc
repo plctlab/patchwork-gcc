@@ -1485,16 +1485,16 @@ propagate_avl_across_demands_p (const vector_insn_info &info1,
 }
 
 static bool
-reg_available_p (const bb_info *bb, const vector_insn_info &info)
+reg_available_p (const insn_info *insn, const vector_insn_info &info)
 {
-  if (!info.get_avl_source ())
+  if (info.has_avl_reg () && !info.get_avl_source ())
     return false;
-  insn_info *insn = info.get_avl_source ()->insn ();
-  if (insn->bb () == bb)
-    return before_p (insn, info.get_insn ());
+  insn_info *def_insn = info.get_avl_source ()->insn ();
+  if (def_insn->bb () == insn->bb ())
+    return before_p (def_insn, insn);
   else
-    return dominated_by_p (CDI_DOMINATORS, bb->cfg_bb (),
-			   insn->bb ()->cfg_bb ());
+    return dominated_by_p (CDI_DOMINATORS, insn->bb ()->cfg_bb (),
+			   def_insn->bb ()->cfg_bb ());
 }
 
 /* Return true if the instruction support relaxed compatible check.  */
@@ -2596,7 +2596,6 @@ private:
   bool hard_empty_block_p (const bb_info *, const vector_insn_info &) const;
   bool backward_demand_fusion (void);
   bool forward_demand_fusion (void);
-  // bool local_demand_fusion (void);
   bool cleanup_illegal_dirty_blocks (void);
   void demand_fusion (void);
 
@@ -2680,8 +2679,8 @@ pass_vsetvl::compute_local_backward_infos (const bb_info *bb)
 	  gcc_assert (info.valid_p () && "Unexpected Invalid demanded info");
 	  if (change.valid_p ())
 	    {
-	      if (!(propagate_avl_across_demands_p (info, change)
-		    && !reg_available_p (bb, info))
+	      if (!(propagate_avl_across_demands_p (change, info)
+		    && !reg_available_p (insn, change))
 		  && change.compatible_p (info))
 		info = change.merge (info);
 	    }
@@ -2703,7 +2702,7 @@ pass_vsetvl::need_vsetvl (const vector_insn_info &require,
   if (!curr_info.valid_p () || curr_info.unknown_p () || curr_info.uninit_p ())
     return true;
 
-  if (require.compatible_p (curr_info))
+  if (require.compatible_p (static_cast<const vl_vtype_info &> (curr_info)))
     return false;
 
   return true;
@@ -3228,7 +3227,8 @@ pass_vsetvl::backward_demand_fusion (void)
 		block_info.probability = curr_block_info.probability;
 
 	      if (propagate_avl_across_demands_p (prop, block_info.reaching_out)
-		  && !reg_available_p (crtl->ssa->bb (e->src), new_info))
+		  && !reg_available_p (crtl->ssa->bb (e->src)->end_insn (),
+				       new_info))
 		continue;
 
 	      change_vsetvl_insn (new_info.get_insn (), new_info);
@@ -3378,7 +3378,6 @@ pass_vsetvl::demand_fusion (void)
 	help for such cases.  */
       changed_p |= backward_demand_fusion ();
       changed_p |= forward_demand_fusion ();
-      // chanded_p |= local_demand_fusion ();
     }
 
   changed_p = true;
