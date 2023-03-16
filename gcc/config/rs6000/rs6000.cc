@@ -22199,10 +22199,6 @@ rs6000_rtx_costs (rtx x, machine_mode mode, int outer_code,
       return false;
 
     case IOR:
-      /* FIXME */
-      *total = COSTS_N_INSNS (1);
-      return true;
-
     case CLZ:
     case XOR:
     case ZERO_EXTRACT:
