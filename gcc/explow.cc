@@ -654,7 +654,8 @@ copy_to_mode_reg (machine_mode mode, rtx x)
   if (! general_operand (x, VOIDmode))
     x = force_operand (x, temp);
 
-  gcc_assert (GET_MODE (x) == mode || GET_MODE (x) == VOIDmode);
+  gcc_assert (mode == DImode || GET_MODE (x) == mode
+	       || GET_MODE (x) == VOIDmode);
   if (x != temp)
     emit_move_insn (temp, x);
   return temp;

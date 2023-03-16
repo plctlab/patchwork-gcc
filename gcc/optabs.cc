@@ -7945,7 +7945,8 @@ maybe_legitimize_operand (enum insn_code icode, unsigned int opno,
     input:
       gcc_assert (mode != VOIDmode);
       gcc_assert (GET_MODE (op->value) == VOIDmode
-		  || GET_MODE (op->value) == mode);
+		  || GET_MODE (op->value) == mode
+		  || mode == DImode);
       if (maybe_legitimize_operand_same_code (icode, opno, op))
 	return true;
 

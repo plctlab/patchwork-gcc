@@ -4220,9 +4220,9 @@ emit_move_insn (rtx x, rtx y)
   rtx y_cst = NULL_RTX;
   rtx_insn *last_insn;
   rtx set;
-
   gcc_assert (mode != BLKmode
-	      && (GET_MODE (y) == mode || GET_MODE (y) == VOIDmode));
+	      && (mode == DImode || GET_MODE (y) == mode
+	      || GET_MODE (y) == VOIDmode));
 
   /* If we have a copy that looks like one of the following patterns:
        (set (subreg:M1 (reg:M2 ...)) (subreg:M1 (reg:M2 ...)))
