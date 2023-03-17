@@ -309,6 +309,25 @@ public:
   }
 } op_cfn_constant_p;
 
+// Implement range operator for integral CFN_BUILT_IN_EXPECT.
+class cfn_expect : public range_operator
+{
+public:
+  using range_operator::fold_range;
+  virtual bool fold_range (irange &r, tree, const irange &lh,
+			   const irange &, relation_trio) const
+  {
+    r = lh;
+    return true;
+  }
+  virtual bool op1_range (irange &r, tree, const irange &lhs,
+			  const irange &, relation_trio) const
+  {
+    r = lhs;
+    return true;
+  }
+} op_cfn_expect;
+
 // Implement range operator for CFN_BUILT_IN_SIGNBIT.
 class cfn_signbit : public range_operator_float
 {
@@ -964,6 +983,12 @@ gimple_range_op_handler::maybe_builtin_call ()
     CASE_CFN_PARITY:
       m_valid = true;
       m_int = &op_cfn_parity;
+      break;
+
+    case CFN_BUILT_IN_EXPECT:
+      m_valid = true;
+      m_op1 = gimple_call_arg (call, 0);
+      m_int = &op_cfn_expect;
       break;
 
     default:
