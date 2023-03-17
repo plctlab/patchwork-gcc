@@ -2991,6 +2991,9 @@ assign_parm_setup_block (struct assign_parm_data_all *all,
 
       mem = validize_mem (copy_rtx (stack_parm));
 
+      if (MEM_P (mem) && size != 0 && size % UNITS_PER_WORD == 0)
+	DECL_REGS_TO_STACK_P (parm) = 1;
+
       /* Handle values in multiple non-contiguous locations.  */
       if (GET_CODE (entry_parm) == PARALLEL && !MEM_P (mem))
 	emit_group_store (mem, entry_parm, data->arg.type, size);

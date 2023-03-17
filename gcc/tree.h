@@ -3019,6 +3019,15 @@ extern void decl_value_expr_insert (tree, tree);
 #define DECL_PADDING_P(NODE) \
   (FIELD_DECL_CHECK (NODE)->decl_common.decl_flag_3)
 
+/* Used in a VAR_DECL to indicate that it is used by a return stmt.  */
+#define DECL_USEDBY_RETURN_P(NODE) \
+  (VAR_DECL_CHECK (NODE)->decl_common.decl_flag_3)
+
+/* Used in a PARM_DECL to indicate that it is struct parameter passed
+   by registers totally and stored to stack during setup.  */
+#define DECL_REGS_TO_STACK_P(NODE) \
+  (PARM_DECL_CHECK (NODE)->decl_common.decl_flag_3)
+
 /* Used in a FIELD_DECL to indicate whether this field is not a flexible
    array member. This is only valid for the last array type field of a
    structure.  */

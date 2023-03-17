@@ -2158,6 +2158,20 @@ expand_used_vars (bitmap forced_stack_vars)
     frame_phase = off ? align - off : 0;
   }
 
+  /* Collect VARs on returns.  */
+  if (DECL_RESULT (current_function_decl))
+    {
+      edge_iterator ei;
+      edge e;
+      FOR_EACH_EDGE (e, ei, EXIT_BLOCK_PTR_FOR_FN (cfun)->preds)
+	if (greturn *ret = safe_dyn_cast<greturn *> (last_stmt (e->src)))
+	  {
+	    tree val = gimple_return_retval (ret);
+	    if (val && VAR_P (val))
+	      DECL_USEDBY_RETURN_P (val) = 1;
+	  }
+    }
+
   /* Set TREE_USED on all variables in the local_decls.  */
   FOR_EACH_LOCAL_DECL (cfun, i, var)
     TREE_USED (var) = 1;
