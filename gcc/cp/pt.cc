@@ -8638,7 +8638,7 @@ convert_template_argument (tree parm,
       else if (tree a = type_uses_auto (t))
 	{
 	  t = do_auto_deduction (t, arg, a, complain, adc_unify, args,
-				 LOOKUP_IMPLICIT);
+				 LOOKUP_IMPLICIT, in_decl);
 	  if (t == error_mark_node)
 	    return error_mark_node;
 	}
@@ -15243,7 +15243,7 @@ tsubst_decl (tree t, tree args, tsubst_flags_t complain)
 		     the template.  */
 		  argvec = (coerce_template_parms
 			    (DECL_TEMPLATE_PARMS (gen_tmpl),
-			     argvec, t, complain));
+			     argvec, tmpl, complain));
 		if (argvec == error_mark_node)
 		  RETURN (error_mark_node);
 		hash = spec_hasher::hash (gen_tmpl, argvec);
@@ -24664,7 +24664,9 @@ unify (tree tparms, tree targs, tree parm, tree arg, int strict,
 	  if (tree a = type_uses_auto (tparm))
 	    {
 	      tparm = do_auto_deduction (tparm, arg, a,
-					 complain, adc_unify, targs);
+					 complain, adc_unify, targs,
+					 LOOKUP_NORMAL,
+					 TPARMS_PRIMARY_TEMPLATE (tparms));
 	      if (tparm == error_mark_node)
 		return 1;
 	    }
@@ -30652,13 +30654,20 @@ unparenthesized_id_or_class_member_access_p (tree init)
    adc_requirement contexts to communicate the necessary template arguments
    to satisfaction.  OUTER_TARGS is ignored in other contexts.
 
-   For partial-concept-ids, extra args may be appended to the list of deduced
-   template arguments prior to determining constraint satisfaction.  */
+   Additionally for adc_unify contexts TMPL is the template for which this
+   auto is a template parameter type.
+
+   For partial-concept-ids, extra args from OUTER_TARGS, TMPL and the current
+   scope may be appended to the list of deduced template arguments prior to
+   determining constraint satisfaction as appropriate.  */
 
 tree
 do_auto_deduction (tree type, tree init, tree auto_node,
-                   tsubst_flags_t complain, auto_deduction_context context,
-		   tree outer_targs, int flags)
+		   tsubst_flags_t complain /* = tf_warning_or_error */,
+		   auto_deduction_context context /* = adc_unspecified */,
+		   tree outer_targs /* = NULL_TREE */,
+		   int flags /* = LOOKUP_NORMAL */,
+		   tree tmpl /* = NULL_TREE */)
 {
   if (init == error_mark_node)
     return error_mark_node;
@@ -30848,7 +30857,12 @@ do_auto_deduction (tree type, tree init, tree auto_node,
 		}
 	    }
 
-      tree full_targs = add_to_template_args (outer_targs, targs);
+      tree full_targs = outer_targs;
+
+      if (context == adc_unify)
+	full_targs = add_outermost_template_args (tmpl, full_targs);
+
+      full_targs = add_to_template_args (full_targs, targs);
 
       /* HACK: Compensate for callers not always communicating all levels of
 	 outer template arguments by filling in the outermost missing levels
