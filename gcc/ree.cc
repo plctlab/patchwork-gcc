@@ -319,7 +319,7 @@ combine_set_extension (ext_cand *cand, rtx_insn *curr_insn, rtx *orig_set)
 {
   rtx orig_src = SET_SRC (*orig_set);
   machine_mode orig_mode = GET_MODE (SET_DEST (*orig_set));
-  rtx new_set;
+  rtx new_set = NULL_RTX;
   rtx cand_pat = single_set (cand->insn);
 
   /* If the extension's source/destination registers are not the same
@@ -370,7 +370,7 @@ combine_set_extension (ext_cand *cand, rtx_insn *curr_insn, rtx *orig_set)
     {
       /* Only IF_THEN_ELSE of phi-type copies are combined.  Otherwise,
          in general, IF_THEN_ELSE should not be combined.  */
-      return false;
+      return true;
     }
   else
     {
@@ -713,12 +713,15 @@ merge_def_and_ext (ext_cand *cand, rtx_insn *def_insn, ext_state *state)
   if (sub_rtx == NULL)
     return false;
 
-  if (GET_MODE (SET_DEST (*sub_rtx)) == ext_src_mode
+  bool copy_needed
+    = (REGNO (SET_DEST (cand->expr)) != REGNO (XEXP (SET_SRC (cand->expr), 0)));
+
+  if (!copy_needed || (GET_MODE (SET_DEST (*sub_rtx)) == ext_src_mode
 	  || ((state->modified[INSN_UID (def_insn)].kind
-	       == (cand->code == ZERO_EXTEND
+	       == (cand->code == ZERO_EXTEND || cand->code == AND
 		   ? EXT_MODIFIED_ZEXT : EXT_MODIFIED_SEXT))
 	      && state->modified[INSN_UID (def_insn)].mode
-		 == ext_src_mode))
+		 == ext_src_mode)))
     {
       if (GET_MODE_UNIT_SIZE (GET_MODE (SET_DEST (*sub_rtx)))
 	  >= GET_MODE_UNIT_SIZE (cand->mode))
@@ -744,7 +747,8 @@ merge_def_and_ext (ext_cand *cand, rtx_insn *def_insn, ext_state *state)
 static inline rtx
 get_extended_src_reg (rtx src)
 {
-  while (GET_CODE (src) == SIGN_EXTEND || GET_CODE (src) == ZERO_EXTEND)
+  while (GET_CODE (src) == SIGN_EXTEND || GET_CODE (src) == ZERO_EXTEND
+	|| GET_CODE (src) == AND)
     src = XEXP (src, 0);
   gcc_assert (REG_P (src));
   return src;
@@ -993,7 +997,7 @@ combine_reaching_defs (ext_cand *cand, const_rtx set_pat, ext_state *state)
       machine_mode mode;
 
       if (state->modified[INSN_UID (cand->insn)].kind
-	  != (cand->code == ZERO_EXTEND
+	  != (cand->code == ZERO_EXTEND || cand->code == AND
 	      ? EXT_MODIFIED_ZEXT : EXT_MODIFIED_SEXT)
 	  || state->modified[INSN_UID (cand->insn)].mode != cand->mode
 	  || (set == NULL_RTX))
@@ -1052,7 +1056,7 @@ combine_reaching_defs (ext_cand *cand, const_rtx set_pat, ext_state *state)
 	    {
 	      ext_modified *modified = &state->modified[INSN_UID (def_insn)];
 	      if (modified->kind == EXT_MODIFIED_NONE)
-		modified->kind = (cand->code == ZERO_EXTEND ? EXT_MODIFIED_ZEXT
+		modified->kind = (cand->code == ZERO_EXTEND || cand->code == AND  ? EXT_MODIFIED_ZEXT
 						            : EXT_MODIFIED_SEXT);
 
 	      if (copy_needed)
@@ -1106,7 +1110,7 @@ add_removable_extension (const_rtx expr, rtx_insn *insn,
   mode = GET_MODE (dest);
 
   if (REG_P (dest)
-      && (code == SIGN_EXTEND || code == ZERO_EXTEND)
+      && (code == SIGN_EXTEND || code == ZERO_EXTEND || code == AND)
       && REG_P (XEXP (src, 0)))
     {
       rtx reg = XEXP (src, 0);
