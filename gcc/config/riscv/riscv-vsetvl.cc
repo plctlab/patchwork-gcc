@@ -686,7 +686,7 @@ eliminate_insn (rtx_insn *rinsn)
     delete_insn (rinsn);
 }
 
-static void
+static vsetvl_type
 insert_vsetvl (enum emit_type emit_type, rtx_insn *rinsn,
 	       const vector_insn_info &info, const vector_insn_info &prev_info)
 {
@@ -697,14 +697,14 @@ insert_vsetvl (enum emit_type emit_type, rtx_insn *rinsn,
     {
       emit_vsetvl_insn (VSETVL_VTYPE_CHANGE_ONLY, emit_type, info, NULL_RTX,
 			rinsn);
-      return;
+      return VSETVL_VTYPE_CHANGE_ONLY;
     }
 
   if (info.has_avl_imm ())
     {
       emit_vsetvl_insn (VSETVL_DISCARD_RESULT, emit_type, info, NULL_RTX,
 			rinsn);
-      return;
+      return VSETVL_DISCARD_RESULT;
     }
 
   if (info.has_avl_no_reg ())
@@ -716,14 +716,14 @@ insert_vsetvl (enum emit_type emit_type, rtx_insn *rinsn,
 	{
 	  emit_vsetvl_insn (VSETVL_VTYPE_CHANGE_ONLY, emit_type, info, NULL_RTX,
 			    rinsn);
-	  return;
+	  return VSETVL_VTYPE_CHANGE_ONLY;
 	}
       /* Otherwise use an AVL of 0 to avoid depending on previous vl.  */
       vl_vtype_info new_info = info;
       new_info.set_avl_info (avl_info (const0_rtx, nullptr));
       emit_vsetvl_insn (VSETVL_DISCARD_RESULT, emit_type, new_info, NULL_RTX,
 			rinsn);
-      return;
+      return VSETVL_DISCARD_RESULT;
     }
 
   /* Use X0 as the DestReg unless AVLReg is X0. We also need to change the
@@ -735,7 +735,7 @@ insert_vsetvl (enum emit_type emit_type, rtx_insn *rinsn,
       rtx vl_op = info.get_avl_reg_rtx ();
       gcc_assert (!vlmax_avl_p (vl_op));
       emit_vsetvl_insn (VSETVL_NORMAL, emit_type, info, vl_op, rinsn);
-      return;
+      return VSETVL_NORMAL;
     }
 
   emit_vsetvl_insn (VSETVL_DISCARD_RESULT, emit_type, info, NULL_RTX, rinsn);
@@ -745,6 +745,7 @@ insert_vsetvl (enum emit_type emit_type, rtx_insn *rinsn,
       fprintf (dump_file, "Update VL/VTYPE info, previous info=");
       prev_info.dump (dump_file);
     }
+  return VSETVL_DISCARD_RESULT;
 }
 
 /* If X contains any LABEL_REF's, add REG_LABEL_OPERAND notes for them
@@ -2761,6 +2762,7 @@ pass_vsetvl::emit_local_forward_vsetvls (const bb_info *bb)
   for (insn_info *insn : bb->real_nondebug_insns ())
     {
       const vector_insn_info prev_info = curr_info;
+      enum vsetvl_type type = NUM_VSETVL_TYPE;
       transfer_before (curr_info, insn);
 
       if (has_vtype_op (insn->rtl ()))
@@ -2772,10 +2774,25 @@ pass_vsetvl::emit_local_forward_vsetvls (const bb_info *bb)
 		= m_vector_manager->vector_insn_infos[insn->uid ()];
 	      if (!require.compatible_p (
 		    static_cast<const vl_vtype_info &> (prev_info)))
-		insert_vsetvl (EMIT_BEFORE, insn->rtl (), require, prev_info);
+		type = insert_vsetvl (EMIT_BEFORE, insn->rtl (), require,
+				      prev_info);
 	    }
 	}
 
+      /* Fix the issue of following sequence:
+	 vsetivli zero, 5
+	 ....
+	 vsetvli zero, zero
+	 vmv.x.s (demand AVL = 8).
+	 ....
+	 incorrect: vsetvli zero, zero ===> Since the curr_info is AVL = 8.
+	 correct: vsetivli zero, 8
+	 vadd (demand AVL = 8).  */
+      if (type == VSETVL_VTYPE_CHANGE_ONLY)
+	{
+	  /* Update the curr_info to be real correct AVL.  */
+	  curr_info.set_avl_info (prev_info.get_avl_info ());
+	}
       transfer_after (curr_info, insn);
     }
 
