@@ -639,6 +639,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   // Composite type categories.
 
   /// is_reference
+#if __has_builtin(__is_reference)
+  template<typename _Tp>
+    struct is_reference
+    : public integral_constant<bool, __is_reference(_Tp)>
+    { };
+#else
   template<typename _Tp>
     struct is_reference
     : public false_type
@@ -653,6 +659,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     struct is_reference<_Tp&&>
     : public true_type
     { };
+#endif
 
   /// is_arithmetic
   template<typename _Tp>
