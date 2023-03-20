@@ -5040,7 +5040,13 @@ no_real_insns_p (const rtx_insn *head, const rtx_insn *tail)
 {
   while (head != NEXT_INSN (tail))
     {
-      if (!NOTE_P (head) && !LABEL_P (head))
+      /* Take debug insn into account here, otherwise we can have different
+	 DFA states after scheduling a block which only has NOTE_P, LABEL_P
+	 and DEBUG_P (debug mode) insns between non-debug and debug modes,
+	 it could cause -fcompare-debug failure.  */
+      if (!NOTE_P (head)
+	  && !LABEL_P (head)
+	  && !DEBUG_INSN_P (head))
 	return 0;
       head = NEXT_INSN (head);
     }

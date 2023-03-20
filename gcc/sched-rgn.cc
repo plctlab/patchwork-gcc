@@ -213,6 +213,11 @@ static int rgn_nr_edges;
 /* Array of size rgn_nr_edges.  */
 static edge *rgn_edges;
 
+/* For basic block i, the corresponding set bit i in bitmap indicates this basic
+   block meets predicate no_real_insns_p before scheduling any basic blocks in
+   the region.  */
+static bitmap no_real_insns;
+
 /* Mapping from each edge in the graph to its number in the rgn.  */
 #define EDGE_TO_BIT(edge) ((int)(size_t)(edge)->aux)
 #define SET_EDGE_TO_BIT(edge,nr) ((edge)->aux = (void *)(size_t)(nr))
@@ -2730,6 +2735,15 @@ compute_block_dependences (int bb)
   gcc_assert (EBB_FIRST_BB (bb) == EBB_LAST_BB (bb));
   get_ebb_head_tail (EBB_FIRST_BB (bb), EBB_LAST_BB (bb), &head, &tail);
 
+  /* Don't compute block dependencies if there are no real insns.  */
+  if (no_real_insns_p (head, tail))
+    {
+      if (current_nr_blocks > 1)
+	propagate_deps (bb, &tmp_deps);
+      free_deps (&tmp_deps);
+      return;
+    }
+
   sched_analyze (&tmp_deps, head, tail);
 
   add_branch_dependences (head, tail);
@@ -2744,6 +2758,42 @@ compute_block_dependences (int bb)
     targetm.sched.dependencies_evaluation_hook (head, tail);
 }
 
+/* The basic block without any real insns (no_real_insns_p) would be
+   skipped in compute_block_dependences, so for most no_real_insns_p
+   basic block, we don't need to free dependencies for them.  But
+   sometimes some basic block which isn't no_real_insns_p before
+   scheduling can become no_real_insns_p with speculative scheduling,
+   so we still need to free dependencies computed early for it.  So
+   this function is to free dependencies if need.  */
+
+static void
+free_deps_for_bb_no_real_insns_p (rtx_insn *head, rtx_insn *tail, int bb)
+{
+  gcc_assert (no_real_insns_p (head, tail));
+
+  /* Don't bother if there is only one block.  */
+  if (current_nr_blocks == 1)
+    return;
+
+  /* We don't compute dependencies before.  */
+  if (bitmap_bit_p (no_real_insns, bb))
+    return;
+
+  rtx_insn *insn;
+  rtx_insn *next_tail = NEXT_INSN (tail);
+  sd_iterator_def sd_it;
+  dep_t dep;
+
+  /* There could be some insns which get skipped in scheduling but we
+     compute dependencies for them previously, so make them resolved.  */
+  for (insn = head; insn != next_tail; insn = NEXT_INSN (insn))
+    for (sd_it = sd_iterator_start (insn, SD_LIST_FORW);
+	 sd_iterator_cond (&sd_it, &dep);)
+      sd_resolve_dep (sd_it);
+
+  sched_free_deps (head, tail, true);
+}
+
 /* Free dependencies of instructions inside BB.  */
 static void
 free_block_dependencies (int bb)
@@ -2754,7 +2804,10 @@ free_block_dependencies (int bb)
   get_ebb_head_tail (EBB_FIRST_BB (bb), EBB_LAST_BB (bb), &head, &tail);
 
   if (no_real_insns_p (head, tail))
-    return;
+    {
+      free_deps_for_bb_no_real_insns_p (head, tail, bb);
+      return;
+    }
 
   sched_free_deps (head, tail, true);
 }
@@ -3177,6 +3230,18 @@ schedule_region (int rgn)
 	{
 	  gcc_assert (first_bb == last_bb);
 	  save_state_for_fallthru_edge (last_bb, bb_state[first_bb->index]);
+	  /* We have counted this block when computing rgn_n_insns
+	     previously, so need to fix up sched_rgn_n_insns if we
+	     skip this.  */
+	  if (current_nr_blocks > 1 && !bitmap_bit_p (no_real_insns, bb))
+	    {
+	      while (head != NEXT_INSN (tail))
+		{
+		  if (INSN_P (head))
+		    sched_rgn_n_insns++;
+		  head = NEXT_INSN (head);
+		}
+	    }
 	  continue;
 	}
 
@@ -3218,12 +3283,12 @@ schedule_region (int rgn)
 
   sched_finish_ready_list ();
 
-  /* Done with this region.  */
-  sched_rgn_local_finish ();
-
   /* Free dependencies.  */
   for (bb = 0; bb < current_nr_blocks; ++bb)
     free_block_dependencies (bb);
+
+  /* Done with this region.  */
+  sched_rgn_local_finish ();
 
   gcc_assert (haifa_recovery_bb_ever_added_p
 	      || deps_pools_are_empty_p ());
@@ -3444,6 +3509,16 @@ sched_rgn_local_init (int rgn)
 	  FOR_EACH_EDGE (e, ei, block->succs)
 	    e->aux = NULL;
         }
+
+      /* Compute no_real_insns.  */
+      no_real_insns = BITMAP_ALLOC (NULL);
+      for (bb = 0; bb < current_nr_blocks; bb++)
+	{
+	  rtx_insn *head, *tail;
+	  get_ebb_head_tail (EBB_FIRST_BB (bb), EBB_LAST_BB (bb), &head, &tail);
+	  if (no_real_insns_p (head, tail))
+	    bitmap_set_bit (no_real_insns, bb);
+	}
     }
 }
 
@@ -3456,6 +3531,7 @@ sched_rgn_local_free (void)
   sbitmap_vector_free (pot_split);
   sbitmap_vector_free (ancestor_edges);
   free (rgn_edges);
+  BITMAP_FREE (no_real_insns);
 }
 
 /* Free data computed for the finished region.  */
