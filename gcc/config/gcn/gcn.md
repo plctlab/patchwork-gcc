@@ -51,13 +51,15 @@
    (EXECZ_REG			 128)
    (SCC_REG			 129)
    (FIRST_VGPR_REG		 160)
-   (LAST_VGPR_REG		 415)])
+   (LAST_VGPR_REG		 415)
+   (FIRST_AVGPR_REG		 416)
+   (LAST_AVGPR_REG		 671)])
 
 (define_constants
   [(SP_REGNUM 16)
    (LR_REGNUM 18)
-   (AP_REGNUM 416)
-   (FP_REGNUM 418)])
+   (AP_REGNUM 672)
+   (FP_REGNUM 674)])
 
 (define_c_enum "unspecv" [
   UNSPECV_PROLOGUE_USE
@@ -163,6 +165,11 @@
 ;	 vdst: vgpr0-255
 ;	 sdst: sgpr0-103/vcc/tba/tma/ttmp0-11
 ;
+; vop3p_mai - vector, three inputs, one vector output
+;        vsrc0,vsrc1,vsrc2: inline constant -16 to -64, fp inline immediate,
+;        (acc or arch) vgpr0-255
+;        vdst: (acc or arch) vgpr0-255
+;
 ; vop_sdwa - second dword for vop1/vop2/vopc for specifying sub-dword address
 ;	 src0: vgpr0-255
 ;	 dst_sel: BYTE_0-3, WORD_0-1, DWORD
@@ -221,7 +228,8 @@
 
 (define_attr "type"
 	     "unknown,sop1,sop2,sopk,sopc,sopp,smem,ds,vop2,vop1,vopc,
-	      vop3a,vop3b,vop_sdwa,vop_dpp,mubuf,mtbuf,flat,mult,vmult"
+	      vop3a,vop3b,vop3p_mai,vop_sdwa,vop_dpp,mubuf,mtbuf,flat,mult,
+	      vmult"
 	     (const_string "unknown"))
 
 ; Set if instruction is executed in scalar or vector unit
@@ -530,9 +538,9 @@
 
 (define_insn "*mov<mode>_insn"
   [(set (match_operand:SISF 0 "nonimmediate_operand"
-		  "=SD,SD,SD,SD,RB,Sm,RS,v,Sg, v, v,RF,v,RLRG,   v,SD, v,RM")
+		  "=SD,SD,SD,SD,RB,Sm,RS,v,Sg, v,vb,RF,v,RLRG,   v,SD,vb,RM, v, a, b")
 	(match_operand:SISF 1 "gcn_load_operand"
-		  "SSA, J, B,RB,Sm,RS,Sm,v, v,Sv,RF, v,B,   v,RLRG, Y,RM, v"))]
+		  "SSA, J, B,RB,Sm,RS,Sm,v, v,Sv,RF,vb,B,   v,RLRG, Y,RM,vb,^a, v, b"))]
   ""
   "@
   s_mov_b32\t%0, %1
@@ -552,20 +560,23 @@
   ds_read_b32\t%0, %A1%O1\;s_waitcnt\tlgkmcnt(0)
   s_mov_b32\t%0, %1
   global_load_dword\t%0, %A1%O1%g1\;s_waitcnt\tvmcnt(0)
-  global_store_dword\t%A0, %1%O0%g0"
+  global_store_dword\t%A0, %1%O0%g0
+  v_accvgpr_read_b32\t%0, %1
+  v_accvgpr_write_b32\t%0, %1
+  v_accvgpr_mov_b32\t%0, %1"
   [(set_attr "type" "sop1,sopk,sop1,smem,smem,smem,smem,vop1,vop3a,vop3a,flat,
-		     flat,vop1,ds,ds,sop1,flat,flat")
-   (set_attr "exec" "*,*,*,*,*,*,*,*,none,none,*,*,*,*,*,*,*,*")
-   (set_attr "length" "4,4,8,12,12,12,12,4,8,8,12,12,8,12,12,8,12,12")])
+		     flat,vop1,ds,ds,sop1,flat,flat,vop3p_mai,vop3p_mai,vop1")
+   (set_attr "exec" "*,*,*,*,*,*,*,*,none,none,*,*,*,*,*,*,*,*,*,*,*")
+   (set_attr "length" "4,4,8,12,12,12,12,4,8,8,12,12,8,12,12,8,12,12,8,8,4")])
 
 ; 8/16bit move pattern
 ; TODO: implement combined load and zero_extend, but *only* for -msram-ecc=on
 
 (define_insn "*mov<mode>_insn"
   [(set (match_operand:QIHI 0 "nonimmediate_operand"
-				 "=SD,SD,SD,v,Sg, v, v,RF,v,RLRG,   v, v,RM")
+				 "=SD,SD,SD,v,Sg, v,vb,RF,v,RLRG,   v,vb,RM, v, a, b")
 	(match_operand:QIHI 1 "gcn_load_operand"
-				 "SSA, J, B,v, v,Sv,RF, v,B,   v,RLRG,RM, v"))]
+				 "SSA, J, B,v, v,Sv,RF,vb,B,   v,RLRG,RM,vb,^a, v, b"))]
   "gcn_valid_move_p (<MODE>mode, operands[0], operands[1])"
   "@
   s_mov_b32\t%0, %1
@@ -580,19 +591,22 @@
   ds_write%b0\t%A0, %1%O0\;s_waitcnt\tlgkmcnt(0)
   ds_read%u1\t%0, %A1%O1\;s_waitcnt\tlgkmcnt(0)
   global_load%o1\t%0, %A1%O1%g1\;s_waitcnt\tvmcnt(0)
-  global_store%s0\t%A0, %1%O0%g0"
+  global_store%s0\t%A0, %1%O0%g0
+  v_accvgpr_read_b32\t%0, %1
+  v_accvgpr_write_b32\t%0, %1
+  v_accvgpr_mov_b32\t%0, %1"
   [(set_attr "type"
-	     "sop1,sopk,sop1,vop1,vop3a,vop3a,flat,flat,vop1,ds,ds,flat,flat")
-   (set_attr "exec" "*,*,*,*,none,none,*,*,*,*,*,*,*")
-   (set_attr "length" "4,4,8,4,4,4,12,12,8,12,12,12,12")])
+	     "sop1,sopk,sop1,vop1,vop3a,vop3a,flat,flat,vop1,ds,ds,flat,flat, vop3p_mai,vop3p_mai,vop1")
+   (set_attr "exec" "*,*,*,*,none,none,*,*,*,*,*,*,*,*,*,*")
+   (set_attr "length" "4,4,8,4,4,4,12,12,8,12,12,12,12,8,8,4")])
 
 ; 64bit move pattern
 
 (define_insn_and_split "*mov<mode>_insn"
   [(set (match_operand:DIDF 0 "nonimmediate_operand"
-			  "=SD,SD,SD,RS,Sm,v, v,Sg, v, v,RF,RLRG,   v, v,RM")
+			  "=SD,SD,SD,RS,Sm,v, v,Sg, v,vb,RF,RLRG,   v,vb,RM, v, a, b")
 	(match_operand:DIDF 1 "general_operand"
-			  "SSA, C,DB,Sm,RS,v,DB, v,Sv,RF, v,   v,RLRG,RM, v"))]
+			  "SSA, C,DB,Sm,RS,v,DB, v,Sv,RF,vb,   v,RLRG,RM,vb,^a, v, b"))]
   "GET_CODE(operands[1]) != SYMBOL_REF"
   "@
   s_mov_b64\t%0, %1
@@ -609,7 +623,10 @@
   ds_write_b64\t%A0, %1%O0\;s_waitcnt\tlgkmcnt(0)
   ds_read_b64\t%0, %A1%O1\;s_waitcnt\tlgkmcnt(0)
   global_load_dwordx2\t%0, %A1%O1%g1\;s_waitcnt\tvmcnt(0)
-  global_store_dwordx2\t%A0, %1%O0%g0"
+  global_store_dwordx2\t%A0, %1%O0%g0
+  #
+  #
+  #"
   "reload_completed
    && ((!MEM_P (operands[0]) && !MEM_P (operands[1])
         && !gcn_sgpr_move_p (operands[0], operands[1]))
@@ -640,16 +657,16 @@
       }
   }
   [(set_attr "type" "sop1,sop1,mult,smem,smem,vmult,vmult,vmult,vmult,flat,
-		     flat,ds,ds,flat,flat")
-   (set_attr "length" "4,8,*,12,12,*,*,*,*,12,12,12,12,12,12")])
+		     flat,ds,ds,flat,flat,vmult,vmult,vmult")
+   (set_attr "length" "4,8,*,12,12,*,*,*,*,12,12,12,12,12,12,*,*,*")])
 
 ; 128-bit move.
 
 (define_insn_and_split "*movti_insn"
   [(set (match_operand:TI 0 "nonimmediate_operand"
-				      "=SD,RS,Sm,RF, v,v, v,SD,RM, v,RL, v")
+				      "=SD,RS,Sm,RF,vb,v, v,SD,RM,vb,RL, v, v, a, b")
 	(match_operand:TI 1 "general_operand"  
-				      "SSB,Sm,RS, v,RF,v,Sv, v, v,RM, v,RL"))]
+				      "SSB,Sm,RS,vb,RF,v,Sv, v,vb,RM, v,RL,^a, v, b"))]
   ""
   "@
   #
@@ -663,7 +680,10 @@
   global_store_dwordx4\t%A0, %1%O0%g0
   global_load_dwordx4\t%0, %A1%O1%g1\;s_waitcnt\tvmcnt(0)
   ds_write_b128\t%A0, %1%O0\;s_waitcnt\tlgkmcnt(0)
-  ds_read_b128\t%0, %A1%O1\;s_waitcnt\tlgkmcnt(0)"
+  ds_read_b128\t%0, %A1%O1\;s_waitcnt\tlgkmcnt(0)
+  #
+  #
+  #"
   "reload_completed
    && REG_P (operands[0])
    && (REG_P (operands[1]) || GET_CODE (operands[1]) == CONST_INT)"
@@ -684,9 +704,9 @@
     operands[1] = gcn_operand_part (TImode, operands[1], 0);
   }
   [(set_attr "type" "mult,smem,smem,flat,flat,vmult,vmult,vmult,flat,flat,\
-		     ds,ds")
-   (set_attr "delayeduse" "*,*,yes,*,*,*,*,*,yes,*,*,*")
-   (set_attr "length" "*,12,12,12,12,*,*,*,12,12,12,12")])
+		     ds,ds,vmult,vmult,vmult")
+   (set_attr "delayeduse" "*,*,yes,*,*,*,*,*,yes,*,*,*,*,*,*")
+   (set_attr "length" "*,12,12,12,12,*,*,*,12,12,12,12,*,*,*")])
 
 ;; }}}
 ;; {{{ Prologue/Epilogue
