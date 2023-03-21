@@ -1560,9 +1560,15 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #endif
 
   /// add_const
+#if __has_builtin(__add_const)
+  template<typename _Tp>
+    struct add_const
+    { using type = __add_const(_Tp); };
+#else
   template<typename _Tp>
     struct add_const
     { using type = _Tp const; };
+#endif
 
   /// add_volatile
   template<typename _Tp>
