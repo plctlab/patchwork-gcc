@@ -503,6 +503,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     { };
 
   /// is_array
+#if __has_builtin(__is_array)
+  template<typename _Tp>
+    struct is_array
+    : public __bool_constant<__is_array(_Tp)>
+    { };
+#else
   template<typename>
     struct is_array
     : public false_type { };
@@ -514,6 +520,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   template<typename _Tp>
     struct is_array<_Tp[]>
     : public true_type { };
+#endif
 
   template<typename>
     struct __is_pointer_helper
