@@ -1664,6 +1664,21 @@ public:
   }
 };
 
+/* Implements vlenb.  */
+class vlenb : public function_base
+{
+public:
+  bool apply_vl_p () const override { return false; }
+
+  rtx expand (function_expander &e) const override
+  {
+    machine_mode mode = GET_MODE (e.target);
+    rtx vlenb = gen_int_mode (BYTES_PER_RISCV_VECTOR, mode);
+    emit_move_insn (e.target, vlenb);
+    return e.target;
+  }
+};
+
 static CONSTEXPR const vsetvl<false> vsetvl_obj;
 static CONSTEXPR const vsetvl<true> vsetvlmax_obj;
 static CONSTEXPR const loadstore<false, LST_UNIT_STRIDE, false> vle_obj;
@@ -1874,6 +1889,7 @@ static CONSTEXPR const vset vset_obj;
 static CONSTEXPR const vget vget_obj;
 static CONSTEXPR const read_vl read_vl_obj;
 static CONSTEXPR const vleff vleff_obj;
+static CONSTEXPR const vlenb vlenb_obj;
 
 /* Declare the function base NAME, pointing it to an instance
    of class <NAME>_obj.  */
@@ -2090,5 +2106,6 @@ BASE (vset)
 BASE (vget)
 BASE (read_vl)
 BASE (vleff)
+BASE (vlenb)
 
 } // end namespace riscv_vector
