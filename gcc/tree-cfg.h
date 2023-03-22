@@ -61,6 +61,7 @@ extern bool assert_unreachable_fallthru_edge_p (edge);
 extern void delete_tree_cfg_annotations (function *);
 extern gphi *get_virtual_phi (basic_block);
 extern gimple *first_stmt (basic_block);
+extern gimple *possible_ctrl_stmt (basic_block);
 extern gimple *last_stmt (basic_block);
 extern gimple *last_and_only_stmt (basic_block);
 extern bool verify_gimple_in_seq (gimple_seq, bool = true);

@@ -2947,6 +2947,26 @@ first_non_label_stmt (basic_block bb)
   return !gsi_end_p (i) ? gsi_stmt (i) : NULL;
 }
 
+/* Return the last statement of a basic block BB that's possibly control
+   altering.  Compared to last_stmt this will return a debug stmt if that
+   is the last stmt.  */
+
+gimple *
+possible_ctrl_stmt (basic_block bb)
+{
+  gimple_stmt_iterator i = gsi_last_bb (bb);
+  if (gsi_end_p (i))
+    return NULL;
+  if (flag_checking && is_gimple_debug (gsi_stmt (i)))
+    {
+      /* Verify that if the real last stmt is a debug stmt the
+	 last non-debug stmt isn't control altering.  */
+      gimple *last = last_stmt (bb);
+      gcc_assert (!last || !stmt_ends_bb_p (last));
+    }
+  return gsi_stmt (i);
+}
+
 /* Return the last statement in basic block BB.  */
 
 gimple *
@@ -8990,7 +9010,7 @@ gimple_purge_dead_eh_edges (basic_block bb)
   bool changed = false;
   edge e;
   edge_iterator ei;
-  gimple *stmt = last_stmt (bb);
+  gimple *stmt = possible_ctrl_stmt (bb);
 
   if (stmt && stmt_can_throw_internal (cfun, stmt))
     return false;
