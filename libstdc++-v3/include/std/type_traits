@@ -764,6 +764,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   // Type properties.
 
   /// is_const
+#if __has_builtin(__is_const)
+  template<typename _Tp>
+    struct is_const
+    : public __bool_constant<__is_const(_Tp)>
+    { };
+#else
   template<typename>
     struct is_const
     : public false_type { };
@@ -771,6 +777,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   template<typename _Tp>
     struct is_const<_Tp const>
     : public true_type { };
+#endif
 
   /// is_volatile
   template<typename>
