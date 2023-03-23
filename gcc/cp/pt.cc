@@ -220,6 +220,7 @@ static tree make_argument_pack (tree);
 static tree enclosing_instantiation_of (tree tctx);
 static void instantiate_body (tree pattern, tree args, tree d, bool nested);
 static tree maybe_dependent_member_ref (tree, tree, tsubst_flags_t, tree);
+static void mark_template_arguments_used (tree);
 
 /* Make the current scope suitable for access checking when we are
    processing T.  T can be FUNCTION_DECL for instantiated function
@@ -12152,6 +12153,9 @@ instantiate_class_template (tree type)
       cp_unevaluated_operand = 0;
       c_inhibit_evaluation_warnings = 0;
     }
+
+  mark_template_arguments_used (INNERMOST_TEMPLATE_ARGS (args));
+
   /* Use #pragma pack from the template context.  */
   saved_maximum_field_alignment = maximum_field_alignment;
   maximum_field_alignment = TYPE_PRECISION (pattern);
@@ -21192,22 +21196,10 @@ tsubst_copy_and_build (tree t,
 	  }
 
 	/* Remember that there was a reference to this entity.  */
-	if (function != NULL_TREE)
-	  {
-	    tree inner = function;
-	    if (TREE_CODE (inner) == ADDR_EXPR
-		&& TREE_CODE (TREE_OPERAND (inner, 0)) == FUNCTION_DECL)
-	      /* We should already have called mark_used when taking the
-		 address of this function, but do so again anyway to make
-		 sure it's odr-used: at worst this is a no-op, but if we
-		 obtained this FUNCTION_DECL as part of ahead-of-time overload
-		 resolution then that call to mark_used wouldn't have marked it
-		 odr-used yet (53164).  */
-	      inner = TREE_OPERAND (inner, 0);
-	    if (DECL_P (inner)
-		&& !mark_used (inner, complain) && !(complain & tf_error))
-	      RETURN (error_mark_node);
-	  }
+	if (function != NULL_TREE
+	    && DECL_P (function)
+	    && !mark_used (function, complain) && !(complain & tf_error))
+	  RETURN (error_mark_node);
 
 	if (!maybe_fold_fn_template_args (function, complain))
 	  return error_mark_node;
@@ -21902,6 +21894,31 @@ check_instantiated_args (tree tmpl, tree args, tsubst_flags_t complain)
   return result;
 }
 
+/* Call mark_used on each entity within the template arguments ARGS of some
+   template specialization, to ensure that each such entity is considered
+   odr-used regardless of whether the specialization was first formed in a
+   template context.
+
+   This function assumes push_to_top_level has been called beforehand, and
+   that processing_template_decl has been set iff the template arguments
+   are dependent.  */
+
+static void
+mark_template_arguments_used (tree args)
+{
+  gcc_checking_assert (TMPL_ARGS_DEPTH (args) == 1);
+
+  if (processing_template_decl)
+    return;
+
+  auto mark_used_r = [](tree *tp, int *, void *) {
+    if (DECL_P (*tp))
+      mark_used (*tp, tf_none);
+    return NULL_TREE;
+  };
+  cp_walk_tree_without_duplicates (&args, mark_used_r, nullptr);
+}
+
 /* We're out of SFINAE context now, so generate diagnostics for the access
    errors we saw earlier when instantiating D from TMPL and ARGS.  */
 
@@ -22030,6 +22047,8 @@ instantiate_template (tree tmpl, tree orig_args, tsubst_flags_t complain)
 				complain, gen_tmpl, true);
       push_nested_class (ctx);
     }
+
+  mark_template_arguments_used (INNERMOST_TEMPLATE_ARGS (targ_ptr));
 
   tree pattern = DECL_TEMPLATE_RESULT (gen_tmpl);
 
