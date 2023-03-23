@@ -5399,17 +5399,20 @@ vect_grouped_store_supported (tree vectype, unsigned HOST_WIDE_INT count)
 	  poly_uint64 nelt = GET_MODE_NUNITS (mode);
 
 	  /* The encoding has 2 interleaved stepped patterns.  */
-	  vec_perm_builder sel (nelt, 2, 3);
-	  sel.quick_grow (6);
+
+    unsigned int npat = known_gt(nelt, (unsigned int) 1) ? 2 : 1;
+    unsigned int total_elem = npat * 3;
+	  vec_perm_builder sel (nelt, npat, 3);
+	  sel.quick_grow (total_elem);
 	  for (i = 0; i < 3; i++)
 	    {
-	      sel[i * 2] = i;
-	      sel[i * 2 + 1] = i + nelt;
+	      sel[i * npat] = i;
+	      sel[i * npat + 1] = i + nelt;
 	    }
 	  vec_perm_indices indices (sel, 2, nelt);
 	  if (can_vec_perm_const_p (mode, mode, indices))
 	    {
-	      for (i = 0; i < 6; i++)
+	      for (i = 0; i < total_elem; i++)
 		sel[i] += exact_div (nelt, 2);
 	      indices.new_vector (sel, 2, nelt);
 	      if (can_vec_perm_const_p (mode, mode, indices))
