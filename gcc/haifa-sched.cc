@@ -6318,6 +6318,14 @@ prune_ready_list (state_t temp_state, bool first_cycle_insn_p,
 	      cost = 1;
 	      reason = "not a shadow";
 	    }
+	  else if (recog_memoized (insn) < 0
+		  && (GET_CODE (PATTERN (insn)) == CLOBBER
+		  || GET_CODE (PATTERN (insn)) == USE))
+	    {
+	      if (!first_cycle_insn_p)
+		cost = 1;
+	      reason = "unrecog insn";
+	    }
 	  else if (recog_memoized (insn) < 0)
 	    {
 	      if (!first_cycle_insn_p
