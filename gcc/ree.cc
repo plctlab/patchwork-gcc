@@ -364,6 +364,7 @@ combine_set_extension (ext_cand *cand, rtx_insn *curr_insn, rtx *orig_set)
       rtx simplified_temp_extension = simplify_rtx (temp_extension);
       if (simplified_temp_extension)
         temp_extension = simplified_temp_extension;
+
       new_set = gen_rtx_SET (new_reg, temp_extension);
     }
   else if (GET_CODE (orig_src) == IF_THEN_ELSE)
@@ -375,11 +376,21 @@ combine_set_extension (ext_cand *cand, rtx_insn *curr_insn, rtx *orig_set)
   else
     {
       /* This is the normal case.  */
-      rtx temp_extension
-	= gen_rtx_fmt_e (cand->code, cand->mode, orig_src);
+      rtx temp_extension = NULL_RTX;
+
+      if (GET_CODE (SET_SRC (cand_pat)) == AND)
+	temp_extension
+	= gen_rtx_fmt_ee (cand->code, cand->mode,orig_src,
+			  XEXP (SET_SRC (cand_pat), 1));
+      else
+	temp_extension
+	= gen_rtx_fmt_e (cand->code, cand->mode,orig_src);
+
       rtx simplified_temp_extension = simplify_rtx (temp_extension);
+
       if (simplified_temp_extension)
         temp_extension = simplified_temp_extension;
+
       new_set = gen_rtx_SET (new_reg, temp_extension);
     }
 
@@ -1043,7 +1054,14 @@ combine_reaching_defs (ext_cand *cand, const_rtx set_pat, ext_state *state)
 	 cannot be merged, we entirely give up.  In the future, we should allow
 	 extensions to be partially eliminated along those paths where the
 	 definitions could be merged.  */
-      if (apply_change_group ())
+       int num_clobbers = 0;
+       int icode = recog (cand->insn, cand->insn,
+			  (GET_CODE (cand->expr) == SET
+			   && ! reload_completed
+			   && ! reload_in_progress)
+			   ? &num_clobbers : 0);
+
+      if (apply_change_group () || (icode < 0))
         {
           if (dump_file)
             fprintf (dump_file, "All merges were successful.\n");
