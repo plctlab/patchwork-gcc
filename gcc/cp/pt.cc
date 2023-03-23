@@ -21195,12 +21195,6 @@ tsubst_copy_and_build (tree t,
 	      }
 	  }
 
-	/* Remember that there was a reference to this entity.  */
-	if (function != NULL_TREE
-	    && DECL_P (function)
-	    && !mark_used (function, complain) && !(complain & tf_error))
-	  RETURN (error_mark_node);
-
 	if (!maybe_fold_fn_template_args (function, complain))
 	  return error_mark_node;
 
