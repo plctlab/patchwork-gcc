@@ -7915,6 +7915,11 @@ extract_left_shift (scalar_int_mode mode, rtx x, int count)
 
   switch (code)
     {
+    case SUBREG:
+      x = XEXP (x, 0);
+      if (GET_CODE(x) != ASHIFT)
+        break;
+
     case ASHIFT:
       /* This is the shift itself.  If it is wide enough, we will return
 	 either the value being shifted if the shift count is equal to
