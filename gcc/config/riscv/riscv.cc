@@ -2096,7 +2096,7 @@ riscv_legitimize_move (machine_mode mode, rtx dest, rtx src)
        (set (reg:QI target) (subreg:QI (reg:DI temp) 0))
      with auto-sign/zero extend.  */
   if (GET_MODE_CLASS (mode) == MODE_INT
-      && GET_MODE_SIZE (mode).to_constant () < UNITS_PER_WORD
+      && GET_MODE_SIZE (mode).to_constant () < MIN_UNITS_PER_WORD
       && can_create_pseudo_p ()
       && MEM_P (src))
     {
