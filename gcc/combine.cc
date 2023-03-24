@@ -12681,10 +12681,18 @@ simplify_comparison (enum rtx_code code, rtx *pop0, rtx *pop1)
 		  && c1 != mask
 		  && c1 != GET_MODE_MASK (tmode))
 		{
-		  op0 = simplify_gen_binary (AND, tmode,
-					     SUBREG_REG (XEXP (op0, 0)),
+		  rtx op0_exp0 = XEXP (op0, 0);
+		  machine_mode op0_exp0_mode = GET_MODE (op0_exp0);
+		  rtx op0_subreg = simplify_gen_binary (AND, tmode,
+					     SUBREG_REG (op0_exp0),
 					     gen_int_mode (c1, tmode));
-		  op0 = gen_lowpart (mode, op0);
+		  rtx op0_reg = simplify_gen_binary (AND, GET_MODE (op0_exp0),
+					     op0_exp0,
+					     gen_int_mode (c1, op0_exp0_mode));
+		  if (!rtx_equal_p (op0_subreg, op0_reg))
+		    break;
+
+		  op0 = gen_lowpart (mode, op0_reg);
 		  continue;
 		}
 	    }
