@@ -2726,6 +2726,11 @@ struct var_nest_node
   var_nest_node *else_cl;
 };
 
+/* This is used to make a stable, but unique-per-function, sequence number for
+   each TARGET_EXPR slot variable that we 'promote' to a frame entry.  It needs
+   to be stable because the frame type is visible to LTO ODR checking.  */
+static unsigned tmpno = 0;
+
 /* This is called for single statements from the co-await statement walker.
    It checks to see if the statement contains any initializers for awaitables
    and if any of these capture items by reference.  */
@@ -2889,7 +2894,7 @@ flatten_await_stmt (var_nest_node *n, hash_set<tree> *promoted,
 	  tree init = t;
 	  temps_used->add (init);
 	  tree var_type = TREE_TYPE (init);
-	  char *buf = xasprintf ("D.%d", DECL_UID (TREE_OPERAND (init, 0)));
+	  char *buf = xasprintf ("T%03u", tmpno++);
 	  tree var = build_lang_decl (VAR_DECL, get_identifier (buf), var_type);
 	  DECL_ARTIFICIAL (var) = true;
 	  free (buf);
@@ -4374,6 +4379,7 @@ morph_fn_to_coro (tree orig, tree *resumer, tree *destroyer)
 {
   gcc_checking_assert (orig && TREE_CODE (orig) == FUNCTION_DECL);
 
+  tmpno = 0;
   *resumer = error_mark_node;
   *destroyer = error_mark_node;
   if (!coro_function_valid_p (orig))
