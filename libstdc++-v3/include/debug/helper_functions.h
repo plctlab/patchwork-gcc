@@ -67,7 +67,7 @@ namespace __gnu_debug
 	typename std::iterator_traits<_Iterator>::difference_type _ItDiffType;
 
       template<typename _DiffType,
-	       typename = typename std::__is_void<_DiffType>::__type>
+	       typename = typename std::is_void<_DiffType>::type>
 	struct _DiffTraits
 	{ typedef _DiffType __type; };
 
