@@ -6285,6 +6285,10 @@ riscv_option_override (void)
       && riscv_abi != ABI_LP64 && riscv_abi != ABI_ILP32E)
     error ("z*inx requires ABI ilp32, ilp32e or lp64");
 
+  // Zfinx is conflict with float extensions.
+  if (TARGET_ZFINX && TARGET_HARD_FLOAT)
+    error ("z*inx is conflict with float extensions");
+
   /* We do not yet support ILP32 on RV64.  */
   if (BITS_PER_WORD != POINTER_SIZE)
     error ("ABI requires %<-march=rv%d%>", POINTER_SIZE);
