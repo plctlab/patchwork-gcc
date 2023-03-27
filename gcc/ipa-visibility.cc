@@ -393,7 +393,7 @@ update_vtable_references (tree *tp, int *walk_subtrees,
    resolution info.  */
 
 static void
-update_visibility_by_resolution_info (symtab_node * node)
+update_visibility_by_resolution_info (symtab_node * node, bool whole_program)
 {
   bool define;
 
@@ -412,7 +412,12 @@ update_visibility_by_resolution_info (symtab_node * node)
     for (symtab_node *next = node->same_comdat_group;
 	 next != node; next = next->same_comdat_group)
       {
-	if (!next->externally_visible || next->transparent_alias)
+	if ((is_a<varpool_node *> (next)
+	     && !dyn_cast<varpool_node *> (next)->externally_visible_p ())
+	    || (is_a<cgraph_node *> (next)
+		&& !cgraph_externally_visible_p (dyn_cast<cgraph_node *> (next),
+						 whole_program))
+	    || next->transparent_alias)
 	  continue;
 
 	bool same_def
@@ -750,7 +755,7 @@ function_and_variable_visibility (bool whole_program)
 	    DECL_EXTERNAL (node->decl) = 1;
 	}
 
-      update_visibility_by_resolution_info (node);
+      update_visibility_by_resolution_info (node, whole_program);
       if (node->weakref)
 	optimize_weakref (node);
     }
@@ -842,7 +847,7 @@ function_and_variable_visibility (bool whole_program)
 	  && !DECL_EXTERNAL (vnode->decl))
 	localize_node (whole_program, vnode);
 
-      update_visibility_by_resolution_info (vnode);
+      update_visibility_by_resolution_info (vnode, whole_program);
 
       /* Update virtual tables to point to local aliases where possible.  */
       if (DECL_VIRTUAL_P (vnode->decl)
