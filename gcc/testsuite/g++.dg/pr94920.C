@@ -2,7 +2,7 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -Wno-psabi -fdump-tree-optimized" } */
 
-typedef int __attribute__((vector_size(4*sizeof(int)))) vint;
+typedef int __attribute__((vector_size(sizeof(int)))) vint;
 
 /* Same form as PR.  */
 __attribute__((noipa)) unsigned int foo(int x) {
