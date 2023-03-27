@@ -4941,14 +4941,7 @@
 	 UNSPEC_VSX_SIGN_EXTEND))]
   "TARGET_P9_VECTOR"
 {
-  if (BYTES_BIG_ENDIAN)
-    {
-      rtx tmp = gen_reg_rtx (V16QImode);
-      emit_insn (gen_altivec_vrevev16qi2(tmp, operands[1]));
-      emit_insn (gen_vsx_sign_extend_qi_<mode>(operands[0], tmp));
-    }
-  else
-    emit_insn (gen_vsx_sign_extend_qi_<mode>(operands[0], operands[1]));
+  emit_insn (gen_vsx_sign_extend_qi_<mode>(operands[0], operands[1]));
   DONE;
 })
 
@@ -4968,14 +4961,7 @@
 	 UNSPEC_VSX_SIGN_EXTEND))]
   "TARGET_P9_VECTOR"
 {
-  if (BYTES_BIG_ENDIAN)
-    {
-      rtx tmp = gen_reg_rtx (V8HImode);
-      emit_insn (gen_altivec_vrevev8hi2(tmp, operands[1]));
-      emit_insn (gen_vsx_sign_extend_hi_<mode>(operands[0], tmp));
-    }
-  else
-     emit_insn (gen_vsx_sign_extend_hi_<mode>(operands[0], operands[1]));
+  emit_insn (gen_vsx_sign_extend_hi_<mode>(operands[0], operands[1]));
   DONE;
 })
 
@@ -4986,24 +4972,6 @@
   "TARGET_P9_VECTOR"
   "vextsw2d %0,%1"
   [(set_attr "type" "vecexts")])
-
-(define_expand "vsignextend_si_v2di"
-  [(set (match_operand:V2DI 0 "vsx_register_operand" "=v")
-	(unspec:V2DI [(match_operand:V4SI 1 "vsx_register_operand" "v")]
-		     UNSPEC_VSX_SIGN_EXTEND))]
-  "TARGET_P9_VECTOR"
-{
-  if (BYTES_BIG_ENDIAN)
-    {
-       rtx tmp = gen_reg_rtx (V4SImode);
-
-       emit_insn (gen_altivec_vrevev4si2(tmp, operands[1]));
-       emit_insn (gen_vsx_sign_extend_si_v2di(operands[0], tmp));
-    }
-  else
-     emit_insn (gen_vsx_sign_extend_si_v2di(operands[0], operands[1]));
-  DONE;
-})
 
 ;; Sign extend DI to TI.  We provide both GPR targets and Altivec targets on
 ;; power10.  On earlier systems, the machine independent code will generate a

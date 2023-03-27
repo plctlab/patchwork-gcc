@@ -2699,7 +2699,7 @@
     VSIGNEXTSH2W vsignextend_hi_v4si {}
 
   const vsll __builtin_altivec_vsignextsw2d (vsi);
-    VSIGNEXTSW2D vsignextend_si_v2di {}
+    VSIGNEXTSW2D vsx_sign_extend_si_v2di {}
 
   const vsc __builtin_altivec_vslv (vsc, vsc);
     VSLV vslv {}
