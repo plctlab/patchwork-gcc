@@ -2362,6 +2362,21 @@ vector_infos_manager::all_same_ratio_p (sbitmap bitdata) const
 }
 
 bool
+vector_infos_manager::all_empty_predecessor_p (const basic_block cfg_bb) const
+{
+  hash_set<basic_block> pred_cfg_bbs = get_all_predecessors (cfg_bb);
+  for (const basic_block pred_cfg_bb : pred_cfg_bbs)
+    {
+      const auto &pred_block_info = vector_block_infos[pred_cfg_bb->index];
+      if (!pred_block_info.local_dem.valid_or_dirty_p ()
+	  && !pred_block_info.reaching_out.valid_or_dirty_p ())
+	continue;
+      return false;
+    }
+  return true;
+}
+
+bool
 vector_infos_manager::all_same_avl_p (const basic_block cfg_bb,
 				      sbitmap bitdata) const
 {
@@ -3118,6 +3133,14 @@ pass_vsetvl::backward_demand_fusion (void)
       if (!backward_propagate_worthwhile_p (cfg_bb, curr_block_info))
 	continue;
 
+      /* Fix PR108270:
+
+		bb 0 -> bb 1
+	 We don't need to backward fuse VL/VTYPE info from bb 1 to bb 0
+	 if bb 1 is not inside a loop and all predecessors of bb 0 are empty. */
+      if (m_vector_manager->all_empty_predecessor_p (cfg_bb))
+	continue;
+
       edge e;
       edge_iterator ei;
       /* Backward propagate to each predecessor.  */
@@ -3131,6 +3154,7 @@ pass_vsetvl::backward_demand_fusion (void)
 	    continue;
 	  if (e->src->index == ENTRY_BLOCK_PTR_FOR_FN (cfun)->index)
 	    continue;
+
 	  /* If prop is demand of vsetvl instruction and reaching doesn't demand
 	     AVL. We don't backward propagate since vsetvl instruction has no
 	     side effects.  */
