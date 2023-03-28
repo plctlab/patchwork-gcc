@@ -1834,7 +1834,10 @@ struct GTY(()) tree_decl_common {
   /* In FIELD_DECL, this is DECL_NOT_FLEXARRAY.  */
   unsigned int decl_not_flexarray : 1;
 
-  /* 13 bits unused.  */
+  /* In VAR_DECL, PARM_DECL, or RESULT_DECL, this is DECL_EXPIRED.  */
+  unsigned int decl_expired_flag : 1;
+
+  /* 12 bits unused.  */
 
   /* UID for points-to sets, stable over copying from inlining.  */
   unsigned int pt_uid;

@@ -2697,6 +2697,12 @@ extern tree vector_element_bits_tree (const_tree);
    ??? Need to figure out some way to check this isn't a PARM_DECL.  */
 #define DECL_INITIAL(NODE) (DECL_COMMON_CHECK (NODE)->decl_common.initial)
 
+/* Used in a VAR_DECL, PARM_DECL, or RESULT_DECL to indicate whether
+   this declaration is currently in lifetime for constant evaluation
+   purposes.  */
+#define DECL_EXPIRED(NODE) \
+  (DECL_COMMON_CHECK(NODE)->decl_common.decl_expired_flag)
+
 /* Holds the size of the datum, in bits, as a tree expression.
    Need not be constant and may be null.  May be less than TYPE_SIZE
    for a C++ FIELD_DECL representing a base class subobject with its

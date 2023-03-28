@@ -495,6 +495,10 @@ print_node (FILE *file, const char *prefix, tree node, int indent,
 	  && DECL_BY_REFERENCE (node))
 	fputs (" passed-by-reference", file);
 
+      if ((code == VAR_DECL || code == PARM_DECL || code == RESULT_DECL)
+	  && DECL_EXPIRED (node))
+	fputs (" expired", file);
+
       if (CODE_CONTAINS_STRUCT (code, TS_DECL_WITH_VIS)  && DECL_DEFER_OUTPUT (node))
 	fputs (" defer-output", file);
 
