@@ -11232,8 +11232,9 @@ check_return_expr (tree retval, bool *no_warning)
       else if (!processing_template_decl
 	       && maybe_warn_about_returning_address_of_local (retval, loc)
 	       && INDIRECT_TYPE_P (valtype))
-	retval = build2 (COMPOUND_EXPR, TREE_TYPE (retval), retval,
-			 build_zero_cst (TREE_TYPE (retval)));
+	/* Suppress the Wdangling-pointer warning in the return statement
+	   that would otherwise occur.  */
+	*no_warning = true;
     }
 
   if (processing_template_decl)
