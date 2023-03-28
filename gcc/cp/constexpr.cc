@@ -1165,10 +1165,12 @@ public:
   hash_set<tree> *modifiable;
   /* Number of heap VAR_DECL deallocations.  */
   unsigned heap_dealloc_count;
+  /* Current location in case subtree has no location information.  */
+  location_t loc;
   /* Constructor.  */
   constexpr_global_ctx ()
     : constexpr_ops_count (0), cleanups (NULL), modifiable (nullptr),
-      heap_dealloc_count (0) {}
+      heap_dealloc_count (0), loc (input_location) {}
 
  tree get_value (tree t)
   {
@@ -2108,7 +2110,7 @@ cxx_eval_internal_function (const constexpr_ctx *ctx, tree t,
 
     default:
       if (!ctx->quiet)
-	error_at (cp_expr_loc_or_input_loc (t),
+	error_at (cp_expr_loc_or_loc (t, ctx->global->loc),
 		  "call to internal function %qE", t);
       *non_constant_p = true;
       return t;
@@ -2123,7 +2125,7 @@ cxx_eval_internal_function (const constexpr_ctx *ctx, tree t,
 
   if (TREE_CODE (arg0) == INTEGER_CST && TREE_CODE (arg1) == INTEGER_CST)
     {
-      location_t loc = cp_expr_loc_or_input_loc (t);
+      location_t loc = cp_expr_loc_or_loc (t, ctx->global->loc);
       tree type = TREE_TYPE (TREE_TYPE (t));
       tree result = fold_binary_loc (loc, opcode, type,
 				     fold_convert_loc (loc, type, arg0),
@@ -2159,9 +2161,9 @@ clear_no_implicit_zero (tree ctor)
    EXPR is the MODIFY_EXPR expression performing the modification.  */
 
 static void
-modifying_const_object_error (tree expr, tree obj)
+modifying_const_object_error (const constexpr_ctx* ctx, tree expr, tree obj)
 {
-  location_t loc = cp_expr_loc_or_input_loc (expr);
+  location_t loc = cp_expr_loc_or_loc (expr, ctx->global->loc);
   auto_diagnostic_group d;
   error_at (loc, "modifying a const object %qE is not allowed in "
 	    "a constant expression", TREE_OPERAND (expr, 0));
@@ -2353,7 +2355,7 @@ cxx_eval_dynamic_cast_fn (const constexpr_ctx *ctx, tree call,
   tree obj = CALL_EXPR_ARG (call, 0);
   tree type = CALL_EXPR_ARG (call, 2);
   HOST_WIDE_INT hint = int_cst_value (CALL_EXPR_ARG (call, 3));
-  location_t loc = cp_expr_loc_or_input_loc (call);
+  location_t loc = cp_expr_loc_or_loc (call, ctx->global->loc);
 
   /* Get the target type of the dynamic_cast.  */
   gcc_assert (TREE_CODE (type) == ADDR_EXPR);
@@ -3651,7 +3653,7 @@ cxx_eval_binary_expression (const constexpr_ctx *ctx, tree t,
       && integer_zerop (lhs) && !integer_zerop (rhs))
     {
       if (!ctx->quiet)
-	error ("arithmetic involving a null pointer in %qE", lhs);
+	error_at (loc, "arithmetic involving a null pointer in %qE", lhs);
       *non_constant_p = true;
       return t;
     }
@@ -4144,7 +4146,7 @@ eval_and_check_array_index (const constexpr_ctx *ctx,
 			    tree t, bool allow_one_past,
 			    bool *non_constant_p, bool *overflow_p)
 {
-  location_t loc = cp_expr_loc_or_input_loc (t);
+  location_t loc = cp_expr_loc_or_loc (t, ctx->global->loc);
   tree ary = TREE_OPERAND (t, 0);
   t = TREE_OPERAND (t, 1);
   tree index = cxx_eval_constant_expression (ctx, t, vc_prvalue,
@@ -4182,6 +4184,7 @@ cxx_eval_array_reference (const constexpr_ctx *ctx, tree t,
 			  value_cat lval,
 			  bool *non_constant_p, bool *overflow_p)
 {
+  location_t loc = cp_expr_loc_or_loc (t, ctx->global->loc);
   tree oldary = TREE_OPERAND (t, 0);
   tree ary = cxx_eval_constant_expression (ctx, oldary,
 					   lval,
@@ -4269,7 +4272,7 @@ cxx_eval_array_reference (const constexpr_ctx *ctx, tree t,
 	 building; if there's no initializer for this element yet,
 	 that's an error.  */
       if (!ctx->quiet)
-	error ("accessing uninitialized array element");
+	error_at (loc, "accessing uninitialized array element");
       *non_constant_p = true;
       return t;
     }
@@ -4318,13 +4321,14 @@ cxx_eval_component_reference (const constexpr_ctx *ctx, tree t,
   tree whole = cxx_eval_constant_expression (ctx, orig_whole,
 					     lval,
 					     non_constant_p, overflow_p);
+  location_t loc = cp_expr_loc_or_loc (whole, ctx->global->loc);
   if (*non_constant_p)
     return t;
   if (INDIRECT_REF_P (whole)
       && integer_zerop (TREE_OPERAND (whole, 0)))
     {
       if (!ctx->quiet)
-	error ("dereferencing a null pointer in %qE", orig_whole);
+	error_at (loc, "dereferencing a null pointer in %qE", orig_whole);
       *non_constant_p = true;
       return t;
     }
@@ -4343,7 +4347,7 @@ cxx_eval_component_reference (const constexpr_ctx *ctx, tree t,
   if (TREE_CODE (whole) != CONSTRUCTOR)
     {
       if (!ctx->quiet)
-	error ("%qE is not a constant expression", orig_whole);
+	error_at (loc, "%qE is not a constant expression", orig_whole);
       *non_constant_p = true;
       return t;
     }
@@ -4351,7 +4355,7 @@ cxx_eval_component_reference (const constexpr_ctx *ctx, tree t,
       && DECL_MUTABLE_P (part))
     {
       if (!ctx->quiet)
-	error ("mutable %qD is not usable in a constant expression", part);
+	error_at (loc, "mutable %qD is not usable in a constant expression", part);
       *non_constant_p = true;
       return t;
     }
@@ -4381,10 +4385,10 @@ cxx_eval_component_reference (const constexpr_ctx *ctx, tree t,
 	{
 	  constructor_elt *cep = CONSTRUCTOR_ELT (whole, 0);
 	  if (cep->value == NULL_TREE)
-	    error ("accessing uninitialized member %qD", part);
+	    error_at (loc, "accessing uninitialized member %qD", part);
 	  else
-	    error ("accessing %qD member instead of initialized %qD member in "
-		   "constant expression", part, cep->index);
+	    error_at (loc, "accessing %qD member instead of initialized %qD member "
+		      "in constant expression", part, cep->index);
 	}
       *non_constant_p = true;
       return t;
@@ -4403,7 +4407,7 @@ cxx_eval_component_reference (const constexpr_ctx *ctx, tree t,
 	 building; if there's no initializer for this member yet, that's an
 	 error.  */
       if (!ctx->quiet)
-	error ("accessing uninitialized member %qD", part);
+	error_at (loc, "accessing uninitialized member %qD", part);
       *non_constant_p = true;
       return t;
     }
@@ -4431,6 +4435,7 @@ cxx_eval_bit_field_ref (const constexpr_ctx *ctx, tree t,
   tree whole = cxx_eval_constant_expression (ctx, orig_whole,
 					     lval,
 					     non_constant_p, overflow_p);
+  location_t loc = cp_expr_loc_or_loc (t, ctx->global->loc);
   tree start, field, value;
   unsigned HOST_WIDE_INT i;
 
@@ -4443,7 +4448,7 @@ cxx_eval_bit_field_ref (const constexpr_ctx *ctx, tree t,
       && TREE_CODE (whole) != CONSTRUCTOR)
     {
       if (!ctx->quiet)
-	error ("%qE is not a constant expression", orig_whole);
+	error_at (loc, "%qE is not a constant expression", orig_whole);
       *non_constant_p = true;
     }
   if (*non_constant_p)
@@ -4455,7 +4460,7 @@ cxx_eval_bit_field_ref (const constexpr_ctx *ctx, tree t,
 				 TREE_OPERAND (t, 1), TREE_OPERAND (t, 2)))
 	return r;
       if (!ctx->quiet)
-	error ("%qE is not a constant expression", orig_whole);
+	error_at (loc, "%qE is not a constant expression", orig_whole);
       *non_constant_p = true;
       return t;
     }
@@ -5604,6 +5609,7 @@ cxx_eval_indirect_ref (const constexpr_ctx *ctx, tree t,
 		       value_cat lval,
 		       bool *non_constant_p, bool *overflow_p)
 {
+  location_t loc = cp_expr_loc_or_loc (t, ctx->global->loc);
   tree orig_op0 = TREE_OPERAND (t, 0);
   bool empty_base = false;
 
@@ -5634,7 +5640,7 @@ cxx_eval_indirect_ref (const constexpr_ctx *ctx, tree t,
       if (!lval && integer_zerop (op0))
 	{
 	  if (!ctx->quiet)
-	    error ("dereferencing a null pointer");
+	    error_at (loc, "dereferencing a null pointer");
 	  *non_constant_p = true;
 	  return t;
 	}
@@ -5653,8 +5659,7 @@ cxx_eval_indirect_ref (const constexpr_ctx *ctx, tree t,
 			  (TREE_TYPE (TREE_TYPE (sub)), TREE_TYPE (t)));
 	      /* DR 1188 says we don't have to deal with this.  */
 	      if (!ctx->quiet)
-		error_at (cp_expr_loc_or_input_loc (t),
-			  "accessing value of %qE through a %qT glvalue in a "
+		error_at (loc, "accessing value of %qE through a %qT glvalue in a "
 			  "constant expression", build_fold_indirect_ref (sub),
 			  TREE_TYPE (t));
 	      *non_constant_p = true;
@@ -5901,6 +5906,7 @@ cxx_eval_store_expression (const constexpr_ctx *ctx, tree t,
 			   value_cat lval,
 			   bool *non_constant_p, bool *overflow_p)
 {
+  location_t loc = cp_expr_loc_or_loc (t, ctx->global->loc);
   constexpr_ctx new_ctx = *ctx;
 
   tree init = TREE_OPERAND (t, 1);
@@ -6025,7 +6031,7 @@ cxx_eval_store_expression (const constexpr_ctx *ctx, tree t,
       /* A constant-expression cannot modify objects from outside the
 	 constant-expression.  */
       if (!ctx->quiet)
-	error ("modification of %qE is not a constant expression", object);
+	error_at (loc, "modification of %qE is not a constant expression", object);
       *non_constant_p = true;
       return t;
     }
@@ -6123,7 +6129,7 @@ cxx_eval_store_expression (const constexpr_ctx *ctx, tree t,
 	  if (cxx_dialect < cxx20)
 	    {
 	      if (!ctx->quiet)
-		error_at (cp_expr_loc_or_input_loc (t),
+		error_at (cp_expr_loc_or_loc (t, ctx->global->loc),
 			  "change of the active member of a union "
 			  "from %qD to %qD",
 			  CONSTRUCTOR_ELT (*valp, 0)->index,
@@ -6136,7 +6142,7 @@ cxx_eval_store_expression (const constexpr_ctx *ctx, tree t,
 	      /* Diagnose changing the active union member while the union
 		 is in the process of being initialized.  */
 	      if (!ctx->quiet)
-		error_at (cp_expr_loc_or_input_loc (t),
+		error_at (cp_expr_loc_or_loc (t, ctx->global->loc),
 			  "change of the active member of a union "
 			  "from %qD to %qD during initialization",
 			  CONSTRUCTOR_ELT (*valp, 0)->index,
@@ -6219,7 +6225,7 @@ cxx_eval_store_expression (const constexpr_ctx *ctx, tree t,
       if (fail)
 	{
 	  if (!ctx->quiet)
-	    modifying_const_object_error (t, const_object_being_modified);
+	    modifying_const_object_error (ctx, t, const_object_being_modified);
 	  *non_constant_p = true;
 	  return t;
 	}
@@ -6376,6 +6382,8 @@ cxx_eval_increment_expression (const constexpr_ctx *ctx, tree t,
   tree offset = TREE_OPERAND (t, 1);
   gcc_assert (TREE_CONSTANT (offset));
 
+  location_t loc = cp_expr_loc_or_loc (t, ctx->global->loc);
+
   /* OFFSET is constant, but perhaps not constant enough.  We need to
      e.g. bash FLOAT_EXPRs to REAL_CSTs.  */
   offset = fold_simple (offset);
@@ -6423,8 +6431,7 @@ cxx_eval_increment_expression (const constexpr_ctx *ctx, tree t,
     VERIFY_CONSTANT (mod);
 
   /* Storing the modified value.  */
-  tree store = build2_loc (cp_expr_loc_or_loc (t, input_location),
-			   MODIFY_EXPR, type, op, mod);
+  tree store = build2_loc (loc, MODIFY_EXPR, type, op, mod);
   mod = cxx_eval_constant_expression (ctx, store, lval,
 				      non_constant_p, overflow_p);
   ggc_free (store);
@@ -6597,6 +6604,7 @@ cxx_eval_loop_expr (const constexpr_ctx *ctx, tree t,
 		    bool *non_constant_p, bool *overflow_p,
 		    tree *jump_target)
 {
+  location_t loc = cp_expr_loc_or_loc (t, ctx->global->loc);
   constexpr_ctx new_ctx = *ctx;
   tree local_target;
   if (!jump_target)
@@ -6686,7 +6694,7 @@ cxx_eval_loop_expr (const constexpr_ctx *ctx, tree t,
       if (++count >= constexpr_loop_limit)
 	{
 	  if (!ctx->quiet)
-	    error_at (cp_expr_loc_or_input_loc (t),
+	    error_at (loc,
 		      "%<constexpr%> loop iteration count exceeds limit of %d "
 		      "(use %<-fconstexpr-loop-limit=%> to increase the limit)",
 		      constexpr_loop_limit);
@@ -6945,7 +6953,10 @@ cxx_eval_constant_expression (const constexpr_ctx *ctx, tree t,
       return t;
     }
 
-  location_t loc = cp_expr_loc_or_input_loc (t);
+  /* Track current location, propagating down from parent calls
+     in case this expression has no location information.  */
+  location_t loc = cp_expr_loc_or_loc (t, ctx->global->loc);
+  ctx->global->loc = loc;
 
   STRIP_ANY_LOCATION_WRAPPER (t);
 
@@ -6968,8 +6979,8 @@ cxx_eval_constant_expression (const constexpr_ctx *ctx, tree t,
 	  && !integer_zerop (t))
 	{
 	  if (!ctx->quiet)
-	    error ("value %qE of type %qT is not a constant expression",
-		   t, TREE_TYPE (t));
+	    error_at (loc, "value %qE of type %qT is not a constant expression",
+		      t, TREE_TYPE (t));
 	  *non_constant_p = true;
 	}
 
@@ -7217,8 +7228,8 @@ cxx_eval_constant_expression (const constexpr_ctx *ctx, tree t,
 	    if (!ctx->quiet)
 	      {
 		auto_diagnostic_group d;
-		error ("temporary of non-literal type %qT in a "
-		       "constant expression", type);
+		error_at (loc, "temporary of non-literal type %qT in a "
+			  "constant expression", type);
 		explain_non_literal_class (type);
 	      }
 	    *non_constant_p = true;
@@ -8020,8 +8031,7 @@ cxx_eval_constant_expression (const constexpr_ctx *ctx, tree t,
 	if (function_concept_p (tmpl))
 	  {
 	    if (!ctx->quiet)
-	      error_at (cp_expr_loc_or_input_loc (t),
-			"function concept must be called");
+	      error_at (loc, "function concept must be called");
 	    r = error_mark_node;
 	    break;
 	  }
@@ -8115,6 +8125,9 @@ cxx_eval_constant_expression (const constexpr_ctx *ctx, tree t,
       *non_constant_p = true;
       break;
     }
+
+  /* Reset current location in case it was modified in child calls.  */
+  ctx->global->loc = loc;
 
   if (r == error_mark_node)
     *non_constant_p = true;

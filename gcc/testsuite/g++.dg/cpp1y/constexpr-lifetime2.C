@@ -8,9 +8,9 @@ struct S {
 
 constexpr int error() {
   const auto& local = S{}.get();  // { dg-message "note: declared here" }
-  return local;
+  return local;  // { dg-error "accessing object outside its lifetime" }
 }
-constexpr int x = error();  // { dg-error "accessing object outside its lifetime" }
+constexpr int x = error();  // { dg-message "in .constexpr. expansion" }
 
 constexpr int ok() {
   // temporary should only be destroyed after end of full-expression
