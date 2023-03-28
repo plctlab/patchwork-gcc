@@ -639,12 +639,12 @@ check_postcondition_result (tree decl, tree type, location_t loc)
   {
     const char* what;
     if (DECL_CONSTRUCTOR_P (decl))
-      what = "constructor";
+      what = "constructor does not return a value to test";
     else if (DECL_DESTRUCTOR_P (decl))
-      what  = "destructor";
+      what = "destructor does not return a value to test";
     else
-      what = "function";
-    error_at (loc, "%s does not return a value to test", what);
+      what = "function does not return a value to test";
+    error_at (loc, "%s", what);
     return false;
   }
 
