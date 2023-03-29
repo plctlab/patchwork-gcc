@@ -7,7 +7,7 @@ constexpr int f(int i) {
     int j = 123;  // { dg-message "note: declared here" }
     p = &j;
   }
-  return *p;
+  return *p;  // { dg-error "accessing object outside its lifetime" }
 }
 
-constexpr int i = f(0);  // { dg-error "accessing object outside its lifetime" }
+constexpr int i = f(0);  // { dg-message "in .constexpr. expansion" }

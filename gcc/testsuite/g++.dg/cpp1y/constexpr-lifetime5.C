@@ -5,7 +5,7 @@ constexpr const int& id(int x) { return x; }  // { dg-message "note: declared he
 
 constexpr bool test() {
   const int& y = id(3);
-  return y == 3;
+  return y == 3;  // { dg-error "accessing object outside its lifetime" }
 }
 
-constexpr bool x = test();  // { dg-error "accessing object outside its lifetime" }
+constexpr bool x = test();  // { dg-message "in .constexpr. expansion" }

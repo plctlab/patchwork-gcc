@@ -100,13 +100,13 @@ constexpr int
 fn7 (const int *a, int b)
 {
   if (b != 3)
-    return fn6 (*a, b);
+    return fn6 (*a, b); // { dg-error "null pointer" }
   return 7;
 }
 
 constexpr int n1 = 7;
 constexpr int n2 = fn7 (&n1, 5);
-constexpr int n3 = fn7 ((const int *) 0, 8);  // { dg-error "null pointer|in .constexpr. expansion of " }
+constexpr int n3 = fn7 ((const int *) 0, 8);  // { dg-message "in .constexpr. expansion of " }
 
 constexpr int
 fn8 (int i)
