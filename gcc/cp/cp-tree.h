@@ -2860,6 +2860,7 @@ struct GTY(()) lang_decl_base {
   unsigned concept_p : 1;                  /* applies to vars and functions */
   unsigned var_declared_inline_p : 1;	   /* var */
   unsigned dependent_init_p : 1;	   /* var */
+  unsigned expired_p : 1;		   /* var or parm */
 
   /* The following apply to VAR, FUNCTION, TYPE, CONCEPT, & NAMESPACE
      decls.  */
@@ -2871,7 +2872,7 @@ struct GTY(()) lang_decl_base {
   /* VAR_DECL or FUNCTION_DECL has keyed decls.     */
   unsigned module_keyed_decls_p : 1;
 
-  /* 12 spare bits.  */
+  /* 11 spare bits.  */
 };
 
 /* True for DECL codes which have template info and access.  */
@@ -4365,6 +4366,13 @@ get_vec_init_expr (tree t)
    && DECL_LANG_SPECIFIC (NODE)->u.base.dependent_init_p)
 #define SET_DECL_DEPENDENT_INIT_P(NODE, X) \
   (DECL_LANG_SPECIFIC (VAR_DECL_CHECK (NODE))->u.base.dependent_init_p = (X))
+
+/* Nonzero if NODE is a VAR_DECL, PARM_DECL, or FIELD_DECL that is within
+   its lifetime for constant evaluation purposes.  */
+#define DECL_EXPIRED_P(NODE) \
+  (DECL_LANG_SPECIFIC (NODE) && DECL_LANG_SPECIFIC (NODE)->u.base.expired_p)
+#define SET_DECL_EXPIRED_P(NODE, X) \
+  (DECL_LANG_SPECIFIC (NODE)->u.base.expired_p = (X))
 
 /* Nonzero if NODE is an artificial VAR_DECL for a C++17 structured binding
    declaration or one of VAR_DECLs for the user identifiers in it.  */

@@ -5654,6 +5654,7 @@ trees_out::lang_decl_bools (tree t)
   WB (lang->u.base.concept_p);
   WB (lang->u.base.var_declared_inline_p);
   WB (lang->u.base.dependent_init_p);
+  WB (lang->u.base.expired_p);
   /* When building a header unit, everthing is marked as purview, (so
      we know which decls to write).  But when we import them we do not
      want to mark them as in module purview.  */
@@ -5728,6 +5729,7 @@ trees_in::lang_decl_bools (tree t)
   RB (lang->u.base.concept_p);
   RB (lang->u.base.var_declared_inline_p);
   RB (lang->u.base.dependent_init_p);
+  RB (lang->u.base.expired_p);
   RB (lang->u.base.module_purview_p);
   RB (lang->u.base.module_attach_p);
   if (VAR_OR_FUNCTION_DECL_P (t))
