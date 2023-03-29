@@ -412,4 +412,8 @@ foreach src [lsort [find $srcdir/$subdir {*_a.[CHX}]] {
     }
 }
 
+# Restore the saved 'unsupported' proc.
+rename unsupported {}
+rename saved-unsupported unsupported
+
 dg-finish
