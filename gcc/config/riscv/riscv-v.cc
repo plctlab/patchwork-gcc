@@ -701,4 +701,23 @@ slide1_sew64_helper (int unspec, machine_mode mode, machine_mode demote_mode,
   return true;
 }
 
+rtx
+gen_avl_for_scalar_move (rtx avl)
+{
+  if (CONST_INT_P (avl))
+    {
+      if (rtx_equal_p (avl, const0_rtx))
+	return const0_rtx;
+      else
+	return const1_rtx;
+    }
+  else
+    {
+      rtx tmp = gen_reg_rtx (Pmode);
+      emit_insn (
+	gen_rtx_SET (tmp, gen_rtx_fmt_ee (GTU, Pmode, avl, const0_rtx)));
+      return tmp;
+    }
+}
+
 } // namespace riscv_vector
