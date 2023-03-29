@@ -1246,7 +1246,10 @@ finish_return_stmt (tree expr)
 
   r = build_stmt (input_location, RETURN_EXPR, expr);
   if (no_warning)
-    suppress_warning (r, OPT_Wreturn_type);
+    {
+      suppress_warning (r, OPT_Wreturn_type);
+      suppress_warning (r, OPT_Wdangling_pointer_);
+    }
   r = maybe_cleanup_point_expr_void (r);
   r = add_stmt (r);
 
