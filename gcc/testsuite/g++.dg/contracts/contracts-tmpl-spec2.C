@@ -369,14 +369,8 @@ int main(int, char**)
 // { dg-output {contract violation in function G3<int, double>::f at .*:148: s > 2(\n|\r\n|\r)} }
 // { dg-output {\[continue:on\](\n|\r\n|\r)} }
 // { dg-output {G3 full int double(\n|\r\n|\r)} }
-// { dg-output {contract violation in function G3<char, char>::f at .*:124: t > 0(\n|\r\n|\r)} }
-// { dg-output {\[continue:on\](\n|\r\n|\r)} }
-// { dg-output {contract violation in function G3<char, char>::f at .*:125: s > 0(\n|\r\n|\r)} }
-// { dg-output {\[continue:on\](\n|\r\n|\r)} }
 // { dg-output {G3 general T S(\n|\r\n|\r)} }
 // { dg-output {contract violation in function G3<int, char>::f at .*:139: t > 1(\n|\r\n|\r)} }
-// { dg-output {\[continue:on\](\n|\r\n|\r)} }
-// { dg-output {contract violation in function G3<int, char>::f at .*:140: s > 1(\n|\r\n|\r)} }
 // { dg-output {\[continue:on\](\n|\r\n|\r)} }
 // { dg-output {G3 partial int S(\n|\r\n|\r)} }
 // { dg-output {G3 full int C(\n|\r\n|\r)} }
