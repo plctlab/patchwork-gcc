@@ -213,6 +213,22 @@ static int rgn_nr_edges;
 /* Array of size rgn_nr_edges.  */
 static edge *rgn_edges;
 
+/* Possible actions for dependencies freeing.  */
+enum rgn_bb_deps_free_action
+{
+  /* This block doesn't get dependencies computed so don't need to free.  */
+  RGN_BB_DEPS_FREE_NO,
+  /* This block gets scheduled normally so free dependencies as usual.  */
+  RGN_BB_DEPS_FREE_NORMAL,
+  /* This block gets skipped in scheduling but has dependencies computed early,
+     need to free the forward list articially.  */
+  RGN_BB_DEPS_FREE_ARTICIAL
+};
+
+/* For basic block i, bb_deps_free_actions[i] indicates which action needs
+   to be taken for freeing its dependencies.  */
+static enum rgn_bb_deps_free_action *bb_deps_free_actions;
+
 /* Mapping from each edge in the graph to its number in the rgn.  */
 #define EDGE_TO_BIT(edge) ((int)(size_t)(edge)->aux)
 #define SET_EDGE_TO_BIT(edge,nr) ((edge)->aux = (void *)(size_t)(nr))
@@ -2730,6 +2746,15 @@ compute_block_dependences (int bb)
   gcc_assert (EBB_FIRST_BB (bb) == EBB_LAST_BB (bb));
   get_ebb_head_tail (EBB_FIRST_BB (bb), EBB_LAST_BB (bb), &head, &tail);
 
+  /* Don't compute block dependencies if there are no real nondebug insns.  */
+  if (no_real_nondebug_insns_p (head, tail))
+    {
+      if (current_nr_blocks > 1)
+	propagate_deps (bb, &tmp_deps);
+      free_deps (&tmp_deps);
+      return;
+    }
+
   sched_analyze (&tmp_deps, head, tail);
 
   add_branch_dependences (head, tail);
@@ -2744,6 +2769,24 @@ compute_block_dependences (int bb)
     targetm.sched.dependencies_evaluation_hook (head, tail);
 }
 
+/* Artificially resolve forward dependencies for instructions HEAD to TAIL.  */
+
+static void
+resolve_forw_deps (rtx_insn *head, rtx_insn *tail)
+{
+  rtx_insn *insn;
+  rtx_insn *next_tail = NEXT_INSN (tail);
+  sd_iterator_def sd_it;
+  dep_t dep;
+
+  /* There could be some insns which get skipped in scheduling but we compute
+     dependencies for them previously, so make them resolved.  */
+  for (insn = head; insn != next_tail; insn = NEXT_INSN (insn))
+    for (sd_it = sd_iterator_start (insn, SD_LIST_FORW);
+	 sd_iterator_cond (&sd_it, &dep);)
+      sd_resolve_dep (sd_it);
+}
+
 /* Free dependencies of instructions inside BB.  */
 static void
 free_block_dependencies (int bb)
@@ -2753,8 +2796,11 @@ free_block_dependencies (int bb)
 
   get_ebb_head_tail (EBB_FIRST_BB (bb), EBB_LAST_BB (bb), &head, &tail);
 
-  if (no_real_insns_p (head, tail))
+  if (bb_deps_free_actions[bb] == RGN_BB_DEPS_FREE_NO)
     return;
+
+  if (bb_deps_free_actions[bb] == RGN_BB_DEPS_FREE_ARTICIAL)
+    resolve_forw_deps (head, tail);
 
   sched_free_deps (head, tail, true);
 }
@@ -3019,7 +3065,7 @@ compute_priorities (void)
       gcc_assert (EBB_FIRST_BB (bb) == EBB_LAST_BB (bb));
       get_ebb_head_tail (EBB_FIRST_BB (bb), EBB_LAST_BB (bb), &head, &tail);
 
-      if (no_real_insns_p (head, tail))
+      if (no_real_nondebug_insns_p (head, tail))
 	continue;
 
       rgn_n_insns += set_priorities (head, tail);
@@ -3153,7 +3199,7 @@ schedule_region (int rgn)
 
 	  get_ebb_head_tail (first_bb, last_bb, &head, &tail);
 
-	  if (no_real_insns_p (head, tail))
+	  if (no_real_nondebug_insns_p (head, tail))
 	    {
 	      gcc_assert (first_bb == last_bb);
 	      continue;
@@ -3173,44 +3219,62 @@ schedule_region (int rgn)
 
       get_ebb_head_tail (first_bb, last_bb, &head, &tail);
 
-      if (no_real_insns_p (head, tail))
+      if (no_real_nondebug_insns_p (head, tail))
 	{
 	  gcc_assert (first_bb == last_bb);
 	  save_state_for_fallthru_edge (last_bb, bb_state[first_bb->index]);
-	  continue;
+
+	  if (bb_deps_free_actions[bb] == RGN_BB_DEPS_FREE_NO)
+	    continue;
+
+	  /* As it's not no_real_nondebug_insns_p initially, then it has some
+	     dependencies computed so free it articially.  */
+	  bb_deps_free_actions[bb] = RGN_BB_DEPS_FREE_ARTICIAL;
+	}
+      else
+	{
+	  current_sched_info->prev_head = PREV_INSN (head);
+	  current_sched_info->next_tail = NEXT_INSN (tail);
+
+	  remove_notes (head, tail);
+
+	  unlink_bb_notes (first_bb, last_bb);
+
+	  target_bb = bb;
+
+	  gcc_assert (flag_schedule_interblock || current_nr_blocks == 1);
+	  current_sched_info->queue_must_finish_empty = current_nr_blocks == 1;
+
+	  curr_bb = first_bb;
+	  if (dbg_cnt (sched_block))
+	    {
+	      int saved_last_basic_block = last_basic_block_for_fn (cfun);
+
+	      schedule_block (&curr_bb, bb_state[first_bb->index]);
+	      gcc_assert (EBB_FIRST_BB (bb) == first_bb);
+	      sched_rgn_n_insns += sched_n_insns;
+	      realloc_bb_state_array (saved_last_basic_block);
+	      save_state_for_fallthru_edge (last_bb, curr_state);
+
+	      /* Clean up.  */
+	      if (current_nr_blocks > 1)
+		free_trg_info ();
+	    }
+	  else
+	    bb_deps_free_actions[bb] = RGN_BB_DEPS_FREE_ARTICIAL;
 	}
 
-      current_sched_info->prev_head = PREV_INSN (head);
-      current_sched_info->next_tail = NEXT_INSN (tail);
-
-      remove_notes (head, tail);
-
-      unlink_bb_notes (first_bb, last_bb);
-
-      target_bb = bb;
-
-      gcc_assert (flag_schedule_interblock || current_nr_blocks == 1);
-      current_sched_info->queue_must_finish_empty = current_nr_blocks == 1;
-
-      curr_bb = first_bb;
-      if (dbg_cnt (sched_block))
-        {
-	  int saved_last_basic_block = last_basic_block_for_fn (cfun);
-
-	  schedule_block (&curr_bb, bb_state[first_bb->index]);
-	  gcc_assert (EBB_FIRST_BB (bb) == first_bb);
-	  sched_rgn_n_insns += sched_n_insns;
-	  realloc_bb_state_array (saved_last_basic_block);
-	  save_state_for_fallthru_edge (last_bb, curr_state);
-        }
-      else
-        {
-          sched_rgn_n_insns += rgn_n_insns;
-        }
-
-      /* Clean up.  */
-      if (current_nr_blocks > 1)
-	free_trg_info ();
+      /* We have counted this block when computing rgn_n_insns
+	 previously, so need to fix up sched_rgn_n_insns now.  */
+      if (bb_deps_free_actions[bb] == RGN_BB_DEPS_FREE_ARTICIAL)
+	{
+	  while (head != NEXT_INSN (tail))
+	    {
+	      if (INSN_P (head))
+		sched_rgn_n_insns++;
+	      head = NEXT_INSN (head);
+	    }
+	}
     }
 
   /* Sanity check: verify that all region insns were scheduled.  */
@@ -3218,12 +3282,12 @@ schedule_region (int rgn)
 
   sched_finish_ready_list ();
 
-  /* Done with this region.  */
-  sched_rgn_local_finish ();
-
   /* Free dependencies.  */
   for (bb = 0; bb < current_nr_blocks; ++bb)
     free_block_dependencies (bb);
+
+  /* Done with this region.  */
+  sched_rgn_local_finish ();
 
   gcc_assert (haifa_recovery_bb_ever_added_p
 	      || deps_pools_are_empty_p ());
@@ -3445,6 +3509,19 @@ sched_rgn_local_init (int rgn)
 	    e->aux = NULL;
         }
     }
+
+  /* Initialize bb_deps_free_actions.  */
+  bb_deps_free_actions
+    = XNEWVEC (enum rgn_bb_deps_free_action, current_nr_blocks);
+  for (bb = 0; bb < current_nr_blocks; bb++)
+    {
+      rtx_insn *head, *tail;
+      get_ebb_head_tail (EBB_FIRST_BB (bb), EBB_LAST_BB (bb), &head, &tail);
+      if (no_real_nondebug_insns_p (head, tail))
+	bb_deps_free_actions[bb] = RGN_BB_DEPS_FREE_NO;
+      else
+	bb_deps_free_actions[bb] = RGN_BB_DEPS_FREE_NORMAL;
+    }
 }
 
 /* Free data computed for the finished region.  */
@@ -3462,9 +3539,12 @@ sched_rgn_local_free (void)
 void
 sched_rgn_local_finish (void)
 {
-  if (current_nr_blocks > 1 && !sel_sched_p ())
+  if (!sel_sched_p ())
     {
-      sched_rgn_local_free ();
+      if (current_nr_blocks > 1)
+	sched_rgn_local_free ();
+
+      free (bb_deps_free_actions);
     }
 }
 

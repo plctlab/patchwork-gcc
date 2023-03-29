@@ -491,7 +491,7 @@ schedule_ebb (rtx_insn *head, rtx_insn *tail, bool modulo_scheduling)
   first_bb = BLOCK_FOR_INSN (head);
   last_bb = BLOCK_FOR_INSN (tail);
 
-  if (no_real_insns_p (head, tail))
+  if (no_real_nondebug_insns_p (head, tail))
     return BLOCK_FOR_INSN (tail);
 
   gcc_assert (INSN_P (head) && INSN_P (tail));

@@ -1397,7 +1397,7 @@ extern void free_global_sched_pressure_data (void);
 extern int haifa_classify_insn (const_rtx);
 extern void get_ebb_head_tail (basic_block, basic_block,
 			       rtx_insn **, rtx_insn **);
-extern int no_real_insns_p (const rtx_insn *, const rtx_insn *);
+extern int no_real_nondebug_insns_p (const rtx_insn *, const rtx_insn *);
 
 extern int insn_sched_cost (rtx_insn *);
 extern int dep_cost_1 (dep_t, dw_t);

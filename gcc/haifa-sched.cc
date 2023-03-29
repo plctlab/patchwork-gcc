@@ -5033,14 +5033,17 @@ get_ebb_head_tail (basic_block beg, basic_block end,
   *tailp = end_tail;
 }
 
-/* Return nonzero if there are no real insns in the range [ HEAD, TAIL ].  */
+/* Return nonzero if there are no real nondebug insns in the range
+   [ HEAD, TAIL ].  */
 
 int
-no_real_insns_p (const rtx_insn *head, const rtx_insn *tail)
+no_real_nondebug_insns_p (const rtx_insn *head, const rtx_insn *tail)
 {
   while (head != NEXT_INSN (tail))
     {
-      if (!NOTE_P (head) && !LABEL_P (head))
+      if (!NOTE_P (head)
+	  && !LABEL_P (head)
+	  && !DEBUG_INSN_P (head))
 	return 0;
       head = NEXT_INSN (head);
     }

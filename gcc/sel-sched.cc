@@ -7213,7 +7213,8 @@ sel_region_target_finish (bool reset_sched_cycles_p)
 
       find_ebb_boundaries (EBB_FIRST_BB (i), scheduled_blocks);
 
-      if (no_real_insns_p (current_sched_info->head, current_sched_info->tail))
+      if (no_real_nondebug_insns_p (current_sched_info->head,
+				    current_sched_info->tail))
 	continue;
 
       if (reset_sched_cycles_p)
