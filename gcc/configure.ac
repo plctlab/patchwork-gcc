@@ -7013,6 +7013,7 @@ AC_MSG_RESULT($do_link_mutex)
 
 if test "$do_link_mutex" = "yes"; then
    DO_LINK_MUTEX=true
+   echo gcc/configure: WARNING: --enable-link-mutex is deprecated and will be removed in the next release, use --enable-link-serialization instead 1>&2
 else
    DO_LINK_MUTEX=false
 fi
