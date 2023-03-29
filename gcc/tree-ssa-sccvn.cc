@@ -799,6 +799,19 @@ vn_reference_eq (const_vn_reference_t const vr1, const_vn_reference_t const vr2)
 	   && (TYPE_PRECISION (vr2->type)
 	       != TREE_INT_CST_LOW (TYPE_SIZE (vr2->type))))
     return false;
+  else if (VECTOR_BOOLEAN_TYPE_P (vr1->type)
+	   && VECTOR_BOOLEAN_TYPE_P (vr2->type)
+	   && expressions_equal_p (TYPE_SIZE (vr1->type),
+				   TYPE_SIZE (vr2->type))
+	   && TYPE_PRECISION (vr1->type) != TYPE_PRECISION (vr2->type))
+    /* For the vbool*_t types in most architectures, the precision size is
+       caculated as the multiple of the type size.  For example,
+       precision_size = type_size * 8 (aka, bit count per bytes).
+       Unfortunately, some architecture like RISC-V will adjust the
+       precision for the vbool*_t in order to align the ISA and the
+       precision will not be the multiple of the type size.  Thus, enrich
+       the type comparation for this case here.  */
+    return false;
 
   i = 0;
   j = 0;
