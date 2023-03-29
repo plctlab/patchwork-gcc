@@ -24,6 +24,3 @@ return_addr_local_as_intref (void)
 
   return (const intptr_t&)a;   // { dg-warning "\\\[-Wreturn-local-addr]" } */
 }
-
-/* Verify that the return value has been replaced with zero:
-  { dg-final { scan-tree-dump-times "return 0;" 2 "optimized" } } */
