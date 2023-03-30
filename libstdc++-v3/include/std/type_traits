@@ -294,6 +294,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   // Primary type categories.
 
   /// is_void
+#if __has_builtin(__is_void)
+  template<typename _Tp>
+    struct is_void
+    : public __bool_constant<__is_void(_Tp)>
+    { };
+#else
   template<typename _Tp>
     struct is_void
     : public false_type { };
@@ -313,6 +319,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   template<>
     struct is_void<const volatile void>
     : public true_type { };
+#endif
 
   /// @cond undocumented
   template<typename>
