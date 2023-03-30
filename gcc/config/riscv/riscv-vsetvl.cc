@@ -3918,7 +3918,8 @@ pass_vsetvl::cleanup_insns (void) const
 	  if (!has_vl_op (rinsn) || !REG_P (get_vl (rinsn)))
 	    continue;
 	  rtx avl = get_vl (rinsn);
-	  if (count_occurrences (PATTERN (rinsn), avl, 0) == 1)
+	  if (count_occurrences (PATTERN (rinsn), avl, 0) == 1
+	      || fault_first_load_p (rinsn))
 	    {
 	      /* Get the list of uses for the new instruction.  */
 	      auto attempt = crtl->ssa->new_change_attempt ();
