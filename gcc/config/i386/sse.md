@@ -8014,8 +8014,9 @@
    (match_operand:VF1 1 "register_operand")]
   "TARGET_SSE2"
 {
-  if (<MODE>mode == V16SFmode)
-    emit_insn (gen_ufix_truncv16sfv16si2 (operands[0],
+  /* AVX512 support vcvttps2udq for all 128/256/512-bit vectors.  */
+  if (<MODE>mode == V16SFmode || TARGET_AVX512VL)
+    emit_insn (gen_ufix_trunc<mode><sseintvecmodelower>2 (operands[0],
 					  operands[1]));
   else
     {
@@ -8413,6 +8414,12 @@
    (set_attr "prefix" "evex")
    (set_attr "mode" "V4SF")])
 
+(define_expand "floatuns<si2dfmodelower><mode>2"
+  [(set (match_operand:VF2_512_256VL 0 "register_operand")
+	(unsigned_float:VF2_512_256VL
+	  (match_operand:<si2dfmode> 1 "nonimmediate_operand")))]
+   "TARGET_AVX512F")
+
 (define_insn "ufloat<si2dfmodelower><mode>2<mask_name>"
   [(set (match_operand:VF2_512_256VL 0 "register_operand" "=v")
 	(unsigned_float:VF2_512_256VL
@@ -8693,6 +8700,13 @@
   [(set_attr "type" "ssecvt")
    (set_attr "prefix" "maybe_evex")
    (set_attr "mode" "OI")])
+
+
+/* The standard pattern name is fixuns_truncmn2.  */
+(define_expand "fixuns_truncv4dfv4si2"
+  [(set (match_operand:V4SI 0 "register_operand")
+	(unsigned_fix:V4SI (match_operand:V4DF 1 "nonimmediate_operand")))]
+  "TARGET_AVX512VL && TARGET_AVX512F")
 
 (define_insn "ufix_truncv4dfv4si2<mask_name>"
   [(set (match_operand:V4SI 0 "register_operand" "=v")
