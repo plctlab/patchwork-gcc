@@ -2728,6 +2728,7 @@ Integer_expression::do_import(Import_expression* imp, Location loc)
 	    {
 	      go_error_at(imp->location(), "bad number in import data: %qs",
 			  real_str.c_str());
+	      mpfr_clear (real);
 	      return Expression::make_error(loc);
 	    }
 	}
@@ -2743,6 +2744,8 @@ Integer_expression::do_import(Import_expression* imp, Location loc)
 	{
 	  go_error_at(imp->location(), "bad number in import data: %qs",
 		      imag_str.c_str());
+	  mpfr_clear (imag);
+	  mpfr_clear (real);
 	  return Expression::make_error(loc);
 	}
       mpc_t cval;
@@ -2766,6 +2769,7 @@ Integer_expression::do_import(Import_expression* imp, Location loc)
 	{
 	  go_error_at(imp->location(), "bad number in import data: %qs",
 		      num.c_str());
+	  mpz_clear (val);
 	  return Expression::make_error(loc);
 	}
       Expression* ret;
@@ -2783,6 +2787,7 @@ Integer_expression::do_import(Import_expression* imp, Location loc)
 	{
 	  go_error_at(imp->location(), "bad number in import data: %qs",
 		      num.c_str());
+	  mpfr_clear (val);
 	  return Expression::make_error(loc);
 	}
       Expression* ret = Expression::make_float(&val, NULL, loc);
