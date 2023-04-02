@@ -2541,6 +2541,9 @@ gfc_ref_dimen_size (gfc_array_ref *ar, int dimen, mpz_t *result, mpz_t *end)
       return t;
 
     default:
+      mpz_clear (lower);
+      mpz_clear (stride);
+      mpz_clear (upper);
       gfc_internal_error ("gfc_ref_dimen_size(): Bad dimen_type");
     }
 
