@@ -2119,6 +2119,7 @@ CompileExpr::compile_integer_literal (const HIR::LiteralExpr &expr,
   if (mpz_init_set_str (ival, literal_value.as_string ().c_str (), 10) != 0)
     {
       rust_error_at (expr.get_locus (), "bad number in literal");
+      mpz_clear (ival);
       return error_mark_node;
     }
 
@@ -2133,6 +2134,9 @@ CompileExpr::compile_integer_literal (const HIR::LiteralExpr &expr,
       rust_error_at (expr.get_locus (),
 		     "integer overflows the respective type %<%s%>",
 		     tyty->get_name ().c_str ());
+      mpz_clear (type_min);
+      mpz_clear (type_max);
+      mpz_clear (ival);
       return error_mark_node;
     }
 
@@ -2158,6 +2162,7 @@ CompileExpr::compile_float_literal (const HIR::LiteralExpr &expr,
       != 0)
     {
       rust_error_at (expr.get_locus (), "bad number in literal");
+      mpfr_clear (fval);
       return error_mark_node;
     }
 
@@ -2179,9 +2184,11 @@ CompileExpr::compile_float_literal (const HIR::LiteralExpr &expr,
       rust_error_at (expr.get_locus (),
 		     "decimal overflows the respective type %<%s%>",
 		     tyty->get_name ().c_str ());
+      mpfr_clear (fval);
       return error_mark_node;
     }
 
+  mpfr_clear (fval);
   return real_value;
 }
 
