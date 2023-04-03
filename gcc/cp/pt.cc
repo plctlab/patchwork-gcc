@@ -30965,6 +30965,12 @@ do_auto_deduction (tree type, tree init, tree auto_node,
 	    return type;
 	}
 
+      /* We can see an ARGUMENT_PACK_SELECT argument when evaluating
+	 a return-type-requirement.  Get rid of them before entering
+	 satisfaction, since the satisfaction cache can't handle them.  */
+      if (context == adc_requirement)
+	outer_targs = preserve_args (outer_targs);
+
       if (context == adc_return_type
 	  || context == adc_variable_type
 	  || context == adc_decomp_type)
