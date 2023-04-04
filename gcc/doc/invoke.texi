@@ -745,7 +745,7 @@ Objective-C and Objective-C++ Dialects}.
 -fmem-report  -fpre-ipa-mem-report  -fpost-ipa-mem-report
 -fopt-info  -fopt-info-@var{options}@r{[}=@var{file}@r{]}
 -fmultiflags  -fprofile-report
--frandom-seed=@var{string}  -fsched-verbose=@var{n}
+-frandom-seed=@var{string}  -fsarif-time-report  -fsched-verbose=@var{n}
 -fsel-sched-verbose  -fsel-sched-dump-cfg  -fsel-sched-pipelining-verbose
 -fstats  -fstack-usage  -ftime-report  -ftime-report-details
 -fvar-tracking-assignments-toggle  -gtoggle
@@ -19634,6 +19634,15 @@ arbitrary string (in which case it's converted to a number by
 computing CRC32).
 
 The @var{string} should be different for every file you compile.
+
+@opindex fsarif-time-report
+@item -fsarif-time-report
+Equivalent to @option{-ftime-report}, except the information is emitted
+in JSON form as part of SARIF output (such as from
+@option{-fdiagnostics-format=sarif-file}).  The precise format of the
+JSON data is subject to change, and the values may not exactly match those
+emitted by @option{-ftime-report} due to being written out at a slightly
+different place within the compiler.
 
 @opindex save-temps
 @item -save-temps

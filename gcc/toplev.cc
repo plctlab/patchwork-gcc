@@ -2151,7 +2151,10 @@ toplev::~toplev ()
   if (g_timer && m_use_TV_TOTAL)
     {
       g_timer->stop (TV_TOTAL);
-      g_timer->print (stderr);
+      /* -fsarif-time-report doesn't lead to the output being printed
+	 to stderr; the other flags do.  */
+      if (time_report || !quiet_flag || flag_detailed_statistics)
+	g_timer->print (stderr);
       delete g_timer;
       g_timer = NULL;
     }
@@ -2163,7 +2166,10 @@ toplev::~toplev ()
 void
 toplev::start_timevars ()
 {
-  if (time_report || !quiet_flag  || flag_detailed_statistics)
+  if (time_report
+      || sarif_time_report
+      || !quiet_flag
+      || flag_detailed_statistics)
     timevar_init ();
 
   timevar_start (TV_TOTAL);

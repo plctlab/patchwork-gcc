@@ -2519,6 +2519,10 @@ frename-registers
 Common Var(flag_rename_registers) Optimization EnabledBy(funroll-loops)
 Perform a register renaming optimization pass.
 
+fsarif-time-report
+Common Var(sarif_time_report)
+Report the time taken by each compiler pass in any SARIF output.
+
 fschedule-fusion
 Common Var(flag_schedule_fusion) Init(2) Optimization
 Perform a target dependent instruction fusion optimization pass.
