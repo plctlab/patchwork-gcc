@@ -30,6 +30,8 @@
 /* Implement TARGET_OPTION_OPTIMIZATION_TABLE.  */
 static const struct default_options rs6000_option_optimization_table[] =
   {
+    /* Enable -free for zero extension and sign extension elimination.*/
+    { OPT_LEVELS_2_PLUS, OPT_free, NULL, 1 },
     /* Split multi-word types early.  */
     { OPT_LEVELS_ALL, OPT_fsplit_wide_types_early, NULL, 1 },
     /* Enable -fsched-pressure for first pass instruction scheduling.  */
@@ -38,11 +40,9 @@ static const struct default_options rs6000_option_optimization_table[] =
        loops at -O2 and above by default.  */
     { OPT_LEVELS_2_PLUS_SPEED_ONLY, OPT_funroll_loops, NULL, 1 },
     { OPT_LEVELS_2_PLUS_SPEED_ONLY, OPT_munroll_only_small_loops, NULL, 1 },
-
     /* -frename-registers leads to non-optimal codegen and performance
        on rs6000, turn it off by default.  */
     { OPT_LEVELS_ALL, OPT_frename_registers, NULL, 0 },
-
     /* Double growth factor to counter reduced min jump length.  */
     { OPT_LEVELS_ALL, OPT__param_max_grow_copy_bb_insns_, NULL, 16 },
     { OPT_LEVELS_NONE, 0, NULL, 0 }
