@@ -81,6 +81,8 @@ extern void riscv_reinit (void);
 extern poly_uint64 riscv_regmode_natural_size (machine_mode);
 extern bool riscv_v_ext_vector_mode_p (machine_mode);
 extern bool riscv_shamt_matches_mask_p (int, HOST_WIDE_INT);
+extern bool riscv_memmodel_needs_amo_acquire (enum memmodel);
+extern bool riscv_memmodel_needs_amo_release (enum memmodel);
 extern enum memmodel riscv_union_memmodels (enum memmodel, enum memmodel);
 
 /* Routines implemented in riscv-c.cc.  */

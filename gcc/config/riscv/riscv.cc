@@ -4311,7 +4311,7 @@ riscv_union_memmodels (enum memmodel model1, enum memmodel model2)
 /* Return true if the .AQ suffix should be added to an AMO to implement the
    acquire portion of memory model MODEL.  */
 
-static bool
+bool
 riscv_memmodel_needs_amo_acquire (enum memmodel model)
 {
   switch (model)
@@ -4334,7 +4334,7 @@ riscv_memmodel_needs_amo_acquire (enum memmodel model)
 /* Return true if the .RL suffix should be added to an AMO to implement the
    release portion of memory model MODEL.  */
 
-static bool
+bool
 riscv_memmodel_needs_amo_release (enum memmodel model)
 {
   switch (model)
