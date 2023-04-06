@@ -12,7 +12,7 @@ set -e
 GITROOT=${GITROOT:-"/git/gcc.git"}
 export GITROOT
 
-PATH=/usr/local/bin:$PATH
+PATH=/home/gccadmin/texinfo/install-git/bin:/usr/local/bin:$PATH
 
 MANUALS="cpp
   cppinternals
