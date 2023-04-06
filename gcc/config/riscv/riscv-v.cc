@@ -43,6 +43,7 @@
 #include "optabs.h"
 #include "tm-constrs.h"
 #include "rtx-vector-builder.h"
+#include "diagnostic-core.h"
 
 using namespace riscv_vector;
 
@@ -724,4 +725,82 @@ gen_avl_for_scalar_move (rtx avl)
     }
 }
 
+/* Generate a sequence of instructions that zero registers specified by
+   NEED_ZEROED_HARDREGS.  Return the ZEROED_HARDREGS that are actually
+   zeroed.  */
+static HARD_REG_SET
+gpr_zero_call_used_regs (HARD_REG_SET need_zeroed_hardregs)
+{
+  HARD_REG_SET zeroed_hardregs;
+  CLEAR_HARD_REG_SET (zeroed_hardregs);
+
+  for (unsigned regno = GP_REG_FIRST; regno <= GP_REG_LAST; ++regno)
+    {
+      if (!TEST_HARD_REG_BIT (need_zeroed_hardregs, regno))
+	continue;
+
+      rtx reg = regno_reg_rtx[regno];
+      machine_mode mode = GET_MODE (reg);
+      emit_move_insn (reg, CONST0_RTX (mode));
+
+      SET_HARD_REG_BIT (zeroed_hardregs, regno);
+    }
+
+  return zeroed_hardregs;
+}
+
+static HARD_REG_SET
+vector_zero_call_used_regs (HARD_REG_SET need_zeroed_hardregs)
+{
+  HARD_REG_SET zeroed_hardregs;
+  CLEAR_HARD_REG_SET (zeroed_hardregs);
+
+  /* Find a register to hold vl.  */
+  unsigned vl_regno = GP_REG_LAST + 1;
+  for (unsigned regno = GP_REG_FIRST; regno <= GP_REG_LAST; regno++)
+    {
+      /* If vl and avl both are x0, the existing vl is kept.  */
+      if (TEST_HARD_REG_BIT (need_zeroed_hardregs, regno) && regno != X0_REGNUM)
+	{
+	  vl_regno = regno;
+	  break;
+	}
+    }
+
+  if (vl_regno > GP_REG_LAST)
+    sorry ("can't allocate vl register for %qs on this target",
+	   "-fzero-call-used-regs");
+
+  rtx vl = gen_rtx_REG (Pmode, vl_regno); /* vl is VLMAX.  */
+  for (unsigned regno = V_REG_FIRST; regno <= V_REG_LAST; ++regno)
+    {
+      if (TEST_HARD_REG_BIT (need_zeroed_hardregs, regno))
+	{
+	  rtx target = regno_reg_rtx[regno];
+	  machine_mode mode = GET_MODE (target);
+	  poly_uint16 nunits = GET_MODE_NUNITS (mode);
+	  machine_mode mask_mode = get_vector_mode (BImode, nunits).require ();
+
+	  emit_vlmax_vsetvl (mode, vl);
+	  emit_vlmax_op (code_for_pred_mov (mode), target, CONST0_RTX (mode),
+			 vl, mask_mode);
+
+	  SET_HARD_REG_BIT (zeroed_hardregs, regno);
+	}
+    }
+
+  return zeroed_hardregs;
+}
+
+HARD_REG_SET
+riscv_zero_call_used_regs (HARD_REG_SET need_zeroed_hardregs)
+{
+  HARD_REG_SET zeroed_hardregs;
+  CLEAR_HARD_REG_SET (zeroed_hardregs);
+
+  if (TARGET_VECTOR)
+    zeroed_hardregs |= vector_zero_call_used_regs (need_zeroed_hardregs);
+
+  return zeroed_hardregs | gpr_zero_call_used_regs (need_zeroed_hardregs);
+}
 } // namespace riscv_vector

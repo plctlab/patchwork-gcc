@@ -7317,6 +7317,12 @@ riscv_shamt_matches_mask_p (int shamt, HOST_WIDE_INT mask)
 #undef TARGET_DWARF_POLY_INDETERMINATE_VALUE
 #define TARGET_DWARF_POLY_INDETERMINATE_VALUE riscv_dwarf_poly_indeterminate_value
 
+namespace riscv_vector {
+extern HARD_REG_SET riscv_zero_call_used_regs (HARD_REG_SET);
+}
+#undef TARGET_ZERO_CALL_USED_REGS
+#define TARGET_ZERO_CALL_USED_REGS riscv_vector::riscv_zero_call_used_regs
+
 struct gcc_target targetm = TARGET_INITIALIZER;
 
 #include "gt-riscv.h"
