@@ -14669,6 +14669,7 @@ instructions, but allow the compiler to schedule those calls.
 * Blackfin Built-in Functions::
 * BPF Built-in Functions::
 * FR-V Built-in Functions::
+* LoongArch BASE Built-in Functions::
 * MIPS DSP Built-in Functions::
 * MIPS Paired-Single Support::
 * MIPS Loongson Built-in Functions::
@@ -16196,6 +16197,94 @@ into the data cache.
 Use the @code{nldub} instruction to load the contents of address @var{x}
 into the data cache.  The instruction is issued in slot I1@.
 @end table
+
+@node LoongArch BASE Built-in Functions
+@subsection LoongArch BASE Built-in Functions
+
+These built-in functions are available for LoongArch.
+
+@itemize
+@item @code{imm0_31}, an integer literal in range 0 to 31;
+@item @code{imm0_16383}, an integer literal in range 0 to 16383;
+@item @code{imm0_32767}, an integer literal in range 0 to 32767;
+@item @code{imm_n2048_2047}, an integer literal in range -2048 to 2047;
+@item @code{i8, u8, i16, u16, i32, u32, i64, u64, __drdtime_t, __rdtime_t} are included
+in @code{larchintrin.h} and defined as follows:
+@end itemize
+
+@smallexample
+     typedef char i8;
+     typedef unsigned char u8;
+     typedef short i16;
+     typedef unsigned short u16;
+     typedef int i32;
+     typedef unsigned int u32;
+#if __LONG_MAX__ == __LONG_LONG_MAX__
+     typedef long int i64;
+     typedef unsigned long int u64;
+#else
+     typedef long long i64;
+     typedef unsigned long long u64;
+#endif
+
+     typedef struct drdtime@{
+            unsigned long dvalue;
+            unsigned long dtimeid;
+     @} __drdtime_t;
+
+     typedef struct rdtime@{
+            unsigned int value;
+            unsigned int timeid;
+     @} __rdtime_t;
+@end smallexample
+
+The intrinsics provided are listed below; each is named after the
+machine instruction.
+
+@smallexample
+    __drdtime_t __rdtime_d (void)
+    __rdtime_t  __rdtimel_w (void)
+    __rdtime_t  __rdtimeh_w (void)
+    u32  __movfcsr2gr (imm0_31)
+    void __movgr2fcsr (imm0_32, u32)
+    void __cacop_d (imm0_31, u64, imm_n2048_2047)
+    u32  __cpucfg (u32)
+    void __asrtle_d (i64, i64)
+    void __asrtgt_d (i64, i64)
+    i64  __lddir_d (i64, imm0_31)
+    void __ldpte_d (i64, imm0_31)
+
+    i32  __crc_w_b_w (i8, i32)
+    i32  __crc_w_h_w (i16, i32)
+    i32  __crc_w_w_w (i32, i32)
+    i32  __crc_w_d_w (i64, i32)
+    i32  __crcc_w_b_w (i8, i32)
+    i32  __crcc_w_h_w (i16, i32)
+    i32  __crcc_w_w_w (i32, i32)
+    i32  __crcc_w_d_w (i64, i32)
+
+    u32  __csrrd_w (imm0_16383)
+    u32  __csrwr_w (u32, imm0_16383)
+    u32  __csrxchg_w (u32, u32, imm0_16383)
+    u64  __csrrd_d (imm0_16383)
+    u64  __csrwr_d (u64, imm0_16383)
+    u64  __csrxchg_d (u64, u64, imm0_16383)
+
+    u8   __iocsrrd_b (u32)
+    u16  __iocsrrd_h (u32)
+    u32  __iocsrrd_w (u32)
+    u64  __iocsrrd_d (u32)
+    void __iocsrwr_b (u8, u32)
+    void __iocsrwr_h (u16, u32)
+    void __iocsrwr_w (u32, u32)
+    void __iocsrwr_d (u64, u32)
+
+    void __dbar (imm0_32767)
+    void __ibar (imm0_32767)
+
+    void __syscall (imm0_32767)
+    void __break (imm0_32767)
+@end smallexample
 
 @node MIPS DSP Built-in Functions
 @subsection MIPS DSP Built-in Functions
