@@ -1116,6 +1116,9 @@ output_intermediate_json_line (json::array *object,
   json::array *branches = new json::array ();
   lineo->set ("branches", branches);
 
+  json::array *calls = new json::array ();
+  lineo->set ("calls", calls);
+
   vector<arc_info *>::const_iterator it;
   if (flag_branches)
     for (it = line->branches.begin (); it != line->branches.end ();
@@ -1129,6 +1132,13 @@ output_intermediate_json_line (json::array *object,
 	    branch->set ("fallthrough",
 			 new json::literal ((*it)->fall_through));
 	    branches->append (branch);
+	  }
+	else if ((*it)->is_call_non_return)
+	  {
+	    json::object *call = new json::object ();
+	    gcov_type returns = (*it)->src->count - (*it)->count;
+	    call->set ("returned", new json::integer_number (returns));
+	    calls->append (call);
 	  }
       }
 
@@ -1523,7 +1533,7 @@ generate_results (const char *file_name)
   gcov_intermediate_filename = get_gcov_intermediate_filename (file_name);
 
   json::object *root = new json::object ();
-  root->set ("format_version", new json::string ("1"));
+  root->set ("format_version", new json::string ("2"));
   root->set ("gcc_version", new json::string (version_string));
 
   if (bbg_cwd != NULL)

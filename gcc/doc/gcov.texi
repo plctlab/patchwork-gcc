@@ -195,7 +195,7 @@ Structure of the JSON is following:
 @{
   "current_working_directory": "foo/bar",
   "data_file": "a.out",
-  "format_version": "1",
+  "format_version": "2",
   "gcc_version": "11.1.1 20210510"
   "files": ["$file"]
 @}
@@ -213,6 +213,12 @@ a compilation unit was compiled
 
 @item
 @var{format_version}: semantic version of the format
+
+Changes in version @emph{2}:
+@itemize @bullet
+@item
+@var{calls}: information about function calls is added
+@end itemize
 
 @item
 @var{gcc_version}: version of the GCC compiler
@@ -292,6 +298,7 @@ Each @var{line} has the following form:
 @smallexample
 @{
   "branches": ["$branch"],
+  "calls": ["$call"],
   "count": 2,
   "line_number": 15,
   "unexecuted_block": false,
@@ -299,7 +306,7 @@ Each @var{line} has the following form:
 @}
 @end smallexample
 
-Branches are present only with @var{-b} option.
+Branches and calls are present only with @var{-b} option.
 Fields of the @var{line} element have following semantics:
 
 @itemize @bullet
@@ -339,6 +346,22 @@ Fields of the @var{branch} element have following semantics:
 
 @item
 @var{throw}: true when the branch is an exceptional branch
+@end itemize
+
+Each @var{call} has the following form:
+
+@smallexample
+@{
+  "returned": 11,
+@}
+@end smallexample
+
+Fields of the @var{call} element have following semantics:
+
+@itemize @bullet
+@item
+@var{returned}: number of times a function call returned (call count is equal
+to @var{line::count})
 @end itemize
 
 @item -H
