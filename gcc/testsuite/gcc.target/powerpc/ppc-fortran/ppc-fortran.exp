@@ -33,6 +33,15 @@ if ![info exists DEFAULT_FFLAGS] then {
 # Initialize `dg'.
 dg-init
 
+if { ![check_no_compiler_messages fortran_available assembly {
+! Fortran
+program P
+  stop
+end program P
+} ""] } {
+    return
+}
+
 global gfortran_test_path
 global gfortran_aux_module_flags
 set gfortran_test_path $srcdir/$subdir
