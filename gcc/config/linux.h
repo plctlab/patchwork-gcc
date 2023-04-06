@@ -189,6 +189,13 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
   }
 #endif
 
+#ifdef TARGET_LIBC_PROVIDES_SSP
+#undef LINK_SSP_SPEC
+#define LINK_SSP_SPEC "%{fstack-protector|fstack-protector-all" \
+		      "|fstack-protector-strong|fstack-protector-explicit" \
+		      ":-lssp_nonshared}"
+#endif
+
 #if (DEFAULT_LIBC == LIBC_UCLIBC) && defined (SINGLE_LIBC) /* uClinux */
 /* This is a *uclinux* target.  We don't define below macros to normal linux
    versions, because doing so would require *uclinux* targets to include
