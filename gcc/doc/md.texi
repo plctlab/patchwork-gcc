@@ -4965,6 +4965,20 @@ for (i = 1; i < operand3; i++)
   operand0[i] = operand0[i - 1] && (operand1 + i < operand2);
 @end smallexample
 
+@cindex @code{while_len@var{m}@var{n}} instruction pattern
+@item @code{while_len@var{m}@var{n}}
+Set operand 0 to the number of active elements in vector will be updated value.
+operand 1 is the total elements need to be updated value.
+operand 2 is the vectorization factor.
+The operation is equivalent to:
+
+@smallexample
+operand0 = MIN (operand1, operand2);
+operand2 can be const_poly_int or poly_int related to vector mode size.
+Some target like RISC-V has a standalone instruction to get MIN (n, MODE SIZE) so
+that we can reduce a use of general purpose register.
+@end smallexample
+
 @cindex @code{check_raw_ptrs@var{m}} instruction pattern
 @item @samp{check_raw_ptrs@var{m}}
 Check whether, given two pointers @var{a} and @var{b} and a length @var{len},

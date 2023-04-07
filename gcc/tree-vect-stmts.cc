@@ -8653,8 +8653,9 @@ vectorizable_store (vec_info *vinfo,
 	      else if (loop_lens)
 		{
 		  tree final_len
-		    = vect_get_loop_len (loop_vinfo, loop_lens,
-					 vec_num * ncopies, vec_num * j + i);
+		    = vect_get_loop_len (gsi, loop_vinfo, loop_lens,
+					 vec_num * ncopies, vectype,
+					 vec_num * j + i);
 		  tree ptr = build_int_cst (ref_type, align * BITS_PER_UNIT);
 		  machine_mode vmode = TYPE_MODE (vectype);
 		  opt_machine_mode new_ovmode
@@ -10009,8 +10010,8 @@ vectorizable_load (vec_info *vinfo,
 		    else if (loop_lens && memory_access_type != VMAT_INVARIANT)
 		      {
 			tree final_len
-			  = vect_get_loop_len (loop_vinfo, loop_lens,
-					       vec_num * ncopies,
+			  = vect_get_loop_len (gsi, loop_vinfo, loop_lens,
+					       vec_num * ncopies, vectype,
 					       vec_num * j + i);
 			tree ptr = build_int_cst (ref_type,
 						  align * BITS_PER_UNIT);
