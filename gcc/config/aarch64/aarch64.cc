@@ -1867,7 +1867,7 @@ static const struct tune_params thunderx3t110_tunings =
   &thunderx3t110_prefetch_tune
 };
 
-static const struct tune_params neoversen1_tunings =
+static const struct tune_params cortexa76_tunings =
 {
   &cortexa76_extra_costs,
   &generic_addrcost_table,
@@ -1885,18 +1885,18 @@ static const struct tune_params neoversen1_tunings =
   }, /* memmov_cost.  */
   3, /* issue_rate  */
   (AARCH64_FUSE_AES_AESMC | AARCH64_FUSE_CMP_BRANCH), /* fusible_ops  */
-  "32:16",	/* function_align.  */
-  "4",		/* jump_align.  */
-  "32:16",	/* loop_align.  */
-  2,	/* int_reassoc_width.  */
-  4,	/* fp_reassoc_width.  */
-  1,	/* fma_reassoc_width.  */
-  2,	/* vec_reassoc_width.  */
-  2,	/* min_div_recip_mul_sf.  */
-  2,	/* min_div_recip_mul_df.  */
-  0,	/* max_case_values.  */
-  tune_params::AUTOPREFETCHER_WEAK,	/* autoprefetcher_model.  */
-  (AARCH64_EXTRA_TUNE_CHEAP_SHIFT_EXTEND),	/* tune_flags.  */
+  "32:16",     /* function_align.  */
+  "4",         /* jump_align.  */
+  "32:16",     /* loop_align.  */
+  2,   /* int_reassoc_width.  */
+  4,   /* fp_reassoc_width.  */
+  1,   /* fma_reassoc_width.  */
+  2,   /* vec_reassoc_width.  */
+  2,   /* min_div_recip_mul_sf.  */
+  2,   /* min_div_recip_mul_df.  */
+  0,   /* max_case_values.  */
+  tune_params::AUTOPREFETCHER_WEAK,    /* autoprefetcher_model.  */
+  (AARCH64_EXTRA_TUNE_CHEAP_SHIFT_EXTEND),     /* tune_flags.  */
   &generic_prefetch_tune
 };
 
@@ -2290,6 +2290,135 @@ static const struct tune_params neoverse512tvb_tunings =
   (AARCH64_EXTRA_TUNE_CSE_SVE_VL_CONSTANTS
    | AARCH64_EXTRA_TUNE_USE_NEW_VECTOR_COSTS
    | AARCH64_EXTRA_TUNE_MATCHED_VECTOR_THROUGHPUT),	/* tune_flags.  */
+  &generic_prefetch_tune
+};
+
+static const struct cpu_addrcost_table neoversen1_addrcost_table =
+{
+    {
+      0, /* hi  */
+      0, /* si  */
+      0, /* di  */
+      1, /* ti  */
+    },
+  0, /* pre_modify  */
+  0, /* post_modify  */
+  1, /* post_modify_ld3_st3  */
+  1, /* post_modify_ld4_st4  */
+  0, /* register_offset  */
+  0, /* register_sextend  */
+  0, /* register_zextend  */
+  0 /* imm_offset  */
+};
+
+static const struct cpu_regmove_cost neoversen1_regmove_cost =
+{
+  1, /* GP2GP  */
+  /* Avoid the use of slow int<->fp moves for spilling by setting
+     their cost higher than memmov_cost.  */
+  3, /* GP2FP  */
+  2, /* FP2GP  */
+  2 /* FP2FP  */
+};
+
+static const advsimd_vec_cost neoversen1_advsimd_vector_cost =
+{
+  2, /* int_stmt_cost  */
+  2, /* fp_stmt_cost  */
+  0, /* ld2_st2_permute_cost  */
+  0, /* ld3_st3_permute_cost  */
+  0, /* ld4_st4_permute_cost  */
+  3, /* permute_cost  */
+  6, /* reduc_i8_cost  */
+  5, /* reduc_i16_cost  */
+  3, /* reduc_i32_cost  */
+  3, /* reduc_i64_cost  */
+  8, /* reduc_f16_cost  */
+  5, /* reduc_f32_cost  */
+  5, /* reduc_f64_cost  */
+  0, /* store_elt_extra_cost  */
+  2, /* vec_to_scalar_cost  */
+  2, /* scalar_to_vec_cost  */
+  4, /* align_load_cost  */
+  4, /* unalign_load_cost  */
+  1, /* unalign_store_cost  */
+  1  /* store_cost  */
+};
+
+static const aarch64_scalar_vec_issue_info neoversen1_scalar_issue_info =
+{
+  2, /* loads_stores_per_cycle  */
+  2, /* stores_per_cycle  */
+  2, /* general_ops_per_cycle  */
+  0, /* fp_simd_load_general_ops  */
+  1 /* fp_simd_store_general_ops  */
+};
+
+static const aarch64_advsimd_vec_issue_info neoversen1_advsimd_issue_info =
+{
+  {
+    2, /* loads_stores_per_cycle  */
+    2, /* stores_per_cycle  */
+    2, /* general_ops_per_cycle  */
+    0, /* fp_simd_load_general_ops  */
+    1 /* fp_simd_store_general_ops  */
+  },
+  3, /* ld2_st2_general_ops  */
+  5, /* ld3_st3_general_ops  */
+  11 /* ld4_st4_general_ops  */
+};
+
+static const aarch64_vec_issue_info neoversen1_vec_issue_info =
+{
+  &neoversen1_scalar_issue_info, /* scalar  */
+  &neoversen1_advsimd_issue_info, /* advsimd  */
+  nullptr /* sve  */
+};
+
+
+static const struct cpu_vector_cost neoversen1_vector_cost =
+{
+  1, /* scalar_int_stmt_cost  */
+  1, /* scalar_fp_stmt_cost  */
+  4, /* scalar_load_cost  */
+  1, /* scalar_store_cost  */
+  1, /* cond_taken_branch_cost  */
+  1, /* cond_not_taken_branch_cost  */
+  &neoversen1_advsimd_vector_cost, /* advsimd  */
+  nullptr, /* sve  */
+  &neoversen1_vec_issue_info /* issue_info  */
+};
+
+static const struct tune_params neoversen1_tunings =
+{
+  &neoversen1_extra_costs,
+  &neoversen1_addrcost_table,
+  &neoversen1_regmove_cost,
+  &neoversen1_vector_cost,
+  &generic_branch_cost,
+  &generic_approx_modes,
+  SVE_NOT_IMPLEMENTED, /* sve_width  */
+  { 4, /* load_int.  */
+    2, /* store_int.  */
+    5, /* load_fp.  */
+    2, /* store_fp.  */
+    4, /* load_pred.  */
+    4 /* store_pred.  */
+  }, /* memmov_cost.  */
+  4, /* issue_rate  */
+  AARCH64_FUSE_AES_AESMC, /* fusible_ops  */
+  "32", /* function_align.  */
+  "4", /* jump_align.  */
+  "32:16", /* loop_align.  */
+  2,	/* int_reassoc_width.  */
+  4,	/* fp_reassoc_width.  */
+  1,	/* fma_reassoc_width.  */
+  2,	/* vec_reassoc_width.  */
+  2,	/* min_div_recip_mul_sf.  */
+  2,	/* min_div_recip_mul_df.  */
+  0,	/* max_case_values.  */
+  tune_params::AUTOPREFETCHER_WEAK, /* autoprefetcher_model.  */
+  AARCH64_EXTRA_TUNE_CHEAP_SHIFT_EXTEND, /* tune_flags.  */
   &generic_prefetch_tune
 };
 
