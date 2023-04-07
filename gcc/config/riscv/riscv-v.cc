@@ -43,6 +43,8 @@
 #include "optabs.h"
 #include "tm-constrs.h"
 #include "rtx-vector-builder.h"
+#include "diagnostic-core.h"
+#include "targhooks.h"
 
 using namespace riscv_vector;
 
@@ -118,6 +120,17 @@ const_vec_all_same_in_range_p (rtx x, HOST_WIDE_INT minval,
 	  && IN_RANGE (INTVAL (elt), minval, maxval));
 }
 
+/* Emit a vlmax vsetvl instruction with side effect, this should be only used
+   when optimization is tune off or emit after vsetvl insertion pass.  */
+void
+emit_hard_vlmax_vsetvl (machine_mode vmode, rtx vl)
+{
+  unsigned int sew = get_sew (vmode);
+  emit_insn (gen_vsetvl (Pmode, vl, RVV_VLMAX, gen_int_mode (sew, Pmode),
+			 gen_int_mode (get_vlmul (vmode), Pmode), const0_rtx,
+			 const0_rtx));
+}
+
 void
 emit_vlmax_vsetvl (machine_mode vmode, rtx vl)
 {
@@ -126,9 +139,7 @@ emit_vlmax_vsetvl (machine_mode vmode, rtx vl)
   unsigned int ratio = calculate_ratio (sew, vlmul);
 
   if (!optimize)
-    emit_insn (gen_vsetvl (Pmode, vl, RVV_VLMAX, gen_int_mode (sew, Pmode),
-			   gen_int_mode (get_vlmul (vmode), Pmode), const0_rtx,
-			   const0_rtx));
+    emit_hard_vlmax_vsetvl (vmode, vl);
   else
     emit_insn (gen_vlmax_avl (Pmode, vl, gen_int_mode (ratio, Pmode)));
 }
@@ -722,6 +733,56 @@ gen_avl_for_scalar_move (rtx avl)
 	gen_rtx_SET (tmp, gen_rtx_fmt_ee (GTU, Pmode, avl, const0_rtx)));
       return tmp;
     }
+}
+
+HARD_REG_SET
+vector_zero_call_used_regs (HARD_REG_SET need_zeroed_hardregs)
+{
+  HARD_REG_SET zeroed_hardregs;
+  CLEAR_HARD_REG_SET (zeroed_hardregs);
+
+  /* Find a register to hold vl.  */
+  unsigned vl_regno = INVALID_REGNUM;
+  /* Skip the first GPR, otherwise the existing vl is kept due to the same
+     between vl and avl.  */
+  for (unsigned regno = GP_REG_FIRST + 1; regno <= GP_REG_LAST; regno++)
+    {
+      if (TEST_HARD_REG_BIT (need_zeroed_hardregs, regno))
+	{
+	  vl_regno = regno;
+	  break;
+	}
+    }
+
+  if (vl_regno > GP_REG_LAST)
+    sorry ("can't allocate vl register for %qs on this target",
+	   "-fzero-call-used-regs");
+
+  bool emitted_vlmax_vsetvl = false;
+  rtx vl = gen_rtx_REG (Pmode, vl_regno); /* vl is VLMAX.  */
+  for (unsigned regno = V_REG_FIRST; regno <= V_REG_LAST; ++regno)
+    {
+      if (TEST_HARD_REG_BIT (need_zeroed_hardregs, regno))
+	{
+	  rtx target = regno_reg_rtx[regno];
+	  machine_mode mode = GET_MODE (target);
+	  poly_uint16 nunits = GET_MODE_NUNITS (mode);
+	  machine_mode mask_mode = get_vector_mode (BImode, nunits).require ();
+
+	  if (!emitted_vlmax_vsetvl)
+	    {
+	      emit_hard_vlmax_vsetvl (mode, vl);
+	      emitted_vlmax_vsetvl = true;
+	    }
+
+	  emit_vlmax_op (code_for_pred_mov (mode), target, CONST0_RTX (mode),
+			 vl, mask_mode);
+
+	  SET_HARD_REG_BIT (zeroed_hardregs, regno);
+	}
+    }
+
+  return zeroed_hardregs;
 }
 
 } // namespace riscv_vector

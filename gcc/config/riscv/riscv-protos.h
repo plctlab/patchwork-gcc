@@ -22,6 +22,8 @@ along with GCC; see the file COPYING3.  If not see
 #ifndef GCC_RISCV_PROTOS_H
 #define GCC_RISCV_PROTOS_H
 
+#include "hard-reg-set.h"
+
 /* Symbol types we understand.  The order of this list must match that of
    the unspec enum in riscv.md, subsequent to UNSPEC_ADDRESS_FIRST.  */
 enum riscv_symbol_type {
@@ -159,6 +161,7 @@ bool check_builtin_call (location_t, vec<location_t>, unsigned int,
 bool const_vec_all_same_in_range_p (rtx, HOST_WIDE_INT, HOST_WIDE_INT);
 bool legitimize_move (rtx, rtx, machine_mode);
 void emit_vlmax_vsetvl (machine_mode, rtx);
+void emit_hard_vlmax_vsetvl (machine_mode, rtx);
 void emit_vlmax_op (unsigned, rtx, rtx, machine_mode);
 void emit_vlmax_op (unsigned, rtx, rtx, rtx, machine_mode);
 void emit_nonvlmax_op (unsigned, rtx, rtx, rtx, machine_mode);
@@ -206,6 +209,8 @@ enum vlen_enum
 bool slide1_sew64_helper (int, machine_mode, machine_mode,
 			  machine_mode, rtx *);
 rtx gen_avl_for_scalar_move (rtx);
+
+HARD_REG_SET vector_zero_call_used_regs (HARD_REG_SET);
 }
 
 /* We classify builtin types into two classes:

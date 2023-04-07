@@ -7066,6 +7066,24 @@ riscv_shamt_matches_mask_p (int shamt, HOST_WIDE_INT mask)
   return shamt == ctz_hwi (mask);
 }
 
+/* Generate a sequence of instructions that zero registers specified by
+   NEED_ZEROED_HARDREGS.  Return the ZEROED_HARDREGS that are actually
+   zeroed.  */
+HARD_REG_SET
+riscv_zero_call_used_regs (HARD_REG_SET need_zeroed_hardregs)
+{
+  HARD_REG_SET zeroed_hardregs;
+  CLEAR_HARD_REG_SET (zeroed_hardregs);
+
+  if (TARGET_VECTOR)
+    zeroed_hardregs
+      |= riscv_vector::vector_zero_call_used_regs (need_zeroed_hardregs);
+
+  return zeroed_hardregs | default_zero_call_used_regs (need_zeroed_hardregs
+							& ~zeroed_hardregs);
+}
+
+
 /* Initialize the GCC target structure.  */
 #undef TARGET_ASM_ALIGNED_HI_OP
 #define TARGET_ASM_ALIGNED_HI_OP "\t.half\t"
@@ -7316,6 +7334,9 @@ riscv_shamt_matches_mask_p (int shamt, HOST_WIDE_INT mask)
 
 #undef TARGET_DWARF_POLY_INDETERMINATE_VALUE
 #define TARGET_DWARF_POLY_INDETERMINATE_VALUE riscv_dwarf_poly_indeterminate_value
+
+#undef TARGET_ZERO_CALL_USED_REGS
+#define TARGET_ZERO_CALL_USED_REGS riscv_zero_call_used_regs
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
