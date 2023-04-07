@@ -43,6 +43,7 @@
 #include "optabs.h"
 #include "tm-constrs.h"
 #include "rtx-vector-builder.h"
+#include "targhooks.h"
 
 using namespace riscv_vector;
 
@@ -721,6 +722,83 @@ gen_avl_for_scalar_move (rtx avl)
       emit_insn (
 	gen_rtx_SET (tmp, gen_rtx_fmt_ee (GTU, Pmode, avl, const0_rtx)));
       return tmp;
+    }
+}
+
+/* SCALABLE means that the vector-length is agnostic (run-time invariant and
+   compile-time unknown). FIXED meands that the vector-length is specific
+   (compile-time known). Both RVV_SCALABLE and RVV_FIXED_VLMAX are doing
+   auto-vectorization using VLMAX vsetvl configuration.  */
+static bool
+autovec_use_vlmax_p (void)
+{
+  return riscv_autovec_preference == RVV_SCALABLE
+	 || riscv_autovec_preference == RVV_FIXED_VLMAX;
+}
+
+/* Return the vectorization machine mode for RVV according to LMUL.  */
+machine_mode
+preferred_simd_mode (scalar_mode mode)
+{
+  /* We only enable auto-vectorization when TARGET_MIN_VLEN >= 128
+     which is -march=rv64gcv. Since GCC loop vectorizer report ICE
+     when we enable -march=rv64gc_zve32* and -march=rv32gc_zve64*.
+     in the 'can_duplicate_and_interleave_p' of tree-vect-slp.cc. Since we have
+     VNx1SImode in -march=*zve32* and VNx1DImode in -march=*zve64*, they are
+     enabled in targetm. vector_mode_supported_p and SLP vectorizer will try to
+     use them. Currently, we can support auto-vectorization in
+     -march=rv32_zve32x_zvl128b. Wheras, -march=rv32_zve32x_zvl32b or
+     -march=rv32_zve32x_zvl64b are disabled.
+ */
+  if (autovec_use_vlmax_p ())
+    {
+      /* If TARGET_MIN_VLEN * riscv_autovec_lmul < 128, we don't allow
+	 auto-vectorization since Loop Vectorizer may use VNx1SImode or
+	 VNx1DImode to vectorize which will create ICE in the
+	 'can_duplicate_and_interleave_p' of tree-vect-slp.cc.  */
+      if (TARGET_MIN_VLEN * riscv_autovec_lmul < 128)
+	return word_mode;
+      /* We use LMUL = 1 as base bytesize which is BYTES_PER_RISCV_VECTOR and
+	 riscv_autovec_lmul as multiply factor to calculate the the NUNITS to
+	 get the auto-vectorization mode.  */
+      poly_uint64 nunits;
+      poly_uint64 vector_size
+	= BYTES_PER_RISCV_VECTOR * ((int) riscv_autovec_lmul);
+      poly_uint64 scalar_size = GET_MODE_SIZE (mode);
+      if (!multiple_p (vector_size, scalar_size, &nunits))
+	return word_mode;
+      machine_mode rvv_mode;
+      if (get_vector_mode (mode, nunits).exists (&rvv_mode))
+	return rvv_mode;
+    }
+  /* TODO: We will support minimum length VLS auto-vectorization in the future.
+   */
+  return word_mode;
+}
+
+/* Expand WHILE_LEN pattern. If we can find a mode for a corresponding
+   NUNITS, we emit vsetvl instructions directly. Otherwise, we emit
+   UMIN (operand1, NUNITS).  */
+void
+expand_while_len (rtx *ops)
+{
+  poly_int64 nunits;
+  gcc_assert (poly_int_rtx_p (ops[2], &nunits));
+  /* We arbitrary picked QImode as inner scalar mode to get vector mode.
+     since vsetvl only demand ratio. We let VSETVL PASS to optimize it.  */
+  scalar_int_mode mode = QImode;
+  machine_mode rvv_mode;
+  if (get_vector_mode (mode, nunits).exists (&rvv_mode))
+    {
+      rtx vsetvl_rtx
+	= gen_no_side_effects_vsetvl_rtx (rvv_mode, ops[0], ops[1]);
+      emit_insn (vsetvl_rtx);
+    }
+  else
+    {
+      rtx tmp = gen_reg_rtx (Pmode);
+      emit_move_insn (tmp, gen_int_mode (nunits, Pmode));
+      expand_binop (Pmode, umin_optab, tmp, ops[1], ops[0], true, OPTAB_LIB);
     }
 }
 

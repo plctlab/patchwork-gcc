@@ -23,7 +23,7 @@
 ;; This file include :
 ;;
 ;; - Intrinsics (https://github.com/riscv/rvv-intrinsic-doc)
-;; - Auto-vectorization (TBD)
+;; - Auto-vectorization (autovec.md)
 ;; - Combine optimization (TBD)
 
 (include "vector-iterators.md")
@@ -7280,3 +7280,5 @@
   "vle<sew>ff.v\t%0,%3%p1"
   [(set_attr "type" "vldff")
    (set_attr "mode" "<MODE>")])
+
+(include "autovec.md")
