@@ -2361,7 +2361,19 @@ compare_parameter (gfc_symbol *formal, gfc_expr *actual,
       && formal->ts.u.derived && formal->ts.u.derived->ts.is_iso_c
       && actual->ts.type == BT_DERIVED
       && actual->ts.u.derived && actual->ts.u.derived->ts.is_iso_c)
-    return true;
+    {
+      if (ranks_must_agree
+	  && ((actual->rank == 0 && formal->attr.dimension)
+	      || (actual->rank != 0 && !formal->attr.dimension)))
+	{
+	  if (where)
+	    argument_rank_mismatch (formal->name, &actual->where,
+				    symbol_rank (formal), actual->rank,
+				    NULL);
+	  return false;
+	}
+      return true;
+    }
 
   if (formal->ts.type == BT_CLASS && actual->ts.type == BT_DERIVED)
     /* Make sure the vtab symbol is present when
