@@ -87,9 +87,9 @@
 	   (match_operand:SI 2 "const_int_operand")] ;; model
 	 UNSPEC_SYNC_OLD_OP))]
   "TARGET_ATOMIC"
-  "%F2amo<insn>.<amo>%A2 zero,%z1,%0"
+  "amo<insn>.<amo>%A2\tzero,%z1,%0"
   [(set_attr "type" "atomic")
-   (set (attr "length") (const_int 8))])
+   (set (attr "length") (const_int 4))])
 
 (define_insn "atomic_fetch_<atomic_optab><mode>"
   [(set (match_operand:GPR 0 "register_operand" "=&r")
@@ -101,9 +101,9 @@
 	   (match_operand:SI 3 "const_int_operand")] ;; model
 	 UNSPEC_SYNC_OLD_OP))]
   "TARGET_ATOMIC"
-  "%F3amo<insn>.<amo>%A3 %0,%z2,%1"
+  "amo<insn>.<amo>%A3\t%0,%z2,%1"
   [(set_attr "type" "atomic")
-   (set (attr "length") (const_int 8))])
+   (set (attr "length") (const_int 4))])
 
 (define_insn "atomic_exchange<mode>"
   [(set (match_operand:GPR 0 "register_operand" "=&r")
@@ -114,9 +114,9 @@
    (set (match_dup 1)
 	(match_operand:GPR 2 "register_operand" "0"))]
   "TARGET_ATOMIC"
-  "%F3amoswap.<amo>%A3 %0,%z2,%1"
+  "amoswap.<amo>%A3\t%0,%z2,%1"
   [(set_attr "type" "atomic")
-   (set (attr "length") (const_int 8))])
+   (set (attr "length") (const_int 4))])
 
 (define_insn "atomic_cas_value_strong<mode>"
   [(set (match_operand:GPR 0 "register_operand" "=&r")
