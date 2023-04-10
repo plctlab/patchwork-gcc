@@ -1693,7 +1693,7 @@ struct GTY(()) tree_type_common {
   unsigned restrict_flag : 1;
   unsigned contains_placeholder_bits : 2;
 
-  ENUM_BITFIELD(machine_mode) mode : 8;
+  ENUM_BITFIELD(machine_mode) mode : 16;
 
   /* TYPE_STRING_FLAG for INTEGER_TYPE and ARRAY_TYPE.
      TYPE_CXX_ODR_P for RECORD_TYPE and UNION_TYPE.  */
@@ -1776,7 +1776,7 @@ struct GTY(()) tree_decl_common {
   struct tree_decl_minimal common;
   tree size;
 
-  ENUM_BITFIELD(machine_mode) mode : 8;
+  ENUM_BITFIELD(machine_mode) mode : 16;
 
   unsigned nonlocal_flag : 1;
   unsigned virtual_flag : 1;

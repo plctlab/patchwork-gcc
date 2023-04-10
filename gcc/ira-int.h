@@ -281,10 +281,10 @@ struct ira_allocno
   int regno;
   /* Mode of the allocno which is the mode of the corresponding
      pseudo-register.  */
-  ENUM_BITFIELD (machine_mode) mode : 8;
+  ENUM_BITFIELD (machine_mode) mode : 16;
   /* Widest mode of the allocno which in at least one case could be
      for paradoxical subregs where wmode > mode.  */
-  ENUM_BITFIELD (machine_mode) wmode : 8;
+  ENUM_BITFIELD (machine_mode) wmode : 16;
   /* Register class which should be used for allocation for given
      allocno.  NO_REGS means that we should use memory.  */
   ENUM_BITFIELD (reg_class) aclass : 16;

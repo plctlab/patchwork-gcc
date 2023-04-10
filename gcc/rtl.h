@@ -313,7 +313,7 @@ struct GTY((desc("0"), tag("0"),
   ENUM_BITFIELD(rtx_code) code: 16;
 
   /* The kind of value the expression has.  */
-  ENUM_BITFIELD(machine_mode) mode : 8;
+  ENUM_BITFIELD(machine_mode) mode : 16;
 
   /* 1 in a MEM if we should keep the alias set for this mem unchanged
      when we access a component.
@@ -2157,7 +2157,7 @@ subreg_shape::operator != (const subreg_shape &other) const
 inline unsigned HOST_WIDE_INT
 subreg_shape::unique_id () const
 {
-  { STATIC_ASSERT (MAX_MACHINE_MODE <= 256); }
+  { STATIC_ASSERT (MAX_MACHINE_MODE <= 32768); }
   { STATIC_ASSERT (NUM_POLY_INT_COEFFS <= 3); }
   { STATIC_ASSERT (sizeof (offset.coeffs[0]) <= 2); }
   int res = (int) inner_mode + ((int) outer_mode << 8);

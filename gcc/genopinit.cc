@@ -182,7 +182,7 @@ main (int argc, const char **argv)
 
   progname = "genopinit";
 
-  if (NUM_OPTABS > 0xffff || MAX_MACHINE_MODE >= 0xff)
+  if (NUM_OPTABS > 0xffff || MAX_MACHINE_MODE >= 0xffff)
     fatal ("genopinit range assumptions invalid");
 
   if (!init_rtx_reader_args_cb (argc, argv, handle_arg))

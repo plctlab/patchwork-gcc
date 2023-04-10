@@ -254,7 +254,7 @@ private:
   unsigned int m_spare : 2;
 
   // The value returned by the accessor above.
-  machine_mode m_mode : 8;
+  machine_mode m_mode : 16;
 };
 
 // A contiguous array of access_info pointers.  Used to represent a
