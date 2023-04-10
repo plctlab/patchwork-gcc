@@ -130,10 +130,15 @@
    (clobber (match_scratch:GPR 6 "=&r"))]
   "TARGET_ATOMIC"
   {
+    enum memmodel model_success = (enum memmodel) INTVAL(operands[4]);
+    enum memmodel model_failure = (enum memmodel) INTVAL(operands[5]);
+    /* Find the union of the two memory models so we can satisfy both success
+       and failure memory models.  */
+    operands[5] = GEN_INT(riscv_union_memmodels(model_success, model_failure));
     return "1:\;"
-	   "lr.<amo>.aqrl\t%0,%1\;"
+	   "lr.<amo>%I5\t%0,%1\;"
 	   "bne\t%0,%z2,1f\;"
-	   "sc.<amo>.rl\t%6,%z3,%1\;"
+	   "sc.<amo>%J5\t%6,%z3,%1\;"
 	   "bnez\t%6,1b\;"
 	   "1:";
   }
