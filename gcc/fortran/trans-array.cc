@@ -7934,8 +7934,12 @@ gfc_conv_expr_descriptor (gfc_se *se, gfc_expr *expr)
 	  else
 	    tmp = se->string_length;
 
-	  if (expr->ts.deferred && VAR_P (expr->ts.u.cl->backend_decl))
-	    gfc_add_modify (&se->pre, expr->ts.u.cl->backend_decl, tmp);
+	  if (expr->ts.deferred && expr->ts.u.cl->backend_decl
+	      && VAR_P (expr->ts.u.cl->backend_decl))
+	    {
+	      if (expr->ts.u.cl->backend_decl != tmp)
+	        gfc_add_modify (&se->pre, expr->ts.u.cl->backend_decl, tmp);
+	    }
 	  else
 	    expr->ts.u.cl->backend_decl = tmp;
 	}
