@@ -369,7 +369,10 @@
    UNSPEC_XXSPLTI32DX
    UNSPEC_XXBLEND
    UNSPEC_XXPERMX
-  ])
+   UNSPEC_EXTRACTEXPIEEE
+   UNSPEC_EXTRACTSIGIEEE
+   UNSPEC_INSERTEXPIEEE
+])
 
 (define_int_iterator XVCVBF16	[UNSPEC_VSX_XVCVSPBF16
 				 UNSPEC_VSX_XVCVBF16SPN])
@@ -4155,6 +4158,38 @@
  "vins<wd>rx %0,%1,%2"
  [(set_attr "type" "vecsimple")])
 
+(define_expand "extractf128_exp_<mode>"
+  [(set (match_operand:V2DI 0 "altivec_register_operand")
+  (unspec:IEEE128 [(match_operand:IEEE128 1 "altivec_register_operand")]
+		  UNSPEC_EXTRACTEXPIEEE))]
+"TARGET_P9_VECTOR"
+{
+  emit_insn (gen_xsxexpqp_f128_<mode> (operands[0], operands[1]));
+  DONE;
+})
+
+(define_expand "insertf128_exp_<mode>"
+  [(set (match_operand:IEEE128 0 "altivec_register_operand")
+  (unspec:IEEE128 [(match_operand:V1TI 1 "altivec_register_operand")
+		   (match_operand:V2DI 2 "altivec_register_operand")]
+		  UNSPEC_INSERTEXPIEEE))]
+"TARGET_P9_VECTOR"
+{
+  emit_insn (gen_xsiexpqpf_f128_<mode> (operands[0], operands[1],
+				        operands[2]));
+  DONE;
+})
+
+(define_expand "extractf128_sig_<mode>"
+  [(set (match_operand:V2DI 0 "altivec_register_operand")
+  (unspec:IEEE128 [(match_operand:IEEE128 1 "altivec_register_operand")]
+		  UNSPEC_EXTRACTSIGIEEE))]
+"TARGET_P9_VECTOR"
+{
+  emit_insn (gen_xsxsigqp_f128_<mode> (operands[0], operands[1]));
+  DONE;
+})
+
 (define_expand "vreplace_elt_<mode>"
   [(set (match_operand:REPLACE_ELT 0 "register_operand")
   (unspec:REPLACE_ELT [(match_operand:REPLACE_ELT 1 "register_operand")
@@ -5016,6 +5051,15 @@
   "xsxexpqp %0,%1"
   [(set_attr "type" "vecmove")])
 
+;; VSX Scalar to Vector Extract Exponent IEEE 128-bit floating point format
+(define_insn "xsxexpqp_f128_<mode>"
+  [(set (match_operand:V2DI 0 "altivec_register_operand" "=v")
+	(unspec:V2DI [(match_operand:IEEE128 1 "altivec_register_operand" "v")]
+	 UNSPEC_VSX_SXEXPDP))]
+  "TARGET_P9_VECTOR"
+  "xsxexpqp %0,%1"
+  [(set_attr "type" "vecmove")])
+
 ;; VSX Scalar Extract Exponent Double-Precision
 (define_insn "xsxexpdp"
   [(set (match_operand:DI 0 "register_operand" "=r")
@@ -5029,6 +5073,15 @@
 (define_insn "xsxsigqp_<mode>"
   [(set (match_operand:TI 0 "altivec_register_operand" "=v")
 	(unspec:TI [(match_operand:IEEE128 1 "altivec_register_operand" "v")]
+	 UNSPEC_VSX_SXSIG))]
+  "TARGET_P9_VECTOR"
+  "xsxsigqp %0,%1"
+  [(set_attr "type" "vecmove")])
+
+;; VSX Scalar to Vector Extract Significand IEEE 128-bit floating point format
+(define_insn "xsxsigqp_f128_<mode>"
+  [(set (match_operand:V2DI 0 "altivec_register_operand" "=v")
+	(unspec:V2DI [(match_operand:IEEE128 1 "altivec_register_operand" "v")]
 	 UNSPEC_VSX_SXSIG))]
   "TARGET_P9_VECTOR"
   "xsxsigqp %0,%1"
@@ -5049,6 +5102,17 @@
 	(unspec:IEEE128
 	 [(match_operand:IEEE128 1 "altivec_register_operand" "v")
 	  (match_operand:DI 2 "altivec_register_operand" "v")]
+	 UNSPEC_VSX_SIEXPQP))]
+  "TARGET_P9_VECTOR"
+  "xsiexpqp %0,%1,%2"
+  [(set_attr "type" "vecmove")])
+
+;; VSX Insert Exponent IEEE 128-bit Floating point format
+(define_insn "xsiexpqpf_f128_<mode>"
+  [(set (match_operand:IEEE128 0 "altivec_register_operand" "=v")
+	(unspec:IEEE128
+	 [(match_operand:V1TI 1 "altivec_register_operand" "v")
+	  (match_operand:V2DI 2 "altivec_register_operand" "v")]
 	 UNSPEC_VSX_SIEXPQP))]
   "TARGET_P9_VECTOR"
   "xsiexpqp %0,%1,%2"

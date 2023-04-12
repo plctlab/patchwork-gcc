@@ -18511,6 +18511,34 @@ the FPSCR.  The instruction is a lower latency version of the @code{mffs}
 instruction.  If the @code{mffsl} instruction is not available, then the
 builtin uses the older @code{mffs} instruction to read the FPSCR.
 
+@smallexample
+@exdent vector unsigned long long int
+@exdent __builtin_extractf128_exp (__ieee128);
+@end smallexample
+
+The exponent from the IEEE 128-bit floating point value is returned in the
+lower bits of vector element 1 on Little Endian systems.
+
+@smallexample
+@exdent vector unsigned __int128
+@exdent __builtin_extractf128_sig (__ieee128);
+@end smallexample
+
+The significand from the IEEE 128-bit floating point value is returned in the
+vector element 0 bits [111:0]. Bit 112 is set to 0 if the input value was zero
+or Denormal, 1 otherwise.  Bits [127:113] are set to zero.
+
+@smallexample
+@exdent _ieee128
+@exdent __builtin_insertf128_exp (vector unsigned __int128,
+vector unsigned long long int);
+@end smallexample
+
+The first argument contains the significand in bits [111:0] for the IEEE
+128-bi floating point tresult and the sign bit [127] for the result.  The
+second argument contains the exponenet bits for the result in bits [14:0] of
+vector element 1.
+
 @node Basic PowerPC Built-in Functions Available on ISA 3.1
 @subsubsection Basic PowerPC Built-in Functions Available on ISA 3.1
 
