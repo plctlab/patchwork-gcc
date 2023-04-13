@@ -3080,6 +3080,80 @@ warn_hidden (tree t)
       }
 }
 
+/* Warn about non-static fields name hiding. */
+static void
+warn_name_hiding (tree t)
+{
+  if (is_empty_class (t) || CLASSTYPE_NEARLY_EMPTY_P (t))
+    return;
+
+  for (tree field = TYPE_FIELDS (t); field; field = DECL_CHAIN (field))
+    {
+    /* Skip if field is not a user-defined non-static data member. */
+    if (TREE_CODE (field) != FIELD_DECL || DECL_ARTIFICIAL (field))
+      continue;
+
+    unsigned j;
+    tree name = DECL_NAME (field);
+    /* Skip if field is anonymous. */
+    if (!name || !identifier_p (name))
+      continue;
+
+    auto_vec<tree> base_vardecls;
+    tree binfo;
+    tree base_binfo;
+      /* Iterate through all of the base classes looking for possibly
+      shadowed non-static data members. */
+    for (binfo = TYPE_BINFO (t), j = 0;
+        BINFO_BASE_ITERATE (binfo, j, base_binfo); j++)
+    {
+      tree basetype = BINFO_TYPE (base_binfo);
+      tree candidate = lookup_field (basetype,
+        name,
+        /* protect */ 2,
+        /* want_type */ 0,
+        /* once_suffices */ true);
+      if (candidate)
+      {
+        /* 
+        if we went up the hierarchy to a base class with multiple inheritance,
+        there could be multiple matches, in which case a TREE_LIST is returned
+        */
+        if (TREE_TYPE (candidate) == error_mark_node)
+        {
+          for (; candidate; candidate = TREE_CHAIN (candidate))
+          {
+            tree candidate_field = TREE_VALUE (candidate);
+            tree candidate_klass = DECL_CONTEXT (candidate_field);
+            if (accessible_base_p (t, candidate_klass, true))
+              base_vardecls.safe_push (candidate_field);
+          }
+        }
+        else if (accessible_base_p (t, DECL_CONTEXT (candidate), true))
+          base_vardecls.safe_push (candidate);
+      }
+    }
+
+    /* field was not found among the base classes */
+    if (base_vardecls.is_empty ())
+      continue;
+
+    /* Emit a warning for each field similarly named
+    found in the base class hierarchy */
+    for (tree base_vardecl : base_vardecls)
+      if (base_vardecl)
+      {
+        auto_diagnostic_group d;
+        if (warning_at (location_of (field),
+            OPT_Wshadow,
+            "%qD might shadow %qD", field, base_vardecl))
+        inform (location_of (base_vardecl),
+        "  %qD name already in use here", base_vardecl);
+      }
+    }
+}
+
+
 /* Recursive helper for finish_struct_anon.  */
 
 static void
@@ -7654,6 +7728,8 @@ finish_struct_1 (tree t)
 
   if (warn_overloaded_virtual)
     warn_hidden (t);
+  if (warn_shadow)
+    warn_name_hiding (t);
 
   /* Class layout, assignment of virtual table slots, etc., is now
      complete.  Give the back end a chance to tweak the visibility of

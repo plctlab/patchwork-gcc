@@ -7519,11 +7519,11 @@ extern tree lookup_base                         (tree, tree, base_access,
 extern tree dcast_base_hint			(tree, tree);
 extern int accessible_p				(tree, tree, bool);
 extern int accessible_in_template_p		(tree, tree);
-extern tree lookup_field			(tree, tree, int, bool);
+extern tree lookup_field			(tree, tree, int, bool, bool once_suffices = false);
 extern tree lookup_fnfields			(tree, tree, int, tsubst_flags_t);
 extern tree lookup_member			(tree, tree, int, bool,
 						 tsubst_flags_t,
-						 access_failure_info *afi = NULL);
+						 access_failure_info *afi = NULL, bool once_suffices = false);
 extern tree lookup_member_fuzzy			(tree, tree, bool);
 extern tree locate_field_accessor		(tree, tree, bool);
 extern int look_for_overrides			(tree, tree);
@@ -7542,7 +7542,7 @@ extern tree binfo_for_vbase			(tree, tree);
 extern tree look_for_overrides_here		(tree, tree);
 #define dfs_skip_bases ((tree)1)
 extern tree dfs_walk_all (tree, tree (*) (tree, void *),
-			  tree (*) (tree, void *), void *);
+			  tree (*) (tree, void *), void *, bool stop_on_success = false);
 extern tree dfs_walk_once (tree, tree (*) (tree, void *),
 			   tree (*) (tree, void *), void *);
 extern tree binfo_via_virtual			(tree, tree);

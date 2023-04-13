@@ -1126,13 +1126,19 @@ build_baselink (tree binfo, tree access_binfo, tree functions, tree optype)
 
    WANT_TYPE is 1 when we should only return TYPE_DECLs.
 
+   ONCE_SUFFICES is 1 when we should return upon first find of 
+   the member in a branch of the inheritance hierarchy tree, rather
+   than collect all similarly named members further in that branch.
+   Does not impede other parallel branches of the tree.
+
    If nothing can be found return NULL_TREE and do not issue an error.
 
    If non-NULL, failure information is written back to AFI.  */
 
 tree
 lookup_member (tree xbasetype, tree name, int protect, bool want_type,
-	       tsubst_flags_t complain, access_failure_info *afi /* = NULL */)
+	       tsubst_flags_t complain, access_failure_info *afi /* = NULL */,
+         bool once_suffices /* = false */)
 {
   tree rval, rval_binfo = NULL_TREE;
   tree type = NULL_TREE, basetype_path = NULL_TREE;
@@ -1183,7 +1189,7 @@ lookup_member (tree xbasetype, tree name, int protect, bool want_type,
   lfi.type = type;
   lfi.name = name;
   lfi.want_type = want_type;
-  dfs_walk_all (basetype_path, &lookup_field_r, NULL, &lfi);
+  dfs_walk_all (basetype_path, &lookup_field_r, NULL, &lfi, once_suffices);
   rval = lfi.rval;
   rval_binfo = lfi.rval_binfo;
   if (rval_binfo)
@@ -1373,10 +1379,11 @@ lookup_member_fuzzy (tree xbasetype, tree name, bool want_type_p)
    return NULL_TREE.  */
 
 tree
-lookup_field (tree xbasetype, tree name, int protect, bool want_type)
+lookup_field (tree xbasetype, tree name, int protect, bool want_type,
+         bool once_suffices /* = false */)
 {
   tree rval = lookup_member (xbasetype, name, protect, want_type,
-			     tf_warning_or_error);
+			     tf_warning_or_error, /* afi */ NULL, once_suffices);
 
   /* Ignore functions, but propagate the ambiguity list.  */
   if (!error_operand_p (rval)
@@ -1461,11 +1468,13 @@ adjust_result_of_qualified_name_lookup (tree decl,
    of PRE_FN and POST_FN can be NULL.  At each node, PRE_FN and
    POST_FN are passed the binfo to examine and the caller's DATA
    value.  All paths are walked, thus virtual and morally virtual
-   binfos can be multiply walked.  */
+   binfos can be multiply walked. If STOP_ON_SUCCESS is 1, do not
+   walk deeper the current hierarchy tree once PRE_FN returns non-NULL */
 
 tree
 dfs_walk_all (tree binfo, tree (*pre_fn) (tree, void *),
-	      tree (*post_fn) (tree, void *), void *data)
+	      tree (*post_fn) (tree, void *),
+        void *data, bool stop_on_success /* = false */)
 {
   tree rval;
   unsigned ix;
@@ -1477,7 +1486,7 @@ dfs_walk_all (tree binfo, tree (*pre_fn) (tree, void *),
       rval = pre_fn (binfo, data);
       if (rval)
 	{
-	  if (rval == dfs_skip_bases)
+	  if (rval == dfs_skip_bases || stop_on_success)
 	    goto skip_bases;
 	  return rval;
 	}
@@ -1486,7 +1495,7 @@ dfs_walk_all (tree binfo, tree (*pre_fn) (tree, void *),
   /* Find the next child binfo to walk.  */
   for (ix = 0; BINFO_BASE_ITERATE (binfo, ix, base_binfo); ix++)
     {
-      rval = dfs_walk_all (base_binfo, pre_fn, post_fn, data);
+      rval = dfs_walk_all (base_binfo, pre_fn, post_fn, data, stop_on_success);
       if (rval)
 	return rval;
     }
