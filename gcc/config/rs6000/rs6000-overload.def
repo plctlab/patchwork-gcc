@@ -78,6 +78,11 @@
 ; like after a required newline, but nowhere else.  Lines beginning with
 ; a semicolon are also treated as blank lines.
 
+[MFFSCR, __builtin_mffscrn, __builtin_mffscrn]
+  double __builtin_mffscrn (const int<2>);
+    MFFSCRNI
+  double __builtin_mffscrn (double);
+    MFFSCRNF
 
 [BCDADD, __builtin_bcdadd, __builtin_vec_bcdadd]
   vsq __builtin_vec_bcdadd (vsq, vsq, const int);

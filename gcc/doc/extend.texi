@@ -18322,6 +18322,9 @@ int __builtin_dfp_dtstsfi_ov_td (unsigned int comparison, _Decimal128 value);
 
 double __builtin_mffsl(void);
 
+double __builtin_mffscrn (unsigned long int);
+double __builtin_mffscrn (double);
+
 @end smallexample
 The @code{__builtin_byte_in_set} function requires a
 64-bit environment supporting ISA 3.0 or later.  This function returns
@@ -18377,6 +18380,11 @@ The @code{__builtin_mffsl} uses the ISA 3.0 @code{mffsl} instruction to read
 the FPSCR.  The instruction is a lower latency version of the @code{mffs}
 instruction.  If the @code{mffsl} instruction is not available, then the
 builtin uses the older @code{mffs} instruction to read the FPSCR.
+
+The @code{__builtin_mffscrn} returns the contents of the control bits in the
+FPSCR, bits 29:31 (DRN) and bits 56:63 (VE, OE, UE, ZE, XE, NI, RN).  The
+contents of bits [62:63] of the unsigned long int or double argument are placed
+into bits [62:63] of the FPSCR (RN).
 
 @node Basic PowerPC Built-in Functions Available on ISA 3.1
 @subsubsection Basic PowerPC Built-in Functions Available on ISA 3.1
