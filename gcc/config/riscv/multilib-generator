@@ -63,6 +63,15 @@ def arch_canonicalize(arch, isa_spec):
   return out.decode().strip()
 
 #
+# Multi-letter extensions are seperated by underscores, but single-letter
+# extensions are not.
+#
+def maybe_add_underscore(ext):
+  if len(ext) is 1:
+    return ext
+  return '_' + ext
+
+#
 # Handle expansion operation.
 #
 # e.g. "a*b" -> [("a",), ("b",), ("a", "b")]
@@ -70,11 +79,7 @@ def arch_canonicalize(arch, isa_spec):
 #
 def _expand_combination(ext):
   exts = list(ext.split("*"))
-
-  # Add underline to every extension.
-  # e.g.
-  #  _b * zvamo => _b * _zvamo
-  exts = list(map(lambda x: '_' + x, exts))
+  exts = list(map(lambda x: maybe_add_underscore(x), exts))
 
   # No need to expand if there is no `*`.
   if len(exts) == 1:
@@ -163,14 +168,13 @@ for cmodel in cmodels:
     if cmodel == "compact" and arch.startswith("rv32"):
       continue
 
-    arch = arch_canonicalize (arch, args.misa_spec)
     arches[arch] = 1
     abis[abi] = 1
     extra = list(filter(None, extra.split(',')))
     ext_combs = expand_combination(ext)
     alts = sum([[x] + [x + y for y in ext_combs] for x in [arch] + extra], [])
     alts = filter(lambda x: len(x) != 0, alts)
-    alts = list(map(lambda a : arch_canonicalize(a, args.misa_spec), alts))
+    alts = alts + list(map(lambda a : arch_canonicalize(a, args.misa_spec), alts))
 
     # Drop duplicated entry.
     alts = unique(alts)
