@@ -24,6 +24,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 #include <testsuite_hooks.h>
 #include <testsuite_iterators.h>
@@ -120,8 +121,8 @@ test06()
   // Verify that _Sentinel<false> is implicitly convertible to _Sentinel<true>.
   static_assert(!ranges::common_range<decltype(v)>);
   static_assert(!std::same_as<decltype(ranges::end(v)),
-			      decltype(ranges::cend(v))>);
-  auto b = ranges::cend(v);
+			      decltype(std::as_const(v).end())>);
+  auto b = std::as_const(v).end();
   b = ranges::end(v);
 }
 
