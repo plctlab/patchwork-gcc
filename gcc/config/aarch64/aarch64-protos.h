@@ -1066,4 +1066,7 @@ extern bool aarch64_harden_sls_blr_p (void);
 
 extern void aarch64_output_patchable_area (unsigned int, bool);
 
+extern tree aarch64_builtin_vectorized_function (unsigned int fn,
+                                                tree type_out, tree type_in);
+
 #endif /* GCC_AARCH64_PROTOS_H */

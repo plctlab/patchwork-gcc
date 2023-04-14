@@ -98,4 +98,9 @@ enum aarch64_key_type {
   AARCH64_KEY_B
 };
 
+enum aarch64_veclibabi {
+  aarch64_veclibabi_type_none,
+  aarch64_veclibabi_type_sleefgnu
+};
+
 #endif

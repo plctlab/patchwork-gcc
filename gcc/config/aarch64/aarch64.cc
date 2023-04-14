@@ -84,6 +84,7 @@
 #include "aarch64-feature-deps.h"
 #include "config/arm/aarch-common.h"
 #include "config/arm/aarch-common-protos.h"
+#include "print-tree.h"
 
 /* This file should be included last.  */
 #include "target-def.h"
@@ -2949,6 +2950,62 @@ pure_scalable_type_info::analyze (const_tree type)
       p.mode = p.orig_mode = mode;
       add_piece (p);
       return IS_PST;
+    }
+
+  /* Only functions and types that are part of the ARM C Language
+     Extensions (arm_sve.h) have the SVE type attributes.
+     The auto-vectorizer does not annotate the vector types it creates with
+     those attributes. With the support of vectorized libm function
+     builtins  for SVE, scalable vectors without special attributes
+     have to be treated as well.  */
+  if (TREE_CODE (type) == VECTOR_TYPE
+      && !TYPE_VECTOR_SUBPARTS (type).is_constant ())
+    {
+      /* Boolean vectors are special because they are used by
+        the vectorizer as masks that must go into the
+        predicate registers.  */
+      if (TREE_CODE (TREE_TYPE (type)) == BOOLEAN_TYPE)
+       {
+         p.num_zr = 0;
+         p.num_pr = 1;
+         p.mode = p.orig_mode = TYPE_MODE (type);
+         add_piece (p);
+         return IS_PST;
+       }
+
+      static const struct {
+       machine_mode mode;
+       unsigned int element_size;
+       poly_uint64 vector_size;
+      } valid_vectors[] = {
+       { VNx8BFmode, 16, poly_uint64 (8, 8) }, /* svbfloat16_t */
+       { VNx8HFmode, 16, poly_uint64 (8, 8) }, /* svfloat16_t */
+       { VNx4SFmode, 32, poly_uint64 (4, 4) }, /* svfloat32_t */
+       { VNx2DFmode, 64, poly_uint64 (2, 2) }, /* svfloat64_t */
+       { VNx16BImode, 8, poly_uint64 (16, 16) }, /* sv[u]int8_t */
+       { VNx8HImode, 16, poly_uint64 (8, 8) }, /* sv[u]int16_t */
+       { VNx4SImode, 32, poly_uint64 (4, 4) }, /* sv[u]int32_t */
+       { VNx2DImode, 64, poly_uint64 (2, 2) }, /* sv[u]int64_t */
+      };
+
+      machine_mode elm_mode = TYPE_MODE (TREE_TYPE (type));
+      unsigned int elm_size = GET_MODE_BITSIZE (elm_mode).to_constant ();
+      for (unsigned i = 0;
+          i < sizeof (valid_vectors) / sizeof (valid_vectors[0]); i++)
+       if (valid_vectors[i].element_size == elm_size
+           && valid_vectors[i].mode == TYPE_MODE (type)
+           && known_eq (valid_vectors[i].vector_size,
+                        TYPE_VECTOR_SUBPARTS (type)))
+         {
+           p.num_zr = 1;
+           p.num_pr = 0;
+           p.mode = p.orig_mode = valid_vectors[i].mode;
+           add_piece (p);
+           return IS_PST;
+         }
+
+      fatal_error (input_location, "unsupported vector type %qT"
+                  " as function parameter without SVE attributes", type);
     }
 
   /* Check for user-defined PSTs.  */
@@ -17864,6 +17921,8 @@ aarch64_override_options_after_change_1 (struct gcc_options *opts)
     flag_mrecip_low_precision_sqrt = true;
 }
 
+enum aarch64_veclibabi aarch64_selected_veclibabi = aarch64_veclibabi_type_none;
+
 /* 'Unpack' up the internal tuning structs and update the options
     in OPTS.  The caller must have set up selected_tune and selected_arch
     as all the other target-specific codegen decisions are
@@ -18043,6 +18102,9 @@ aarch64_override_options_internal (struct gcc_options *opts)
       && aarch64_tune_params.prefetch->default_opt_level >= 0
       && opts->x_optimize >= aarch64_tune_params.prefetch->default_opt_level)
     opts->x_flag_prefetch_loop_arrays = 1;
+
+  if (opts->x_aarch64_veclibabi_type == aarch64_veclibabi_type_sleefgnu)
+    aarch64_selected_veclibabi = aarch64_veclibabi_type_sleefgnu;
 
   aarch64_override_options_after_change_1 (opts);
 }
@@ -28097,6 +28159,10 @@ aarch64_libgcc_floating_mode_supported_p
 
 #undef TARGET_CONST_ANCHOR
 #define TARGET_CONST_ANCHOR 0x1000000
+
+#undef TARGET_VECTORIZE_BUILTIN_VECTORIZED_FUNCTION
+#define TARGET_VECTORIZE_BUILTIN_VECTORIZED_FUNCTION \
+  aarch64_builtin_vectorized_function
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 

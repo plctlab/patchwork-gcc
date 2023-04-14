@@ -302,3 +302,18 @@ Constant memset size in bytes from which to start using MOPS sequence.
 -param=aarch64-vect-unroll-limit=
 Target Joined UInteger Var(aarch64_vect_unroll_limit) Init(4) Param
 Limit how much the autovectorizer may unroll a loop.
+
+;; -mveclibabi=
+TargetVariable
+enum aarch64_veclibabi aarch64_veclibabi_type = aarch64_veclibabi_type_none
+
+mveclibabi=
+Target RejectNegative Joined Var(aarch64_veclibabi_type) Enum(aarch64_veclibabi) Init(aarch64_veclibabi_type_none)
+Vector library ABI to use.
+
+Enum
+Name(aarch64_veclibabi) Type(enum aarch64_veclibabi)
+Known vectorization library ABIs (for use with the -mveclibabi= option):
+
+EnumValue
+Enum(aarch64_veclibabi) String(sleefgnu) Value(aarch64_veclibabi_type_sleefgnu)

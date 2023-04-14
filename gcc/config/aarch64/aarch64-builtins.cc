@@ -47,6 +47,7 @@
 #include "stringpool.h"
 #include "attribs.h"
 #include "gimple-fold.h"
+#include "builtins.h"
 
 #define v8qi_UP  E_V8QImode
 #define v8di_UP  E_V8DImode
@@ -3448,6 +3449,118 @@ aarch64_resolve_overloaded_builtin_general (location_t loc, tree function,
     return aarch64_resolve_overloaded_memtag(loc, function, pass_params);
 
   return NULL_TREE;
+}
+
+/* The vector library abi to use, if any.  */
+extern enum aarch64_veclibabi aarch64_selected_veclibabi;
+
+/* Returns a function declaration for a vectorized version of the combined
+   function with combined_fn code FN and the result vector type TYPE.
+   NULL_TREE is returned if there is none available.  */
+tree
+aarch64_builtin_vectorized_function (unsigned int fn_code,
+                                    tree type_out, tree type_in)
+{
+  if (TREE_CODE (type_out) != VECTOR_TYPE
+      || TREE_CODE (type_in) != VECTOR_TYPE
+      || aarch64_selected_veclibabi != aarch64_veclibabi_type_sleefgnu
+      || !flag_unsafe_math_optimizations)
+    return NULL_TREE;
+
+  machine_mode mode = TYPE_MODE (TREE_TYPE (type_out));
+  poly_uint64 n = TYPE_VECTOR_SUBPARTS (type_out);
+  if (mode != TYPE_MODE (TREE_TYPE (type_in))
+      || !known_eq (n, TYPE_VECTOR_SUBPARTS (type_in)))
+    return NULL_TREE;
+
+  bool is_scalable = !n.is_constant ();
+  if (is_scalable)
+    {
+      /* SVE is needed for scalable vectors, a SVE register's size is
+        always a multiple of 128.  */
+      if (!TARGET_SVE
+         || (mode == DFmode && !known_eq (n, poly_uint64 (2, 2)))
+         || (mode == SFmode && !known_eq (n, poly_uint64 (4, 4))))
+       return NULL_TREE;
+    }
+  else
+    {
+      /* A NEON register can hold two doubles or one float.  */
+      if (!TARGET_SIMD
+         || (mode == DFmode && n.to_constant () != 2)
+         || (mode == SFmode && n.to_constant () != 4))
+       return NULL_TREE;
+    }
+
+  tree fntype;
+  combined_fn fn = combined_fn (fn_code);
+  const char *argencoding;
+  switch (fn)
+    {
+      CASE_CFN_EXP:
+      CASE_CFN_LOG:
+      CASE_CFN_LOG10:
+      CASE_CFN_TANH:
+      CASE_CFN_TAN:
+      CASE_CFN_ATAN:
+      CASE_CFN_ATANH:
+      CASE_CFN_CBRT:
+      CASE_CFN_SINH:
+      CASE_CFN_SIN:
+      CASE_CFN_ASINH:
+      CASE_CFN_ASIN:
+      CASE_CFN_COSH:
+      CASE_CFN_COS:
+      CASE_CFN_ACOSH:
+      CASE_CFN_ACOS:
+       fntype = build_function_type_list (type_out, type_in, NULL);
+       argencoding = "v";
+       break;
+
+      CASE_CFN_POW:
+      CASE_CFN_ATAN2:
+       fntype = build_function_type_list (type_out, type_in, type_in, NULL);
+       argencoding = "vv";
+       break;
+
+      default:
+       return NULL_TREE;
+    }
+
+  tree fndecl = mathfn_built_in (mode == DFmode
+                                ? double_type_node : float_type_node, fn);
+  const char *scalar_name = IDENTIFIER_POINTER (DECL_NAME (fndecl));
+  /* Builtins will always be prefixed with '__builtin_'.  */
+  gcc_assert (strncmp (scalar_name, "__builtin_", 10) == 0);
+  scalar_name += 10;
+
+  char vectorized_name[32];
+  if (is_scalable)
+    {
+      /* SVE ISA */
+      int n = snprintf (vectorized_name, sizeof (vectorized_name),
+                       "_ZGVsNx%s_%s", argencoding, scalar_name);
+      if (n < 0 || n > sizeof (vectorized_name))
+       return NULL_TREE;
+    }
+  else
+    {
+      /* NEON ISA */
+      int n = snprintf (vectorized_name, sizeof (vectorized_name),
+                       "_ZGVnN%d%s_%s", mode == SFmode ? 4 : 2,
+                       argencoding, scalar_name);
+      if (n < 0 || n > sizeof (vectorized_name))
+       return NULL_TREE;
+    }
+
+  tree new_fndecl = build_decl (BUILTINS_LOCATION, FUNCTION_DECL,
+                               get_identifier (vectorized_name), fntype);
+  TREE_PUBLIC (new_fndecl) = 1;
+  TREE_READONLY (new_fndecl) = 1;
+  DECL_EXTERNAL (new_fndecl) = 1;
+  DECL_IS_NOVOPS (new_fndecl) = 1;
+
+  return new_fndecl;
 }
 
 #undef AARCH64_CHECK_BUILTIN_MODE
