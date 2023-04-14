@@ -465,6 +465,39 @@ statement_sink_location (gimple *stmt, basic_block frombb,
 	  if (sinkbb == frombb)
 	    return false;
 
+	  auto_vec<basic_block> h;
+	  h = get_all_dominated_blocks (CDI_DOMINATORS,
+					frombb);
+	  bool is_call = false;
+	  while (h.length ())
+	    {
+	      basic_block bb = h.pop ();
+
+	      if (bb == frombb)
+		continue;
+
+	      for (gimple_stmt_iterator gsi = gsi_last_bb (bb); !gsi_end_p (gsi);)
+		{
+		  gimple *stmt = gsi_stmt (gsi);
+
+		  if (is_gimple_call (stmt))
+		    {
+		      is_call = true;
+		      break;
+		    }
+
+		   if (!gsi_end_p (gsi))
+		     gsi_prev (&gsi);
+		}
+	     }
+
+	    if (!is_gimple_call (stmt)
+		&& (gimple_bb (use) != frombb)
+		&& !is_gimple_call (use)
+		&& dominated_by_p (CDI_DOMINATORS, sinkbb, frombb)
+		&& is_call)
+	       return false;
+
 	  if (sinkbb == gimple_bb (use))
 	    *togsi = gsi_for_stmt (use);
 	  else
