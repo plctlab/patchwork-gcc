@@ -171,6 +171,70 @@ nearest_common_dominator_of_uses (def_operand_p def_p, bool *debug_stmts)
   return commondom;
 }
 
+/* Check def and use stmts are in same block.  */
+
+bool
+def_use_same_block (gimple *use)
+{
+  use_operand_p use_p;
+  def_operand_p def_p;
+  imm_use_iterator imm_iter;
+  ssa_op_iter iter;
+
+  FOR_EACH_SSA_DEF_OPERAND (def_p, use, iter, SSA_OP_DEF)
+    {
+      FOR_EACH_IMM_USE_FAST (use_p, imm_iter, DEF_FROM_PTR (def_p))
+	{
+	  if (is_gimple_debug (USE_STMT (use_p)))
+	    continue;
+
+	  if (use_p
+	      && (gimple_bb(USE_STMT (use_p)) == gimple_bb (use)))
+	    return true;
+	}
+     }
+  return false;
+}
+
+/* Check if the block has only calls.  */
+
+bool
+block_call_p (basic_block bb)
+{
+  int i = 0;
+  bool is_call = false;
+  gimple_stmt_iterator gsi = gsi_last_bb (bb);
+  gimple *last_stmt = gsi_stmt (gsi);
+
+  if (last_stmt && gimple_code (last_stmt) == GIMPLE_COND)
+    {
+      if (!gsi_end_p (gsi))
+	gsi_prev (&gsi);
+
+       for (; !gsi_end_p (gsi);)
+	 {
+	   gimple *stmt = gsi_stmt (gsi);
+
+	   if (is_gimple_debug (stmt))
+	     return false;
+
+	   if (is_gimple_call (stmt))
+	     is_call = true;
+	   else
+	     return false;
+
+	   if (!gsi_end_p (gsi))
+	     gsi_prev (&gsi);
+
+	    ++i;
+	}
+     }
+  if (is_call && i == 1)
+    return true;
+
+  return false;
+}
+
 /* Given EARLY_BB and LATE_BB, two blocks in a path through the dominator
    tree, return the best basic block between them (inclusive) to place
    statements.
@@ -190,7 +254,8 @@ nearest_common_dominator_of_uses (def_operand_p def_p, bool *debug_stmts)
 static basic_block
 select_best_block (basic_block early_bb,
 		   basic_block late_bb,
-		   gimple *stmt)
+		   gimple *stmt,
+		   gimple *use = 0)
 {
   basic_block best_bb = late_bb;
   basic_block temp_bb = late_bb;
@@ -230,7 +295,28 @@ select_best_block (basic_block early_bb,
       if (threshold > 100)
 	threshold = 100;
     }
+  if (bb_loop_depth (best_bb) == bb_loop_depth (early_bb)
+      && !(best_bb->count * 100 >= early_bb->count * threshold))
+    {
+      basic_block new_best_bb = get_immediate_dominator (CDI_DOMINATORS, best_bb);
 
+      if (new_best_bb && use
+	  && (new_best_bb != best_bb)
+	  && (new_best_bb != early_bb)
+	  && !is_gimple_call (stmt)
+	  && gsi_end_p (gsi_start_phis (new_best_bb))
+	  && (gimple_bb (use) != early_bb)
+	  && !is_gimple_call (use)
+	  && dominated_by_p (CDI_POST_DOMINATORS, new_best_bb, gimple_bb(use))
+	  && dominated_by_p (CDI_DOMINATORS, new_best_bb, early_bb)
+	  && block_call_p (new_best_bb))
+	{
+	  if (def_use_same_block (use))
+	    return best_bb;
+
+	  return new_best_bb;
+	}
+    }
   /* If BEST_BB is at the same nesting level, then require it to have
      significantly lower execution frequency to avoid gratuitous movement.  */
   if (bb_loop_depth (best_bb) == bb_loop_depth (early_bb)
@@ -456,19 +542,55 @@ statement_sink_location (gimple *stmt, basic_block frombb,
 	    continue;
 	  break;
 	}
+
       use = USE_STMT (one_use);
 
       if (gimple_code (use) != GIMPLE_PHI)
 	{
-	  sinkbb = select_best_block (frombb, gimple_bb (use), stmt);
+	  sinkbb = select_best_block (frombb, gimple_bb (use), stmt, use);
 
 	  if (sinkbb == frombb)
 	    return false;
 
-	  if (sinkbb == gimple_bb (use))
-	    *togsi = gsi_for_stmt (use);
-	  else
-	    *togsi = gsi_after_labels (sinkbb);
+	   gimple *def_stmt = SSA_NAME_DEF_STMT (DEF_FROM_PTR (def_p));
+
+	   if ((gimple_bb (def_stmt) == gimple_bb (use))
+		&& (gimple_bb (use) != sinkbb))
+	     sinkbb = gimple_bb (use);
+
+	    if (sinkbb == gimple_bb (use))
+	      {
+		gimple_stmt_iterator gsi = gsi_last_bb (sinkbb);
+		gimple *def_stmt = SSA_NAME_DEF_STMT (DEF_FROM_PTR (def_p));
+		gimple *last_stmt = gsi_stmt (gsi);
+
+		if (gsi_stmt (gsi) == use
+		    && !is_gimple_call (last_stmt)
+		    && (gimple_code (last_stmt) != GIMPLE_SWITCH)
+		    && (gimple_code (last_stmt) != GIMPLE_COND)
+		    && (gimple_code (last_stmt) != GIMPLE_GOTO)
+		    && (!gimple_vdef (use) || !def_use_same_block (def_stmt)))
+		  {
+		    if (!gsi_end_p (gsi))
+		      gsi_prev (&gsi);
+
+		    gimple *stmt = gsi_stmt (gsi);
+
+		    if (!gsi_end_p (gsi))
+		      gsi_prev (&gsi);
+
+		    if (gsi_end_p (gsi) && stmt && is_gimple_call (stmt)
+			&& gsi_end_p (gsi_start_phis (sinkbb))
+			&& !is_gimple_call (def_stmt))
+		      *togsi = gsi_for_stmt (stmt);
+		    else
+		      *togsi = gsi_for_stmt (use);
+		   }
+		else
+		  *togsi = gsi_for_stmt(use);
+	       }
+	     else
+		*togsi = gsi_after_labels (sinkbb);
 
 	  return true;
 	}
