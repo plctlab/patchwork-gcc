@@ -67,6 +67,46 @@ enum stack_protector_guard {
   SSP_GLOBAL			/* global canary */
 };
 
+/* RVV vector register sizes.  */
+enum riscv_vector_bits_enum
+{
+  RVV_SCALABLE,
+  RVV_NOT_IMPLEMENTED = RVV_SCALABLE,
+  RVV_64 = 64,
+  RVV_128 = 128,
+  RVV_256 = 256,
+  RVV_512 = 512,
+  RVV_1024 = 1024,
+  RVV_2048 = 2048,
+  RVV_4096 = 4096,
+  RVV_8192 = 8192,
+  RVV_16384 = 16384,
+  RVV_32768 = 32768,
+  RVV_65536 = 65536
+};
+
+/* vectorization factor.  */
+enum riscv_vector_lmul_enum
+{
+  RVV_LMUL1 = 1,
+  RVV_LMUL2 = 2,
+  RVV_LMUL4 = 4,
+  RVV_LMUL8 = 8
+};
+
+enum vlmul_field_enum
+{
+  VLMUL_FIELD_000, /* LMUL = 1.  */
+  VLMUL_FIELD_001, /* LMUL = 2.  */
+  VLMUL_FIELD_010, /* LMUL = 4.  */
+  VLMUL_FIELD_011, /* LMUL = 8.  */
+  VLMUL_FIELD_100, /* RESERVED.  */
+  VLMUL_FIELD_101, /* LMUL = 1/8.  */
+  VLMUL_FIELD_110, /* LMUL = 1/4.  */
+  VLMUL_FIELD_111, /* LMUL = 1/2.  */
+  MAX_VLMUL_FIELD
+};
+
 #define MASK_ZICSR    (1 << 0)
 #define MASK_ZIFENCEI (1 << 1)
 
