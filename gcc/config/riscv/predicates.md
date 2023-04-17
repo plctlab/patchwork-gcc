@@ -264,6 +264,14 @@
 })
 
 ;; Predicates for the V extension.
+(define_special_predicate "p_reg_or_const_csr_operand"
+  (match_code "reg, subreg, const_int")
+{
+  if (CONST_INT_P (op))
+    return satisfies_constraint_K (op);
+  return GET_MODE (op) == Pmode;
+})
+
 (define_special_predicate "vector_length_operand"
   (ior (match_operand 0 "pmode_register_operand")
        (match_operand 0 "const_csr_operand")))
@@ -290,6 +298,11 @@
 (define_predicate "vector_least_significant_set_mask_operand"
   (and (match_code "const_vector")
        (match_test "rtx_equal_p (op, riscv_vector::gen_scalar_move_mask (GET_MODE (op)))")))
+
+(define_predicate "vector_reg_or_const_dup_operand"
+  (ior (match_operand 0 "register_operand")
+       (match_test "const_vec_duplicate_p (op)
+       && !CONST_POLY_INT_P (CONST_VECTOR_ELT (op, 0))")))
 
 (define_predicate "vector_mask_operand"
   (ior (match_operand 0 "register_operand")

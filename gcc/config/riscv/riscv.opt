@@ -70,6 +70,26 @@ Enum(abi_type) String(lp64f) Value(ABI_LP64F)
 EnumValue
 Enum(abi_type) String(lp64d) Value(ABI_LP64D)
 
+Enum
+Name(riscv_vector_lmul) Type(enum riscv_vector_lmul_enum)
+The possible vectorization factor:
+
+EnumValue
+Enum(riscv_vector_lmul) String(1) Value(RVV_LMUL1)
+
+EnumValue
+Enum(riscv_vector_lmul) String(2) Value(RVV_LMUL2)
+
+EnumValue
+Enum(riscv_vector_lmul) String(4) Value(RVV_LMUL4)
+
+EnumValue
+Enum(riscv_vector_lmul) String(8) Value(RVV_LMUL8)
+
+mriscv-vector-lmul=
+Target RejectNegative Joined Enum(riscv_vector_lmul) Var(riscv_vector_lmul) Init(RVV_LMUL1)
+-mriscv-vector-lmul=<lmul>	Set the vf using lmul in auto-vectorization.
+
 mfdiv
 Target Mask(FDIV)
 Use hardware floating-point divide and square root instructions.
