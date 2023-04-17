@@ -1972,6 +1972,13 @@ set_regno_raw (rtx x, unsigned int regno, unsigned int nregs)
 /* 1 if the given register number REG_NO corresponds to a hard register.  */
 #define HARD_REGISTER_NUM_P(REG_NO) ((REG_NO) < FIRST_PSEUDO_REGISTER)
 
+/* 1 if the given register REG corresponds to a virtual register.  */
+#define VIRTUAL_REGISTER_P(REG) (VIRTUAL_REGISTER_NUM_P (REGNO (REG)))
+
+/* 1 if the given register number REG_NO corresponds to a virtual register.  */
+#define VIRTUAL_REGISTER_NUM_P(REG_NO)					\
+  (IN_RANGE (REG_NO, FIRST_VIRTUAL_REGISTER, LAST_VIRTUAL_REGISTER))
+
 /* For a CONST_INT rtx, INTVAL extracts the integer.  */
 #define INTVAL(RTX) XCWINT (RTX, 0, CONST_INT)
 #define UINTVAL(RTX) ((unsigned HOST_WIDE_INT) INTVAL (RTX))
@@ -4078,8 +4085,7 @@ PUT_MODE (rtx x, machine_mode mode)
    || (REGNUM) == FRAME_POINTER_REGNUM		\
    || (REGNUM) == HARD_FRAME_POINTER_REGNUM	\
    || (REGNUM) == ARG_POINTER_REGNUM		\
-   || ((REGNUM) >= FIRST_VIRTUAL_REGISTER	\
-       && (REGNUM) <= LAST_VIRTUAL_POINTER_REGISTER))
+   || VIRTUAL_REGISTER_NUM_P (REGNUM))
 
 /* REGNUM never really appearing in the INSN stream.  */
 #define INVALID_REGNUM			(~(unsigned int) 0)
