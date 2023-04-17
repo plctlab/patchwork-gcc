@@ -57,6 +57,12 @@ neg_poly_int_rtx (machine_mode mode, const_rtx i)
   return immed_wide_int_const (-wi::to_poly_wide (i, mode), mode);
 }
 
+static bool
+valid_mode_for_ior_simplification_p (machine_mode mode)
+{
+  return SCALAR_INT_MODE_P (mode) || VECTOR_BOOL_MODE_P (mode);
+}
+
 /* Test whether expression, X, is an immediate constant that represents
    the most significant bit of machine mode MODE.  */
 
@@ -3332,8 +3338,8 @@ simplify_context::simplify_binary_operation_1 (rtx_code code,
       if (((GET_CODE (op0) == NOT && rtx_equal_p (XEXP (op0, 0), op1))
 	   || (GET_CODE (op1) == NOT && rtx_equal_p (XEXP (op1, 0), op0)))
 	  && ! side_effects_p (op0)
-	  && SCALAR_INT_MODE_P (mode))
-	return constm1_rtx;
+	  && valid_mode_for_ior_simplification_p (mode))
+	return CONST1_RTX (mode);
 
       /* (ior A C) is C if all bits of A that might be nonzero are on in C.  */
       if (CONST_INT_P (op1)

@@ -134,6 +134,10 @@ extern const unsigned char mode_class[NUM_MACHINE_MODES];
    || GET_MODE_CLASS (MODE) == MODE_VECTOR_ACCUM	\
    || GET_MODE_CLASS (MODE) == MODE_VECTOR_UACCUM)
 
+/* Nonzero if MODE is a vector bool mode.  */
+#define VECTOR_BOOL_MODE_P(MODE)			\
+  (GET_MODE_CLASS (MODE) == MODE_VECTOR_BOOL)		\
+
 /* Nonzero if MODE is a scalar integral mode.  */
 #define SCALAR_INT_MODE_P(MODE)			\
   (GET_MODE_CLASS (MODE) == MODE_INT		\
