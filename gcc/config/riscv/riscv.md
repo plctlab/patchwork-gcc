@@ -135,6 +135,7 @@
 (include "predicates.md")
 (include "constraints.md")
 (include "iterators.md")
+(include "vector-iterators.md")
 
 ;; ....................
 ;;
