@@ -6229,6 +6229,17 @@ loongarch_option_override_internal (struct gcc_options *opts)
       && !opts->x_optimize_size)
     opts->x_flag_prefetch_loop_arrays = 1;
 
+  /* Align functions and loops to (issue rate) * (insn size) to improve
+     the throughput of the fetching units.  */
+  char *align = XNEWVEC (char, 16);
+  sprintf (align, "%d", loongarch_issue_rate () * 4);
+
+  if (opts->x_flag_align_functions && !opts->x_str_align_functions)
+    opts->x_str_align_functions = align;
+
+  if (opts->x_flag_align_loops && !opts->x_str_align_loops)
+    opts->x_str_align_loops = align;
+
   if (TARGET_DIRECT_EXTERN_ACCESS && flag_shlib)
     error ("%qs cannot be used for compiling a shared library",
 	   "-mdirect-extern-access");
