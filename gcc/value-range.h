@@ -583,7 +583,18 @@ Value_Range::Value_Range (tree min, tree max, value_range_kind kind)
 inline
 Value_Range::Value_Range (const Value_Range &r)
 {
-  m_vrange = r.m_vrange;
+  if (r.m_vrange == &r.m_irange)
+    {
+      m_irange = r.m_irange;
+      m_vrange = &m_irange;
+    }
+  else if (r.m_vrange == &r.m_frange)
+    {
+      m_frange = r.m_frange;
+      m_vrange = &m_frange;
+    }
+  else
+    m_vrange = &m_unsupported;
 }
 
 // Initialize object so it is possible to store temporaries of TYPE
