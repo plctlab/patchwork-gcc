@@ -402,6 +402,60 @@ public:
   }
 } op_cfn_copysign;
 
+class cfn_sincos : public range_operator_float
+{
+public:
+  using range_operator_float::fold_range;
+  using range_operator_float::op1_range;
+  virtual bool fold_range (frange &r, tree type,
+			   const frange &lh, const frange &,
+			   relation_trio) const final override
+  {
+    if (lh.known_isnan () || lh.known_isinf ())
+      {
+	r.set_nan (type);
+	return true;
+      }
+    r.set (type, dconstm1, dconst1);
+    if (!lh.maybe_isnan ())
+      r.clear_nan ();
+    return true;
+  }
+  virtual bool op1_range (frange &r, tree type,
+			  const frange &lhs, const frange &,
+			  relation_trio) const final override
+  {
+    if (!lhs.maybe_isnan ())
+      {
+	// If NAN is not valid result, the input cannot include either
+	// a NAN nor a +-INF.
+	REAL_VALUE_TYPE lb = real_min_representable (type);
+	REAL_VALUE_TYPE ub = real_max_representable (type);
+	r.set (type, lb, ub, nan_state (false, false));
+	return true;
+      }
+    // A known NAN means the input is [-INF,-INF][+INF,+INF] U +-NAN,
+    // which we can't currently represent.
+    if (lhs.known_isnan ())
+      {
+	r.set_varying (type);
+	return true;
+      }
+    // Results outside of [-1.0, +1.0] are impossible.
+    REAL_VALUE_TYPE lb = lhs.lower_bound ();
+    REAL_VALUE_TYPE ub = lhs.upper_bound ();
+    if (real_less (&lb, &dconstm1)
+	|| real_less (&dconst1, &ub))
+      {
+	r.set_undefined ();
+	return true;
+      }
+
+    r.set_varying (type);
+    return true;
+  }
+} op_cfn_sincos;
+
 // Implement range operator for CFN_BUILT_IN_TOUPPER and CFN_BUILT_IN_TOLOWER.
 class cfn_toupper_tolower : public range_operator
 {
@@ -877,6 +931,15 @@ gimple_range_op_handler::maybe_builtin_call ()
       m_op1 = gimple_call_arg (call, 0);
       m_op2 = gimple_call_arg (call, 1);
       m_float = &op_cfn_copysign;
+      m_valid = true;
+      break;
+
+    CASE_CFN_SIN:
+    CASE_CFN_SIN_FN:
+    CASE_CFN_COS:
+    CASE_CFN_COS_FN:
+      m_op1 = gimple_call_arg (call, 0);
+      m_float = &op_cfn_sincos;
       m_valid = true;
       break;
 
