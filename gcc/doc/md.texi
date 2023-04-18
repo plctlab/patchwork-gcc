@@ -9362,6 +9362,14 @@ If the preparation falls through (invokes neither @code{DONE} nor
 @code{FAIL}), then the @code{define_peephole2} uses the replacement
 template.
 
+Insns are scanned in forward order from beginning to end for each basic
+block, but the basic blocks are scanned in reverse order of appearance
+in a function.  After a successful replacement, scanning for further
+opportunities for @code{define_peephole2} matches, resumes at the last
+generated insn.  I.e. for the example above, the first insn that can be
+matched by another @code{define_peephole2}, is @code{(set (match_dup 3)
+(match_dup 4))}.
+
 @end ifset
 @ifset INTERNALS
 @node Insn Attributes
