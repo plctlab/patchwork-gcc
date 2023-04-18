@@ -328,6 +328,10 @@ class frange : public vrange
 {
   friend class frange_storage_slot;
   friend class vrange_printer;
+  friend void streamer_write_vrange (struct output_block *, const vrange &);
+  friend void streamer_read_value_range (class lto_input_block *,
+					 class data_in *,
+					 class Value_Range &);
 public:
   frange ();
   frange (const frange &);
