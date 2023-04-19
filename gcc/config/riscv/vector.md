@@ -1032,6 +1032,7 @@
 	    [(match_operand:VB 1 "vector_all_trues_mask_operand" "Wc1, Wc1, Wc1, Wc1, Wc1")
 	     (match_operand 4 "vector_length_operand"            " rK,  rK,  rK,  rK,  rK")
 	     (match_operand 5 "const_int_operand"                "  i,   i,   i,   i,   i")
+	     (match_operand 6 "const_int_operand"                "  i,   i,   i,   i,   i")
 	     (reg:SI VL_REGNUM)
 	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
 	  (match_operand:VB 3 "vector_move_operand"              "  m,  vr,  vr, Wc0, Wc1")
@@ -4113,7 +4114,8 @@
       if (satisfies_constraint_Wc1 (operands[1]))
 	emit_insn (
 	  gen_pred_mov (<VM>mode, operands[0], CONSTM1_RTX (<VM>mode), undef,
-			CONSTM1_RTX (<VM>mode), operands[6], operands[8]));
+			CONSTM1_RTX (<VM>mode), operands[6], operands[8],
+			gen_int_mode (riscv_vector::get_prefer_mask_policy (), Pmode)));
       else
 	{
 	  /* If vmsgeu_mask with 0 immediate, expand it to vmor mask, maskedoff.
@@ -4158,7 +4160,8 @@
 					operands[6], operands[7], operands[8]));
 	  emit_insn (gen_pred_nand<vm> (operands[0], CONSTM1_RTX (<VM>mode),
 					undef, operands[0], operands[0],
-					operands[6], operands[8]));
+					operands[6], operands[8],
+					gen_int_mode (riscv_vector::get_prefer_mask_policy (), Pmode)));
 	}
       else
 	{
@@ -4173,7 +4176,8 @@
 		operands[5], operands[6], operands[7], operands[8]));
 	      emit_insn (
 		gen_pred_andnot<vm> (operands[0], CONSTM1_RTX (<VM>mode), undef,
-				   operands[1], reg, operands[6], operands[8]));
+				     operands[1], reg, operands[6], operands[8],
+				     gen_int_mode (riscv_vector::get_prefer_mask_policy (), Pmode)));
 	    }
 	  else
 	    {
@@ -5196,6 +5200,7 @@
 	    [(match_operand:VB 1 "vector_all_trues_mask_operand" "Wc1")
 	     (match_operand 5 "vector_length_operand"            " rK")
 	     (match_operand 6 "const_int_operand"                "  i")
+	     (match_operand 7 "const_int_operand"                "  i")
 	     (reg:SI VL_REGNUM)
 	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
 	  (any_bitwise:VB
@@ -5216,6 +5221,7 @@
 	    [(match_operand:VB 1 "vector_all_trues_mask_operand" "Wc1")
 	     (match_operand 5 "vector_length_operand"            " rK")
 	     (match_operand 6 "const_int_operand"                "  i")
+	     (match_operand 7 "const_int_operand"                "  i")
 	     (reg:SI VL_REGNUM)
 	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
 	  (not:VB
@@ -5237,6 +5243,7 @@
 	    [(match_operand:VB 1 "vector_all_trues_mask_operand" "Wc1")
 	     (match_operand 5 "vector_length_operand"            " rK")
 	     (match_operand 6 "const_int_operand"                "  i")
+	     (match_operand 7 "const_int_operand"                "  i")
 	     (reg:SI VL_REGNUM)
 	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
 	  (and_ior:VB
@@ -5258,6 +5265,7 @@
 	    [(match_operand:VB 1 "vector_all_trues_mask_operand" "Wc1")
 	     (match_operand 4 "vector_length_operand"            " rK")
 	     (match_operand 5 "const_int_operand"                "  i")
+	     (match_operand 6 "const_int_operand"                "  i")
 	     (reg:SI VL_REGNUM)
 	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
 	  (not:VB

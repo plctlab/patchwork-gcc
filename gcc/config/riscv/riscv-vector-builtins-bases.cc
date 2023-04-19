@@ -756,7 +756,7 @@ template<rtx_code CODE>
 class mask_logic : public function_base
 {
 public:
-  bool apply_tail_policy_p () const override { return false; }
+  bool apply_tail_policy_p () const override { return true; }
   bool apply_mask_policy_p () const override { return false; }
 
   rtx expand (function_expander &e) const override
@@ -768,7 +768,7 @@ template<rtx_code CODE>
 class mask_nlogic : public function_base
 {
 public:
-  bool apply_tail_policy_p () const override { return false; }
+  bool apply_tail_policy_p () const override { return true; }
   bool apply_mask_policy_p () const override { return false; }
 
   rtx expand (function_expander &e) const override
@@ -780,7 +780,7 @@ template<rtx_code CODE>
 class mask_notlogic : public function_base
 {
 public:
-  bool apply_tail_policy_p () const override { return false; }
+  bool apply_tail_policy_p () const override { return true; }
   bool apply_mask_policy_p () const override { return false; }
 
   rtx expand (function_expander &e) const override
