@@ -164,7 +164,7 @@ static edge gimple_redirect_edge_and_branch (edge, basic_block);
 static edge gimple_try_redirect_by_replacing_jump (edge, basic_block);
 
 /* Various helpers.  */
-static inline bool stmt_starts_bb_p (gimple *, gimple *);
+static inline bool stmt_starts_bb_p (gimple *, gimple *, hash_set<tree> *);
 static int gimple_verify_flow_info (void);
 static void gimple_make_forwarder_block (edge);
 static gimple *first_non_label_stmt (basic_block);
@@ -521,6 +521,68 @@ gimple_call_initialize_ctrl_altering (gimple *stmt)
     gimple_call_set_ctrl_altering (stmt, false);
 }
 
+/* Compute target labels to save useful labels.  */
+static void
+compute_target_labels (gimple_seq seq, hash_set<tree> *target_labels)
+{
+  gimple *stmt = NULL;
+  gimple_stmt_iterator j = gsi_start (seq);
+
+  while (!gsi_end_p (j))
+  {
+      stmt = gsi_stmt (j);
+
+      switch (gimple_code (stmt))
+      {
+	case GIMPLE_COND:
+	  {
+	    gcond *cstmt = as_a <gcond *> (stmt);
+	    tree true_label = gimple_cond_true_label (cstmt);
+	    tree false_label = gimple_cond_false_label (cstmt);
+	    target_labels->add (true_label);
+	    target_labels->add (false_label);
+	  }
+	  break;
+	case GIMPLE_SWITCH:
+	  {
+	    gswitch *gstmt = as_a <gswitch *> (stmt);
+	    size_t i, n = gimple_switch_num_labels (gstmt);
+	    tree elt, label;
+	    for (i = 0; i < n; i++)
+	    {
+	      elt = gimple_switch_label (gstmt, i);
+	      label = CASE_LABEL (elt);
+	      target_labels->add (label);
+	    }
+	  }
+	  break;
+	case GIMPLE_GOTO:
+	  if (!computed_goto_p (stmt))
+	    {
+	      tree dest = gimple_goto_dest (stmt);
+	      target_labels->add (dest);
+	    }
+	  break;
+	case GIMPLE_ASM:
+	  {
+	    gasm *asm_stmt = as_a <gasm *> (stmt);
+	    int i, n = gimple_asm_nlabels (asm_stmt);
+	    for (i = 0; i < n; ++i)
+	    {
+	      tree cons = gimple_asm_label_op (asm_stmt, i);
+	      target_labels->add (cons);
+	    }
+	  }
+	  break;
+
+	default:
+	  break;
+      }
+
+      gsi_next (&j);
+  }
+}
+
 
 /* Insert SEQ after BB and build a flowgraph.  */
 
@@ -532,6 +594,10 @@ make_blocks_1 (gimple_seq seq, basic_block bb)
   gimple *prev_stmt = NULL;
   bool start_new_block = true;
   bool first_stmt_of_seq = true;
+  hash_set<tree> target_labels;
+
+  if (!optimize)
+    compute_target_labels (seq, &target_labels);
 
   while (!gsi_end_p (i))
     {
@@ -553,7 +619,7 @@ make_blocks_1 (gimple_seq seq, basic_block bb)
       /* If the statement starts a new basic block or if we have determined
 	 in a previous pass that we need to create a new block for STMT, do
 	 so now.  */
-      if (start_new_block || stmt_starts_bb_p (stmt, prev_stmt))
+      if (start_new_block || stmt_starts_bb_p (stmt, prev_stmt, &target_labels))
 	{
 	  if (!first_stmt_of_seq)
 	    gsi_split_seq_before (&i, &seq);
@@ -854,102 +920,102 @@ make_edges_bb (basic_block bb, struct omp_region **pcur_region, int *pomp_index)
   int ret = 0;
 
   if (!last)
-    return ret;
-
-  switch (gimple_code (last))
+   fallthru = true;
+  else
+    switch (gimple_code (last))
     {
-    case GIMPLE_GOTO:
-      if (make_goto_expr_edges (bb))
-	ret = 1;
-      fallthru = false;
-      break;
-    case GIMPLE_RETURN:
-      {
-	edge e = make_edge (bb, EXIT_BLOCK_PTR_FOR_FN (cfun), 0);
-	e->goto_locus = gimple_location (last);
+      case GIMPLE_GOTO:
+	if (make_goto_expr_edges (bb))
+	  ret = 1;
 	fallthru = false;
-      }
-      break;
-    case GIMPLE_COND:
-      make_cond_expr_edges (bb);
-      fallthru = false;
-      break;
-    case GIMPLE_SWITCH:
-      make_gimple_switch_edges (as_a <gswitch *> (last), bb);
-      fallthru = false;
-      break;
-    case GIMPLE_RESX:
-      make_eh_edges (last);
-      fallthru = false;
-      break;
-    case GIMPLE_EH_DISPATCH:
-      fallthru = make_eh_dispatch_edges (as_a <geh_dispatch *> (last));
-      break;
+	break;
+      case GIMPLE_RETURN:
+	{
+	  edge e = make_edge (bb, EXIT_BLOCK_PTR_FOR_FN (cfun), 0);
+	  e->goto_locus = gimple_location (last);
+	  fallthru = false;
+	}
+	break;
+      case GIMPLE_COND:
+	make_cond_expr_edges (bb);
+	fallthru = false;
+	break;
+      case GIMPLE_SWITCH:
+	make_gimple_switch_edges (as_a <gswitch *> (last), bb);
+	fallthru = false;
+	break;
+      case GIMPLE_RESX:
+	make_eh_edges (last);
+	fallthru = false;
+	break;
+      case GIMPLE_EH_DISPATCH:
+	fallthru = make_eh_dispatch_edges (as_a <geh_dispatch *> (last));
+	break;
 
-    case GIMPLE_CALL:
-      /* If this function receives a nonlocal goto, then we need to
-	 make edges from this call site to all the nonlocal goto
-	 handlers.  */
-      if (stmt_can_make_abnormal_goto (last))
-	ret = 2;
+      case GIMPLE_CALL:
+	/* If this function receives a nonlocal goto, then we need to
+	   make edges from this call site to all the nonlocal goto
+	   handlers.  */
+	if (stmt_can_make_abnormal_goto (last))
+	  ret = 2;
 
-      /* If this statement has reachable exception handlers, then
-	 create abnormal edges to them.  */
-      make_eh_edges (last);
+	/* If this statement has reachable exception handlers, then
+	   create abnormal edges to them.  */
+	make_eh_edges (last);
 
-      /* BUILTIN_RETURN is really a return statement.  */
-      if (gimple_call_builtin_p (last, BUILT_IN_RETURN))
+	/* BUILTIN_RETURN is really a return statement.  */
+	if (gimple_call_builtin_p (last, BUILT_IN_RETURN))
 	{
 	  make_edge (bb, EXIT_BLOCK_PTR_FOR_FN (cfun), 0);
 	  fallthru = false;
 	}
-      /* Some calls are known not to return.  */
-      else
-	fallthru = !gimple_call_noreturn_p (last);
-      break;
+	/* Some calls are known not to return.  */
+	else
+	  fallthru = !gimple_call_noreturn_p (last);
+	break;
 
-    case GIMPLE_ASSIGN:
-      /* A GIMPLE_ASSIGN may throw internally and thus be considered
-	 control-altering.  */
-      if (is_ctrl_altering_stmt (last))
-	make_eh_edges (last);
-      fallthru = true;
-      break;
+      case GIMPLE_ASSIGN:
+	/* A GIMPLE_ASSIGN may throw internally and thus be considered
+	   control-altering.  */
+	if (is_ctrl_altering_stmt (last))
+	  make_eh_edges (last);
+	fallthru = true;
+	break;
 
-    case GIMPLE_ASM:
-      make_gimple_asm_edges (bb);
-      fallthru = true;
-      break;
+      case GIMPLE_ASM:
+	make_gimple_asm_edges (bb);
+	fallthru = true;
+	break;
 
-    CASE_GIMPLE_OMP:
-      fallthru = omp_make_gimple_edges (bb, pcur_region, pomp_index);
-      break;
+      CASE_GIMPLE_OMP:
+	fallthru = omp_make_gimple_edges (bb, pcur_region, pomp_index);
+	break;
 
-    case GIMPLE_TRANSACTION:
-      {
-        gtransaction *txn = as_a <gtransaction *> (last);
-	tree label1 = gimple_transaction_label_norm (txn);
-	tree label2 = gimple_transaction_label_uninst (txn);
+      case GIMPLE_TRANSACTION:
+	{
+	  gtransaction *txn = as_a <gtransaction *> (last);
+	  tree label1 = gimple_transaction_label_norm (txn);
+	  tree label2 = gimple_transaction_label_uninst (txn);
 
-	if (label1)
-	  make_edge (bb, label_to_block (cfun, label1), EDGE_FALLTHRU);
-	if (label2)
-	  make_edge (bb, label_to_block (cfun, label2),
-		     EDGE_TM_UNINSTRUMENTED | (label1 ? 0 : EDGE_FALLTHRU));
+	  if (label1)
+	    make_edge (bb, label_to_block (cfun, label1), EDGE_FALLTHRU);
+	  if (label2)
+	    make_edge (bb, label_to_block (cfun, label2),
+		EDGE_TM_UNINSTRUMENTED | (label1 ? 0 : EDGE_FALLTHRU));
 
-	tree label3 = gimple_transaction_label_over (txn);
-	if (gimple_transaction_subcode (txn)
-	    & (GTMA_HAVE_ABORT | GTMA_IS_OUTER))
-	  make_edge (bb, label_to_block (cfun, label3), EDGE_TM_ABORT);
+	  tree label3 = gimple_transaction_label_over (txn);
+	  if (gimple_transaction_subcode (txn)
+	      & (GTMA_HAVE_ABORT | GTMA_IS_OUTER))
+	    make_edge (bb, label_to_block (cfun, label3), EDGE_TM_ABORT);
 
-	fallthru = false;
-      }
-      break;
+	  fallthru = false;
+	}
+	break;
 
-    default:
-      gcc_assert (!stmt_ends_bb_p (last));
-      fallthru = true;
-      break;
+      default:
+	gcc_assert (!stmt_ends_bb_p (last));
+	fallthru = true;
+	break;
     }
 
   if (fallthru)
@@ -1145,14 +1211,15 @@ next_discriminator_for_locus (int line)
   return (*slot)->discriminator;
 }
 
-/* Return TRUE if LOCUS1 and LOCUS2 refer to the same source line.  */
+/* Return TRUE if LOCUS1 and LOCUS2 refer to the same source line.  Treat two
+   unknown locations as the same line.  */
 
 static bool
 same_line_p (location_t locus1, expanded_location *from, location_t locus2)
 {
   expanded_location to;
 
-  if (locus1 == locus2)
+  if (LOCATION_LOCUS (locus1) == LOCATION_LOCUS (locus2))
     return true;
 
   to = expand_location (locus2);
@@ -2832,7 +2899,8 @@ simple_goto_p (gimple *t)
    label.  */
 
 static inline bool
-stmt_starts_bb_p (gimple *stmt, gimple *prev_stmt)
+stmt_starts_bb_p (gimple *stmt, gimple *prev_stmt,
+		  hash_set<tree> *target_labels)
 {
   if (stmt == NULL)
     return false;
@@ -2858,6 +2926,15 @@ stmt_starts_bb_p (gimple *stmt, gimple *prev_stmt)
 	{
 	  if (DECL_NONLOCAL (gimple_label_label (plabel))
 	      || !DECL_ARTIFICIAL (gimple_label_label (plabel)))
+	    return true;
+
+	  location_t prev_locus = gimple_location (plabel);
+	  location_t locus = gimple_location (label_stmt);
+	  expanded_location locus_e = expand_location (locus);
+
+	  if (!optimize
+	      && target_labels->contains (gimple_label_label (label_stmt))
+	      && !same_line_p (locus, &locus_e, prev_locus))
 	    return true;
 
 	  cfg_stats.num_merged_labels++;
