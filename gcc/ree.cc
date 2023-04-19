@@ -253,6 +253,53 @@ struct ext_cand
 
 static int max_insn_uid;
 
+/* Get all the reaching definitions of an instruction.  The definitions are
+   desired for REG used in INSN.  Return the definition list or NULL if a
+   definition is missing.  If DEST is non-NULL, additionally push the INSN
+   of the definitions onto DEST.  */
+
+static struct df_link *
+get_defs (rtx_insn *insn, rtx reg, vec<rtx_insn *> *dest)
+{
+  df_ref use;
+  struct df_link *ref_chain, *ref_link;
+
+  FOR_EACH_INSN_USE (use, insn)
+    {
+      if (GET_CODE (DF_REF_REG (use)) == SUBREG)
+	return NULL;
+      if (REGNO (DF_REF_REG (use)) == REGNO (reg))
+	break;
+    }
+
+  if (use == NULL)
+    return NULL;
+
+  ref_chain = DF_REF_CHAIN (use);
+
+  for (ref_link = ref_chain; ref_link; ref_link = ref_link->next)
+    {
+      /* Problem getting some definition for this instruction.  */
+      if (ref_link->ref == NULL)
+	return NULL;
+      if (DF_REF_INSN_INFO (ref_link->ref) == NULL)
+	return NULL;
+      /* As global regs are assumed to be defined at each function call
+	 dataflow can report a call_insn as being a definition of REG.
+	 But we can't do anything with that in this pass so proceed only
+	 if the instruction really sets REG in a way that can be deduced
+	 from the RTL structure.  */
+      if (global_regs[REGNO (reg)]
+	  && !set_of (reg, DF_REF_INSN (ref_link->ref)))
+	return NULL;
+    }
+
+  if (dest)
+    for (ref_link = ref_chain; ref_link; ref_link = ref_link->next)
+      dest->safe_push (DF_REF_INSN (ref_link->ref));
+
+  return ref_chain;
+}
 /* Update or remove REG_EQUAL or REG_EQUIV notes for INSN.  */
 
 static bool
@@ -452,53 +499,6 @@ transform_ifelse (ext_cand *cand, rtx_insn *def_insn)
     }
 
   return false;
-}
-
-/* Get all the reaching definitions of an instruction.  The definitions are
-   desired for REG used in INSN.  Return the definition list or NULL if a
-   definition is missing.  If DEST is non-NULL, additionally push the INSN
-   of the definitions onto DEST.  */
-
-static struct df_link *
-get_defs (rtx_insn *insn, rtx reg, vec<rtx_insn *> *dest)
-{
-  df_ref use;
-  struct df_link *ref_chain, *ref_link;
-
-  FOR_EACH_INSN_USE (use, insn)
-    {
-      if (GET_CODE (DF_REF_REG (use)) == SUBREG)
-        return NULL;
-      if (REGNO (DF_REF_REG (use)) == REGNO (reg))
-	break;
-    }
-
-  gcc_assert (use != NULL);
-
-  ref_chain = DF_REF_CHAIN (use);
-
-  for (ref_link = ref_chain; ref_link; ref_link = ref_link->next)
-    {
-      /* Problem getting some definition for this instruction.  */
-      if (ref_link->ref == NULL)
-        return NULL;
-      if (DF_REF_INSN_INFO (ref_link->ref) == NULL)
-        return NULL;
-      /* As global regs are assumed to be defined at each function call
-	 dataflow can report a call_insn as being a definition of REG.
-	 But we can't do anything with that in this pass so proceed only
-	 if the instruction really sets REG in a way that can be deduced
-	 from the RTL structure.  */
-      if (global_regs[REGNO (reg)]
-	  && !set_of (reg, DF_REF_INSN (ref_link->ref)))
-	return NULL;
-    }
-
-  if (dest)
-    for (ref_link = ref_chain; ref_link; ref_link = ref_link->next)
-      dest->safe_push (DF_REF_INSN (ref_link->ref));
-
-  return ref_chain;
 }
 
 /* Get all the reaching uses of an instruction.  The uses are desired for REG
