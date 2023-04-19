@@ -6228,7 +6228,15 @@ riscv_convert_vector_bits (void)
      to set RVV mode size. The RVV machine modes size are run-time constant if
      TARGET_VECTOR is enabled. The RVV machine modes size remains default
      compile-time constant if TARGET_VECTOR is disabled.  */
-  return TARGET_VECTOR ? poly_uint16 (1, 1) : 1;
+  if (TARGET_VECTOR)
+    {
+      if (riscv_autovec_preference == RVV_FIXED_VLMAX)
+	return (int) TARGET_MIN_VLEN / (riscv_bytes_per_vector_chunk * 8);
+      else
+	return poly_uint16 (1, 1);
+    }
+  else
+    return 1;
 }
 
 /* Implement TARGET_OPTION_OVERRIDE.  */
@@ -7158,6 +7166,17 @@ riscv_zero_call_used_regs (HARD_REG_SET need_zeroed_hardregs)
 							& ~zeroed_hardregs);
 }
 
+/* Implement TARGET_VECTORIZE_PREFERRED_SIMD_MODE.  */
+
+static machine_mode
+riscv_preferred_simd_mode (scalar_mode mode)
+{
+  if (TARGET_VECTOR)
+    return riscv_vector::preferred_simd_mode (mode);
+
+  return word_mode;
+}
+
 /* Initialize the GCC target structure.  */
 #undef TARGET_ASM_ALIGNED_HI_OP
 #define TARGET_ASM_ALIGNED_HI_OP "\t.half\t"
@@ -7411,6 +7430,9 @@ riscv_zero_call_used_regs (HARD_REG_SET need_zeroed_hardregs)
 
 #undef TARGET_ZERO_CALL_USED_REGS
 #define TARGET_ZERO_CALL_USED_REGS riscv_zero_call_used_regs
+
+#undef TARGET_VECTORIZE_PREFERRED_SIMD_MODE
+#define TARGET_VECTORIZE_PREFERRED_SIMD_MODE riscv_preferred_simd_mode
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
