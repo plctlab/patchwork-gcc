@@ -817,6 +817,43 @@ ix86_target_macros (void)
   if (!TARGET_80387)
     cpp_define (parse_in, "_SOFT_FLOAT");
 
+  /* HFmode/BFmode is supported without depending any isa
+     in scalar_mode_supported_p and libgcc_floating_mode_supported_p,
+     but according to psABI, they're really supported w/ SSE2 and above.
+     Since libstdc++ uses __STDCPP_FLOAT16_T__ and __STDCPP_BFLOAT16_T__
+     for backend support of the types, undef the macros to avoid
+     build failure, see PR109504.  */
+  if (!TARGET_SSE2)
+    {
+      if (c_dialect_cxx ()
+	  && cxx_dialect > cxx20)
+	{
+	  cpp_undef (parse_in, "__STDCPP_FLOAT16_T__");
+	  cpp_undef (parse_in, "__STDCPP_BFLOAT16_T__");
+	}
+
+      if (flag_building_libgcc)
+	{
+	  /* libbid uses __LIBGCC_HAS_HF_MODE__ and __LIBGCC_HAS_BF_MODE__
+	     to check backend support of _Float16 and __bf16 type.  */
+	  cpp_undef (parse_in, "__LIBGCC_HAS_HF_MODE__");
+	  cpp_undef (parse_in, "__LIBGCC_HF_FUNC_EXT__");
+	  cpp_undef (parse_in, "__LIBGCC_HF_MANT_DIG__");
+	  cpp_undef (parse_in, "__LIBGCC_HF_EXCESS_PRECISION__");
+	  cpp_undef (parse_in, "__LIBGCC_HF_EPSILON__");
+	  cpp_undef (parse_in, "__LIBGCC_HF_MAX__");
+	  cpp_undef (parse_in, "__LIBGCC_HF_MIN__");
+
+	  cpp_undef (parse_in, "__LIBGCC_HAS_BF_MODE__");
+	  cpp_undef (parse_in, "__LIBGCC_BF_FUNC_EXT__");
+	  cpp_undef (parse_in, "__LIBGCC_BF_MANT_DIG__");
+	  cpp_undef (parse_in, "__LIBGCC_BF_EXCESS_PRECISION__");
+	  cpp_undef (parse_in, "__LIBGCC_BF_EPSILON__");
+	  cpp_undef (parse_in, "__LIBGCC_BF_MAX__");
+	  cpp_undef (parse_in, "__LIBGCC_BF_MIN__");
+	}
+    }
+
   if (TARGET_LONG_DOUBLE_64)
     cpp_define (parse_in, "__LONG_DOUBLE_64__");
 
