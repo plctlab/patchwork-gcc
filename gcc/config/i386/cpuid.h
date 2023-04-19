@@ -24,15 +24,6 @@
 #ifndef _CPUID_H_INCLUDED
 #define _CPUID_H_INCLUDED
 
-/* %eax */
-#define bit_RAOINT	(1 << 3)
-#define bit_AVXVNNI	(1 << 4)
-#define bit_AVX512BF16	(1 << 5)
-#define bit_CMPCCXADD	(1 << 7)
-#define bit_AMX_FP16	(1 << 21)
-#define bit_HRESET	(1 << 22)
-#define bit_AVXIFMA	(1 << 23)
-
 /* %ecx */
 #define bit_SSE3	(1 << 0)
 #define bit_PCLMUL	(1 << 1)
@@ -52,10 +43,7 @@
 #define bit_RDRND	(1 << 30)
 
 /* %edx */
-#define bit_AVXVNNIINT8 (1 << 4)
-#define bit_AVXNECONVERT (1 << 5)
 #define bit_CMPXCHG8B	(1 << 8)
-#define bit_PREFETCHI	(1 << 14)
 #define bit_CMOV	(1 << 15)
 #define bit_MMX		(1 << 23)
 #define bit_FXSAVE	(1 << 24)
@@ -84,7 +72,7 @@
 #define bit_CLZERO	(1 << 0)
 #define bit_WBNOINVD	(1 << 9)
 
-/* Extended Features (%eax == 7) */
+/* Extended Features Leaf (%eax == 7, %ecx == 0) */
 /* %ebx */
 #define bit_FSGSBASE	(1 << 0)
 #define bit_SGX (1 << 2)
@@ -132,9 +120,9 @@
 #define bit_AVX5124VNNIW (1 << 2)
 #define bit_AVX5124FMAPS (1 << 3)
 #define bit_AVX512VP2INTERSECT	(1 << 8)
-#define bit_AVX512FP16   (1 << 23)
-#define bit_IBT	(1 << 20)
-#define bit_UINTR (1 << 5)
+#define bit_AVX512FP16	(1 << 23)
+#define bit_IBT         (1 << 20)
+#define bit_UINTR       (1 << 5)
 #define bit_PCONFIG	(1 << 18)
 #define bit_SERIALIZE	(1 << 14)
 #define bit_TSXLDTRK    (1 << 16)
@@ -142,6 +130,21 @@
 #define bit_AMX_TILE    (1 << 24)
 #define bit_AMX_INT8    (1 << 25)
 #define bit_AMX_COMPLEX (1 << 8)
+
+/* Extended Features Sub-leaf (%eax == 7, %ecx == 1) */
+/* %eax */
+#define bit_RAOINT      (1 << 3)
+#define bit_AVXVNNI     (1 << 4)
+#define bit_AVX512BF16  (1 << 5)
+#define bit_CMPCCXADD   (1 << 7)
+#define bit_AMX_FP16    (1 << 21)
+#define bit_HRESET      (1 << 22)
+#define bit_AVXIFMA     (1 << 23)
+
+/* %edx */
+#define bit_AVXVNNIINT8 (1 << 4)
+#define bit_AVXNECONVERT (1 << 5)
+#define bit_PREFETCHI (1 << 14)
 
 /* Extended State Enumeration Sub-leaf (%eax == 0xd, %ecx == 1) */
 #define bit_XSAVEOPT	(1 << 0)
