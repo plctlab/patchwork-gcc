@@ -72,11 +72,22 @@ public:
   }
   void add_policy_operand (enum tail_policy vta, enum mask_policy vma)
   {
+    add_tail_policy_operand (vta);
+    add_mask_policy_operand (vma);
+  }
+
+  void add_tail_policy_operand (enum tail_policy vta)
+  {
     rtx tail_policy_rtx = gen_int_mode (vta, Pmode);
-    rtx mask_policy_rtx = gen_int_mode (vma, Pmode);
     add_input_operand (tail_policy_rtx, Pmode);
+  }
+
+  void add_mask_policy_operand (enum mask_policy vma)
+  {
+    rtx mask_policy_rtx = gen_int_mode (vma, Pmode);
     add_input_operand (mask_policy_rtx, Pmode);
   }
+
   void add_avl_type_operand (avl_type type)
   {
     add_input_operand (gen_int_mode (type, Pmode), Pmode);
@@ -206,6 +217,8 @@ emit_pred_op (unsigned icode, rtx mask, rtx dest, rtx src, rtx len,
 
   if (GET_MODE_CLASS (mode) != MODE_VECTOR_BOOL)
     e.add_policy_operand (get_prefer_tail_policy (), get_prefer_mask_policy ());
+  else
+    e.add_tail_policy_operand (get_prefer_tail_policy ());
 
   if (vlmax_p)
     e.add_avl_type_operand (avl_type::VLMAX);
