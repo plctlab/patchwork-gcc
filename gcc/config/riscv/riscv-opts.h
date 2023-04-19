@@ -172,6 +172,9 @@ enum stack_protector_guard {
 #define TARGET_ZFHMIN ((riscv_zf_subext & MASK_ZFHMIN) != 0)
 #define TARGET_ZFH    ((riscv_zf_subext & MASK_ZFH) != 0)
 
+#define MASK_ZFA   (1 << 0)
+#define TARGET_ZFA    ((riscv_zf_subext & MASK_ZFA) != 0)
+
 #define MASK_ZMMUL      (1 << 0)
 #define TARGET_ZMMUL    ((riscv_zm_subext & MASK_ZMMUL) != 0)
 

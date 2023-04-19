@@ -118,6 +118,13 @@
   (and (match_operand 0 "move_operand")
        (match_test "CONSTANT_P (op)")))
 
+;; Zfa constraints.
+
+(define_constraint "Zf"
+  "A floating point number that can be loaded using instruction `fli` in zfa."
+  (and (match_code "const_double")
+       (match_test "(riscv_float_const_rtx_index_for_fli (op) != -1)")))
+
 ;; Vector constraints.
 
 (define_register_constraint "vr" "TARGET_VECTOR ? V_REGS : NO_REGS"
@@ -183,8 +190,8 @@
 
 ;; Vendor ISA extension constraints.
 
-(define_register_constraint "th_f_fmv" "TARGET_XTHEADFMV ? FP_REGS : NO_REGS"
+(define_register_constraint "th_f_fmv" "(TARGET_XTHEADFMV || TARGET_ZFA) ? FP_REGS : NO_REGS"
   "A floating-point register for XTheadFmv.")
 
-(define_register_constraint "th_r_fmv" "TARGET_XTHEADFMV ? GR_REGS : NO_REGS"
+(define_register_constraint "th_r_fmv" "(TARGET_XTHEADFMV || TARGET_ZFA) ? GR_REGS : NO_REGS"
   "An integer register for XTheadFmv.")
