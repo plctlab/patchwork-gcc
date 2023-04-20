@@ -743,6 +743,7 @@ fold_using_range::range_of_phi (vrange &r, gphi *phi, fur_source &src)
   // Track if all executable arguments are the same.
   tree single_arg = NULL_TREE;
   bool seen_arg = false;
+  bool seen_undefined = false;
 
   // Start with an empty range, unioning in each argument's range.
   r.set_undefined ();
@@ -781,6 +782,8 @@ fold_using_range::range_of_phi (vrange &r, gphi *phi, fur_source &src)
 	  else if (single_arg != arg)
 	    single_arg = NULL_TREE;
 	}
+      else
+	seen_undefined = true;
 
       // Once the value reaches varying, stop looking.
       if (r.varying_p () && single_arg == NULL_TREE)
@@ -798,23 +801,13 @@ fold_using_range::range_of_phi (vrange &r, gphi *phi, fur_source &src)
 	// Symbolic arguments can be equivalences.
 	if (gimple_range_ssa_p (single_arg))
 	  {
-	    // Only allow the equivalence if the PHI definition does not
-	    // dominate any incoming edge for SINGLE_ARG.
-	    // See PR 108139 and 109462.
-	    basic_block bb = gimple_bb (phi);
-	    if (!dom_info_available_p (CDI_DOMINATORS))
-	      single_arg = NULL;
-	    else
-	      for (x = 0; x < gimple_phi_num_args (phi); x++)
-		if (gimple_phi_arg_def (phi, x) == single_arg
-		    && dominated_by_p (CDI_DOMINATORS,
-					gimple_phi_arg_edge (phi, x)->src,
-					bb))
-		  {
-		    single_arg = NULL;
-		    break;
-		  }
-	    if (single_arg)
+	    // Only allow the equivalence if there isn't any UNDEFINED
+	    // argument we ignored.  Such equivalences are one way
+	    // PHIDEF == name, but name == PHIDEF might not hold.
+	    // See PR 108139, 109462 and 109564.
+	    // ???  This misses cases with not executable edges such
+	    // as gcc.dg/tree-ssa/vrp06.c
+	    if (!seen_undefined)
 	      src.register_relation (phi, VREL_EQ, phi_def, single_arg);
 	  }
 	else if (src.get_operand (arg_range, single_arg)
