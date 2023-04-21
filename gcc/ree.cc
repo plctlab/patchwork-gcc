@@ -253,6 +253,61 @@ struct ext_cand
 
 static int max_insn_uid;
 
+/* Return TRUE if OP can be considered a zero extension from one or
+   more sub-word modes to larger modes up to a full word.
+
+   For example (and:DI (reg) (const_int X))
+
+   Depending on the value of X could be considered a zero extension
+   from QI, HI and SI to larger modes up to DImode.  */
+
+static bool
+rtx_is_zext_p (rtx insn)
+{
+  if (GET_CODE (insn) == AND)
+    {
+      rtx set = XEXP (insn, 0);
+      if (REG_P (set))
+	{
+	   if (XEXP (insn, 1) == const1_rtx)
+	     return true;
+	}
+      else
+	return false;
+    }
+
+  return false;
+}
+/* Return TRUE if OP can be considered a zero extension from one or
+   more sub-word modes to larger modes up to a full word.
+
+   For example (and:DI (reg) (const_int X))
+
+   Depending on the value of X could be considered a zero extension
+   from QI, HI and SI to larger modes up to DImode.  */
+
+static bool
+rtx_is_zext_p (rtx_insn *insn)
+{
+  rtx body = single_set (insn);
+
+  if (GET_CODE (body) == SET && GET_CODE (SET_SRC (body)) == AND)
+   {
+     rtx set = XEXP (SET_SRC (body), 0);
+
+     if (REG_P (set) && GET_MODE (SET_DEST (body)) == GET_MODE (set))
+       {
+	 if (GET_MODE_UNIT_SIZE (GET_MODE (SET_DEST (body)))
+	     >= GET_MODE_UNIT_SIZE (GET_MODE (set)))
+	   return true;
+       }
+     else
+      return false;
+   }
+
+   return false;
+}
+
 /* Update or remove REG_EQUAL or REG_EQUIV notes for INSN.  */
 
 static bool
@@ -319,7 +374,7 @@ combine_set_extension (ext_cand *cand, rtx_insn *curr_insn, rtx *orig_set)
 {
   rtx orig_src = SET_SRC (*orig_set);
   machine_mode orig_mode = GET_MODE (SET_DEST (*orig_set));
-  rtx new_set;
+  rtx new_set = NULL_RTX;
   rtx cand_pat = single_set (cand->insn);
 
   /* If the extension's source/destination registers are not the same
@@ -359,27 +414,41 @@ combine_set_extension (ext_cand *cand, rtx_insn *curr_insn, rtx *orig_set)
   else if (GET_CODE (orig_src) == cand->code)
     {
       /* Here is a sequence of two extensions.  Try to merge them.  */
-      rtx temp_extension
-	= gen_rtx_fmt_e (cand->code, cand->mode, XEXP (orig_src, 0));
+      rtx temp_extension = NULL_RTX;
+      if (GET_CODE (SET_SRC (cand_pat)) == AND)
+	temp_extension
+	= gen_rtx_AND (cand->mode, XEXP (orig_src, 0), XEXP (orig_src, 1));
+      else
+	temp_extension
+	 = gen_rtx_fmt_e (cand->code, cand->mode, XEXP (orig_src, 0));
       rtx simplified_temp_extension = simplify_rtx (temp_extension);
       if (simplified_temp_extension)
         temp_extension = simplified_temp_extension;
+
       new_set = gen_rtx_SET (new_reg, temp_extension);
     }
   else if (GET_CODE (orig_src) == IF_THEN_ELSE)
     {
       /* Only IF_THEN_ELSE of phi-type copies are combined.  Otherwise,
-         in general, IF_THEN_ELSE should not be combined.  */
-      return false;
+	in general, IF_THEN_ELSE should not be combined.  Relaxed
+	cases with IF_THEN_ELSE across basic blocls */
+	return true;
     }
   else
     {
       /* This is the normal case.  */
-      rtx temp_extension
+      rtx temp_extension = NULL_RTX;
+
+      if (GET_CODE (SET_SRC (cand_pat)) == AND)
+	temp_extension
+	= gen_rtx_AND (cand->mode, orig_src, XEXP (SET_SRC (cand_pat), 1));
+      else
+	temp_extension
 	= gen_rtx_fmt_e (cand->code, cand->mode, orig_src);
       rtx simplified_temp_extension = simplify_rtx (temp_extension);
       if (simplified_temp_extension)
         temp_extension = simplified_temp_extension;
+
       new_set = gen_rtx_SET (new_reg, temp_extension);
     }
 
@@ -468,12 +537,13 @@ get_defs (rtx_insn *insn, rtx reg, vec<rtx_insn *> *dest)
   FOR_EACH_INSN_USE (use, insn)
     {
       if (GET_CODE (DF_REF_REG (use)) == SUBREG)
-        return NULL;
+	return NULL;
       if (REGNO (DF_REF_REG (use)) == REGNO (reg))
 	break;
     }
 
-  gcc_assert (use != NULL);
+  if (use == NULL)
+    return NULL;
 
   ref_chain = DF_REF_CHAIN (use);
 
@@ -481,9 +551,9 @@ get_defs (rtx_insn *insn, rtx reg, vec<rtx_insn *> *dest)
     {
       /* Problem getting some definition for this instruction.  */
       if (ref_link->ref == NULL)
-        return NULL;
+	return NULL;
       if (DF_REF_INSN_INFO (ref_link->ref) == NULL)
-        return NULL;
+	return NULL;
       /* As global regs are assumed to be defined at each function call
 	 dataflow can report a call_insn as being a definition of REG.
 	 But we can't do anything with that in this pass so proceed only
@@ -698,6 +768,258 @@ get_sub_rtx (rtx_insn *def_insn)
   return sub_rtx;
 }
 
+/* Return TRUE if reaching definition of def_insn source operand
+   has has arithmetic peration like ASHIFT and LSHIFTRT. If TRUE
+   don't eliminate sign extension   */
+
+static bool
+def_arith_p (rtx_insn *insn, rtx orig_src)
+{
+  if (!REG_P (orig_src))
+     return true;
+
+  vec<rtx_insn *> *dest = XCNEWVEC (vec<rtx_insn *>, 4);
+  if (!get_defs (insn, orig_src, dest))
+    return false;
+
+  int i;
+  rtx_insn *def_insn;
+  bool has_arith = false;
+
+  FOR_EACH_VEC_ELT (*dest, i, def_insn)
+    {
+      rtx def_set = single_set (def_insn);
+
+      if (!def_set)
+	{
+	  has_arith = true;
+	  break;
+	}
+
+      if (DEBUG_INSN_P (def_insn))
+	continue;
+
+      /* Return True for following rtl insn.
+	 set (reg x), (ashift ( ...)
+	 set (reg x), (lshiftrt (....)   */
+
+      if ((GET_CODE (PATTERN (def_insn)) == SET
+	   && (GET_CODE (SET_SRC (def_set)) == ASHIFT
+	   || GET_CODE (SET_SRC (def_set)) == LSHIFTRT)))
+	{
+	  has_arith = true;
+	  break;
+	}
+
+      /* Return TRUE for following rtl insn.
+	 set (reg x) , (plus(ashift ( ....)
+	 set (reg x), (plus(lshiftrt (....)  */
+
+      if (GET_CODE (PATTERN (def_insn)) == SET
+	  && (GET_RTX_CLASS (GET_CODE (SET_SRC (def_set))) == RTX_BIN_ARITH
+	  || GET_RTX_CLASS (GET_CODE (SET_SRC (def_set))) == RTX_COMM_ARITH))
+	{
+	  rtx src = XEXP (SET_SRC (def_set),0);
+
+	  if (GET_CODE (src) == LSHIFTRT
+	      || GET_CODE (src) == ASHIFT)
+	    {
+	      has_arith = true;
+	      break;
+	    }
+	}
+     }
+  XDELETEVEC (dest);
+  return has_arith;
+}
+
+/* Return TRUE if the cfg has following properties.
+	bb1
+	|\
+	| \
+	|  bb2
+	|  /
+	bb3
+
+   whereas bb1 has IF_THEN_ELSE  and bb2 has the definition and bb3 has
+   zero/sign/AND extensions.  */
+
+static bool
+feasible_cfg (ext_cand *cand, rtx_insn *def_insn)
+{
+  basic_block bb = BLOCK_FOR_INSN (cand->insn);
+  edge fallthru_edge;
+  edge e;
+  edge_iterator ei;
+
+  FOR_EACH_EDGE (e, ei, bb->preds)
+    {
+      rtx_insn *insn = BB_END (e->src) ? PREV_INSN (BB_END (e->src)) : NULL;
+
+      if (insn == NULL)
+	continue;
+
+      if (DEBUG_INSN_P (insn))
+	continue;
+
+      rtx set = single_set (insn);
+
+      /* Block has IF_THEN_ELSE  */
+      if (insn && set
+	  && GET_CODE (set) == SET && SET_SRC (set)
+	  && GET_CODE (SET_SRC (set)) == IF_THEN_ELSE)
+	{
+	  if (e->dest == bb)
+	    {
+	      basic_block jump_block = e->dest;
+	      if (jump_block != bb)
+		return false;
+	     }
+	     else
+	       {
+		 /* def_insn block has single successor and fall through
+		    edge target are the block for cand insn.  */
+		 if (single_succ_p (e->dest))
+		   {
+		     fallthru_edge = single_succ_edge (e->dest);
+		     if (BB_END (fallthru_edge->dest)
+			 && bb != fallthru_edge->dest)
+		       return false;
+		   }
+		}
+	  }
+    }
+
+  /* def_insn block has single successor and fall through
+     edge target are the block for cand insn.  */
+  if (single_succ_p (BLOCK_FOR_INSN (def_insn)))
+    {
+      fallthru_edge = single_succ_edge (BLOCK_FOR_INSN (def_insn));
+      if (BB_END (fallthru_edge->dest)
+	  && bb != fallthru_edge->dest)
+	return false;
+    }
+   else
+     return false;
+
+  return true;
+}
+
+/* Return TRUE if the candidate extension INSN and def_insn are
+   feasible for extension elimination.
+
+   Things to consider:
+
+   cfg properties are feasible for extension elimination.
+
+   sign_extend with def insn as PLUS and the reaching definition
+   of def_insn are not ASHIFT and LSHIFTRT.
+
+   zero_extend with def insn as XOR/IOR and the reachin definition
+   of def_insn are not ASHIFT and LSHIFTRT.
+
+   The destination register of the extension insn must not be
+   used or set between the def_insn and cand->insn exclusive.
+
+   AND with zero extension properties has USE and the register
+   of cand insn are same as register of USE operand.  */
+
+static bool
+eliminate_across_bbs_p (ext_cand *cand, rtx_insn *def_insn)
+{
+  basic_block bb = BLOCK_FOR_INSN (cand->insn);
+
+  if (!feasible_cfg (cand, def_insn))
+    return false;
+
+  rtx cand_set = single_set(cand->insn);
+  /* The destination register of the extension insn must not be
+      used or set between the def_insn and cand->insn exclusive.  */
+  if (INSN_CHAIN_CODE_P (GET_CODE (def_insn))
+      && INSN_CHAIN_CODE_P (cand->code))
+    if ((cand->code == ZERO_EXTEND)
+	 && REG_P (SET_DEST (cand_set)) && NEXT_INSN (def_insn)
+	 && reg_used_set_between_p(SET_DEST (cand_set), def_insn, cand->insn))
+      return false;
+
+  if (cand->code == ZERO_EXTEND
+      && (bb != BLOCK_FOR_INSN (def_insn)
+      || DF_INSN_LUID (def_insn) > DF_INSN_LUID (cand->insn)))
+    return false;
+
+  if (rtx_is_zext_p (cand->insn))
+    {
+      if (GET_CODE (PATTERN (BB_END (bb))) != USE)
+	return false;
+
+      if (REGNO (XEXP (PATTERN (BB_END (bb)), 0)) != REGNO (SET_DEST (cand->expr)))
+	return false;
+    }
+
+  rtx set = single_set (def_insn);
+
+  if (!set)
+    return false;
+
+  if (cand->code == SIGN_EXTEND
+      && GET_CODE (set) == SET)
+    {
+      rtx orig_src = SET_SRC (set);
+      machine_mode ext_src_mode;
+
+      ext_src_mode = GET_MODE (XEXP (SET_SRC (cand->expr), 0));
+
+      if (GET_MODE (SET_DEST (set)) != ext_src_mode)
+	return false;
+
+      if (GET_CODE (orig_src) != PLUS)
+	return false;
+
+      if (!REG_P (XEXP (orig_src, 0)))
+	return false;
+
+      if (!REG_P (XEXP (orig_src,1)))
+	return false;
+
+      if (GET_CODE (orig_src) == PLUS)
+	{
+	  bool def_src1
+	    = def_arith_p (def_insn,
+			   XEXP (SET_SRC (set), 0));
+	  bool def_src2
+	    = def_arith_p (def_insn,
+			   XEXP (SET_SRC (set), 1));
+
+	  if (def_src1 || def_src2)
+	    return false;
+	}
+    }
+
+  if (cand->code == ZERO_EXTEND
+      && GET_CODE (set) == SET)
+    {
+      if (GET_CODE (SET_SRC (set)) != XOR
+	  && GET_CODE (SET_SRC (set)) != IOR)
+	return false;
+
+      if (GET_CODE (SET_SRC (set)) == XOR
+	  || GET_CODE (SET_SRC (set)) == IOR)
+	 {
+	   bool def_src1
+	     = def_arith_p (def_insn,
+			    XEXP (SET_SRC (set), 0));
+	   bool def_src2
+	     = def_arith_p (def_insn,
+			    XEXP (SET_SRC (set), 1));
+
+	   if (def_src1 || def_src2)
+	     return false;
+	 }
+     }
+
+  return true;
+}
+
 /* Merge the DEF_INSN with an extension.  Calls combine_set_extension
    on the SET pattern.  */
 
@@ -713,12 +1035,32 @@ merge_def_and_ext (ext_cand *cand, rtx_insn *def_insn, ext_state *state)
   if (sub_rtx == NULL)
     return false;
 
-  if (GET_MODE (SET_DEST (*sub_rtx)) == ext_src_mode
-	  || ((state->modified[INSN_UID (def_insn)].kind
-	       == (cand->code == ZERO_EXTEND
+  bool copy_needed
+    = (REGNO (SET_DEST (cand->expr)) != REGNO (XEXP (SET_SRC (cand->expr), 0)));
+
+  bool feasible = eliminate_across_bbs_p (cand, def_insn);
+
+  if (!feasible) return false;
+
+  /* Combine zero_extend/sign_extend/AND and if sign_extend and
+     mode of DEST and SRC are different.  */
+
+  bool is_zext =  rtx_is_zext_p (cand->insn)
+		  || cand->code == ZERO_EXTEND
+		  || cand->code == SIGN_EXTEND;
+
+  bool do_elimination = !copy_needed
+			&& is_zext
+			&& (cand->code == SIGN_EXTEND
+			    || GET_MODE (SET_DEST (*sub_rtx)) != ext_src_mode);
+
+  if (((do_elimination
+	&& state->modified[INSN_UID (def_insn)].kind == EXT_MODIFIED_NONE))
+	|| ((state->modified[INSN_UID (def_insn)].kind
+		== (cand->code == ZERO_EXTEND
 		   ? EXT_MODIFIED_ZEXT : EXT_MODIFIED_SEXT))
-	      && state->modified[INSN_UID (def_insn)].mode
-		 == ext_src_mode))
+	     && state->modified[INSN_UID (def_insn)].mode
+		== ext_src_mode))
     {
       if (GET_MODE_UNIT_SIZE (GET_MODE (SET_DEST (*sub_rtx)))
 	  >= GET_MODE_UNIT_SIZE (cand->mode))
@@ -734,7 +1076,6 @@ merge_def_and_ext (ext_cand *cand, rtx_insn *def_insn, ext_state *state)
 	  return true;
 	}
     }
-
   return false;
 }
 
@@ -744,7 +1085,9 @@ merge_def_and_ext (ext_cand *cand, rtx_insn *def_insn, ext_state *state)
 static inline rtx
 get_extended_src_reg (rtx src)
 {
-  while (GET_CODE (src) == SIGN_EXTEND || GET_CODE (src) == ZERO_EXTEND)
+  while (GET_CODE (src) == SIGN_EXTEND
+	 || GET_CODE (src) == ZERO_EXTEND
+	 || rtx_is_zext_p (src))
     src = XEXP (src, 0);
   gcc_assert (REG_P (src));
   return src;
@@ -882,8 +1225,7 @@ combine_reaching_defs (ext_cand *cand, const_rtx set_pat, ext_state *state)
 
       /* The destination register of the extension insn must not be
 	 used or set between the def_insn and cand->insn exclusive.  */
-      if (reg_used_between_p (SET_DEST (set), def_insn, cand->insn)
-	  || reg_set_between_p (SET_DEST (set), def_insn, cand->insn))
+      if (reg_used_set_between_p (SET_DEST (set), def_insn, cand->insn))
 	return false;
 
       /* We must be able to copy between the two registers.   Generate,
@@ -975,10 +1317,8 @@ combine_reaching_defs (ext_cand *cand, const_rtx set_pat, ext_state *state)
 	     used or set between the def_insn2 and def_insn exclusive.
 	     Likewise for the other reg, i.e. check both reg1 and reg2
 	     in the above comment.  */
-	  if (reg_used_between_p (SET_DEST (set), def_insn2, def_insn)
-	      || reg_set_between_p (SET_DEST (set), def_insn2, def_insn)
-	      || reg_used_between_p (src_reg, def_insn2, def_insn)
-	      || reg_set_between_p (src_reg, def_insn2, def_insn))
+	  if (reg_used_set_between_p (SET_DEST (set), def_insn2, def_insn)
+	      || reg_used_set_between_p (src_reg, def_insn2, def_insn))
 	    break;
 
 	  state->defs_list[0] = def_insn2;
@@ -1004,15 +1344,17 @@ combine_reaching_defs (ext_cand *cand, const_rtx set_pat, ext_state *state)
       cand->mode = mode;
     }
 
-  merge_successful = true;
-
+  merge_successful = false;
   /* Go through the defs vector and try to merge all the definitions
      in this vector.  */
   state->modified_list.truncate (0);
   FOR_EACH_VEC_ELT (state->defs_list, defs_ix, def_insn)
     {
       if (merge_def_and_ext (cand, def_insn, state))
-	state->modified_list.safe_push (def_insn);
+	{
+	  merge_successful = true;
+	  state->modified_list.safe_push (def_insn);
+	}
       else
         {
           merge_successful = false;
@@ -1045,34 +1387,71 @@ combine_reaching_defs (ext_cand *cand, const_rtx set_pat, ext_state *state)
 	 definitions could be merged.  */
       if (apply_change_group ())
         {
-          if (dump_file)
-            fprintf (dump_file, "All merges were successful.\n");
+	  if (state->modified_list.length() == 0)
+	     return false;
+
+	  rtx_insn *insn = state->modified_list[0];
+
+	  if ((cand->code == ZERO_EXTEND || cand->code == SIGN_EXTEND)
+	       && GET_CODE (PATTERN (insn)) == SET
+	       && GET_CODE (SET_SRC (PATTERN (insn))) != XOR
+	       && GET_CODE (SET_SRC (PATTERN (insn))) != PLUS
+	       && GET_CODE (SET_SRC (PATTERN (insn))) != IOR)
+	     return false;
+
+	   if (dump_file)
+	     fprintf (dump_file, "All merges were successful.\n");
 
 	  FOR_EACH_VEC_ELT (state->modified_list, i, def_insn)
 	    {
 	      ext_modified *modified = &state->modified[INSN_UID (def_insn)];
 	      if (modified->kind == EXT_MODIFIED_NONE)
 		modified->kind = (cand->code == ZERO_EXTEND ? EXT_MODIFIED_ZEXT
-						            : EXT_MODIFIED_SEXT);
+							    : EXT_MODIFIED_SEXT);
 
 	      if (copy_needed)
 		modified->do_not_reextend = 1;
 	    }
           return true;
         }
-      else
-        {
-          /* Changes need not be cancelled explicitly as apply_change_group
-             does it.  Print list of definitions in the dump_file for debug
-             purposes.  This extension cannot be deleted.  */
-          if (dump_file)
-            {
-	      fprintf (dump_file,
-		       "Merge cancelled, non-mergeable definitions:\n");
-	      FOR_EACH_VEC_ELT (state->modified_list, i, def_insn)
-	        print_rtl_single (dump_file, def_insn);
-            }
-        }
+	else
+	  {
+	    if (state->modified_list.length() == 0)
+	      return false;
+
+	     rtx_insn *insn = state->modified_list[0];
+
+	     if ((cand->code == ZERO_EXTEND || cand->code == SIGN_EXTEND)
+		  && GET_CODE (PATTERN (insn)) == SET
+		  && GET_CODE (SET_SRC (PATTERN (insn))) != XOR
+		  && GET_CODE (SET_SRC (PATTERN (insn))) != PLUS
+		  && GET_CODE (SET_SRC (PATTERN (insn))) != IOR)
+		return false;
+
+	    if (cand->code == ZERO_EXTEND || cand->code == SIGN_EXTEND)
+	      {
+		FOR_EACH_VEC_ELT (state->modified_list, i, def_insn)
+		  {
+		    ext_modified *modified = &state->modified[INSN_UID (def_insn)];
+		    if (modified->kind == EXT_MODIFIED_NONE)
+		      modified->kind = (cand->code == ZERO_EXTEND ? EXT_MODIFIED_ZEXT
+								  : EXT_MODIFIED_SEXT);
+
+		     modified->do_not_reextend = 1;
+		   }
+		  return true;
+	      }
+	    /* Changes need not be cancelled explicitly as apply_change_group
+		does it.  Print list of definitions in the dump_file for debug
+		purposes.  This extension cannot be deleted.  */
+	    if (dump_file)
+	      {
+		fprintf (dump_file,
+			"Merge cancelled, non-mergeable definitions:\n");
+		FOR_EACH_VEC_ELT (state->modified_list, i, def_insn)
+		  print_rtl_single (dump_file, def_insn);
+	      }
+	   }
     }
   else
     {
@@ -1106,7 +1485,7 @@ add_removable_extension (const_rtx expr, rtx_insn *insn,
   mode = GET_MODE (dest);
 
   if (REG_P (dest)
-      && (code == SIGN_EXTEND || code == ZERO_EXTEND)
+      && (code == SIGN_EXTEND || code == ZERO_EXTEND || rtx_is_zext_p (src))
       && REG_P (XEXP (src, 0)))
     {
       rtx reg = XEXP (src, 0);
@@ -1125,7 +1504,7 @@ add_removable_extension (const_rtx expr, rtx_insn *insn,
 	      fprintf (dump_file, "Cannot eliminate extension:\n");
 	      print_rtl_single (dump_file, insn);
 	      fprintf (dump_file, " because it can operate on uninitialized"
-			          " data\n");
+				  " data\n");
 	    }
 	  return;
 	}
@@ -1320,8 +1699,8 @@ find_and_remove_re (void)
 	  if (REG_P (XEXP (SET_SRC (set), 0))
 	      && (REGNO (SET_DEST (set)) != REGNO (XEXP (SET_SRC (set), 0))))
 	    {
-              reinsn_copy_list.safe_push (curr_cand->insn);
-              reinsn_copy_list.safe_push (state.defs_list[0]);
+	      reinsn_copy_list.safe_push (curr_cand->insn);
+	      reinsn_copy_list.safe_push (state.defs_list[0]);
 	    }
 	  reinsn_del_list.safe_push (curr_cand->insn);
 	  state.modified[INSN_UID (curr_cand->insn)].deleted = 1;

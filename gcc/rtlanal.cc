@@ -1134,6 +1134,21 @@ no_labels_between_p (const rtx_insn *beg, const rtx_insn *end)
   return 1;
 }
 
+/* The register reg of the extension to_insn must not be
+   used or set between the from_insn and to_insn exclusive.  */
+
+bool
+reg_used_set_between_p (rtx reg,
+			rtx_insn *from_insn,
+			rtx_insn *to_insn)
+{
+  if (reg_used_between_p (reg, from_insn, to_insn)
+      || reg_set_between_p (reg, from_insn, to_insn))
+    return true;
+
+  return false;
+}
+
 /* Nonzero if register REG is used in an insn between
    FROM_INSN and TO_INSN (exclusive of those two).  */
 
