@@ -225,6 +225,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       { return _M_extract(__f); }
       ///@}
 
+#ifndef __SSE2__
+#pragma GCC push_options
+#pragma GCC target("sse2")
+#define __DISABLE_STDCPP_SSE2__
+#endif
 #if defined(__STDCPP_FLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
       __attribute__((__always_inline__))
       __istream_type&
@@ -249,6 +254,36 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  this->setstate(__err);
 	return __ret;
       }
+#endif
+
+#if defined(__STDCPP_BFLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
+      __attribute__((__always_inline__))
+      __istream_type&
+      operator>>(__gnu_cxx::__bfloat16_t & __f)
+      {
+	float __flt;
+	__istream_type& __ret = _M_extract(__flt);
+	ios_base::iostate __err = ios_base::goodbit;
+	if (__flt < -__BFLT16_MAX__)
+	  {
+	    __f = -__BFLT16_MAX__;
+	    __err = ios_base::failbit;
+	  }
+	else if (__flt > __BFLT16_MAX__)
+	  {
+	    __f = __BFLT16_MAX__;
+	    __err = ios_base::failbit;
+	  }
+	else
+	  __f = static_cast<__gnu_cxx::__bfloat16_t>(__flt);
+	if (__err)
+	  this->setstate(__err);
+	return __ret;
+      }
+#endif
+#ifdef __DISABLE_STDCPP_SSE2__
+#undef __DISABLE_STDCPP_SSE2__
+#pragma GCC pop_options
 #endif
 
 #if defined(__STDCPP_FLOAT32_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
@@ -283,32 +318,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	long double __ldbl;
 	__istream_type& __ret = _M_extract(__ldbl);
 	__f = static_cast<_Float128> (__ldbl);
-	return __ret;
-      }
-#endif
-
-#if defined(__STDCPP_BFLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
-      __attribute__((__always_inline__))
-      __istream_type&
-      operator>>(__gnu_cxx::__bfloat16_t & __f)
-      {
-	float __flt;
-	__istream_type& __ret = _M_extract(__flt);
-	ios_base::iostate __err = ios_base::goodbit;
-	if (__flt < -__BFLT16_MAX__)
-	  {
-	    __f = -__BFLT16_MAX__;
-	    __err = ios_base::failbit;
-	  }
-	else if (__flt > __BFLT16_MAX__)
-	  {
-	    __f = __BFLT16_MAX__;
-	    __err = ios_base::failbit;
-	  }
-	else
-	  __f = static_cast<__gnu_cxx::__bfloat16_t>(__flt);
-	if (__err)
-	  this->setstate(__err);
 	return __ret;
       }
 #endif

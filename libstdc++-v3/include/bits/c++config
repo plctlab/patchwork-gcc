@@ -820,11 +820,22 @@ namespace std
 # define _GLIBCXX_LDOUBLE_IS_IEEE_BINARY128 1
 #endif
 
+#ifndef __SSE2__
+#pragma GCC push_options
+#pragma GCC target("sse2")
+#define __DISABLE_STDCPP_SSE2__
+#endif
+
 #ifdef __STDCPP_BFLOAT16_T__
 namespace __gnu_cxx
 {
   using __bfloat16_t = decltype(0.0bf16);
 }
+#endif
+
+#ifdef __DISABLE_STDCPP_SSE2__
+#undef __DISABLE_STDCPP_SSE2__
+#pragma GCC pop_options
 #endif
 
 #ifdef __has_builtin

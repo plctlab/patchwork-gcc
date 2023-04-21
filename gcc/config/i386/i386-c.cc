@@ -492,7 +492,14 @@ ix86_target_macros_internal (HOST_WIDE_INT isa_flag,
   if (isa_flag & OPTION_MASK_ISA_SSE)
     def_or_undef (parse_in, "__SSE__");
   if (isa_flag & OPTION_MASK_ISA_SSE2)
-    def_or_undef (parse_in, "__SSE2__");
+    {
+      def_or_undef (parse_in, "__SSE2__");
+      if (c_dialect_cxx () && cxx_dialect > cxx20)
+	{
+	  def_or_undef (parse_in, "__STDCPP_FLOAT16_T__");
+	  def_or_undef (parse_in, "__STDCPP_BFLOAT16_T__");
+	}
+    }
   if (isa_flag & OPTION_MASK_ISA_SSE3)
     def_or_undef (parse_in, "__SSE3__");
   if (isa_flag & OPTION_MASK_ISA_SSSE3)

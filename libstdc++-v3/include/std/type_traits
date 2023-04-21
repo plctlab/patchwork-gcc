@@ -459,10 +459,27 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     struct __is_floating_point_helper<long double>
     : public true_type { };
 
+#ifndef __SSE2__
+#pragma GCC push_options
+#pragma GCC target("sse2")
+#define __DISABLE_STDCPP_SSE2__
+#endif
+
 #ifdef __STDCPP_FLOAT16_T__
   template<>
     struct __is_floating_point_helper<_Float16>
     : public true_type { };
+#endif
+
+#ifdef __STDCPP_BFLOAT16_T__
+  template<>
+    struct __is_floating_point_helper<__gnu_cxx::__bfloat16_t>
+    : public true_type { };
+#endif
+
+#ifdef __DISABLE_STDCPP_SSE2__
+#undef __DISABLE_STDCPP_SSE2__
+#pragma GCC pop_options
 #endif
 
 #ifdef __STDCPP_FLOAT32_T__
@@ -480,12 +497,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #ifdef __STDCPP_FLOAT128_T__
   template<>
     struct __is_floating_point_helper<_Float128>
-    : public true_type { };
-#endif
-
-#ifdef __STDCPP_BFLOAT16_T__
-  template<>
-    struct __is_floating_point_helper<__gnu_cxx::__bfloat16_t>
     : public true_type { };
 #endif
 

@@ -515,6 +515,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     tanh(_Tp __x)
     { return __builtin_tanh(__x); }
 
+#ifndef __SSE2__
+#pragma GCC push_options
+#pragma GCC target("sse2")
+#define __DISABLE_STDCPP_SSE2__
+#endif
+
 #if defined(__STDCPP_FLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
   constexpr _Float16
   acos(_Float16 __x)
@@ -607,6 +613,105 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   constexpr _Float16
   tanh(_Float16 __x)
   { return _Float16(__builtin_tanhf(__x)); }
+#endif
+
+#if defined(__STDCPP_BFLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
+  constexpr __gnu_cxx::__bfloat16_t
+  acos(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_acosf(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  asin(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_asinf(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  atan(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_atanf(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  atan2(__gnu_cxx::__bfloat16_t __y, __gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_atan2f(__y, __x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  ceil(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_ceilf(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  cos(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_cosf(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  cosh(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_coshf(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  exp(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_expf(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  fabs(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_fabsf(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  floor(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_floorf(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  fmod(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
+  { return __gnu_cxx::__bfloat16_t(__builtin_fmodf(__x, __y)); }
+
+  inline __gnu_cxx::__bfloat16_t
+  frexp(__gnu_cxx::__bfloat16_t __x, int* __exp)
+  { return __gnu_cxx::__bfloat16_t(__builtin_frexpf(__x, __exp)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  ldexp(__gnu_cxx::__bfloat16_t __x, int __exp)
+  { return __gnu_cxx::__bfloat16_t(__builtin_ldexpf(__x, __exp)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  log(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_logf(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  log10(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_log10f(__x)); }
+
+  inline __gnu_cxx::__bfloat16_t
+  modf(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t* __iptr)
+  {
+    float __i, __ret = __builtin_modff(__x, &__i);
+    *__iptr = __gnu_cxx::__bfloat16_t(__i);
+    return __gnu_cxx::__bfloat16_t(__ret);
+  }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  pow(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
+  { return __gnu_cxx::__bfloat16_t(__builtin_powf(__x, __y)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  sin(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_sinf(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  sinh(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_sinhf(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  sqrt(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_sqrtf(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  tan(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_tanf(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  tanh(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_tanhf(__x)); }
+#endif
+
+#ifdef __DISABLE_STDCPP_SSE2__
+#undef __DISABLE_STDCPP_SSE2__
+#pragma GCC pop_options
 #endif
 
 #if defined(__STDCPP_FLOAT32_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
@@ -977,100 +1082,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   constexpr _Float128
   tanh(_Float128 __x)
   { return __builtin_tanhf128(__x); }
-#endif
-
-#if defined(__STDCPP_BFLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
-  constexpr __gnu_cxx::__bfloat16_t
-  acos(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_acosf(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  asin(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_asinf(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  atan(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_atanf(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  atan2(__gnu_cxx::__bfloat16_t __y, __gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_atan2f(__y, __x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  ceil(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_ceilf(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  cos(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_cosf(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  cosh(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_coshf(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  exp(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_expf(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  fabs(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_fabsf(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  floor(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_floorf(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  fmod(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
-  { return __gnu_cxx::__bfloat16_t(__builtin_fmodf(__x, __y)); }
-
-  inline __gnu_cxx::__bfloat16_t
-  frexp(__gnu_cxx::__bfloat16_t __x, int* __exp)
-  { return __gnu_cxx::__bfloat16_t(__builtin_frexpf(__x, __exp)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  ldexp(__gnu_cxx::__bfloat16_t __x, int __exp)
-  { return __gnu_cxx::__bfloat16_t(__builtin_ldexpf(__x, __exp)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  log(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_logf(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  log10(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_log10f(__x)); }
-
-  inline __gnu_cxx::__bfloat16_t
-  modf(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t* __iptr)
-  {
-    float __i, __ret = __builtin_modff(__x, &__i);
-    *__iptr = __gnu_cxx::__bfloat16_t(__i);
-    return __gnu_cxx::__bfloat16_t(__ret);
-  }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  pow(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
-  { return __gnu_cxx::__bfloat16_t(__builtin_powf(__x, __y)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  sin(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_sinf(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  sinh(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_sinhf(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  sqrt(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_sqrtf(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  tan(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_tanf(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  tanh(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_tanhf(__x)); }
 #endif
 
 #if _GLIBCXX_USE_C99_MATH
@@ -1507,6 +1518,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
 #endif // C++11
 
+#ifndef __SSE2__
+#pragma GCC push_options
+#pragma GCC target("sse2")
+#define __DISABLE_STDCPP_SSE2__
+#endif
+
 #ifdef __STDCPP_FLOAT16_T__
   constexpr int
   fpclassify(_Float16 __x)
@@ -1556,6 +1573,62 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   constexpr bool
   isunordered(_Float16 __x, _Float16 __y)
   { return __builtin_isunordered(__x, __y); }
+#endif
+
+#ifdef __STDCPP_BFLOAT16_T__
+  constexpr int
+  fpclassify(__gnu_cxx::__bfloat16_t __x)
+  { return __builtin_fpclassify(FP_NAN, FP_INFINITE, FP_NORMAL,
+				FP_SUBNORMAL, FP_ZERO, __x); }
+
+  constexpr bool
+  isfinite(__gnu_cxx::__bfloat16_t __x)
+  { return __builtin_isfinite(__x); }
+
+  constexpr bool
+  isinf(__gnu_cxx::__bfloat16_t __x)
+  { return __builtin_isinf(__x); }
+
+  constexpr bool
+  isnan(__gnu_cxx::__bfloat16_t __x)
+  { return __builtin_isnan(__x); }
+
+  constexpr bool
+  isnormal(__gnu_cxx::__bfloat16_t __x)
+  { return __builtin_isnormal(__x); }
+
+  constexpr bool
+  signbit(__gnu_cxx::__bfloat16_t __x)
+  { return __builtin_signbit(__x); }
+
+  constexpr bool
+  isgreater(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
+  { return __builtin_isgreater(__x, __y); }
+
+  constexpr bool
+  isgreaterequal(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
+  { return __builtin_isgreaterequal(__x, __y); }
+
+  constexpr bool
+  isless(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
+  { return __builtin_isless(__x, __y); }
+
+  constexpr bool
+  islessequal(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
+  { return __builtin_islessequal(__x, __y); }
+
+  constexpr bool
+  islessgreater(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
+  { return __builtin_islessgreater(__x, __y); }
+
+  constexpr bool
+  isunordered(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
+  { return __builtin_isunordered(__x, __y); }
+#endif
+
+#ifdef __DISABLE_STDCPP_SSE2__
+#undef __DISABLE_STDCPP_SSE2__
+#pragma GCC pop_options
 #endif
 
 #ifdef __STDCPP_FLOAT32_T__
@@ -1708,57 +1781,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
   constexpr bool
   isunordered(_Float128 __x, _Float128 __y)
-  { return __builtin_isunordered(__x, __y); }
-#endif
-
-#ifdef __STDCPP_BFLOAT16_T__
-  constexpr int
-  fpclassify(__gnu_cxx::__bfloat16_t __x)
-  { return __builtin_fpclassify(FP_NAN, FP_INFINITE, FP_NORMAL,
-				FP_SUBNORMAL, FP_ZERO, __x); }
-
-  constexpr bool
-  isfinite(__gnu_cxx::__bfloat16_t __x)
-  { return __builtin_isfinite(__x); }
-
-  constexpr bool
-  isinf(__gnu_cxx::__bfloat16_t __x)
-  { return __builtin_isinf(__x); }
-
-  constexpr bool
-  isnan(__gnu_cxx::__bfloat16_t __x)
-  { return __builtin_isnan(__x); }
-
-  constexpr bool
-  isnormal(__gnu_cxx::__bfloat16_t __x)
-  { return __builtin_isnormal(__x); }
-
-  constexpr bool
-  signbit(__gnu_cxx::__bfloat16_t __x)
-  { return __builtin_signbit(__x); }
-
-  constexpr bool
-  isgreater(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
-  { return __builtin_isgreater(__x, __y); }
-
-  constexpr bool
-  isgreaterequal(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
-  { return __builtin_isgreaterequal(__x, __y); }
-
-  constexpr bool
-  isless(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
-  { return __builtin_isless(__x, __y); }
-
-  constexpr bool
-  islessequal(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
-  { return __builtin_islessequal(__x, __y); }
-
-  constexpr bool
-  islessgreater(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
-  { return __builtin_islessgreater(__x, __y); }
-
-  constexpr bool
-  isunordered(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
   { return __builtin_isunordered(__x, __y); }
 #endif
 
@@ -2657,6 +2679,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     { return __builtin_trunc(__x); }
 #endif
 
+#ifndef __SSE2__
+#pragma GCC push_options
+#pragma GCC target("sse2")
+#define __DISABLE_STDCPP_SSE2__
+#endif
+
 #if defined(__STDCPP_FLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
   constexpr _Float16
   acosh(_Float16 __x)
@@ -2835,6 +2863,191 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   constexpr _Float16
   trunc(_Float16 __x)
   { return _Float16(__builtin_truncf(__x)); }
+#endif
+
+#if defined(__STDCPP_BFLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
+  constexpr __gnu_cxx::__bfloat16_t
+  acosh(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_acoshf(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  asinh(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_asinhf(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  atanh(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_atanhf(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  cbrt(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_cbrtf(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  copysign(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
+  { return __gnu_cxx::__bfloat16_t(__builtin_copysignf(__x, __y)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  erf(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_erff(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  erfc(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_erfcf(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  exp2(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_exp2f(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  expm1(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_expm1f(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  fdim(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
+  { return __gnu_cxx::__bfloat16_t(__builtin_fdimf(__x, __y)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  fma(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y, __gnu_cxx::__bfloat16_t __z)
+  { return __gnu_cxx::__bfloat16_t(__builtin_fmaf(__x, __y, __z)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  fmax(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
+  { return __gnu_cxx::__bfloat16_t(__builtin_fmaxf(__x, __y)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  fmin(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
+  { return __gnu_cxx::__bfloat16_t(__builtin_fminf(__x, __y)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  hypot(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
+  { return __gnu_cxx::__bfloat16_t(__builtin_hypotf(__x, __y)); }
+
+  constexpr int
+  ilogb(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_ilogbf(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  lgamma(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_lgammaf(__x)); }
+
+  constexpr long long
+  llrint(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_llrintf(__x)); }
+
+  constexpr long long
+  llround(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_llroundf(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  log1p(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_log1pf(__x)); }
+
+  // DR 568.
+  constexpr __gnu_cxx::__bfloat16_t
+  log2(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_log2f(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  logb(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_logbf(__x)); }
+
+  constexpr long
+  lrint(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_lrintf(__x)); }
+
+  constexpr long
+  lround(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_lroundf(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  nearbyint(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_nearbyintf(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  nextafter(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
+  {
+    if (std::__is_constant_evaluated())
+      return __builtin_nextafterf16b(__x, __y);
+#ifdef __INT16_TYPE__
+    using __bfloat16_int_type = __INT16_TYPE__;
+#else
+    using __bfloat16_int_type = short int;
+#endif
+    __bfloat16_int_type __hx, __hy, __ix, __iy;
+    __builtin_memcpy(&__hx, &__x, sizeof(__x));
+    __builtin_memcpy(&__hy, &__y, sizeof(__x));
+    __ix = __hx & 0x7fff;	// |x|
+    __iy = __hy & 0x7fff;	// |y|
+    if (__ix > 0x7f80 || __iy > 0x7f80) // x or y is NaN
+      return __x + __y;
+    if (__x == __y)
+      return __y;		// x == y, return y
+    if (__ix == 0)		// x == 0
+      {
+	__hy = (__hy & 0x8000) | 1;	// return +-__BFLT16_DENORM_MIN__
+	__builtin_memcpy(&__x, &__hy, sizeof(__x));
+	__builtin_nextafterf(0.0f, 1.0f);	// raise underflow
+	return __x;
+      }
+    if (__hx >= 0)		// x > 0
+      {
+	if (__hx > __hy)	// x > y, x -= ulp
+	  --__hx;
+	else			// x < y, x += ulp
+	  ++__hx;
+      }
+    else			// x < 0
+      {
+	if (__hy >= 0 || __hx > __hy)	// x < y, x -= ulp
+	  --__hx;
+	else			// x > y, x += ulp
+	  ++__hx;
+      }
+    __hy = __hx & 0x7f80;
+    if (__hy >= 0x7f80)
+      __builtin_nextafterf(__FLT_MAX__, __builtin_inff());	// overflow
+    else if (__hy < 0x0080)
+      __builtin_nextafterf(__FLT_MIN__, 0.0f);	// underflow
+    __builtin_memcpy(&__x, &__hx, sizeof(__x));
+    return __x;
+  }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  remainder(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
+  { return __gnu_cxx::__bfloat16_t(__builtin_remainderf(__x, __y)); }
+
+  inline __gnu_cxx::__bfloat16_t
+  remquo(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y, int* __pquo)
+  { return __gnu_cxx::__bfloat16_t(__builtin_remquof(__x, __y, __pquo)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  rint(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_rintf(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  round(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_roundf(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  scalbln(__gnu_cxx::__bfloat16_t __x, long __ex)
+  { return __gnu_cxx::__bfloat16_t(__builtin_scalblnf(__x, __ex)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  scalbn(__gnu_cxx::__bfloat16_t __x, int __ex)
+  { return __gnu_cxx::__bfloat16_t(__builtin_scalbnf(__x, __ex)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  tgamma(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_tgammaf(__x)); }
+
+  constexpr __gnu_cxx::__bfloat16_t
+  trunc(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_truncf(__x)); }
+#endif
+
+#ifdef __DISABLE_STDCPP_SSE2__
+#undef __DISABLE_STDCPP_SSE2__
+#pragma GCC pop_options
 #endif
 
 #if defined(__STDCPP_FLOAT32_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
@@ -3375,186 +3588,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   { return __builtin_truncf128(__x); }
 #endif
 
-#if defined(__STDCPP_BFLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
-  constexpr __gnu_cxx::__bfloat16_t
-  acosh(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_acoshf(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  asinh(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_asinhf(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  atanh(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_atanhf(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  cbrt(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_cbrtf(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  copysign(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
-  { return __gnu_cxx::__bfloat16_t(__builtin_copysignf(__x, __y)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  erf(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_erff(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  erfc(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_erfcf(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  exp2(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_exp2f(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  expm1(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_expm1f(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  fdim(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
-  { return __gnu_cxx::__bfloat16_t(__builtin_fdimf(__x, __y)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  fma(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y, __gnu_cxx::__bfloat16_t __z)
-  { return __gnu_cxx::__bfloat16_t(__builtin_fmaf(__x, __y, __z)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  fmax(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
-  { return __gnu_cxx::__bfloat16_t(__builtin_fmaxf(__x, __y)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  fmin(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
-  { return __gnu_cxx::__bfloat16_t(__builtin_fminf(__x, __y)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  hypot(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
-  { return __gnu_cxx::__bfloat16_t(__builtin_hypotf(__x, __y)); }
-
-  constexpr int
-  ilogb(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_ilogbf(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  lgamma(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_lgammaf(__x)); }
-
-  constexpr long long
-  llrint(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_llrintf(__x)); }
-
-  constexpr long long
-  llround(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_llroundf(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  log1p(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_log1pf(__x)); }
-
-  // DR 568.
-  constexpr __gnu_cxx::__bfloat16_t
-  log2(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_log2f(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  logb(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_logbf(__x)); }
-
-  constexpr long
-  lrint(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_lrintf(__x)); }
-
-  constexpr long
-  lround(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_lroundf(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  nearbyint(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_nearbyintf(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  nextafter(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
-  {
-    if (std::__is_constant_evaluated())
-      return __builtin_nextafterf16b(__x, __y);
-#ifdef __INT16_TYPE__
-    using __bfloat16_int_type = __INT16_TYPE__;
-#else
-    using __bfloat16_int_type = short int;
-#endif
-    __bfloat16_int_type __hx, __hy, __ix, __iy;
-    __builtin_memcpy(&__hx, &__x, sizeof(__x));
-    __builtin_memcpy(&__hy, &__y, sizeof(__x));
-    __ix = __hx & 0x7fff;	// |x|
-    __iy = __hy & 0x7fff;	// |y|
-    if (__ix > 0x7f80 || __iy > 0x7f80) // x or y is NaN
-      return __x + __y;
-    if (__x == __y)
-      return __y;		// x == y, return y
-    if (__ix == 0)		// x == 0
-      {
-	__hy = (__hy & 0x8000) | 1;	// return +-__BFLT16_DENORM_MIN__
-	__builtin_memcpy(&__x, &__hy, sizeof(__x));
-	__builtin_nextafterf(0.0f, 1.0f);	// raise underflow
-	return __x;
-      }
-    if (__hx >= 0)		// x > 0
-      {
-	if (__hx > __hy)	// x > y, x -= ulp
-	  --__hx;
-	else			// x < y, x += ulp
-	  ++__hx;
-      }
-    else			// x < 0
-      {
-	if (__hy >= 0 || __hx > __hy)	// x < y, x -= ulp
-	  --__hx;
-	else			// x > y, x += ulp
-	  ++__hx;
-      }
-    __hy = __hx & 0x7f80;
-    if (__hy >= 0x7f80)
-      __builtin_nextafterf(__FLT_MAX__, __builtin_inff());	// overflow
-    else if (__hy < 0x0080)
-      __builtin_nextafterf(__FLT_MIN__, 0.0f);	// underflow
-    __builtin_memcpy(&__x, &__hx, sizeof(__x));
-    return __x;
-  }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  remainder(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y)
-  { return __gnu_cxx::__bfloat16_t(__builtin_remainderf(__x, __y)); }
-
-  inline __gnu_cxx::__bfloat16_t
-  remquo(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y, int* __pquo)
-  { return __gnu_cxx::__bfloat16_t(__builtin_remquof(__x, __y, __pquo)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  rint(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_rintf(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  round(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_roundf(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  scalbln(__gnu_cxx::__bfloat16_t __x, long __ex)
-  { return __gnu_cxx::__bfloat16_t(__builtin_scalblnf(__x, __ex)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  scalbn(__gnu_cxx::__bfloat16_t __x, int __ex)
-  { return __gnu_cxx::__bfloat16_t(__builtin_scalbnf(__x, __ex)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  tgamma(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_tgammaf(__x)); }
-
-  constexpr __gnu_cxx::__bfloat16_t
-  trunc(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_truncf(__x)); }
-#endif
-
 
 #endif // _GLIBCXX_USE_C99_MATH_TR1
 #endif // C++11
@@ -3599,10 +3632,27 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       return std::__hypot3<__type>(__x, __y, __z);
     }
 
+#ifndef __SSE2__
+#pragma GCC push_options
+#pragma GCC target("sse2")
+#define __DISABLE_STDCPP_SSE2__
+#endif
+
 #if defined(__STDCPP_FLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
   inline _Float16
   hypot(_Float16 __x, _Float16 __y, _Float16 __z)
   { return std::__hypot3<_Float16>(__x, __y, __z); }
+#endif
+
+#if defined(__STDCPP_BFLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
+  inline __gnu_cxx::__bfloat16_t
+  hypot(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y, __gnu_cxx::__bfloat16_t __z)
+  { return std::__hypot3<__gnu_cxx::__bfloat16_t>(__x, __y, __z); }
+#endif
+
+#ifdef __DISABLE_STDCPP_SSE2__
+#undef __DISABLE_STDCPP_SSE2__
+#pragma GCC pop_options
 #endif
 
 #if defined(__STDCPP_FLOAT32_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
@@ -3623,12 +3673,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   inline _Float128
   hypot(_Float128 __x, _Float128 __y, _Float128 __z)
   { return std::__hypot3<_Float128>(__x, __y, __z); }
-#endif
-
-#if defined(__STDCPP_BFLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
-  inline __gnu_cxx::__bfloat16_t
-  hypot(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y, __gnu_cxx::__bfloat16_t __z)
-  { return std::__hypot3<__gnu_cxx::__bfloat16_t>(__x, __y, __z); }
 #endif
 
 #endif // C++17
@@ -3675,10 +3719,27 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       return std::__lerp<__type>(__x, __y, __z);
     }
 
+#ifndef __SSE2__
+#pragma GCC push_options
+#pragma GCC target("sse2")
+#define __DISABLE_STDCPP_SSE2__
+#endif
+
 #if defined(__STDCPP_FLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
   inline _Float16
   lerp(_Float16 __x, _Float16 __y, _Float16 __z) noexcept
   { return std::__lerp<_Float16>(__x, __y, __z); }
+#endif
+
+#if defined(__STDCPP_BFLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
+  inline __gnu_cxx::__bfloat16_t
+  lerp(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y, __gnu_cxx::__bfloat16_t __z) noexcept
+  { return std::__lerp<__gnu_cxx::__bfloat16_t>(__x, __y, __z); }
+#endif
+
+#ifdef __DISABLE_STDCPP_SSE2__
+#undef __DISABLE_STDCPP_SSE2__
+#pragma GCC pop_options
 #endif
 
 #if defined(__STDCPP_FLOAT32_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
@@ -3699,12 +3760,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   inline _Float128
   lerp(_Float128 __x, _Float128 __y, _Float128 __z) noexcept
   { return std::__lerp<_Float128>(__x, __y, __z); }
-#endif
-
-#if defined(__STDCPP_BFLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
-  inline __gnu_cxx::__bfloat16_t
-  lerp(__gnu_cxx::__bfloat16_t __x, __gnu_cxx::__bfloat16_t __y, __gnu_cxx::__bfloat16_t __z) noexcept
-  { return std::__lerp<__gnu_cxx::__bfloat16_t>(__x, __y, __z); }
 #endif
 
 #endif // C++20

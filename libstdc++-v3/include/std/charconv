@@ -689,6 +689,12 @@ namespace __detail
 			  float& __value,
 			  chars_format __fmt = chars_format::general) noexcept;
 
+#ifndef __SSE2__
+#pragma GCC push_options
+#pragma GCC target("sse2")
+#define __DISABLE_STDCPP_SSE2__
+#endif
+
 #if defined(__STDCPP_FLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32) \
     && defined(__cpp_lib_to_chars)
   inline from_chars_result
@@ -702,6 +708,27 @@ namespace __detail
       __value = __val;
     return __res;
   }
+#endif
+
+#if defined(__STDCPP_BFLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32) \
+    && defined(__cpp_lib_to_chars)
+  inline from_chars_result
+  from_chars(const char* __first, const char* __last,
+	     __gnu_cxx::__bfloat16_t & __value,
+	     chars_format __fmt = chars_format::general) noexcept
+  {
+    float __val;
+    from_chars_result __res
+      = __from_chars_bfloat16_t(__first, __last, __val, __fmt);
+    if (__res.ec == errc{})
+      __value = __val;
+    return __res;
+  }
+#endif
+
+#ifdef __DISABLE_STDCPP_SSE2__
+#undef __DISABLE_STDCPP_SSE2__
+#pragma GCC pop_options
 #endif
 
 #if defined(__STDCPP_FLOAT32_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
@@ -763,22 +790,6 @@ namespace __detail
 	     chars_format __fmt = chars_format::general) noexcept;
 #endif
 #endif
-
-#if defined(__STDCPP_BFLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32) \
-    && defined(__cpp_lib_to_chars)
-  inline from_chars_result
-  from_chars(const char* __first, const char* __last,
-	     __gnu_cxx::__bfloat16_t & __value,
-	     chars_format __fmt = chars_format::general) noexcept
-  {
-    float __val;
-    from_chars_result __res
-      = __from_chars_bfloat16_t(__first, __last, __val, __fmt);
-    if (__res.ec == errc{})
-      __value = __val;
-    return __res;
-  }
-#endif
 #endif
 
 #if defined __cpp_lib_to_chars
@@ -815,6 +826,12 @@ namespace __detail
 					float __value,
 					chars_format __fmt) noexcept;
 
+#ifndef __SSE2__
+#pragma GCC push_options
+#pragma GCC target("sse2")
+#define __DISABLE_STDCPP_SSE2__
+#endif
+
 #if defined(__STDCPP_FLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
   inline to_chars_result
   to_chars(char* __first, char* __last, _Float16 __value) noexcept
@@ -830,6 +847,29 @@ namespace __detail
   to_chars(char* __first, char* __last, _Float16 __value,
 	   chars_format __fmt, int __precision) noexcept
   { return to_chars(__first, __last, float(__value), __fmt, __precision); }
+#endif
+
+#if defined(__STDCPP_BFLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
+  inline to_chars_result
+  to_chars(char* __first, char* __last,
+	   __gnu_cxx::__bfloat16_t __value) noexcept
+  {
+    return __to_chars_bfloat16_t(__first, __last, float(__value),
+				 chars_format{});
+  }
+  inline to_chars_result
+  to_chars(char* __first, char* __last, __gnu_cxx::__bfloat16_t __value,
+	   chars_format __fmt) noexcept
+  { return __to_chars_bfloat16_t(__first, __last, float(__value), __fmt); }
+  inline to_chars_result
+  to_chars(char* __first, char* __last, __gnu_cxx::__bfloat16_t __value,
+	   chars_format __fmt, int __precision) noexcept
+  { return to_chars(__first, __last, float(__value), __fmt, __precision); }
+#endif
+
+#ifdef __DISABLE_STDCPP_SSE2__
+#undef __DISABLE_STDCPP_SSE2__
+#pragma GCC pop_options
 #endif
 
 #if defined(__STDCPP_FLOAT32_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
@@ -919,24 +959,6 @@ namespace __detail
   to_chars_result to_chars(char* __first, char* __last, _Float128 __value,
 			   chars_format __fmt, int __precision) noexcept;
 #endif
-#endif
-
-#if defined(__STDCPP_BFLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
-  inline to_chars_result
-  to_chars(char* __first, char* __last,
-	   __gnu_cxx::__bfloat16_t __value) noexcept
-  {
-    return __to_chars_bfloat16_t(__first, __last, float(__value),
-				 chars_format{});
-  }
-  inline to_chars_result
-  to_chars(char* __first, char* __last, __gnu_cxx::__bfloat16_t __value,
-	   chars_format __fmt) noexcept
-  { return __to_chars_bfloat16_t(__first, __last, float(__value), __fmt); }
-  inline to_chars_result
-  to_chars(char* __first, char* __last, __gnu_cxx::__bfloat16_t __value,
-	   chars_format __fmt, int __precision) noexcept
-  { return to_chars(__first, __last, float(__value), __fmt, __precision); }
 #endif
 #endif
 

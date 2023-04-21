@@ -97,10 +97,27 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   abs(__GLIBCXX_TYPE_INT_N_3 __x) { return __x >= 0 ? __x : -__x; }
 #endif
 
+#ifndef __SSE2__
+#pragma GCC push_options
+#pragma GCC target("sse2")
+#define __DISABLE_STDCPP_SSE2__
+#endif
+
 #if defined(__STDCPP_FLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
   constexpr _Float16
   abs(_Float16 __x)
   { return _Float16(__builtin_fabsf(__x)); }
+#endif
+
+#if defined(__STDCPP_BFLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
+  constexpr __gnu_cxx::__bfloat16_t
+  abs(__gnu_cxx::__bfloat16_t __x)
+  { return __gnu_cxx::__bfloat16_t(__builtin_fabsf(__x)); }
+#endif
+
+#ifdef __DISABLE_STDCPP_SSE2__
+#undef __DISABLE_STDCPP_SSE2__
+#pragma GCC pop_options
 #endif
 
 #if defined(__STDCPP_FLOAT32_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
@@ -123,12 +140,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   constexpr _Float128
   abs(_Float128 __x)
   { return __builtin_fabsf128(__x); }
-#endif
-
-#if defined(__STDCPP_BFLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
-  constexpr __gnu_cxx::__bfloat16_t
-  abs(__gnu_cxx::__bfloat16_t __x)
-  { return __gnu_cxx::__bfloat16_t(__builtin_fabsf(__x)); }
 #endif
 
 #if !defined(__STRICT_ANSI__) && defined(_GLIBCXX_USE_FLOAT128)

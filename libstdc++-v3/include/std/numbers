@@ -199,8 +199,19 @@ namespace numbers
     inline constexpr TYPE phi_v<TYPE>			\
       = 1.618033988749894848204586834365638118##SUFFIX
 
+#ifndef __SSE2__
+#pragma GCC push_options
+#pragma GCC target("sse2")
+#define __DISABLE_STDCPP_SSE2__
+#endif
+
 #ifdef __STDCPP_FLOAT16_T__
 __glibcxx_numbers (_Float16, F16);
+#endif
+
+#ifdef __DISABLE_STDCPP_SSE2__
+#undef __DISABLE_STDCPP_SSE2__
+#pragma GCC pop_options
 #endif
 
 #ifdef __STDCPP_FLOAT32_T__

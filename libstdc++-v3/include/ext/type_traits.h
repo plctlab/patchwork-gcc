@@ -190,10 +190,27 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     struct __promote<float>
     { typedef float __type; };
 
+#ifndef __SSE2__
+#pragma GCC push_options
+#pragma GCC target("sse2")
+#define __DISABLE_STDCPP_SSE2__
+#endif
+
 #ifdef __STDCPP_FLOAT16_T__
   template<>
     struct __promote<_Float16>
     { typedef _Float16 __type; };
+#endif
+
+#ifdef __STDCPP_BFLOAT16_T__
+  template<>
+    struct __promote<__gnu_cxx::__bfloat16_t>
+  { typedef __gnu_cxx::__bfloat16_t __type; };
+#endif
+
+#ifdef __DISABLE_STDCPP_SSE2__
+#undef __DISABLE_STDCPP_SSE2__
+#pragma GCC pop_options
 #endif
 
 #ifdef __STDCPP_FLOAT32_T__
@@ -212,12 +229,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   template<>
     struct __promote<_Float128>
     { typedef _Float128 __type; };
-#endif
-
-#ifdef __STDCPP_BFLOAT16_T__
-  template<>
-    struct __promote<__gnu_cxx::__bfloat16_t>
-    { typedef __gnu_cxx::__bfloat16_t __type; };
 #endif
 
 #if __cpp_fold_expressions

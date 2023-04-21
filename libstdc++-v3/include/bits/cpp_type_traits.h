@@ -315,6 +315,12 @@ __INT_N(__GLIBCXX_TYPE_INT_N_3)
       typedef __true_type __type;
     };
 
+#ifndef __SSE2__
+#pragma GCC push_options
+#pragma GCC target("sse2")
+#define __DISABLE_STDCPP_SSE2__
+#endif
+
 #ifdef __STDCPP_FLOAT16_T__
   template<>
     struct __is_floating<_Float16>
@@ -322,6 +328,20 @@ __INT_N(__GLIBCXX_TYPE_INT_N_3)
       enum { __value = 1 };
       typedef __true_type __type;
     };
+#endif
+
+#ifdef __STDCPP_BFLOAT16_T__
+  template<>
+    struct __is_floating<__gnu_cxx::__bfloat16_t>
+    {
+      enum { __value = 1 };
+      typedef __true_type __type;
+    };
+#endif
+
+#ifdef __DISABLE_STDCPP_SSE2__
+#undef __DISABLE_STDCPP_SSE2__
+#pragma GCC pop_options
 #endif
 
 #ifdef __STDCPP_FLOAT32_T__
@@ -345,15 +365,6 @@ __INT_N(__GLIBCXX_TYPE_INT_N_3)
 #ifdef __STDCPP_FLOAT128_T__
   template<>
     struct __is_floating<_Float128>
-    {
-      enum { __value = 1 };
-      typedef __true_type __type;
-    };
-#endif
-
-#ifdef __STDCPP_BFLOAT16_T__
-  template<>
-    struct __is_floating<__gnu_cxx::__bfloat16_t>
     {
       enum { __value = 1 };
       typedef __true_type __type;

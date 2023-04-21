@@ -599,6 +599,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #endif
 
 #if _GLIBCXX_USE_C99_COMPLEX
+
+#ifndef __SSE2__
+#pragma GCC push_options
+#pragma GCC target("sse2")
+#define __DISABLE_STDCPP_SSE2__
+#endif
+
 #if defined(__STDCPP_FLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
   inline _Float16
   __complex_abs(__complex__ _Float16 __z)
@@ -647,6 +654,63 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   inline __complex__ _Float16
   __complex_pow(__complex__ _Float16 __x, __complex__ _Float16 __y)
   { return static_cast<__complex__ _Float16>(__builtin_cpowf(__x, __y)); }
+#endif
+
+#if defined(__STDCPP_BFLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
+  inline __gnu_cxx::__bfloat16_t
+  __complex_abs(__complex__ decltype(0.0bf16) __z)
+  { return __gnu_cxx::__bfloat16_t(__builtin_cabsf(__z)); }
+
+  inline __gnu_cxx::__bfloat16_t
+  __complex_arg(__complex__ decltype(0.0bf16) __z)
+  { return __gnu_cxx::__bfloat16_t(__builtin_cargf(__z)); }
+
+  inline __complex__ decltype(0.0bf16)
+  __complex_cos(__complex__ decltype(0.0bf16) __z)
+  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_ccosf(__z)); }
+
+  inline __complex__ decltype(0.0bf16)
+  __complex_cosh(__complex__ decltype(0.0bf16) __z)
+  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_ccoshf(__z)); }
+
+  inline __complex__ decltype(0.0bf16)
+  __complex_exp(__complex__ decltype(0.0bf16) __z)
+  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_cexpf(__z)); }
+
+  inline __complex__ decltype(0.0bf16)
+  __complex_log(__complex__ decltype(0.0bf16) __z)
+  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_clogf(__z)); }
+
+  inline __complex__ decltype(0.0bf16)
+  __complex_sin(__complex__ decltype(0.0bf16) __z)
+  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_csinf(__z)); }
+
+  inline __complex__ decltype(0.0bf16)
+  __complex_sinh(__complex__ decltype(0.0bf16) __z)
+  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_csinhf(__z)); }
+
+  inline __complex__ decltype(0.0bf16)
+  __complex_sqrt(__complex__ decltype(0.0bf16) __z)
+  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_csqrtf(__z)); }
+
+  inline __complex__ decltype(0.0bf16)
+  __complex_tan(__complex__ decltype(0.0bf16) __z)
+  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_ctanf(__z)); }
+
+  inline __complex__ decltype(0.0bf16)
+  __complex_tanh(__complex__ decltype(0.0bf16) __z)
+  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_ctanhf(__z)); }
+
+  inline __complex__ decltype(0.0bf16)
+  __complex_pow(__complex__ decltype(0.0bf16) __x,
+		__complex__ decltype(0.0bf16) __y)
+  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_cpowf(__x,
+								      __y)); }
+#endif
+
+#ifdef __DISABLE_STDCPP_SSE2__
+#undef __DISABLE_STDCPP_SSE2__
+#pragma GCC_options
 #endif
 
 #if defined(__STDCPP_FLOAT32_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
@@ -801,58 +865,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   inline __complex__ _Float128
   __complex_pow(__complex__ _Float128 __x, __complex__ _Float128 __y)
   { return __builtin_cpowf128(__x, __y); }
-#endif
-
-#if defined(__STDCPP_BFLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
-  inline __gnu_cxx::__bfloat16_t
-  __complex_abs(__complex__ decltype(0.0bf16) __z)
-  { return __gnu_cxx::__bfloat16_t(__builtin_cabsf(__z)); }
-
-  inline __gnu_cxx::__bfloat16_t
-  __complex_arg(__complex__ decltype(0.0bf16) __z)
-  { return __gnu_cxx::__bfloat16_t(__builtin_cargf(__z)); }
-
-  inline __complex__ decltype(0.0bf16)
-  __complex_cos(__complex__ decltype(0.0bf16) __z)
-  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_ccosf(__z)); }
-
-  inline __complex__ decltype(0.0bf16)
-  __complex_cosh(__complex__ decltype(0.0bf16) __z)
-  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_ccoshf(__z)); }
-
-  inline __complex__ decltype(0.0bf16)
-  __complex_exp(__complex__ decltype(0.0bf16) __z)
-  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_cexpf(__z)); }
-
-  inline __complex__ decltype(0.0bf16)
-  __complex_log(__complex__ decltype(0.0bf16) __z)
-  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_clogf(__z)); }
-
-  inline __complex__ decltype(0.0bf16)
-  __complex_sin(__complex__ decltype(0.0bf16) __z)
-  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_csinf(__z)); }
-
-  inline __complex__ decltype(0.0bf16)
-  __complex_sinh(__complex__ decltype(0.0bf16) __z)
-  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_csinhf(__z)); }
-
-  inline __complex__ decltype(0.0bf16)
-  __complex_sqrt(__complex__ decltype(0.0bf16) __z)
-  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_csqrtf(__z)); }
-
-  inline __complex__ decltype(0.0bf16)
-  __complex_tan(__complex__ decltype(0.0bf16) __z)
-  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_ctanf(__z)); }
-
-  inline __complex__ decltype(0.0bf16)
-  __complex_tanh(__complex__ decltype(0.0bf16) __z)
-  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_ctanhf(__z)); }
-
-  inline __complex__ decltype(0.0bf16)
-  __complex_pow(__complex__ decltype(0.0bf16) __x,
-		__complex__ decltype(0.0bf16) __y)
-  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_cpowf(__x,
-								      __y)); }
 #endif
 #endif
 
@@ -1804,10 +1816,27 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     struct __complex_type
     { };
 
+#ifndef __SSE2__
+#pragma GCC push_options
+#pragma GCC target("sse2")
+#define __DISABLE_STDCPP_SSE2__
+#endif
+
 #ifdef __STDCPP_FLOAT16_T__
   template<>
     struct __complex_type<_Float16>
     { typedef __complex__ _Float16 type; };
+#endif
+
+#ifdef __STDCPP_BFLOAT16_T__
+  template<>
+    struct __complex_type<__gnu_cxx::__bfloat16_t>
+    { typedef __complex__ decltype(0.0bf16) type; };
+#endif
+
+#ifdef __DISABLE_STDCPP_SSE2__
+#undef __DISABLE_STDCPP_SSE2__
+#pragma GCC pop_options
 #endif
 
 #ifdef __STDCPP_FLOAT32_T__
@@ -1826,12 +1855,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   template<>
     struct __complex_type<_Float128>
     { typedef __complex__ _Float128 type; };
-#endif
-
-#ifdef __STDCPP_BFLOAT16_T__
-  template<>
-    struct __complex_type<__gnu_cxx::__bfloat16_t>
-    { typedef __complex__ decltype(0.0bf16) type; };
 #endif
 
   template<typename _Tp>
@@ -2022,6 +2045,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
 #if _GLIBCXX_USE_C99_COMPLEX_TR1
+
+#ifndef __SSE2__
+#pragma GCC push_options
+#pragma GCC target("sse2")
+#define __DISABLE_STDCPP_SSE2__
+#endif
+
 #if defined(__STDCPP_FLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
   inline __complex__ _Float16
   __complex_acos(__complex__ _Float16 __z)
@@ -2046,6 +2076,37 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   inline __complex__ _Float16
   __complex_atanh(__complex__ _Float16 __z)
   { return static_cast<__complex__ _Float16>(__builtin_catanhf(__z)); }
+#endif
+
+#if defined(__STDCPP_BFLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
+  inline __complex__ decltype(0.0bf16)
+  __complex_acos(__complex__ decltype(0.0bf16) __z)
+  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_cacosf(__z)); }
+
+  inline __complex__ decltype(0.0bf16)
+  __complex_asin(__complex__ decltype(0.0bf16) __z)
+  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_casinf(__z)); }
+
+  inline __complex__ decltype(0.0bf16)
+  __complex_atan(__complex__ decltype(0.0bf16) __z)
+  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_catanf(__z)); }
+
+  inline __complex__ decltype(0.0bf16)
+  __complex_acosh(__complex__ decltype(0.0bf16) __z)
+  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_cacoshf(__z)); }
+
+  inline __complex__ decltype(0.0bf16)
+  __complex_asinh(__complex__ decltype(0.0bf16) __z)
+  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_casinhf(__z)); }
+
+  inline __complex__ decltype(0.0bf16)
+  __complex_atanh(__complex__ decltype(0.0bf16) __z)
+  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_catanhf(__z)); }
+#endif
+
+#ifdef __DISABLE_STDCPP_SSE2__
+#undef __DISABLE_STDCPP_SSE2__
+#pragma GCC pop_options
 #endif
 
 #if defined(__STDCPP_FLOAT32_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
@@ -2148,32 +2209,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   inline __complex__ _Float128
   __complex_atanh(__complex__ _Float128 __z)
   { return __builtin_catanhf128(__z); }
-#endif
-
-#if defined(__STDCPP_BFLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
-  inline __complex__ decltype(0.0bf16)
-  __complex_acos(__complex__ decltype(0.0bf16) __z)
-  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_cacosf(__z)); }
-
-  inline __complex__ decltype(0.0bf16)
-  __complex_asin(__complex__ decltype(0.0bf16) __z)
-  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_casinf(__z)); }
-
-  inline __complex__ decltype(0.0bf16)
-  __complex_atan(__complex__ decltype(0.0bf16) __z)
-  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_catanf(__z)); }
-
-  inline __complex__ decltype(0.0bf16)
-  __complex_acosh(__complex__ decltype(0.0bf16) __z)
-  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_cacoshf(__z)); }
-
-  inline __complex__ decltype(0.0bf16)
-  __complex_asinh(__complex__ decltype(0.0bf16) __z)
-  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_casinhf(__z)); }
-
-  inline __complex__ decltype(0.0bf16)
-  __complex_atanh(__complex__ decltype(0.0bf16) __z)
-  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_catanhf(__z)); }
 #endif
 #endif
 
@@ -2493,10 +2528,28 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   { return __builtin_cprojl(__z.__rep()); }
 
 #if __cplusplus > 202002L
+
+#ifndef __SSE2__
+#pragma GCC push_options
+#pragma GCC target("sse2")
+#define __DISABLE_STDCPP_SSE2__
+#endif
+
 #if defined(__STDCPP_FLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
   inline __complex__ _Float16
   __complex_proj(__complex__ _Float16 __z)
   { return static_cast<__complex__ _Float16>(__builtin_cprojf(__z)); }
+#endif
+
+#if defined(__STDCPP_BFLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
+  inline __complex__ decltype(0.0bf16)
+  __complex_proj(__complex__ decltype(0.0bf16) __z)
+  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_cprojf(__z)); }
+#endif
+
+#ifdef __DISABLE_STDCPP_SSE2__
+#undef __DISABLE_STDCPP_SSE2__
+#pragma GCC pop_options
 #endif
 
 #if defined(__STDCPP_FLOAT32_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
@@ -2519,12 +2572,6 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   inline __complex__ _Float128
   __complex_proj(__complex__ _Float128 __z)
   { return __builtin_cprojf128(__z); }
-#endif
-
-#if defined(__STDCPP_BFLOAT16_T__) && defined(_GLIBCXX_FLOAT_IS_IEEE_BINARY32)
-  inline __complex__ decltype(0.0bf16)
-  __complex_proj(__complex__ decltype(0.0bf16) __z)
-  { return static_cast<__complex__ decltype(0.0bf16)>(__builtin_cprojf(__z)); }
 #endif
 
   template<typename _Tp>
