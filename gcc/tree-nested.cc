@@ -473,7 +473,7 @@ get_chain_decl (struct nesting_info *info)
 	 close to the truth, since the initial value does come from
 	 the caller.  */
       decl = build_decl (DECL_SOURCE_LOCATION (info->context),
-			 PARM_DECL, create_tmp_var_name ("CHAIN"), type);
+			 PARM_DECL, create_tmp_var_name ("CHAIN", false), type);
       DECL_ARTIFICIAL (decl) = 1;
       DECL_IGNORED_P (decl) = 1;
       TREE_USED (decl) = 1;

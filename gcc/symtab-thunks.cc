@@ -534,7 +534,7 @@ expand_thunk (cgraph_node *node, bool output_asm_thunks,
 	  tree p = DECL_STRUCT_FUNCTION (alias)->static_chain_decl;
 	  tree type = TREE_TYPE (p);
 	  tree decl = build_decl (DECL_SOURCE_LOCATION (thunk_fndecl),
-				  PARM_DECL, create_tmp_var_name ("CHAIN"),
+				  PARM_DECL, create_tmp_var_name ("CHAIN", false),
 				  type);
 	  DECL_ARTIFICIAL (decl) = 1;
 	  DECL_IGNORED_P (decl) = 1;

@@ -2324,7 +2324,7 @@ scan_omp_parallel (gimple_stmt_iterator *gsi, omp_context *outer_ctx)
     ctx->is_nested = true;
   ctx->field_map = splay_tree_new (splay_tree_compare_pointers, 0, 0);
   ctx->record_type = lang_hooks.types.make_type (RECORD_TYPE);
-  name = create_tmp_var_name (".omp_data_s");
+  name = create_tmp_var_name (".omp_data_s", false);
   name = build_decl (gimple_location (stmt),
 		     TYPE_DECL, name, ctx->record_type);
   DECL_ARTIFICIAL (name) = 1;
@@ -2377,7 +2377,7 @@ scan_omp_task (gimple_stmt_iterator *gsi, omp_context *outer_ctx)
     ctx->is_nested = true;
   ctx->field_map = splay_tree_new (splay_tree_compare_pointers, 0, 0);
   ctx->record_type = lang_hooks.types.make_type (RECORD_TYPE);
-  name = create_tmp_var_name (".omp_data_s");
+  name = create_tmp_var_name (".omp_data_s", false);
   name = build_decl (gimple_location (stmt),
 		     TYPE_DECL, name, ctx->record_type);
   DECL_ARTIFICIAL (name) = 1;
@@ -2391,7 +2391,7 @@ scan_omp_task (gimple_stmt_iterator *gsi, omp_context *outer_ctx)
 
   if (ctx->srecord_type)
     {
-      name = create_tmp_var_name (".omp_data_a");
+      name = create_tmp_var_name (".omp_data_a", false);
       name = build_decl (gimple_location (stmt),
 			 TYPE_DECL, name, ctx->srecord_type);
       DECL_ARTIFICIAL (name) = 1;
@@ -3067,7 +3067,7 @@ scan_omp_single (gomp_single *stmt, omp_context *outer_ctx)
   ctx = new_omp_context (stmt, outer_ctx);
   ctx->field_map = splay_tree_new (splay_tree_compare_pointers, 0, 0);
   ctx->record_type = lang_hooks.types.make_type (RECORD_TYPE);
-  name = create_tmp_var_name (".omp_copy_s");
+  name = create_tmp_var_name (".omp_copy_s", false);
   name = build_decl (gimple_location (stmt),
 		     TYPE_DECL, name, ctx->record_type);
   TYPE_NAME (ctx->record_type) = name;
@@ -3094,7 +3094,7 @@ scan_omp_target (gomp_target *stmt, omp_context *outer_ctx)
   ctx = new_omp_context (stmt, outer_ctx);
   ctx->field_map = splay_tree_new (splay_tree_compare_pointers, 0, 0);
   ctx->record_type = lang_hooks.types.make_type (RECORD_TYPE);
-  name = create_tmp_var_name (".omp_data_t");
+  name = create_tmp_var_name (".omp_data_t", false);
   name = build_decl (gimple_location (stmt),
 		     TYPE_DECL, name, ctx->record_type);
   DECL_ARTIFICIAL (name) = 1;
@@ -3156,7 +3156,7 @@ scan_omp_teams (gomp_teams *stmt, omp_context *outer_ctx)
   gcc_assert (taskreg_nesting_level == 1);
   ctx->field_map = splay_tree_new (splay_tree_compare_pointers, 0, 0);
   ctx->record_type = lang_hooks.types.make_type (RECORD_TYPE);
-  tree name = create_tmp_var_name (".omp_data_s");
+  tree name = create_tmp_var_name (".omp_data_s", false);
   name = build_decl (gimple_location (stmt),
 		     TYPE_DECL, name, ctx->record_type);
   DECL_ARTIFICIAL (name) = 1;

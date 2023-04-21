@@ -1647,7 +1647,7 @@ oacc_do_neutering (unsigned HOST_WIDE_INT bounds_lo,
       if (ws_prop)
 	{
 	  tree record_type = lang_hooks.types.make_type (RECORD_TYPE);
-	  tree name = create_tmp_var_name (".oacc_ws_data_s");
+	  tree name = create_tmp_var_name (".oacc_ws_data_s", false);
 	  name = build_decl (UNKNOWN_LOCATION, TYPE_DECL, name, record_type);
 	  DECL_ARTIFICIAL (name) = 1;
 	  DECL_NAMELESS (name) = 1;

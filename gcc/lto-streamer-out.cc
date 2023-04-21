@@ -2260,6 +2260,8 @@ output_struct_function_base (struct output_block *ob, struct function *fn)
   /* Output current IL state of the function.  */
   streamer_write_uhwi (ob, fn->curr_properties);
 
+  streamer_write_uhwi (ob, fn->tmp_var_id_num);
+
   /* Write all the attributes for FN.  */
   bp = bitpack_create (ob->main_stream);
   bp_pack_value (&bp, fn->is_thunk, 1);

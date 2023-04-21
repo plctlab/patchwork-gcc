@@ -9,4 +9,4 @@
      integer :: i(-1:1) = 1, j(3) = 1, k(3)
       k = j((/1,1,1/)+i)
       end
-! { dg-final { scan-tree-dump-times "A\.2\\\[3\\\]" 1 "original" } }
+! { dg-final { scan-tree-dump-times "A\.1\\\[3\\\]" 1 "original" } }

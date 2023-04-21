@@ -2623,7 +2623,7 @@ gfc_build_constant_array_constructor (gfc_expr * expr, tree type)
   TREE_CONSTANT (init) = 1;
   TREE_STATIC (init) = 1;
 
-  tmp = build_decl (input_location, VAR_DECL, create_tmp_var_name ("A"),
+  tmp = build_decl (input_location, VAR_DECL, create_tmp_var_name ("A", true),
 		    tmptype);
   DECL_ARTIFICIAL (tmp) = 1;
   DECL_IGNORED_P (tmp) = 1;
@@ -6699,7 +6699,7 @@ gfc_trans_auto_array_allocation (tree decl, gfc_symbol * sym,
     {
       gcc_assert (TREE_CODE (TREE_TYPE (decl)) == POINTER_TYPE);
       space = build_decl (gfc_get_location (&sym->declared_at),
-			  VAR_DECL, create_tmp_var_name ("A"),
+			  VAR_DECL, create_tmp_var_name ("A", false),
 			  TREE_TYPE (TREE_TYPE (decl)));
       gfc_trans_vla_type_sizes (sym, &init);
     }

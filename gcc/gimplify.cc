@@ -637,7 +637,7 @@ internal_get_tmp_var (tree val, gimple_seq *pre_p, gimple_seq *post_p,
 	{
 	  const char *name = get_name (val);
 	  if (name)
-	    SET_SSA_NAME_VAR_OR_IDENTIFIER (t, create_tmp_var_name (name));
+	    SET_SSA_NAME_VAR_OR_IDENTIFIER (t, create_tmp_var_name (name, false));
 	}
     }
   else
@@ -5250,7 +5250,7 @@ gimplify_init_constructor (tree *expr_p, gimple_seq *pre_p, gimple_seq *post_p,
 	    DECL_INITIAL (object) = ctor;
 	    TREE_STATIC (object) = 1;
 	    if (!DECL_NAME (object))
-	      DECL_NAME (object) = create_tmp_var_name ("C");
+	      DECL_NAME (object) = create_tmp_var_name ("C", true);
 	    walk_tree (&DECL_INITIAL (object), force_labels_r, NULL, NULL);
 
 	    /* ??? C++ doesn't automatically append a .<number> to the
@@ -6250,7 +6250,7 @@ gimplify_modify_expr (tree *expr_p, gimple_seq *pre_p, gimple_seq *post_p,
     {
       if (!DECL_NAME (*from_p) && DECL_NAME (*to_p))
 	DECL_NAME (*from_p)
-	  = create_tmp_var_name (IDENTIFIER_POINTER (DECL_NAME (*to_p)));
+	  = create_tmp_var_name (IDENTIFIER_POINTER (DECL_NAME (*to_p)), false);
       DECL_HAS_DEBUG_EXPR_P (*from_p) = 1;
       SET_DECL_DEBUG_EXPR (*from_p, *to_p);
    }
@@ -17881,7 +17881,7 @@ gimplify_function_tree (tree fndecl)
 	  tree first_var
 	    = build_decl (DECL_SOURCE_LOCATION (current_function_decl),
 			  VAR_DECL,
-			  create_tmp_var_name ("C"),
+			  create_tmp_var_name ("C", true),
 			  boolean_type_node);
 	  DECL_ARTIFICIAL (first_var) = 1;
 	  DECL_IGNORED_P (first_var) = 1;

@@ -1417,10 +1417,10 @@ gfc_add_assign_aux_vars (gfc_symbol * sym)
   gfc_allocate_lang_decl (decl);
   GFC_DECL_ASSIGN (decl) = 1;
   length = build_decl (input_location,
-		       VAR_DECL, create_tmp_var_name (sym->name),
+		       VAR_DECL, create_tmp_var_name (sym->name, false),
 		       gfc_charlen_type_node);
   addr = build_decl (input_location,
-		     VAR_DECL, create_tmp_var_name (sym->name),
+		     VAR_DECL, create_tmp_var_name (sym->name, false),
 		     pvoid_type_node);
   gfc_finish_var_decl (length, sym);
   gfc_finish_var_decl (addr, sym);
@@ -2835,7 +2835,7 @@ create_function_arglist (gfc_symbol * sym)
 		     : TREE_TYPE (f->sym->backend_decl);
 
 	  token = build_decl (input_location, PARM_DECL,
-			      create_tmp_var_name ("caf_token"),
+			      create_tmp_var_name ("caf_token", false),
 			      build_qualified_type (pvoid_type_node,
 						    TYPE_QUAL_RESTRICT));
 	  if ((f->sym->ts.type != BT_CLASS
@@ -2864,7 +2864,7 @@ create_function_arglist (gfc_symbol * sym)
 	  gfc_finish_decl (token);
 
 	  offset = build_decl (input_location, PARM_DECL,
-			       create_tmp_var_name ("caf_offset"),
+			       create_tmp_var_name ("caf_offset", false),
 			       gfc_array_index_type);
 
 	  if ((f->sym->ts.type != BT_CLASS
@@ -5713,7 +5713,7 @@ generate_coarray_init (gfc_namespace * ns __attribute((unused)))
 
   tmp = build_function_type_list (void_type_node, NULL_TREE);
   fndecl = build_decl (input_location, FUNCTION_DECL,
-		       create_tmp_var_name ("_caf_init"), tmp);
+		       create_tmp_var_name ("_caf_init", true), tmp);
 
   DECL_STATIC_CONSTRUCTOR (fndecl) = 1;
   SET_DECL_INIT_PRIORITY (fndecl, DEFAULT_INIT_PRIORITY);
@@ -6395,7 +6395,7 @@ create_main_function (tree fndecl)
 
     /* Create a static variable to hold the jump table.  */
     var = build_decl (input_location, VAR_DECL,
-		      create_tmp_var_name ("options"), array_type);
+		      create_tmp_var_name ("options", true), array_type);
     DECL_ARTIFICIAL (var) = 1;
     DECL_IGNORED_P (var) = 1;
     TREE_CONSTANT (var) = 1;

@@ -1300,6 +1300,8 @@ input_struct_function_base (struct function *fn, class data_in *data_in,
   /* Input the current IL state of the function.  */
   fn->curr_properties = streamer_read_uhwi (ib);
 
+  fn->tmp_var_id_num = streamer_read_uhwi (ib);
+
   /* Read all the attributes for FN.  */
   bp = streamer_read_bitpack (ib);
   fn->is_thunk = bp_unpack_value (&bp, 1);

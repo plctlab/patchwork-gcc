@@ -338,6 +338,9 @@ struct GTY(()) function {
      flags for the actions that they have taken.  */
   unsigned int pending_TODOs;
 
+  /* ID used by create_tmp_var_name.  */
+  unsigned int tmp_var_id_num;
+
   /* Non-null if the function does something that would prevent it from
      being copied; this applies to both versioning and inlining.  Set to
      a string describing the reason for failure.  */

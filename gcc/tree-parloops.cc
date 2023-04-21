@@ -2109,7 +2109,7 @@ separate_decls_in_region (edge entry, edge exit,
       /* Create the type for the structure to store the ssa names to.  */
       type = lang_hooks.types.make_type (RECORD_TYPE);
       type_name = build_decl (UNKNOWN_LOCATION,
-			      TYPE_DECL, create_tmp_var_name (".paral_data"),
+			      TYPE_DECL, create_tmp_var_name (".paral_data", false),
 			      type);
       TYPE_NAME (type) = type_name;
 

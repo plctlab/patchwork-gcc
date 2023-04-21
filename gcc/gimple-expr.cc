@@ -415,7 +415,7 @@ remove_suffix (char *name, int len)
 static GTY(()) unsigned int tmp_var_id_num;
 
 tree
-create_tmp_var_name (const char *prefix)
+create_tmp_var_name (const char *prefix, bool global)
 {
   char *tmp_name;
 
@@ -429,7 +429,9 @@ create_tmp_var_name (const char *prefix)
       prefix = preftmp;
     }
 
-  ASM_FORMAT_PRIVATE_NAME (tmp_name, prefix ? prefix : "T", tmp_var_id_num++);
+  /* During self-tests we create tmp variables cfun being NULL.  */
+  ASM_FORMAT_PRIVATE_NAME (tmp_name, prefix ? prefix : "T",
+			   !global && cfun ? cfun->tmp_var_id_num++ : tmp_var_id_num++);
   return get_identifier (tmp_name);
 }
 
@@ -442,7 +444,7 @@ create_tmp_var_raw (tree type, const char *prefix)
   tree tmp_var;
 
   tmp_var = build_decl (input_location,
-			VAR_DECL, prefix ? create_tmp_var_name (prefix) : NULL,
+			VAR_DECL, prefix ? create_tmp_var_name (prefix, false) : NULL,
 			type);
 
   /* The variable was declared by the compiler.  */

@@ -1378,7 +1378,7 @@ ipa_param_body_adjustments::common_initialization (tree old_fndecl,
 	  new_parm = build_decl (UNKNOWN_LOCATION, PARM_DECL, NULL_TREE,
 				 new_type);
 	  const char *prefix = ipa_param_prefixes[apm->param_prefix_index];
-	  DECL_NAME (new_parm) = create_tmp_var_name (prefix);
+	  DECL_NAME (new_parm) = create_tmp_var_name (prefix, false);
 	  DECL_ARTIFICIAL (new_parm) = 1;
 	  DECL_ARG_TYPE (new_parm) = new_type;
 	  DECL_CONTEXT (new_parm) = m_fndecl;

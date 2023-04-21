@@ -28,7 +28,7 @@ extern gimple_seq gimple_body (tree);
 extern bool gimple_has_body_p (tree);
 extern const char *gimple_decl_printable_name (tree, int);
 extern tree copy_var_decl (tree, tree, tree);
-extern tree create_tmp_var_name (const char *);
+extern tree create_tmp_var_name (const char *, bool global);
 extern tree create_tmp_var_raw (tree, const char * = NULL);
 extern tree create_tmp_var (tree, const char * = NULL);
 extern tree create_tmp_reg (tree, const char * = NULL);

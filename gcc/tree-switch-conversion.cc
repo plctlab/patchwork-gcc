@@ -671,7 +671,7 @@ switch_conversion::build_one_array (int num, tree arr_index_type,
       TREE_STATIC (decl) = 1;
       DECL_INITIAL (decl) = ctor;
 
-      DECL_NAME (decl) = create_tmp_var_name ("CSWTCH");
+      DECL_NAME (decl) = create_tmp_var_name ("CSWTCH", true);
       DECL_ARTIFICIAL (decl) = 1;
       DECL_IGNORED_P (decl) = 1;
       TREE_CONSTANT (decl) = 1;
