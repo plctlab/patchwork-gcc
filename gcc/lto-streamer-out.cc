@@ -1268,12 +1268,8 @@ hash_tree (struct streamer_tree_cache_d *cache, hash_map<tree, hashval_t> *map, 
       hstate.add_flag (DECL_NOT_GIMPLE_REG_P (t));
       hstate.commit_flag ();
       hstate.add_int (DECL_ALIGN (t));
-      if (code == LABEL_DECL)
-	{
-          hstate.add_int (EH_LANDING_PAD_NR (t));
-	  hstate.add_int (LABEL_DECL_UID (t));
-	}
-      else if (code == FIELD_DECL)
+      gcc_checking_assert (code != LABEL_DECL);
+      if (code == FIELD_DECL)
 	{
 	  hstate.add_flag (DECL_PACKED (t));
 	  hstate.add_flag (DECL_NONADDRESSABLE_P (t));

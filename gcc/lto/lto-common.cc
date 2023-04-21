@@ -1180,12 +1180,8 @@ compare_tree_sccs_1 (tree t1, tree t2, tree **map)
       compare_values (DECL_EXTERNAL);
       compare_values (DECL_NOT_GIMPLE_REG_P);
       compare_values (DECL_ALIGN);
-      if (code == LABEL_DECL)
-	{
-	  compare_values (EH_LANDING_PAD_NR);
-	  compare_values (LABEL_DECL_UID);
-	}
-      else if (code == FIELD_DECL)
+      gcc_checking_assert (code != LABEL_DECL);
+      if (code == FIELD_DECL)
 	{
 	  compare_values (DECL_PACKED);
 	  compare_values (DECL_NONADDRESSABLE_P);
