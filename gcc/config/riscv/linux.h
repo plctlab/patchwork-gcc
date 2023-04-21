@@ -72,7 +72,12 @@ along with GCC; see the file COPYING3.  If not see
 #define TARGET_ASM_FILE_END file_end_indicate_exec_stack
 
 #define STARTFILE_PREFIX_SPEC 			\
-   "/lib" XLEN_SPEC "/" ABI_SPEC "/ "		\
-   "/usr/lib" XLEN_SPEC "/" ABI_SPEC "/ "	\
-   "/lib/ "					\
-   "/usr/lib/ "
+  "%{mabi=lp64d: /lib64/lp64d/ /usr/lib64/lp64d/ /lib/ /usr/lib/}" \
+  "%{mabi=lp64f: /lib64/lp64f/ /usr/lib64/lp64f/ /lib/ /usr/lib/}" \
+  "%{mabi=lp64: /lib64/lp64/ /usr/lib64/lp64/ /lib/ /usr/lib/}" \
+  "%{mabi=ilp32d: /lib32/ilp32d /usr/lib32/ilp32d/ /lib/ /usr/lib/}" \
+  "%{mabi=ilp32f: /lib32/ilp32f/ /usr/lib32/ilp32f/ /lib/ /usr/lib/}" \
+  "%{mabi=ilp32: /lib32/ilp32/ /usr/lib32/ilp32/ /lib/ /usr/lib/}"
+
+#define RISCV_USE_CUSTOMISED_MULTI_LIB 1
+#define TARGET_LINUX 1
