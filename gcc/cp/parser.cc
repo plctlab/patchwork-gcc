@@ -19884,6 +19884,16 @@ cp_parser_simple_type_specifier (cp_parser* parser,
       && cp_lexer_peek_nth_token (parser->lexer, 2)->type != CPP_SCOPE)
     {
       type = saved_checks_value (token->u.tree_check_value);
+      /* Within a function parameter declaration, decltype(auto) is always an
+	 error.  */
+      if (parser->auto_is_implicit_function_template_parm_p
+	  && TREE_CODE (type) == TEMPLATE_TYPE_PARM
+	  && AUTO_IS_DECLTYPE (type))
+	{
+	  error_at (token->location,
+		    "cannot declare a parameter with %<decltype(auto)%>");
+	  type = error_mark_node;
+	}
       if (decl_specs)
 	{
 	  cp_parser_set_decl_spec_type (decl_specs, type,
