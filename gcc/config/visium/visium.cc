@@ -280,9 +280,6 @@ static HOST_WIDE_INT visium_constant_alignment (const_tree, HOST_WIDE_INT);
 #undef  TARGET_LEGITIMATE_CONSTANT_P
 #define TARGET_LEGITIMATE_CONSTANT_P visium_legitimate_constant_p
 
-#undef  TARGET_LRA_P
-#define TARGET_LRA_P hook_bool_void_false
-
 #undef  TARGET_LEGITIMATE_ADDRESS_P
 #define TARGET_LEGITIMATE_ADDRESS_P visium_legitimate_address_p
 

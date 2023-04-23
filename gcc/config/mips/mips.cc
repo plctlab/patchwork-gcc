@@ -23011,8 +23011,6 @@ mips_asm_file_end (void)
 
 #undef TARGET_SPILL_CLASS
 #define TARGET_SPILL_CLASS mips_spill_class
-#undef TARGET_LRA_P
-#define TARGET_LRA_P mips_lra_p
 #undef TARGET_IRA_CHANGE_PSEUDO_ALLOCNO_CLASS
 #define TARGET_IRA_CHANGE_PSEUDO_ALLOCNO_CLASS mips_ira_change_pseudo_allocno_class
 

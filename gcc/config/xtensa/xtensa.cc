@@ -286,9 +286,6 @@ static rtx xtensa_delegitimize_address (rtx);
 #undef TARGET_CANNOT_FORCE_CONST_MEM
 #define TARGET_CANNOT_FORCE_CONST_MEM xtensa_cannot_force_const_mem
 
-#undef TARGET_LRA_P
-#define TARGET_LRA_P xtensa_lra_p
-
 #undef TARGET_LEGITIMATE_ADDRESS_P
 #define TARGET_LEGITIMATE_ADDRESS_P	xtensa_legitimate_address_p
 

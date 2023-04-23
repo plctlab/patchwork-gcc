@@ -840,9 +840,6 @@ ft32_lra_p (void)
   return ft32_lra_flag;
 }
 
-#undef TARGET_LRA_P
-#define TARGET_LRA_P ft32_lra_p
-
 static bool
 reg_ok_for_base_p (rtx r, bool strict)
 {

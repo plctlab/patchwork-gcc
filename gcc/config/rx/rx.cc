@@ -3790,9 +3790,6 @@ rx_modes_tieable_p (machine_mode mode1, machine_mode mode2)
 #undef  TARGET_WARN_FUNC_RETURN
 #define TARGET_WARN_FUNC_RETURN 		rx_warn_func_return
 
-#undef  TARGET_LRA_P
-#define TARGET_LRA_P 				rx_enable_lra
-
 #undef  TARGET_HARD_REGNO_NREGS
 #define TARGET_HARD_REGNO_NREGS			rx_hard_regno_nregs
 #undef  TARGET_HARD_REGNO_MODE_OK

@@ -114,9 +114,6 @@ static HOST_WIDE_INT vax_starting_frame_offset (void);
 #undef TARGET_STRUCT_VALUE_RTX
 #define TARGET_STRUCT_VALUE_RTX vax_struct_value_rtx
 
-#undef TARGET_LRA_P
-#define TARGET_LRA_P vax_lra_p
-
 #undef TARGET_LEGITIMATE_ADDRESS_P
 #define TARGET_LEGITIMATE_ADDRESS_P vax_legitimate_address_p
 #undef TARGET_MODE_DEPENDENT_ADDRESS_P

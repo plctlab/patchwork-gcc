@@ -403,9 +403,6 @@ static size_t n_deferred_plabels = 0;
 #undef TARGET_LEGITIMATE_ADDRESS_P
 #define TARGET_LEGITIMATE_ADDRESS_P pa_legitimate_address_p
 
-#undef TARGET_LRA_P
-#define TARGET_LRA_P hook_bool_void_false
-
 #undef TARGET_HARD_REGNO_NREGS
 #define TARGET_HARD_REGNO_NREGS pa_hard_regno_nregs
 #undef TARGET_HARD_REGNO_MODE_OK

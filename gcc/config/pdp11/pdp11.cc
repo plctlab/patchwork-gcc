@@ -228,9 +228,6 @@ static bool pdp11_scalar_mode_supported_p (scalar_mode);
 #undef  TARGET_PREFERRED_OUTPUT_RELOAD_CLASS
 #define TARGET_PREFERRED_OUTPUT_RELOAD_CLASS pdp11_preferred_output_reload_class
 
-#undef  TARGET_LRA_P
-#define TARGET_LRA_P pdp11_lra_p
-
 #undef  TARGET_LEGITIMATE_ADDRESS_P
 #define TARGET_LEGITIMATE_ADDRESS_P pdp11_legitimate_address_p
 

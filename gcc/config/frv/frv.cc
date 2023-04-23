@@ -496,9 +496,6 @@ static bool frv_modes_tieable_p			(machine_mode, machine_mode);
 #undef  TARGET_SECONDARY_RELOAD
 #define TARGET_SECONDARY_RELOAD frv_secondary_reload
 
-#undef TARGET_LRA_P
-#define TARGET_LRA_P hook_bool_void_false
-
 #undef TARGET_LEGITIMATE_ADDRESS_P
 #define TARGET_LEGITIMATE_ADDRESS_P frv_legitimate_address_p
 

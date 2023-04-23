@@ -17706,9 +17706,6 @@ s390_vectorize_vec_perm_const (machine_mode vmode, machine_mode op_mode,
 #undef TARGET_LEGITIMATE_CONSTANT_P
 #define TARGET_LEGITIMATE_CONSTANT_P s390_legitimate_constant_p
 
-#undef TARGET_LRA_P
-#define TARGET_LRA_P s390_lra_p
-
 #undef TARGET_CAN_ELIMINATE
 #define TARGET_CAN_ELIMINATE s390_can_eliminate
 
