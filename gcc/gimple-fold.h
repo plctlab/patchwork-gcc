@@ -64,6 +64,7 @@ extern gimple_seq rewrite_to_defined_overflow (gimple *, bool = false);
 extern void replace_call_with_value (gimple_stmt_iterator *, tree);
 extern tree tree_vec_extract (gimple_stmt_iterator *, tree, tree, tree, tree);
 extern void gsi_replace_with_seq_vops (gimple_stmt_iterator *, gimple_seq);
+extern bool can_refer_decl_in_current_unit_p (tree decl, tree from_decl);
 
 /* gimple_build, functionally matching fold_buildN, outputs stmts
    int the provided sequence, matching and simplifying them on-the-fly.
