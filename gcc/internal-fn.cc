@@ -127,6 +127,7 @@ init_internal_fns ()
 #define cond_binary_direct { 1, 1, true }
 #define cond_ternary_direct { 1, 1, true }
 #define while_direct { 0, 2, false }
+#define while_len_direct { 0, 0, false }
 #define fold_extract_direct { 2, 2, false }
 #define fold_left_direct { 1, 1, false }
 #define mask_fold_left_direct { 1, 1, false }
@@ -3702,6 +3703,33 @@ expand_while_optab_fn (internal_fn, gcall *stmt, convert_optab optab)
     emit_move_insn (lhs_rtx, ops[0].value);
 }
 
+/* Expand WHILE_LEN call STMT using optab OPTAB.  */
+static void
+expand_while_len_optab_fn (internal_fn, gcall *stmt, convert_optab optab)
+{
+  expand_operand ops[3];
+  tree rhs_type[2];
+
+  tree lhs = gimple_call_lhs (stmt);
+  tree lhs_type = TREE_TYPE (lhs);
+  rtx lhs_rtx = expand_expr (lhs, NULL_RTX, VOIDmode, EXPAND_WRITE);
+  create_output_operand (&ops[0], lhs_rtx, TYPE_MODE (lhs_type));
+
+  for (unsigned int i = 0; i < gimple_call_num_args (stmt); ++i)
+    {
+      tree rhs = gimple_call_arg (stmt, i);
+      rhs_type[i] = TREE_TYPE (rhs);
+      rtx rhs_rtx = expand_normal (rhs);
+      create_input_operand (&ops[i + 1], rhs_rtx, TYPE_MODE (rhs_type[i]));
+    }
+
+  insn_code icode = direct_optab_handler (optab, TYPE_MODE (rhs_type[0]));
+
+  expand_insn (icode, 3, ops);
+  if (!rtx_equal_p (lhs_rtx, ops[0].value))
+    emit_move_insn (lhs_rtx, ops[0].value);
+}
+
 /* Expand a call to a convert-like optab using the operands in STMT.
    FN has a single output operand and NARGS input operands.  */
 
@@ -3843,6 +3871,7 @@ multi_vector_optab_supported_p (convert_optab optab, tree_pair types,
 #define direct_scatter_store_optab_supported_p convert_optab_supported_p
 #define direct_len_store_optab_supported_p direct_optab_supported_p
 #define direct_while_optab_supported_p convert_optab_supported_p
+#define direct_while_len_optab_supported_p direct_optab_supported_p
 #define direct_fold_extract_optab_supported_p direct_optab_supported_p
 #define direct_fold_left_optab_supported_p direct_optab_supported_p
 #define direct_mask_fold_left_optab_supported_p direct_optab_supported_p

@@ -59,14 +59,14 @@ static bitmap_obstack loop_renamer_obstack;
 void
 create_iv (tree base, tree step, tree var, class loop *loop,
 	   gimple_stmt_iterator *incr_pos, bool after,
-	   tree *var_before, tree *var_after)
+	   tree *var_before, tree *var_after, enum tree_code code)
 {
   gassign *stmt;
   gphi *phi;
   tree initial, step1;
   gimple_seq stmts;
   tree vb, va;
-  enum tree_code incr_op = PLUS_EXPR;
+  enum tree_code incr_op = code;
   edge pe = loop_preheader_edge (loop);
 
   if (var != NULL_TREE)
