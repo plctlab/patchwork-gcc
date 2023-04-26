@@ -3726,6 +3726,76 @@ riscv_pass_fpr_pair (machine_mode mode, unsigned regno1,
 				   GEN_INT (offset2))));
 }
 
+/* Use the TYPE_SIZE to distinguish the type with vector_size attribute and
+   intrinsic vector type.  Because we can't get the decl for the params.  */
+
+static bool
+riscv_scalable_vector_type_p (const_tree type)
+{
+  tree size = TYPE_SIZE (type);
+  if (size && TREE_CODE (size) == INTEGER_CST)
+    return false;
+
+  /* For the data type like vint32m1_t, the size code is POLY_INT_CST.  */
+  return true;
+}
+
+static bool
+riscv_arg_has_vector (const_tree type)
+{
+  bool is_vector = false;
+
+  switch (TREE_CODE (type))
+    {
+    case RECORD_TYPE:
+      if (!COMPLETE_TYPE_P (type))
+	break;
+
+      for (tree f = TYPE_FIELDS (type); f; f = DECL_CHAIN (f))
+	if (TREE_CODE (f) == FIELD_DECL)
+	  {
+	    tree field_type = TREE_TYPE (f);
+	    if (!TYPE_P (field_type))
+	      break;
+
+	    /* Ignore it if it's fixed length vector.  */
+	    if (VECTOR_TYPE_P (field_type))
+	      is_vector = riscv_scalable_vector_type_p (field_type);
+	    else
+	      is_vector = riscv_arg_has_vector (field_type);
+	  }
+
+      break;
+
+    case VECTOR_TYPE:
+      is_vector = riscv_scalable_vector_type_p (type);
+      break;
+
+    default:
+      is_vector = false;
+      break;
+    }
+
+  return is_vector;
+}
+
+/* Pass the type to check whether it's a vector type or contains vector type.
+   Only check the value type and no checking for vector pointer type.  */
+
+static void
+riscv_pass_in_vector_p (const_tree type)
+{
+  static int warned = 0;
+
+  if (type && riscv_arg_has_vector (type) && !warned)
+    {
+      warning (OPT_Wpsabi, "ABI for the scalable vector type is currently in "
+	       "experimental stage and may changes in the upcoming version of "
+	       "GCC.");
+      warned = 1;
+    }
+}
+
 /* Fill INFO with information about a single argument, and return an
    RTL pattern to pass or return the argument.  CUM is the cumulative
    state for earlier arguments.  MODE is the mode of this argument and
@@ -3809,6 +3879,9 @@ riscv_get_arg_info (struct riscv_arg_info *info, const CUMULATIVE_ARGS *cum,
 				      fields[1].offset);
 	}
     }
+
+  /* Only check existing of vector type.  */
+  riscv_pass_in_vector_p (type);
 
   /* Work out the size of the argument.  */
   num_bytes = type ? int_size_in_bytes (type) : GET_MODE_SIZE (mode).to_constant ();
