@@ -56,6 +56,7 @@
 #include "tree-pass.h"
 #include "print-rtl.h"
 #include "rtl-iter.h"
+#include "opts.h"
 
 /* This file should be included last.  */
 #include "target-def.h"
@@ -768,6 +769,9 @@ avr_option_override (void)
 #if !defined (HAVE_AS_AVR_MGCCISR_OPTION)
   avr_gasisr_prologues = 0;
 #endif
+
+  SET_OPTION_IF_UNSET (&global_options, &global_options_set,
+                       param_min_pagesize, 0);
 
   if (!avr_set_core_architecture())
     return;
