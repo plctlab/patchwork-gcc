@@ -4965,6 +4965,40 @@ for (i = 1; i < operand3; i++)
   operand0[i] = operand0[i - 1] && (operand1 + i < operand2);
 @end smallexample
 
+@cindex @code{while_len@var{m}@var{n}} instruction pattern
+@item @code{while_len@var{m}@var{n}}
+Set operand 0 to the number of active elements in vector will be updated value.
+operand 1 is the total elements need to be updated value.
+operand 2 is the vectorization factor.
+The value of operand 0 is target dependent and flexible in each iteration.
+The operation of this pattern can be:
+
+@smallexample
+Case 1:
+operand0 = MIN (operand1, operand2);
+operand2 can be const_poly_int or poly_int related to vector mode size.
+Some target like RISC-V has a standalone instruction to get MIN (n, MODE SIZE) so
+that we can reduce a use of general purpose register.
+
+In this case, only the last iteration of the loop is partial iteration.
+@end smallexample
+
+@smallexample
+Case 2:
+if (operand1 <= operand2)
+  operand0 = operand1;
+else if (operand1 < 2 * operand2)
+  operand0 = IN_RANGE (ceil (operand1 / 2), operand2);
+else
+  operand0 = operand2;
+
+This case will evenly distribute work over the last 2 iterations of a stripmine loop.
+@end smallexample
+
+The output of this pattern is not only used as IV of loop control counter, but also
+is used as the IV of address calculation with multiply/shift operation. This allow
+us dynamic adjust the number of elements is processed in each iteration of the loop.
+
 @cindex @code{check_raw_ptrs@var{m}} instruction pattern
 @item @samp{check_raw_ptrs@var{m}}
 Check whether, given two pointers @var{a} and @var{b} and a length @var{len},

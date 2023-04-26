@@ -5567,7 +5567,7 @@ vect_create_epilog_for_reduction (loop_vec_info loop_vinfo,
       gimple_stmt_iterator incr_gsi;
       bool insert_after;
       standard_iv_increment_position (loop, &incr_gsi, &insert_after);
-      create_iv (series_vect, vec_step, NULL_TREE, loop, &incr_gsi,
+      create_iv (series_vect, PLUS_EXPR, vec_step, NULL_TREE, loop, &incr_gsi,
 		 insert_after, &indx_before_incr, &indx_after_incr);
 
       /* Next create a new phi node vector (NEW_PHI_TREE) which starts
@@ -10364,12 +10364,14 @@ vect_record_loop_len (loop_vec_info loop_vinfo, vec_loop_lens *lens,
    rgroup that operates on NVECTORS vectors, where 0 <= INDEX < NVECTORS.  */
 
 tree
-vect_get_loop_len (loop_vec_info loop_vinfo, vec_loop_lens *lens,
-		   unsigned int nvectors, unsigned int index)
+vect_get_loop_len (gimple_stmt_iterator *gsi, loop_vec_info loop_vinfo,
+		   vec_loop_lens *lens, unsigned int nvectors, tree vectype,
+		   unsigned int index)
 {
   rgroup_controls *rgl = &(*lens)[nvectors - 1];
   bool use_bias_adjusted_len =
     LOOP_VINFO_PARTIAL_LOAD_STORE_BIAS (loop_vinfo) != 0;
+  tree iv_type = LOOP_VINFO_RGROUP_IV_TYPE (loop_vinfo);
 
   /* Populate the rgroup's len array, if this is the first time we've
      used it.  */
@@ -10400,6 +10402,27 @@ vect_get_loop_len (loop_vec_info loop_vinfo, vec_loop_lens *lens,
 
   if (use_bias_adjusted_len)
     return rgl->bias_adjusted_ctrl;
+  else if (direct_internal_fn_supported_p (IFN_WHILE_LEN, iv_type,
+					   OPTIMIZE_FOR_SPEED))
+    {
+      tree loop_len = rgl->controls[index];
+      poly_int64 nunits1 = TYPE_VECTOR_SUBPARTS (rgl->type);
+      poly_int64 nunits2 = TYPE_VECTOR_SUBPARTS (vectype);
+      if (maybe_ne (nunits1, nunits2))
+	{
+	  /* A loop len for data type X can be reused for data type Y
+	     if X has N times more elements than Y and if Y's elements
+	     are N times bigger than X's.  */
+	  gcc_assert (multiple_p (nunits1, nunits2));
+	  unsigned int factor = exact_div (nunits1, nunits2).to_constant ();
+	  gimple_seq seq = NULL;
+	  loop_len = gimple_build (&seq, RDIV_EXPR, iv_type, loop_len,
+				   build_int_cst (iv_type, factor));
+	  if (seq)
+	    gsi_insert_seq_before (gsi, seq, GSI_SAME_STMT);
+	}
+      return loop_len;
+    }
   else
     return rgl->controls[index];
 }
