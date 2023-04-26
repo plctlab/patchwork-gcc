@@ -49,7 +49,7 @@
 ;; conservatively emit a full FENCE.
 (define_insn "mem_thread_fence_1"
   [(set (match_operand:BLK 0 "" "")
-	(unspec:BLK [(match_dup 0)] UNSPEC_MEMORY_BARRIER))
+	(unspec:BLK[(match_dup 0)] UNSPEC_MEMORY_BARRIER))
    (match_operand:SI 1 "const_int_operand" "")] ;; model
   ""
   "fence\tiorw,iorw")
@@ -128,10 +128,10 @@
 {
   /* We have no QImode/HImode atomics, so form a mask, then use
      subword_atomic_fetch_strong_nand to implement a LR/SC version of the
-     operation. */
+     operation.  */
 
   /* Logic duplicated in gcc/libgcc/config/riscv/atomic.c for use when inlining
-     is disabled */
+     is disabled.  */
 
   rtx old = gen_reg_rtx (SImode);
   rtx mem = operands[1];
@@ -193,10 +193,10 @@
 {
   /* We have no QImode/HImode atomics, so form a mask, then use
      subword_atomic_fetch_strong_<mode> to implement a LR/SC version of the
-     operation. */
+     operation.  */
 
   /* Logic duplicated in gcc/libgcc/config/riscv/atomic.c for use when inlining
-     is disabled */
+     is disabled.  */
 
   rtx old = gen_reg_rtx (SImode);
   rtx mem = operands[1];
@@ -290,10 +290,10 @@
   [(set (match_operand:GPR 0 "register_operand" "=&r")
 	(match_operand:GPR 1 "memory_operand" "+A"))
    (set (match_dup 1)
-	(unspec_volatile:GPR [(match_operand:GPR 2 "reg_or_0_operand" "rJ")
-			      (match_operand:GPR 3 "reg_or_0_operand" "rJ")
-			      (match_operand:SI 4 "const_int_operand")  ;; mod_s
-			      (match_operand:SI 5 "const_int_operand")] ;; mod_f
+	(unspec_volatile:GPR[(match_operand:GPR 2 "reg_or_0_operand" "rJ")
+			     (match_operand:GPR 3 "reg_or_0_operand" "rJ")
+			     (match_operand:SI 4 "const_int_operand")  ;; mod_s
+			     (match_operand:SI 5 "const_int_operand")] ;; mod_f
 	 UNSPEC_COMPARE_AND_SWAP))
    (clobber (match_scratch:GPR 6 "=&r"))]
   "TARGET_ATOMIC"
@@ -367,7 +367,7 @@
     {
       rtx difference = gen_rtx_MINUS (SImode, val, exp);
       compare = gen_reg_rtx (SImode);
-      emit_move_insn  (compare, difference);
+      emit_move_insn (compare, difference);
     }
 
   if (word_mode != SImode)
@@ -393,10 +393,10 @@
 {
   /* We have no QImode/HImode atomics, so form a mask, then use
      subword_atomic_cas_strong<mode> to implement a LR/SC version of the
-     operation. */
+     operation.  */
 
   /* Logic duplicated in gcc/libgcc/config/riscv/atomic.c for use when inlining
-     is disabled */
+     is disabled.  */
 
   rtx old = gen_reg_rtx (SImode);
   rtx mem = operands[1];
@@ -431,15 +431,15 @@
 })
 
 (define_insn "subword_atomic_cas_strong"
-  [(set (match_operand:SI 0 "register_operand" "=&r")			   ;; old value at mem
-	(match_operand:SI 1 "memory_operand" "+A"))			   ;; mem location
+  [(set (match_operand:SI 0 "register_operand" "=&r")			  ;; old value at mem
+	(match_operand:SI 1 "memory_operand" "+A"))			  ;; mem location
    (set (match_dup 1)
-	(unspec_volatile:SI [(match_operand:SI 2 "reg_or_0_operand" "rJ")  ;; expected value
-			     (match_operand:SI 3 "reg_or_0_operand" "rJ")] ;; desired value
+	(unspec_volatile:SI[(match_operand:SI 2 "reg_or_0_operand" "rJ")  ;; expected value
+			    (match_operand:SI 3 "reg_or_0_operand" "rJ")] ;; desired value
 	 UNSPEC_COMPARE_AND_SWAP_SUBWORD))
-	(match_operand:SI 4 "register_operand" "rI")			   ;; mask
-	(match_operand:SI 5 "register_operand" "rI")			   ;; not_mask
-	(clobber (match_scratch:SI 6 "=&r"))]				   ;; tmp_1
+	(match_operand:SI 4 "register_operand" "rI")			  ;; mask
+	(match_operand:SI 5 "register_operand" "rI")			  ;; not_mask
+	(clobber (match_scratch:SI 6 "=&r"))]				  ;; tmp_1
   "TARGET_ATOMIC && TARGET_INLINE_SUBWORD_ATOMIC"
   {
     return "1:\;"
@@ -461,7 +461,7 @@
   "TARGET_ATOMIC"
 {
   /* We have no QImode atomics, so use the address LSBs to form a mask,
-     then use an aligned SImode atomic. */
+     then use an aligned SImode atomic.  */
   rtx result = operands[0];
   rtx mem = operands[1];
   rtx model = operands[2];
