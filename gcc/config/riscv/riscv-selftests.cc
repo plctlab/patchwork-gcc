@@ -234,6 +234,16 @@ run_poly_int_selftests (void)
 			 worklist);
 }
 
+static bool
+vls_mode_p (machine_mode mode)
+{
+  if (!riscv_v_ext_vector_mode_p(mode))
+    return false;
+  poly_int64 sz = GET_MODE_SIZE (mode);
+  return sz.is_constant();
+}
+
+
 static void
 run_const_vector_selftests (void)
 {
@@ -248,7 +258,7 @@ run_const_vector_selftests (void)
 
   FOR_EACH_MODE_IN_CLASS (mode, MODE_VECTOR_INT)
     {
-      if (riscv_v_ext_vector_mode_p (mode))
+      if (riscv_v_ext_vector_mode_p (mode) && !vls_mode_p (mode))
 	{
 	  for (const HOST_WIDE_INT &val : worklist)
 	    {
@@ -273,7 +283,7 @@ run_const_vector_selftests (void)
 
   FOR_EACH_MODE_IN_CLASS (mode, MODE_VECTOR_FLOAT)
     {
-      if (riscv_v_ext_vector_mode_p (mode))
+      if (riscv_v_ext_vector_mode_p (mode) && !vls_mode_p (mode))
 	{
 	  scalar_mode inner_mode = GET_MODE_INNER (mode);
 	  REAL_VALUE_TYPE f = REAL_VALUE_ATOF ("0.2928932", inner_mode);
@@ -322,7 +332,7 @@ run_broadcast_selftests (void)
 #define BROADCAST_TEST(MODE_CLASS)                                             \
   FOR_EACH_MODE_IN_CLASS (mode, MODE_VECTOR_INT)                               \
     {                                                                          \
-      if (riscv_v_ext_vector_mode_p (mode))                                    \
+      if (riscv_v_ext_vector_mode_p (mode) && !vls_mode_p(mode))               \
 	{                                                                      \
 	  rtx_insn *insn;                                                      \
 	  rtx src;                                                             \

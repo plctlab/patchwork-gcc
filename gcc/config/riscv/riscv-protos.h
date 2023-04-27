@@ -209,6 +209,8 @@ enum vlen_enum
 bool slide1_sew64_helper (int, machine_mode, machine_mode,
 			  machine_mode, rtx *);
 rtx gen_avl_for_scalar_move (rtx);
+machine_mode minimal_vls_mode (machine_mode);
+machine_mode mask_mode(machine_mode);
 }
 
 /* We classify builtin types into two classes:

@@ -742,4 +742,16 @@ gen_avl_for_scalar_move (rtx avl)
     }
 }
 
+machine_mode
+minimal_vls_mode (machine_mode)
+{
+  return VNx4SImode;
+}
+
+machine_mode
+mask_mode(machine_mode)
+{
+  return VNx4BImode;
+}
+
 } // namespace riscv_vector

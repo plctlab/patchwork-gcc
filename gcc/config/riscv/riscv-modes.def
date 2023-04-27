@@ -185,6 +185,10 @@ VECTOR_MODE_WITH_PREFIX (VNx, INT, QI, 1, 0);
 ADJUST_NUNITS (VNx1QI, riscv_v_adjust_nunits (VNx1QImode, 1));
 ADJUST_ALIGNMENT (VNx1QI, 1);
 
+
+/* VLS modes.  */
+VECTOR_MODES (INT, 16);       /* V16QI V8HI V4SI V2DI */
+
 /* TODO: According to RISC-V 'V' ISA spec, the maximun vector length can
    be 65536 for a single vector register which means the vector mode in
    GCC can be maximum = 65536 * 8 bits (LMUL=8).

@@ -985,6 +985,8 @@ riscv_v_ext_vector_mode_p (machine_mode mode)
   switch (mode)
     {
 #include "riscv-vector-switch.def"
+    case E_V4SImode:
+      return true;
     default:
       return false;
     }
