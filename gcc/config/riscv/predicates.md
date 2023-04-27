@@ -328,6 +328,12 @@
 (define_predicate "comparison_except_ltge_operator"
   (match_code "eq,ne,le,leu,gt,gtu"))
 
+;; Some comparison operator with same operands can be simpiled to clear.
+;; For example, op[0] = ne (op[1], op[1]) => op[0] = clr (op[0]).  We sort
+;; similar comparison operators here.
+(define_predicate "comparison_simplify_to_clear_operator"
+  (match_code "ne,lt,ltu,gt,gtu"))
+
 (define_predicate "comparison_except_eqge_operator"
   (match_code "le,leu,gt,gtu,lt,ltu"))
 
