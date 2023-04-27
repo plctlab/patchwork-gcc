@@ -610,6 +610,9 @@ maybe_instantiate_nsdmi_init (tree member, tsubst_flags_t complain)
 	      push_deferring_access_checks (dk_no_deferred);
 	      pushed = true;
 	    }
+	  /* Make sure current_template_parms is cleared so that mark_used
+	     is uninhibited.  */
+	  auto ctpo = make_temp_override (current_template_parms, NULL_TREE);
 
 	  /* If we didn't push_to_top_level, still step out of constructor
 	     scope so build_base_path doesn't try to use its __in_chrg.  */

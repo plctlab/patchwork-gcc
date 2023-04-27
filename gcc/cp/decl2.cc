@@ -5781,7 +5781,11 @@ mark_used (tree decl, tsubst_flags_t complain /* = tf_warning_or_error */)
 	  && DECL_OMP_DECLARE_REDUCTION_P (decl)))
     maybe_instantiate_decl (decl);
 
-  if (processing_template_decl || in_template_function ())
+  /* We don't want to instantiate templates based on uses from other
+     uninstantiated templates.  Since processing_template_decl is cleared
+     during instantiate_non_dependent_expr, we check current_template_parms
+     as well.  */
+  if (processing_template_decl || current_template_parms)
     return true;
 
   /* Check this too in case we're within instantiate_non_dependent_expr.  */
