@@ -7872,6 +7872,11 @@ coerce_template_args_for_ttp (tree templ, tree arglist,
   tree outer = DECL_CONTEXT (templ);
   if (outer)
     outer = generic_targs_for (outer);
+  else if (TEMPLATE_TYPE_LEVEL (TREE_TYPE (templ))
+	   != TEMPLATE_TYPE_ORIG_LEVEL (TREE_TYPE (templ)))
+    /* This is a level-lowered template template parameter, for which
+       we don't consistently set DECL_CONTEXT (FIXME).  */
+    outer = template_parms_to_args (TREE_CHAIN (DECL_TEMPLATE_PARMS (templ)));
   else if (current_template_parms)
     {
       /* This is an argument of the current template, so we haven't set
