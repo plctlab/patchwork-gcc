@@ -65,6 +65,11 @@
 
   ;; OR-COMBINE
   UNSPEC_ORC_B
+
+  ;; Zbc unspecs
+  UNSPEC_CLMUL
+  UNSPEC_CLMULH
+  UNSPEC_CLMULR
 ])
 
 (define_c_enum "unspecv" [
