@@ -1228,7 +1228,15 @@ riscv_const_insns (rtx x)
     case CONST_DOUBLE:
     case CONST_VECTOR:
       /* We can use x0 to load floating-point zero.  */
-      return x == CONST0_RTX (GET_MODE (x)) ? 1 : 0;
+      if (x == CONST0_RTX (GET_MODE (x)))
+	return 1;
+      /* Constants from -16 to 15 can be loaded with vmv.v.i.
+	 The Wc0, Wc1 constraints are already covered by the
+	 vi constraint so we do not need to check them here
+	 separately.  */
+      else if (TARGET_VECTOR && satisfies_constraint_vi (x))
+	return 1;
+      return 0;
 
     case CONST:
       /* See if we can refer to X directly.  */
