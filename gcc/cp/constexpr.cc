@@ -3213,7 +3213,12 @@ cxx_eval_call_expression (const constexpr_ctx *ctx, tree t,
 		&& CLASS_TYPE_P (TREE_TYPE (res))
 		&& !is_empty_class (TREE_TYPE (res)))
 	      if (replace_decl (&result, res, ctx->object))
-		cacheable = false;
+		{
+		  cacheable = false;
+		  result = cxx_eval_constant_expression (ctx, result, lval,
+							 non_constant_p,
+							 overflow_p);
+		}
 	}
       else
 	/* Couldn't get a function copy to evaluate.  */
@@ -5988,9 +5993,12 @@ cxx_eval_store_expression (const constexpr_ctx *ctx, tree t,
 	    object = probe;
 	  else
 	    {
+	      tree orig_probe = probe;
 	      probe = cxx_eval_constant_expression (ctx, probe, vc_glvalue,
 						    non_constant_p, overflow_p);
 	      evaluated = true;
+	      if (orig_probe == target)
+		target = probe;
 	      if (*non_constant_p)
 		return t;
 	    }
@@ -6154,7 +6162,7 @@ cxx_eval_store_expression (const constexpr_ctx *ctx, tree t,
   if (!empty_base && !(same_type_ignoring_top_level_qualifiers_p
 		       (initialized_type (init), type)))
     {
-      gcc_assert (is_empty_class (TREE_TYPE (target)));
+      gcc_assert (is_empty_class (TREE_TYPE (TREE_OPERAND (t, 0))));
       empty_base = true;
     }
 
