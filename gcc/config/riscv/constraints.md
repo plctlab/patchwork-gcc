@@ -188,3 +188,27 @@
 
 (define_register_constraint "th_r_fmv" "TARGET_XTHEADFMV ? GR_REGS : NO_REGS"
   "An integer register for XTheadFmv.")
+
+(define_memory_constraint "th_m_mia"
+  "@internal
+   A MEM with a valid address for th.[l|s]*ia instructions."
+  (and (match_code "mem")
+       (match_test "th_memidx_legitimate_modify_p (op, true)")))
+
+(define_memory_constraint "th_m_mib"
+  "@internal
+   A MEM with a valid address for th.[l|s]*ib instructions."
+  (and (match_code "mem")
+       (match_test "th_memidx_legitimate_modify_p (op, false)")))
+
+(define_memory_constraint "th_m_mir"
+  "@internal
+   A MEM with a valid address for th.[l|s]*r* instructions."
+  (and (match_code "mem")
+       (match_test "th_memidx_legitimate_index_p (op, false)")))
+
+(define_memory_constraint "th_m_miu"
+  "@internal
+   A MEM with a valid address for th.[l|s]*ur* instructions."
+  (and (match_code "mem")
+       (match_test "th_memidx_legitimate_index_p (op, true)")))
