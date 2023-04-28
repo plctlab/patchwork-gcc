@@ -93,6 +93,8 @@ public:
   bool is_internal_fn () const;
   bool is_builtin_fn () const;
   int get_rep () const { return rep; }
+  enum tree_code safe_as_tree_code () const;
+  combined_fn safe_as_fn_code () const;
   bool operator== (const code_helper &other) { return rep == other.rep; }
   bool operator!= (const code_helper &other) { return rep != other.rep; }
   bool operator== (tree_code c) { return rep == code_helper (c).rep; }
@@ -101,6 +103,17 @@ public:
 private:
   int rep;
 };
+
+inline enum tree_code
+code_helper::safe_as_tree_code () const
+{
+  return is_tree_code () ? (tree_code) *this : MAX_TREE_CODES;
+}
+
+inline combined_fn
+code_helper::safe_as_fn_code () const {
+  return is_fn_code () ? (combined_fn) *this : CFN_LAST;
+}
 
 inline code_helper::operator internal_fn () const
 {
