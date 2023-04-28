@@ -73,11 +73,15 @@
   th_mempair_order_operands (operands, true, SImode);
 })
 
-;; All modes that are supported by XTheadMemIdx
-(define_mode_iterator TH_M_ANY [QI HI SI (DI "TARGET_64BIT")])
+;; All modes that are supported by XTheadMemIdx and XTheadFMemIdx
+(define_mode_iterator TH_M_ANY [QI HI SI (DI "TARGET_64BIT")
+                                (SF "TARGET_HARD_FLOAT")
+                                (DF "TARGET_DOUBLE_FLOAT")])
 
-;; All non-extension modes that are supported by XTheadMemIdx
-(define_mode_iterator TH_M_NOEXT [(SI "!TARGET_64BIT") (DI "TARGET_64BIT")])
+;; All non-extension modes that are supported by XTheadMemIdx and XTheadFMemIdx
+(define_mode_iterator TH_M_NOEXT [(SI "!TARGET_64BIT") (DI "TARGET_64BIT")
+                                  (SF "TARGET_HARD_FLOAT")
+                                  (DF "TARGET_DOUBLE_FLOAT")])
 
 ;; XTheadMemIdx overview:
 ;; All peephole passes attempt to improve the operand utilization of
@@ -125,7 +129,7 @@
         (mem:TH_M_NOEXT (plus:X
           (match_dup 0)
           (match_operand:X 4 "register_operand" ""))))]
-  "TARGET_XTHEADMEMIDX
+  "(TARGET_XTHEADMEMIDX || TARGET_XTHEADFMEMIDX)
    && peep2_reg_dead_p (2, operands[0])
    && IN_RANGE (INTVAL (operands[2]), 0, 3)"
   [(set (match_dup 3)
@@ -161,7 +165,7 @@
           (match_dup 0)
           (match_operand:X 4 "register_operand" "")))
         (match_operand:TH_M_ANY 3 "register_operand" ""))]
-  "TARGET_XTHEADMEMIDX
+  "(TARGET_XTHEADMEMIDX || TARGET_XTHEADFMEMIDX)
    && peep2_reg_dead_p (2, operands[0])
    && IN_RANGE (INTVAL (operands[2]), 0, 3)"
   [(set (mem:TH_M_ANY (plus:X
@@ -180,7 +184,7 @@
         (mem:TH_M_NOEXT (plus:DI
           (match_dup 3)
           (match_operand:DI 6 "register_operand" ""))))]
-  "TARGET_64BIT && TARGET_XTHEADMEMIDX
+  "TARGET_64BIT && (TARGET_XTHEADMEMIDX || TARGET_XTHEADFMEMIDX)
    && peep2_reg_dead_p (3, operands[0])
    && peep2_reg_dead_p (3, operands[3])
    && IN_RANGE (INTVAL (operands[4]), 29, 32)"
@@ -226,7 +230,7 @@
           (match_dup 3)
           (match_operand:DI 6 "register_operand" "")))
         (match_operand:TH_M_ANY 5 "register_operand" ""))]
-  "TARGET_64BIT && TARGET_XTHEADMEMIDX
+  "TARGET_64BIT && (TARGET_XTHEADMEMIDX || TARGET_XTHEADFMEMIDX)
    && peep2_reg_dead_p (3, operands[0])
    && peep2_reg_dead_p (3, operands[3])
    && IN_RANGE (INTVAL (operands[4]), 29, 32)"
@@ -247,7 +251,7 @@
         (mem:TH_M_NOEXT (plus:DI
           (match_dup 0)
           (match_operand:DI 4 "register_operand" ""))))]
-  "TARGET_64BIT && TARGET_XTHEADMEMIDX
+  "TARGET_64BIT && (TARGET_XTHEADMEMIDX || TARGET_XTHEADFMEMIDX)
    && peep2_reg_dead_p (2, operands[0])"
   [(set (match_dup 3)
         (mem:TH_M_NOEXT (plus:DI
@@ -279,7 +283,7 @@
           (match_dup 0)
           (match_operand:DI 4 "register_operand" "")))
         (match_operand:TH_M_ANY 3 "register_operand" ""))]
-  "TARGET_64BIT && TARGET_XTHEADMEMIDX
+  "TARGET_64BIT && (TARGET_XTHEADMEMIDX || TARGET_XTHEADFMEMIDX)
    && peep2_reg_dead_p (2, operands[0])"
   [(set (mem:TH_M_ANY (plus:DI
           (match_dup 4)

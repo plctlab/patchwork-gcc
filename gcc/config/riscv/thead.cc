@@ -591,6 +591,21 @@ is_memidx_mode (machine_mode mode)
   return false;
 }
 
+static bool
+is_fmemidx_mode (machine_mode mode)
+{
+  if (!TARGET_HARD_FLOAT)
+    return false;
+
+  if (mode == SFmode)
+    return true;
+
+  if (mode == DFmode && TARGET_DOUBLE_FLOAT)
+    return true;
+
+  return false;
+}
+
 /* Return true if X is a valid address for T-Head's memory addressing modes
    with scaled register offsets for machine mode MODE.
    If it is, fill in INFO appropriately (if non-NULL).
@@ -601,7 +616,8 @@ th_memidx_classify_address_index (struct riscv_address_info *info, rtx x,
 				  machine_mode mode, bool strict_p)
 {
   /* Ensure that the mode is supported.  */
-  if (!(TARGET_XTHEADMEMIDX && is_memidx_mode (mode)))
+  if (!(TARGET_XTHEADMEMIDX && is_memidx_mode (mode))
+      && !(TARGET_XTHEADFMEMIDX && is_fmemidx_mode (mode)))
     return false;
 
   if (GET_CODE (x) != PLUS)
@@ -757,6 +773,40 @@ th_memidx_output_index (rtx x, machine_mode mode, bool load)
   return buf;
 }
 
+/* Provide a buffer for a th.flX/th.fluX/th.fsX/th.fsuX instruction
+   for the given MODE. If LOAD is true, a load instruction will be
+   provided (otherwise, a store instruction). If X is not suitable
+   return NULL.  */
+
+static const char *
+th_fmemidx_output_index (rtx x, machine_mode mode, bool load)
+{
+  struct riscv_address_info info;
+  static char buf[128] = {0};
+
+  /* Validate x.  */
+  if (!th_memidx_classify_address_index (&info, x, mode, false))
+    return NULL;
+
+  int index = exact_log2 (GET_MODE_SIZE (mode).to_constant ()) - 2;
+  bool uindex = info.type == ADDRESS_REG_UREG;
+
+  const char *const insn[][2] = {
+    {
+      "th.fs%srw\t%%z1,%%0",
+      "th.fs%srd\t%%z1,%%0"
+    },
+    {
+      "th.fl%srw\t%%0,%%1",
+      "th.fl%srd\t%%0,%%1"
+    }
+  };
+
+  snprintf (buf, sizeof (buf), insn[load][index], uindex ? "u" : "");
+
+  return buf;
+}
+
 /* Return true if X is a valid address for T-Head's memory addressing modes
    for machine mode MODE.  If it is, fill in INFO appropriately (if non-NULL).
    If STRICT_P is true then REG_OK_STRICT is in effect.  */
@@ -811,6 +861,14 @@ th_output_move (rtx dest, rtx src)
       if ((insn = th_memidx_output_modify (x, mode, true)))
 	return insn;
     }
+  else if (dest_code == REG && FP_REG_P (REGNO (dest)) && src_code == MEM)
+    {
+      rtx x = XEXP (src, 0);
+      mode = GET_MODE (src);
+
+      if ((insn = th_fmemidx_output_index (x, mode, true)))
+	return insn;
+    }
   else if (((src_code == REG && GP_REG_P (REGNO (src)))
 	    || (src == CONST0_RTX (mode)))
 	   && dest_code == MEM)
@@ -823,6 +881,14 @@ th_output_move (rtx dest, rtx src)
 
 	if ((insn = th_memidx_output_modify (x, mode, false)))
 	  return insn;
+    }
+  else if (src_code == REG && FP_REG_P (REGNO (src)) && dest_code == MEM)
+    {
+      rtx x = XEXP (dest, 0);
+      mode = GET_MODE (dest);
+
+      if ((insn = th_fmemidx_output_index (x, mode, false)))
+	return insn;
     }
 
   return NULL;

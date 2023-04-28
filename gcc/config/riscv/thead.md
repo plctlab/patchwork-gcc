@@ -555,4 +555,26 @@
   [(set_attr "move_type" "shift_shift,load,load,load,load,load")
    (set_attr "mode" "<SUPERQI:MODE>")])
 
+;; XTheadFMemIdx
+
+(define_insn "*th_fmemidx_movsf_hardfloat"
+  [(set (match_operand:SF 0 "nonimmediate_operand" "=f,th_m_mir,f,th_m_miu")
+	(match_operand:SF 1 "move_operand"         " th_m_mir,f,th_m_miu,f"))]
+  "TARGET_HARD_FLOAT && TARGET_XTHEADFMEMIDX
+   && (register_operand (operands[0], SFmode)
+       || reg_or_0_operand (operands[1], SFmode))"
+  { return riscv_output_move (operands[0], operands[1]); }
+  [(set_attr "move_type" "fpload,fpstore,fpload,fpstore")
+   (set_attr "mode" "SF")])
+
+(define_insn "*th_fmemidx_movdf_hardfloat_rv64"
+  [(set (match_operand:DF 0 "nonimmediate_operand" "=f,th_m_mir,f,th_m_miu")
+	(match_operand:DF 1 "move_operand"         " th_m_mir,f,th_m_miu,f"))]
+  "TARGET_64BIT && TARGET_DOUBLE_FLOAT && TARGET_XTHEADFMEMIDX
+   && (register_operand (operands[0], DFmode)
+       || reg_or_0_operand (operands[1], DFmode))"
+  { return riscv_output_move (operands[0], operands[1]); }
+  [(set_attr "move_type" "fpload,fpstore,fpload,fpstore")
+   (set_attr "mode" "DF")])
+
 (include "thead-peephole.md")

@@ -149,4 +149,74 @@
     *rs2 = t;								\
   }
 
+#define FLR_REG_IMM(T, IMM)						\
+  T									\
+  flr_reg_imm_ ## T ## _ ## IMM (intX_t rs1, intX_t rs2)		\
+  {									\
+    return *(T*)(rs1 + (rs2 << IMM));					\
+  }
+
+#define FSR_REG_IMM(T, IMM)						\
+  void									\
+  sr_reg_imm_ ## T ## _ ## IMM (intX_t rs1, intX_t rs2, T val)		\
+  {									\
+    *(T*)(rs1 + (rs2 << IMM)) = val;					\
+  }
+
+#define FLR_REG_IMM_UPD(T, IMM)						\
+  T									\
+  flr_reg_imm_upd_ ## T ## _ ## IMM (intX_t rs1, intX_t *rs2)		\
+  {									\
+    intX_t addr = rs1 + (*rs2 << IMM);					\
+    T val = *(T*)addr;							\
+    *rs2 = addr;							\
+    return val;								\
+  }
+
+#define FSR_REG_IMM_UPD(T, IMM)						\
+  void									\
+  sr_reg_imm_upd_ ## T ## _ ## IMM (intX_t rs1, intX_t *rs2, T val)	\
+  {									\
+    intX_t addr = rs1 + (*rs2 << IMM);					\
+    *(T*)addr = val;							\
+    *rs2 = addr;							\
+  }
+
+#define FLUR_REG_IMM(T, IMM)						\
+  T									\
+  flr_reg_imm_ ## T ## _ ## IMM (intX_t rs1, intX_t rs2)		\
+  {									\
+    rs2 = (uint32_t)rs2;						\
+    return *(T*)(rs1 + (rs2 << IMM));					\
+  }
+
+#define FSUR_REG_IMM(T, IMM)						\
+  void									\
+  sr_reg_imm_ ## T ## _ ## IMM (intX_t rs1, intX_t rs2, T val)		\
+  {									\
+    rs2 = (uint32_t)rs2;						\
+    *(T*)(rs1 + (rs2 << IMM)) = val;					\
+  }
+
+#define FLUR_REG_IMM_UPD(T, IMM)					\
+  T									\
+  flr_reg_imm_upd_ ## T ## _ ## IMM (intX_t rs1, intX_t *rs2)		\
+  {									\
+    intX_t rs2_32 = (uint32_t)*rs2;					\
+    intX_t addr = rs1 + (rs2_32 << IMM);				\
+    T val = *(T*)addr;							\
+    *rs2 = addr;							\
+    return val;								\
+  }
+
+#define FSUR_REG_IMM_UPD(T, IMM)					\
+  void									\
+  sr_reg_imm_upd_ ## T ## _ ## IMM (intX_t rs1, intX_t *rs2, T val)	\
+  {									\
+    intX_t rs2_32 = (uint32_t)*rs2;					\
+    intX_t addr = rs1 + (rs2_32 << IMM);				\
+    *(T*)addr = val;							\
+    *rs2 = addr;							\
+  }
+
 #endif /* XTHEADMEMIDX_HELPERS_H */
