@@ -62,7 +62,7 @@
   [(set (match_operand:SUPERQI 0 "register_operand" "=r,r")
 	(sign_extend:SUPERQI
 	    (match_operand:SHORT 1 "nonimmediate_operand" "r,m")))]
-  "TARGET_XTHEADBB"
+  "TARGET_XTHEADBB && !TARGET_XTHEADMEMIDX"
   "@
    th.ext\t%0,%1,15,0
    l<SHORT:size>\t%0,%1"
@@ -85,7 +85,7 @@
 (define_insn "*zero_extendsidi2_th_extu"
   [(set (match_operand:DI 0 "register_operand" "=r,r")
 	(zero_extend:DI (match_operand:SI 1 "nonimmediate_operand" "r,m")))]
-  "TARGET_64BIT && TARGET_XTHEADBB"
+  "TARGET_64BIT && TARGET_XTHEADBB && !TARGET_XTHEADMEMIDX"
   "@
    th.extu\t%0,%1,31,0
    lwu\t%0,%1"
@@ -95,7 +95,7 @@
 (define_insn "*zero_extendhi<GPR:mode>2_th_extu"
   [(set (match_operand:GPR 0 "register_operand" "=r,r")
 	(zero_extend:GPR (match_operand:HI 1 "nonimmediate_operand" "r,m")))]
-  "TARGET_XTHEADBB"
+  "TARGET_XTHEADBB && !TARGET_XTHEADMEMIDX"
   "@
    th.extu\t%0,%1,15,0
    lhu\t%0,%1"
@@ -374,5 +374,185 @@
   [(set_attr "move_type" "load")
    (set_attr "mode" "DI")
    (set_attr "length" "8")])
+
+;; XTheadMemIdx
+
+(define_insn "*th_memidx_zero_extendqi<SUPERQI:mode>2"
+  [(set (match_operand:SUPERQI 0 "register_operand" "=r,r,r,r,r,r")
+	(zero_extend:SUPERQI
+	    (match_operand:QI 1 "nonimmediate_operand"
+         " r,th_m_mia,th_m_mib,th_m_mir,th_m_miu,m")))]
+  "TARGET_XTHEADMEMIDX"
+  "@
+   andi\t%0,%1,0xff
+   th.lbuia\t%0,%1
+   th.lbuib\t%0,%1
+   th.lrbu\t%0,%1
+   th.lurbu\t%0,%1
+   lbu\t%0,%1"
+  [(set_attr "move_type" "andi,load,load,load,load,load")
+   (set_attr "mode" "<SUPERQI:MODE>")])
+
+(define_insn "*th_memidx_extendsidi2"
+  [(set (match_operand:DI 0 "register_operand" "=r,r,r,r,r,r")
+	(sign_extend:DI
+	    (match_operand:SI 1 "nonimmediate_operand"
+         " r,th_m_mia,th_m_mib,th_m_mir,th_m_miu,m")))]
+  "TARGET_64BIT && TARGET_XTHEADMEMIDX"
+  "@
+   sext.w\t%0,%1
+   th.lwia\t%0,%1
+   th.lwib\t%0,%1
+   th.lrw\t%0,%1
+   th.lurw\t%0,%1
+   lw\t%0,%1"
+  [(set_attr "move_type" "move,load,load,load,load,load")
+   (set_attr "mode" "DI")])
+
+;; XTheadMemIdx (without XTheadBb)
+
+(define_insn_and_split "*th_memidx_zero_extendsidi2"
+  [(set (match_operand:DI 0 "register_operand" "=r,r,r,r,r,r")
+	(zero_extend:DI
+	    (match_operand:SI 1 "nonimmediate_operand"
+         " r,th_m_mia,th_m_mib,th_m_mir,th_m_miu,m")))]
+  "TARGET_64BIT && TARGET_XTHEADMEMIDX && !TARGET_XTHEADBB"
+  "@
+   #
+   th.lwuia\t%0,%1
+   th.lwuib\t%0,%1
+   th.lrwu\t%0,%1
+   th.lurwu\t%0,%1
+   lwu\t%0,%1"
+  "&& reload_completed
+   && REG_P (operands[1])
+   && !paradoxical_subreg_p (operands[0])"
+  [(set (match_dup 0)
+	(ashift:DI (match_dup 1) (const_int 32)))
+   (set (match_dup 0)
+	(lshiftrt:DI (match_dup 0) (const_int 32)))]
+  { operands[1] = gen_lowpart (DImode, operands[1]); }
+  [(set_attr "move_type" "shift_shift,load,load,load,load,load")
+   (set_attr "mode" "DI")])
+
+(define_insn_and_split "*th_memidx_zero_extendhi<GPR:mode>2"
+  [(set (match_operand:GPR 0 "register_operand" "=r,r,r,r,r,r")
+	(zero_extend:GPR
+	    (match_operand:HI 1 "nonimmediate_operand"
+         " r,th_m_mia,th_m_mib,th_m_mir,th_m_miu,m")))]
+  "TARGET_XTHEADMEMIDX && !TARGET_XTHEADBB"
+  "@
+   #
+   th.lhuia\t%0,%1
+   th.lhuib\t%0,%1
+   th.lrhu\t%0,%1
+   th.lurhu\t%0,%1
+   lhu\t%0,%1"
+  "&& reload_completed
+   && REG_P (operands[1])
+   && !paradoxical_subreg_p (operands[0])"
+  [(set (match_dup 0)
+	(ashift:GPR (match_dup 1) (match_dup 2)))
+   (set (match_dup 0)
+	(lshiftrt:GPR (match_dup 0) (match_dup 2)))]
+  {
+    operands[1] = gen_lowpart (<GPR:MODE>mode, operands[1]);
+    operands[2] = GEN_INT(GET_MODE_BITSIZE(<GPR:MODE>mode) - 16);
+  }
+  [(set_attr "move_type" "shift_shift,load,load,load,load,load")
+   (set_attr "mode" "<GPR:MODE>")])
+
+(define_insn_and_split "*th_memidx_extend<SHORT:mode><SUPERQI:mode>2"
+  [(set (match_operand:SUPERQI 0 "register_operand" "=r,r,r,r,r,r")
+	(sign_extend:SUPERQI
+	    (match_operand:SHORT 1 "nonimmediate_operand"
+         " r,th_m_mia,th_m_mib,th_m_mir,th_m_miu,m")))]
+  "TARGET_XTHEADMEMIDX && !TARGET_XTHEADBB"
+  "@
+   #
+   th.l<SHORT:size>ia\t%0,%1
+   th.l<SHORT:size>ib\t%0,%1
+   th.lr<SHORT:size>\t%0,%1
+   th.lur<SHORT:size>\t%0,%1
+   l<SHORT:size>\t%0,%1"
+  "&& reload_completed
+   && REG_P (operands[1])
+   && !paradoxical_subreg_p (operands[0])"
+  [(set (match_dup 0) (ashift:SI (match_dup 1) (match_dup 2)))
+   (set (match_dup 0) (ashiftrt:SI (match_dup 0) (match_dup 2)))]
+{
+  operands[0] = gen_lowpart (SImode, operands[0]);
+  operands[1] = gen_lowpart (SImode, operands[1]);
+  operands[2] = GEN_INT (GET_MODE_BITSIZE (SImode)
+			 - GET_MODE_BITSIZE (<SHORT:MODE>mode));
+}
+  [(set_attr "move_type" "shift_shift,load,load,load,load,load")
+   (set_attr "mode" "SI")])
+
+;; XTheadMemIdx (with XTheadBb)
+
+(define_insn "*th_memidx_bb_zero_extendsidi2"
+  [(set (match_operand:DI 0 "register_operand" "=r,r,r,r,r,r")
+	(zero_extend:DI
+	    (match_operand:SI 1 "nonimmediate_operand"
+         " r,th_m_mia,th_m_mib,th_m_mir,th_m_miu,m")))]
+  "TARGET_64BIT && TARGET_XTHEADMEMIDX && TARGET_XTHEADBB"
+  "@
+   th.extu\t%0,%1,31,0
+   th.lwuia\t%0,%1
+   th.lwuib\t%0,%1
+   th.lrwu\t%0,%1
+   th.lurwu\t%0,%1
+   lwu\t%0,%1"
+  [(set_attr "move_type" "shift_shift,load,load,load,load,load")
+   (set_attr "mode" "DI")])
+
+(define_insn "*th_memidx_bb_zero_extendhi<GPR:mode>2"
+  [(set (match_operand:GPR 0 "register_operand" "=r,r,r,r,r,r")
+	(zero_extend:GPR
+	    (match_operand:HI 1 "nonimmediate_operand"
+         " r,th_m_mia,th_m_mib,th_m_mir,th_m_miu,m")))]
+  "TARGET_XTHEADMEMIDX && TARGET_XTHEADBB"
+  "@
+   th.extu\t%0,%1,15,0
+   th.lhuia\t%0,%1
+   th.lhuib\t%0,%1
+   th.lrhu\t%0,%1
+   th.lurhu\t%0,%1
+   lhu\t%0,%1"
+  [(set_attr "move_type" "shift_shift,load,load,load,load,load")
+   (set_attr "mode" "<GPR:MODE>")])
+
+(define_insn "*th_memidx_bb_extendhi<GPR:mode>2"
+  [(set (match_operand:GPR 0 "register_operand" "=r,r,r,r,r,r")
+	(sign_extend:GPR
+	    (match_operand:HI 1 "nonimmediate_operand"
+         " r,th_m_mia,th_m_mib,th_m_mir,th_m_miu,m")))]
+  "TARGET_XTHEADMEMIDX && TARGET_XTHEADBB"
+  "@
+   th.ext\t%0,%1,15,0
+   th.lhia\t%0,%1
+   th.lhib\t%0,%1
+   th.lrh\t%0,%1
+   th.lurh\t%0,%1
+   lh\t%0,%1"
+  [(set_attr "move_type" "shift_shift,load,load,load,load,load")
+   (set_attr "mode" "<GPR:MODE>")])
+
+(define_insn "*th_memidx_bb_extendqi<SUPERQI:mode>2"
+  [(set (match_operand:SUPERQI 0 "register_operand" "=r,r,r,r,r,r")
+	(sign_extend:SUPERQI
+	    (match_operand:QI 1 "nonimmediate_operand"
+         " r,th_m_mia,th_m_mib,th_m_mir,th_m_miu,m")))]
+  "TARGET_XTHEADMEMIDX && TARGET_XTHEADBB"
+  "@
+   th.ext\t%0,%1,7,0
+   th.lbia\t%0,%1
+   th.lbib\t%0,%1
+   th.lrb\t%0,%1
+   th.lurb\t%0,%1
+   lb\t%0,%1"
+  [(set_attr "move_type" "shift_shift,load,load,load,load,load")
+   (set_attr "mode" "<SUPERQI:MODE>")])
 
 (include "thead-peephole.md")

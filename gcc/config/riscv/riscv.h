@@ -1102,4 +1102,7 @@ extern void riscv_remove_unneeded_save_restore_calls (void);
 #define DWARF_REG_TO_UNWIND_COLUMN(REGNO) \
   ((REGNO == RISCV_DWARF_VLENB) ? (FIRST_PSEUDO_REGISTER + 1) : REGNO)
 
+#define HAVE_POST_MODIFY_DISP TARGET_XTHEADMEMIDX
+#define HAVE_PRE_MODIFY_DISP  TARGET_XTHEADMEMIDX
+
 #endif /* ! GCC_RISCV_H */
