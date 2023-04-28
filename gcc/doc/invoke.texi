@@ -28968,10 +28968,89 @@ The default is @option{-misa-spec=20191213} unless GCC has been configured
 with @option{--with-isa-spec=} specifying a different default version.
 
 @opindex march
-@item -march=@var{ISA-string}
-Generate code for given RISC-V ISA (e.g.@: @samp{rv64im}).  ISA strings must be
-lower-case.  Examples include @samp{rv64i}, @samp{rv32g}, @samp{rv32e}, and
-@samp{rv32imaf}.
+@item -march=@var{feature-string}
+Generate code for given feature string.  Feature strings are similar in spirit
+to RISC-V ISA strings, but are subtly different.  Users that just what to
+target a specific CPU should consider using the @option{-mcpu} argument, 
+
+Similar to ISA strings, feature strings consist of a single base feature set
+along with zero or more extensions.  The supported base feature sets are
+@samp{rv32i}, @samp{rv64i}, @samp{rv32e}, @samp{rv32g}, and @samp{rv64g}.
+These mostly match the cooresponding base ISA for the current
+@var{ISA-spec-string} (see @option{-misa-spec}).
+
+The supported extensions are:
+
+@table @code
+@item m: Generate code for the M extension, 
+@item a
+@item f
+@item d
+@item c
+@item h
+@item v
+@item zicsr
+@item zifencei
+@item zawrs
+@item zba
+@item zbb
+@item zbc
+@item zbs
+@item zfinx
+@item zdinx
+@item zhinx
+@item zhinxmin
+@item zbkb
+@item zbkc
+@item zbkx
+@item zkne
+@item zknh
+@item zkr
+@item zksed
+@item zksh
+@item zkt
+@item zicboz
+@item zicbom
+@item zkcbop
+@item zk
+@item zkn
+@item zks
+@item zve32x
+@item zve32f
+@item zve32d
+@item zve64x
+@item zve64f
+@item zve64d
+@item zvl32b
+@item zvl64b
+@item zvl128b
+@item zvl256b
+@item zvl512b
+@item zvl1024b
+@item zvl2048b
+@item zvl4096b
+@item zvl8192b
+@item zvl16384b
+@item zvl32768b
+@item zvl65536b
+@item zfh
+@item zfhmin
+@item zmmul
+@item svinval
+@item snapot
+@item xtheadba
+@item xtheadbb
+@item xtheadbs
+@item xtheadcmo
+@item xtheadcondmov
+@item xtheadfmemidx
+@item xtheadfmv
+@item xtheadint
+@item xtheadmac
+@item xtheadmemidx
+@item xtheadmempair
+@item xtheadsync
+@end table
 
 When @option{-march=} is not specified, use the setting from @option{-mcpu}.
 
