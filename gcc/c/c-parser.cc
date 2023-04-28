@@ -249,6 +249,10 @@ struct GTY(()) c_parser {
 
   /* Location of the last consumed token.  */
   location_t last_token_location;
+
+  /* Holds state for parsing collapsed OMP_FOR loops.  Managed by
+     c_parser_omp_for_loop.  */
+  struct omp_for_parse_data * GTY((skip)) omp_for_parse_state;
 };
 
 /* Return a pointer to the Nth token in PARSERs tokens_buf.  */
@@ -1525,6 +1529,23 @@ struct oacc_routine_data {
 /* Used for parsing objc foreach statements.  */
 static tree objc_foreach_break_label, objc_foreach_continue_label;
 
+/* Used for parsing OMP for loops.  See c_parser_omp_for_loop.  */
+struct omp_for_parse_data {
+  tree declv, condv, incrv, initv;
+  tree pre_body;
+  tree bindings;
+  int collapse;
+  int depth;
+  location_t for_loc;
+  bool want_nested_loop : 1;
+  bool ordered : 1;
+  bool in_intervening_code : 1;
+  bool perfect_nesting_fail : 1;
+  bool fail : 1;
+  bool inscan : 1;
+  enum tree_code code;
+};
+
 static bool c_parser_nth_token_starts_std_attributes (c_parser *,
 						      unsigned int);
 static tree c_parser_std_attribute_specifier_sequence (c_parser *);
@@ -1616,6 +1637,7 @@ static void c_parser_omp_threadprivate (c_parser *);
 static void c_parser_omp_barrier (c_parser *);
 static void c_parser_omp_depobj (c_parser *);
 static void c_parser_omp_flush (c_parser *);
+static tree c_parser_omp_loop_nest (c_parser *, bool *);
 static tree c_parser_omp_for_loop (location_t, c_parser *, enum tree_code,
 				   tree, tree *, bool *);
 static void c_parser_omp_taskwait (c_parser *);
@@ -6123,6 +6145,15 @@ c_parser_compound_statement_nostart (c_parser *parser)
   bool last_label = false;
   bool save_valid_for_pragma = valid_location_for_stdc_pragma_p ();
   location_t label_loc = UNKNOWN_LOCATION;  /* Quiet warning.  */
+  struct omp_for_parse_data *omp_for_parse_state;
+
+  if (parser->omp_for_parse_state
+      && (parser->omp_for_parse_state->depth
+	  < parser->omp_for_parse_state->collapse - 1))
+    omp_for_parse_state = parser->omp_for_parse_state;
+  else
+    omp_for_parse_state = NULL;
+
   if (c_parser_next_token_is (parser, CPP_CLOSE_BRACE))
     {
       location_t endloc = c_parser_peek_token (parser)->location;
@@ -6289,6 +6320,15 @@ c_parser_compound_statement_nostart (c_parser *parser)
               continue;
             }
         }
+      else if (omp_for_parse_state
+	       && c_parser_next_token_is_keyword (parser, RID_FOR)
+	       && omp_for_parse_state->want_nested_loop)
+	{
+	  /* Special treatment for collapsed loop nests.  */
+	  omp_for_parse_state->depth++;
+	  add_stmt (c_parser_omp_loop_nest (parser, NULL));
+	  omp_for_parse_state->depth--;
+	}
       else
 	{
 	statement:
@@ -6296,7 +6336,52 @@ c_parser_compound_statement_nostart (c_parser *parser)
 	  last_label = false;
 	  last_stmt = true;
 	  mark_valid_location_for_stdc_pragma (false);
-	  c_parser_statement_after_labels (parser, NULL);
+	  if (omp_for_parse_state
+	      && !c_parser_next_token_is (parser, CPP_OPEN_BRACE))
+	    {
+	      /* Nested loops can only appear directly or nested in
+		 compound statements.  We have neither, so set the bit
+		 to treat everything inside the subsequent statement
+		 as intervening code instead.  */
+	      bool want_nested_loop = omp_for_parse_state->want_nested_loop;
+	      omp_for_parse_state->want_nested_loop = false;
+
+	      /* Only diagnose errors related to perfect nesting once.  */
+	      if (!omp_for_parse_state->perfect_nesting_fail)
+		{
+
+		  /* OpenACC does not (yet) permit intervening code, in
+		     addition to situations forbidden by the OpenMP spec.  */
+		  if (omp_for_parse_state->code == OACC_LOOP)
+		    {
+		      error_at (omp_for_parse_state->for_loc,
+				"inner loops must be perfectly nested in "
+				"%<#pragma acc loop%>");
+		      omp_for_parse_state->perfect_nesting_fail = true;
+		    }
+		  else if (omp_for_parse_state->ordered)
+		    {
+		      error_at (omp_for_parse_state->for_loc,
+				"inner loops must be perfectly nested with "
+				"%<ordered%> clause");
+		      omp_for_parse_state->perfect_nesting_fail = true;
+		    }
+		  else if (omp_for_parse_state->inscan)
+		    {
+		      error_at (omp_for_parse_state->for_loc,
+				"inner loops must be perfectly nested with "
+				"%<reduction%> %<inscan%> clause");
+		      omp_for_parse_state->perfect_nesting_fail = true;
+		    }
+		  /* TODO: Also reject loops with TILE directive.  */
+		  if (omp_for_parse_state->perfect_nesting_fail)
+		    omp_for_parse_state->fail = true;
+		}
+	      c_parser_statement_after_labels (parser, NULL);
+	      omp_for_parse_state->want_nested_loop = want_nested_loop;
+	    }
+	  else
+	    c_parser_statement_after_labels (parser, NULL);
 	}
 
       parser->error = false;
@@ -7138,6 +7223,16 @@ c_parser_while_statement (c_parser *parser, bool ivdep, unsigned short unroll,
   gcc_assert (c_parser_next_token_is_keyword (parser, RID_WHILE));
   token_indent_info while_tinfo
     = get_token_indent_info (c_parser_peek_token (parser));
+
+  if (parser->omp_for_parse_state
+      && (parser->omp_for_parse_state->depth
+	  < parser->omp_for_parse_state->collapse - 1))
+    {
+      error_at (c_parser_peek_token (parser)->location,
+		"loop not permitted in intervening code in OMP loop body");
+      parser->omp_for_parse_state->fail = true;
+    }
+
   c_parser_consume_token (parser);
   block = c_begin_compound_stmt (flag_isoc99);
   loc = c_parser_peek_token (parser)->location;
@@ -7189,6 +7284,16 @@ c_parser_do_statement (c_parser *parser, bool ivdep, unsigned short unroll)
   unsigned char save_in_statement;
   location_t loc;
   gcc_assert (c_parser_next_token_is_keyword (parser, RID_DO));
+
+  if (parser->omp_for_parse_state
+      && (parser->omp_for_parse_state->depth
+	  < parser->omp_for_parse_state->collapse - 1))
+    {
+      error_at (c_parser_peek_token (parser)->location,
+		"loop not permitted in intervening code in OMP loop body");
+      parser->omp_for_parse_state->fail = true;
+    }
+
   c_parser_consume_token (parser);
   if (c_parser_next_token_is (parser, CPP_SEMICOLON))
     warning_at (c_parser_peek_token (parser)->location,
@@ -7295,6 +7400,16 @@ c_parser_for_statement (c_parser *parser, bool ivdep, unsigned short unroll,
   gcc_assert (c_parser_next_token_is_keyword (parser, RID_FOR));
   token_indent_info for_tinfo
     = get_token_indent_info (c_parser_peek_token (parser));
+
+  if (parser->omp_for_parse_state
+      && (parser->omp_for_parse_state->depth
+	  < parser->omp_for_parse_state->collapse - 1))
+    {
+      error_at (for_loc,
+		"loop not permitted in intervening code in OMP loop body");
+      parser->omp_for_parse_state->fail = true;
+    }
+
   c_parser_consume_token (parser);
   /* Open a compound statement in Objective-C as well, just in case this is
      as foreach expression.  */
@@ -11234,6 +11349,14 @@ c_parser_postfix_expression_after_primary (c_parser *parser,
 		  && fndecl_built_in_p (expr.value, BUILT_IN_NORMAL)
 		  && vec_safe_length (exprlist) == 1)
 		warn_for_abs (expr_loc, expr.value, (*exprlist)[0]);
+	      if (parser->omp_for_parse_state
+		  && parser->omp_for_parse_state->in_intervening_code
+		  && omp_runtime_api_call (expr.value))
+		{
+		  error_at (expr_loc, "Calls to the OpenMP runtime API are "
+				      "not permitted in intervening code");
+		  parser->omp_for_parse_state->fail = true;
+		}
 	    }
 
 	  start = expr.get_start ();
@@ -13068,6 +13191,17 @@ c_parser_pragma (c_parser *parser, enum pragma_context context, bool *if_p)
   input_location = c_parser_peek_token (parser)->location;
   id = c_parser_peek_token (parser)->pragma_kind;
   gcc_assert (id != PRAGMA_NONE);
+  if (parser->omp_for_parse_state
+      && parser->omp_for_parse_state->in_intervening_code
+      && id >= PRAGMA_OMP__START_
+      && id <= PRAGMA_OMP__LAST_)
+    {
+      error_at (input_location,
+		"intervening code must not contain OpenMP directives");
+      parser->omp_for_parse_state->fail = true;
+      c_parser_skip_until_found (parser, CPP_PRAGMA_EOL, NULL);
+      return false;
+    }
 
   switch (id)
     {
@@ -20190,6 +20324,274 @@ c_parser_omp_scan_loop_body (c_parser *parser, bool open_brace_parsed)
 			     "expected %<}%>");
 }
 
+
+/* This function parses a single level of a loop nest, invoking itself
+   recursively if necessary.
+
+   loop-nest :: for (...) loop-body
+   loop-body :: loop-nest
+	     |  { [intervening-code] loop-body [intervening-code] }
+	     |  final-loop-body
+   intervening-code :: structured-block-sequence
+   final-loop-body :: structured-block
+
+   For a collapsed loop nest, only a single OMP_FOR is built, pulling out
+   all the iterator information from the inner loops into the
+   parser->omp_for_parse_state structure.
+
+   The iterator decl, init, cond, and incr are stored in vectors.
+
+   Initialization code for iterator variables is collected into
+   parser->omp_for_parse_state->pre_body and ends up inserted directly
+   into the OMP_FOR structure.  */
+
+static tree
+c_parser_omp_loop_nest (c_parser *parser, bool *if_p)
+{
+  tree decl, cond, incr, init;
+  tree body = NULL_TREE;
+  matching_parens parens;
+  bool moreloops;
+  unsigned char save_in_statement;
+  tree loop_scope;
+  location_t loc;
+  struct omp_for_parse_data *omp_for_parse_state
+    = parser->omp_for_parse_state;
+
+  gcc_assert (omp_for_parse_state);
+
+  /* We have already matched the FOR token but not consumed it yet.  */
+  loc = c_parser_peek_token (parser)->location;
+  gcc_assert (c_parser_next_token_is_keyword (parser, RID_FOR));
+  c_parser_consume_token (parser);
+
+  /* Forbid break/continue in the loop initializer, condition, and
+     increment expressions.  */
+  save_in_statement = in_statement;
+  in_statement = IN_OMP_BLOCK;
+
+  /* We are not in intervening code now.  */
+  omp_for_parse_state->in_intervening_code = false;
+
+  if (!parens.require_open (parser))
+    {
+      omp_for_parse_state->fail = true;
+      return NULL_TREE;
+    }
+
+  /* An implicit scope block surrounds each level of FOR loop, for
+     declarations of iteration variables at this loop depth.  */
+  loop_scope = c_begin_compound_stmt (true);
+
+  /* Parse the initialization declaration or expression.  */
+  if (c_parser_next_tokens_start_declaration (parser))
+    {
+      /* This is a declaration, which must be added to the pre_body code.  */
+      tree this_pre_body = push_stmt_list ();
+      c_in_omp_for = true;
+      c_parser_declaration_or_fndef (parser, true, true, true, true, true);
+      c_in_omp_for = false;
+      this_pre_body = pop_stmt_list (this_pre_body);
+      append_to_statement_list_force (this_pre_body,
+				      &(omp_for_parse_state->pre_body));
+      decl = check_for_loop_decls (omp_for_parse_state->for_loc, flag_isoc99);
+      if (decl == NULL)
+	goto error_init;
+      if (DECL_INITIAL (decl) == error_mark_node)
+	decl = error_mark_node;
+      init = decl;
+    }
+  else if (c_parser_next_token_is (parser, CPP_NAME)
+	   && c_parser_peek_2nd_token (parser)->type == CPP_EQ)
+    {
+      struct c_expr decl_exp;
+      struct c_expr init_exp;
+      location_t init_loc;
+
+      decl_exp = c_parser_postfix_expression (parser);
+      decl = decl_exp.value;
+
+      c_parser_require (parser, CPP_EQ, "expected %<=%>");
+
+      init_loc = c_parser_peek_token (parser)->location;
+      init_exp = c_parser_expr_no_commas (parser, NULL);
+      init_exp = default_function_array_read_conversion (init_loc,
+							 init_exp);
+      c_in_omp_for = true;
+      init = build_modify_expr (init_loc, decl, decl_exp.original_type,
+				NOP_EXPR, init_loc, init_exp.value,
+				init_exp.original_type);
+      c_in_omp_for = false;
+      init = c_process_expr_stmt (init_loc, init);
+
+      c_parser_skip_until_found (parser, CPP_SEMICOLON, "expected %<;%>");
+    }
+  else
+    {
+    error_init:
+      c_parser_error (parser,
+		      "expected iteration declaration or initialization");
+      c_parser_skip_until_found (parser, CPP_CLOSE_PAREN,
+				 "expected %<)%>");
+      omp_for_parse_state->fail = true;
+      goto parse_next;
+    }
+
+  /* Parse the loop condition.  */
+  cond = NULL_TREE;
+  if (c_parser_next_token_is_not (parser, CPP_SEMICOLON))
+    {
+      location_t cond_loc = c_parser_peek_token (parser)->location;
+      c_in_omp_for = true;
+      struct c_expr cond_expr
+	= c_parser_binary_expression (parser, NULL, NULL_TREE);
+      c_in_omp_for = false;
+
+      cond = cond_expr.value;
+      cond = c_objc_common_truthvalue_conversion (cond_loc, cond);
+      switch (cond_expr.original_code)
+	{
+	case GT_EXPR:
+	case GE_EXPR:
+	case LT_EXPR:
+	case LE_EXPR:
+	  break;
+	case NE_EXPR:
+	  if (omp_for_parse_state->code != OACC_LOOP)
+	    break;
+	  /* FALLTHRU.  */
+	default:
+	  /* Can't be cond = error_mark_node, because we want to preserve
+	     the location until c_finish_omp_for.  */
+	  cond = build1 (NOP_EXPR, boolean_type_node, error_mark_node);
+	  break;
+	}
+      protected_set_expr_location (cond, cond_loc);
+    }
+  c_parser_skip_until_found (parser, CPP_SEMICOLON, "expected %<;%>");
+
+  /* Parse the increment expression.  */
+  incr = NULL_TREE;
+  if (c_parser_next_token_is_not (parser, CPP_CLOSE_PAREN))
+    {
+      location_t incr_loc = c_parser_peek_token (parser)->location;
+
+      incr = c_process_expr_stmt (incr_loc,
+				  c_parser_expression (parser).value);
+    }
+  parens.skip_until_found_close (parser);
+
+  if (decl == NULL || decl == error_mark_node || init == error_mark_node)
+    omp_for_parse_state->fail = true;
+  else
+    {
+      TREE_VEC_ELT (omp_for_parse_state->declv, omp_for_parse_state->depth)
+	= decl;
+      TREE_VEC_ELT (omp_for_parse_state->initv, omp_for_parse_state->depth)
+	= init;
+      TREE_VEC_ELT (omp_for_parse_state->condv, omp_for_parse_state->depth)
+	= cond;
+      TREE_VEC_ELT (omp_for_parse_state->incrv, omp_for_parse_state->depth)
+	= incr;
+    }
+
+parse_next:
+  omp_for_parse_state->want_nested_loop = true;
+  moreloops = omp_for_parse_state->depth < omp_for_parse_state->collapse - 1;
+  if (moreloops && c_parser_next_token_is_keyword (parser, RID_FOR))
+    {
+      omp_for_parse_state->depth++;
+      body = c_parser_omp_loop_nest (parser, if_p);
+      omp_for_parse_state->depth--;
+    }
+  else if (moreloops && c_parser_next_token_is (parser, CPP_OPEN_BRACE))
+    {
+      /* This is the open brace in the loop-body grammar production.  Rather
+	 than trying to special-case braces, just parse it as a compound
+	 statement and handle the nested loop-body case there.  Note that
+	 when we see a further open brace inside the compound statement
+	 loop-body, we don't know whether it is the start of intervening
+	 code that is a compound statement, or a level of braces
+	 surrounding a nested loop-body.  Use the WANT_NESTED_LOOP state
+	 bit to ensure we have only one nested loop at each level.  */
+      omp_for_parse_state->in_intervening_code = true;
+      body = c_parser_compound_statement (parser, NULL);
+      omp_for_parse_state->in_intervening_code = false;
+      if (omp_for_parse_state->want_nested_loop)
+	{
+	  /* We have already parsed the whole loop body and not found a
+	     nested loop.  */
+	  error_at (omp_for_parse_state->for_loc,
+		    "not enough nested loops");
+	  omp_for_parse_state->fail = true;
+	}
+      if_p = NULL;
+    }
+  else
+    {
+      /* This is the final-loop-body case in the grammar: we have
+	 something that is not a FOR and not an open brace.  */
+      if (moreloops)
+	{
+	  /* If we were expecting a nested loop, give an error and mark
+	     that parsing has failed, and try to recover by parsing the
+	     body as regular code without further collapsing.  */
+	  error_at (omp_for_parse_state->for_loc,
+		    "not enough nested loops");
+	  omp_for_parse_state->fail = true;
+	}
+      in_statement = IN_OMP_FOR;
+      body = push_stmt_list ();
+      if (omp_for_parse_state->inscan)
+	c_parser_omp_scan_loop_body (parser, false);
+      else
+	add_stmt (c_parser_c99_block_statement (parser, if_p));
+      body = pop_stmt_list (body);
+    }
+  in_statement = save_in_statement;
+  omp_for_parse_state->want_nested_loop = false;
+  omp_for_parse_state->in_intervening_code = true;
+
+  /* Pop and return the implicit scope surrounding this level of loop.
+     Any iteration variable bound in loop_scope is pulled out and later
+     will be added to the scope surrounding the entire OMP_FOR.  That
+     keeps the gimplifier happy later on, and meanwhile we have already
+     resolved all references to the iteration variable in its true scope.  */
+  add_stmt (body);
+  body = c_end_compound_stmt (loc, loop_scope, true);
+  if (decl && TREE_CODE (body) == BIND_EXPR)
+    {
+      tree t = BIND_EXPR_VARS (body);
+      tree prev = NULL_TREE, next = NULL_TREE;
+      while (t)
+	{
+	  next = DECL_CHAIN (t);
+	  if (t == decl)
+	    {
+	      if (prev)
+		DECL_CHAIN (prev) = next;
+	      else
+		{
+		  BIND_EXPR_VARS (body) = next;
+		  BLOCK_VARS (BIND_EXPR_BLOCK (body)) = next;
+		}
+	      DECL_CHAIN (t) = omp_for_parse_state->bindings;
+	      omp_for_parse_state->bindings = t;
+	      break;
+	    }
+	  else
+	    {
+	      prev = t;
+	      t = next;
+	    }
+	}
+      if (BIND_EXPR_VARS (body) == NULL_TREE)
+	body = BIND_EXPR_BODY (body);
+    }
+
+  return body;
+}
+
 /* Parse the restricted form of loop statements allowed by OpenACC and OpenMP.
    The real trick here is to determine the loop control variable early
    so that we can push a new decl if necessary to make it private.
@@ -20200,17 +20602,15 @@ static tree
 c_parser_omp_for_loop (location_t loc, c_parser *parser, enum tree_code code,
 		       tree clauses, tree *cclauses, bool *if_p)
 {
-  tree decl, cond, incr, body, init, stmt, cl;
-  unsigned char save_in_statement;
-  tree declv, condv, incrv, initv, ret = NULL_TREE;
-  tree pre_body = NULL_TREE, this_pre_body;
+  tree body, stmt, cl;
+  tree ret = NULL_TREE;
   tree ordered_cl = NULL_TREE;
-  bool fail = false, open_brace_parsed = false;
-  int i, collapse = 1, ordered = 0, count, nbraces = 0;
+  int i, collapse = 1, ordered = 0, count;
   location_t for_loc;
   bool tiling = false;
   bool inscan = false;
-  vec<tree, va_gc> *for_block = make_tree_vector ();
+  struct omp_for_parse_data data;
+  struct omp_for_parse_data *save_data = parser->omp_for_parse_state;
 
   for (cl = clauses; cl; cl = OMP_CLAUSE_CHAIN (cl))
     if (OMP_CLAUSE_CODE (cl) == OMP_CLAUSE_COLLAPSE)
@@ -20243,250 +20643,53 @@ c_parser_omp_for_loop (location_t loc, c_parser *parser, enum tree_code code,
   gcc_assert (tiling || (collapse >= 1 && ordered >= 0));
   count = ordered ? ordered : collapse;
 
-  declv = make_tree_vec (count);
-  initv = make_tree_vec (count);
-  condv = make_tree_vec (count);
-  incrv = make_tree_vec (count);
-
   if (!c_parser_next_token_is_keyword (parser, RID_FOR))
     {
       c_parser_error (parser, "for statement expected");
       return NULL;
     }
   for_loc = c_parser_peek_token (parser)->location;
-  c_parser_consume_token (parser);
 
-  /* Forbid break/continue in the loop initializer, condition, and
-     increment expressions.  */
-  save_in_statement = in_statement;
-  in_statement = IN_OMP_BLOCK;
+  /* Initialize parse state for recursive descent.  */
+  data.declv = make_tree_vec (count);
+  data.initv = make_tree_vec (count);
+  data.condv = make_tree_vec (count);
+  data.incrv = make_tree_vec (count);
+  data.pre_body = NULL_TREE;;
+  data.bindings = NULL_TREE;
+  data.for_loc = for_loc;
+  data.collapse = count;
+  data.depth = 0;
+  data.want_nested_loop = true;
+  data.ordered = ordered > 0;
+  data.in_intervening_code = false;
+  data.perfect_nesting_fail = false;
+  data.fail = false;
+  data.inscan = inscan;
+  data.code = code;
+  parser->omp_for_parse_state = &data;
 
-  for (i = 0; i < count; i++)
+  body = c_parser_omp_loop_nest (parser, if_p);
+  for (tree t = data.bindings; t; )
     {
-      int bracecount = 0;
-
-      matching_parens parens;
-      if (!parens.require_open (parser))
-	goto pop_scopes;
-
-      /* Parse the initialization declaration or expression.  */
-      if (c_parser_next_tokens_start_declaration (parser))
-	{
-	  if (i > 0)
-	    vec_safe_push (for_block, c_begin_compound_stmt (true));
-	  this_pre_body = push_stmt_list ();
-	  c_in_omp_for = true;
-	  c_parser_declaration_or_fndef (parser, true, true, true, true, true);
-	  c_in_omp_for = false;
-	  if (this_pre_body)
-	    {
-	      this_pre_body = pop_stmt_list (this_pre_body);
-	      if (pre_body)
-		{
-		  tree t = pre_body;   
-		  pre_body = push_stmt_list ();
-		  add_stmt (t);
-		  add_stmt (this_pre_body);
-		  pre_body = pop_stmt_list (pre_body);
-		}
-	      else
-		pre_body = this_pre_body;
-	    }
-	  decl = check_for_loop_decls (for_loc, flag_isoc99);
-	  if (decl == NULL)
-	    goto error_init;
-	  if (DECL_INITIAL (decl) == error_mark_node)
-	    decl = error_mark_node;
-	  init = decl;
-	}
-      else if (c_parser_next_token_is (parser, CPP_NAME)
-	       && c_parser_peek_2nd_token (parser)->type == CPP_EQ)
-	{
-	  struct c_expr decl_exp;
-	  struct c_expr init_exp;
-	  location_t init_loc;
-
-	  decl_exp = c_parser_postfix_expression (parser);
-	  decl = decl_exp.value;
-
-	  c_parser_require (parser, CPP_EQ, "expected %<=%>");
-
-	  init_loc = c_parser_peek_token (parser)->location;
-	  init_exp = c_parser_expr_no_commas (parser, NULL);
-	  init_exp = default_function_array_read_conversion (init_loc,
-							     init_exp);
-	  c_in_omp_for = true;
-	  init = build_modify_expr (init_loc, decl, decl_exp.original_type,
-				    NOP_EXPR, init_loc, init_exp.value,
-				    init_exp.original_type);
-	  c_in_omp_for = false;
-	  init = c_process_expr_stmt (init_loc, init);
-
-	  c_parser_skip_until_found (parser, CPP_SEMICOLON, "expected %<;%>");
-	}
-      else
-	{
-	error_init:
-	  c_parser_error (parser,
-			  "expected iteration declaration or initialization");
-	  c_parser_skip_until_found (parser, CPP_CLOSE_PAREN,
-				     "expected %<)%>");
-	  fail = true;
-	  goto parse_next;
-	}
-
-      /* Parse the loop condition.  */
-      cond = NULL_TREE;
-      if (c_parser_next_token_is_not (parser, CPP_SEMICOLON))
-	{
-	  location_t cond_loc = c_parser_peek_token (parser)->location;
-	  c_in_omp_for = true;
-	  struct c_expr cond_expr
-	    = c_parser_binary_expression (parser, NULL, NULL_TREE);
-          c_in_omp_for = false;
-
-	  cond = cond_expr.value;
-	  cond = c_objc_common_truthvalue_conversion (cond_loc, cond);
-	  switch (cond_expr.original_code)
-	    {
-	    case GT_EXPR:
-	    case GE_EXPR:
-	    case LT_EXPR:
-	    case LE_EXPR:
-	      break;
-	    case NE_EXPR:
-	      if (code != OACC_LOOP)
-		break;
-	      /* FALLTHRU.  */
-	    default:
-	      /* Can't be cond = error_mark_node, because we want to preserve
-		 the location until c_finish_omp_for.  */
-	      cond = build1 (NOP_EXPR, boolean_type_node, error_mark_node);
-	      break;
-	    }
-	  protected_set_expr_location (cond, cond_loc);
-	}
-      c_parser_skip_until_found (parser, CPP_SEMICOLON, "expected %<;%>");
-
-      /* Parse the increment expression.  */
-      incr = NULL_TREE;
-      if (c_parser_next_token_is_not (parser, CPP_CLOSE_PAREN))
-	{
-	  location_t incr_loc = c_parser_peek_token (parser)->location;
-
-	  incr = c_process_expr_stmt (incr_loc,
-				      c_parser_expression (parser).value);
-	}
-      parens.skip_until_found_close (parser);
-
-      if (decl == NULL || decl == error_mark_node || init == error_mark_node)
-	fail = true;
-      else
-	{
-	  TREE_VEC_ELT (declv, i) = decl;
-	  TREE_VEC_ELT (initv, i) = init;
-	  TREE_VEC_ELT (condv, i) = cond;
-	  TREE_VEC_ELT (incrv, i) = incr;
-	}
-
-    parse_next:
-      if (i == count - 1)
-	break;
-
-      /* FIXME: OpenMP 3.0 draft isn't very clear on what exactly is allowed
-	 in between the collapsed for loops to be still considered perfectly
-	 nested.  Hopefully the final version clarifies this.
-	 For now handle (multiple) {'s and empty statements.  */
-      do
-	{
-	  if (c_parser_next_token_is_keyword (parser, RID_FOR))
-	    {
-	      c_parser_consume_token (parser);
-	      break;
-	    }
-	  else if (c_parser_next_token_is (parser, CPP_OPEN_BRACE))
-	    {
-	      c_parser_consume_token (parser);
-	      bracecount++;
-	    }
-	  else if (bracecount
-		   && c_parser_next_token_is (parser, CPP_SEMICOLON))
-	    c_parser_consume_token (parser);
-	  else
-	    {
-	      c_parser_error (parser, "not enough perfectly nested loops");
-	      if (bracecount)
-		{
-		  open_brace_parsed = true;
-		  bracecount--;
-		}
-	      fail = true;
-	      count = 0;
-	      break;
-	    }
-	}
-      while (1);
-
-      nbraces += bracecount;
-    }
-
-  if (nbraces)
-    if_p = NULL;
-
-  in_statement = IN_OMP_FOR;
-  body = push_stmt_list ();
-
-  if (inscan)
-    c_parser_omp_scan_loop_body (parser, open_brace_parsed);
-  else if (open_brace_parsed)
-    {
-      location_t here = c_parser_peek_token (parser)->location;
-      stmt = c_begin_compound_stmt (true);
-      c_parser_compound_statement_nostart (parser);
-      add_stmt (c_end_compound_stmt (here, stmt, true));
-    }
-  else
-    add_stmt (c_parser_c99_block_statement (parser, if_p));
-
-  body = pop_stmt_list (body);
-  in_statement = save_in_statement;
-
-  while (nbraces)
-    {
-      if (c_parser_next_token_is (parser, CPP_CLOSE_BRACE))
-	{
-	  c_parser_consume_token (parser);
-	  nbraces--;
-	}
-      else if (c_parser_next_token_is (parser, CPP_SEMICOLON))
-	c_parser_consume_token (parser);
-      else
-	{
-	  c_parser_error (parser, "collapsed loops not perfectly nested");
-	  while (nbraces)
-	    {
-	      location_t here = c_parser_peek_token (parser)->location;
-	      stmt = c_begin_compound_stmt (true);
-	      add_stmt (body);
-	      c_parser_compound_statement_nostart (parser);
-	      body = c_end_compound_stmt (here, stmt, true);
-	      nbraces--;
-	    }
-	  goto pop_scopes;
-	}
+      tree n = TREE_CHAIN (t);
+      TREE_CHAIN (t) = NULL_TREE;
+      pushdecl (t);
+      t = n;
     }
 
   /* Only bother calling c_finish_omp_for if we haven't already generated
      an error from the initialization parsing.  */
-  if (!fail)
+  if (!data.fail)
     {
       c_in_omp_for = true;
-      stmt = c_finish_omp_for (loc, code, declv, NULL, initv, condv,
-			       incrv, body, pre_body, true);
+      stmt = c_finish_omp_for (loc, code, data.declv, NULL, data.initv,
+			       data.condv, data.incrv,
+			       body, data.pre_body, true);
       c_in_omp_for = false;
 
       /* Check for iterators appearing in lb, b or incr expressions.  */
-      if (stmt && !c_omp_check_loop_iv (stmt, declv, NULL))
+      if (stmt && !c_omp_check_loop_iv (stmt, data.declv, NULL))
 	stmt = NULL_TREE;
 
       if (stmt)
@@ -20538,7 +20741,7 @@ c_parser_omp_for_loop (location_t loc, c_parser *parser, enum tree_code code,
 		else
 		  {
 		    for (i = 0; i < count; i++)
-		      if (TREE_VEC_ELT (declv, i) == OMP_CLAUSE_DECL (*c))
+		      if (TREE_VEC_ELT (data.declv, i) == OMP_CLAUSE_DECL (*c))
 			break;
 		    if (i == count)
 		      c = &OMP_CLAUSE_CHAIN (*c);
@@ -20551,7 +20754,8 @@ c_parser_omp_for_loop (location_t loc, c_parser *parser, enum tree_code code,
 		      }
 		    else
 		      {
-			/* Move lastprivate (decl) clause to OMP_FOR_CLAUSES.  */
+			/* Move lastprivate (decl) clause to
+			   OMP_FOR_CLAUSES.  */
 			tree l = *c;
 			*c = OMP_CLAUSE_CHAIN (*c);
 			if (code == OMP_SIMD)
@@ -20572,16 +20776,8 @@ c_parser_omp_for_loop (location_t loc, c_parser *parser, enum tree_code code,
 	}
       ret = stmt;
     }
-pop_scopes:
-  while (!for_block->is_empty ())
-    {
-      /* FIXME diagnostics: LOC below should be the actual location of
-	 this particular for block.  We need to build a list of
-	 locations to go along with FOR_BLOCK.  */
-      stmt = c_end_compound_stmt (loc, for_block->pop (), true);
-      add_stmt (stmt);
-    }
-  release_tree_vector (for_block);
+
+  parser->omp_for_parse_state = save_data;
   return ret;
 }
 
