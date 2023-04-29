@@ -3395,6 +3395,8 @@ gfc_trans_omp_clauses (stmtblock_t *block, gfc_omp_clauses *clauses,
 			  && (n->u.map_op == OMP_MAP_ATTACH
 			      || n->u.map_op == OMP_MAP_DETACH))
 			{
+			  OMP_CLAUSE_DECL (node)
+			    = build_fold_addr_expr (OMP_CLAUSE_DECL (node));
 			  OMP_CLAUSE_SIZE (node) = size_zero_node;
 			  goto finalize_map_clause;
 			}
@@ -3430,6 +3432,13 @@ gfc_trans_omp_clauses (stmtblock_t *block, gfc_omp_clauses *clauses,
 			    = TYPE_SIZE_UNIT (gfc_charlen_type_node);
 			}
 		    }
+		  else if (openacc
+			   && (n->u.map_op == OMP_MAP_ATTACH
+			       || n->u.map_op == OMP_MAP_DETACH))
+		    gfc_error ("%qs clause argument not pointer or "
+			       "allocatable at %L",
+			       (n->u.map_op == OMP_MAP_ATTACH)
+			       ? "attach" : "detach", &where);
 		}
 	      else if (n->expr
 		       && n->expr->expr_type == EXPR_VARIABLE
@@ -3510,6 +3519,13 @@ gfc_trans_omp_clauses (stmtblock_t *block, gfc_omp_clauses *clauses,
 			}
 		      else
 			{
+			  if (openacc
+				&& (n->u.map_op == OMP_MAP_ATTACH
+				    || n->u.map_op == OMP_MAP_DETACH))
+			    gfc_error ("%qs clause argument not pointer or "
+				       "allocatable at %L",
+				       (n->u.map_op == OMP_MAP_ATTACH)
+				       ? "attach" : "detach", &where);
 			  OMP_CLAUSE_DECL (node) = inner;
 			  OMP_CLAUSE_SIZE (node)
 			    = TYPE_SIZE_UNIT (TREE_TYPE (inner));
@@ -3523,15 +3539,25 @@ gfc_trans_omp_clauses (stmtblock_t *block, gfc_omp_clauses *clauses,
 		      if (n->u.map_op == OMP_MAP_ATTACH
 			  || n->u.map_op == OMP_MAP_DETACH)
 			{
-			  if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (inner)))
+			  if (POINTER_TYPE_P (TREE_TYPE (inner))
+			      || GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (inner)))
 			    {
-			      tree ptr = gfc_conv_descriptor_data_get (inner);
-			      OMP_CLAUSE_DECL (node) = ptr;
+			      if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (inner)))
+				{
+				  tree ptr
+				    = gfc_conv_descriptor_data_get (inner);
+				  OMP_CLAUSE_DECL (node) = ptr;
+				}
+			      else
+				OMP_CLAUSE_DECL (node) = inner;
+			      OMP_CLAUSE_SIZE (node) = size_zero_node;
+			      goto finalize_map_clause;
 			    }
 			  else
-			    OMP_CLAUSE_DECL (node) = inner;
-			  OMP_CLAUSE_SIZE (node) = size_zero_node;
-			  goto finalize_map_clause;
+			    gfc_error ("%qs clause argument not pointer or "
+				       "allocatable at %L",
+				       (n->u.map_op == OMP_MAP_ATTACH)
+				       ? "attach" : "detach", &where);
 			}
 
 		      if (GFC_DESCRIPTOR_TYPE_P (TREE_TYPE (inner)))
