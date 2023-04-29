@@ -67,6 +67,10 @@
 # include <bits/stl_uninitialized.h>
 #endif
 
+#define __glibcxx_want_smart_ptr_for_overwrite
+#define __glibcxx_want_shared_ptr_arrays
+#include <bits/version.h>
+
 namespace std _GLIBCXX_VISIBILITY(default)
 {
 _GLIBCXX_BEGIN_NAMESPACE_VERSION
@@ -652,8 +656,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       _Impl _M_impl;
     };
 
-#if __cplusplus >= 202002L
-# define __cpp_lib_smart_ptr_for_overwrite 202002L
+#ifdef __cpp_lib_smart_ptr_for_overwrite
   struct _Sp_overwrite_tag { };
 
   // Partial specialization used for make_shared_for_overwrite<non-array>().
@@ -712,13 +715,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       _M_get_deleter(const std::type_info&) noexcept override
       { return nullptr; }
     };
-#endif // C++20
+#endif // __cpp_lib_smart_ptr_for_overwrite
 
-#if __cplusplus <= 201703L
-# define __cpp_lib_shared_ptr_arrays 201611L
-#else
-# define __cpp_lib_shared_ptr_arrays 201707L
-
+#if __cpp_lib_shared_ptr_arrays >= 201707L
   struct _Sp_overwrite_tag;
 
   // For make_shared<T[]>, make_shared<T[N]>, allocate_shared<T[]> etc.
@@ -880,7 +879,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       _M_get_deleter(const std::type_info&) noexcept override
       { return nullptr; }
     };
-#endif // C++20
+#endif // __cpp_lib_shared_ptr_arrays >= 201707L
 
   // The default deleter for shared_ptr<T[]> and shared_ptr<T[N]>.
   struct __sp_array_delete

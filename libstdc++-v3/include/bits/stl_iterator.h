@@ -70,12 +70,11 @@
 # include <type_traits>
 #endif
 
-#if __cplusplus > 201703L
-# define __cpp_lib_array_constexpr 201811L
-# define __cpp_lib_constexpr_iterator 201811L
-#elif __cplusplus == 201703L
-# define __cpp_lib_array_constexpr 201803L
-#endif
+#define __glibcxx_want_constexpr_iterator
+#define __glibcxx_want_array_constexpr
+#define __glibcxx_want_make_reverse_iterator
+#define __glibcxx_want_move_iterator_concept
+#include <bits/version.h>
 
 #if __cplusplus >= 202002L
 # include <compare>
@@ -642,9 +641,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     __make_reverse_iterator(_Iterator __i)
     { return reverse_iterator<_Iterator>(__i); }
 
-# if __cplusplus >= 201402L
-#  define __cpp_lib_make_reverse_iterator 201402L
-
+# ifdef __cpp_lib_make_reverse_iterator
   // _GLIBCXX_RESOLVE_LIB_DEFECTS
   // DR 2285. make_reverse_iterator
   /// Generator function for reverse_iterator.
@@ -661,7 +658,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     disable_sized_sentinel_for<reverse_iterator<_Iterator1>,
 			       reverse_iterator<_Iterator2>> = true;
 #  endif // C++20
-# endif // C++14
+# endif // __cpp_lib_make_reverse_iterator
 
   template<typename _Iterator>
     _GLIBCXX20_CONSTEXPR
@@ -1487,9 +1484,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     public:
       using iterator_type = _Iterator;
 
-#if __cplusplus > 201703L && __cpp_lib_concepts
-      // This is P2520R0, a C++23 change, but we treat it as a DR against C++20.
-# define __cpp_lib_move_iterator_concept 202207L
+#ifdef __cpp_lib_move_iterator_concept
       using iterator_concept = decltype(_S_iter_concept());
 
       // iterator_category defined in __move_iter_cat

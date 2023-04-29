@@ -79,6 +79,9 @@
 # include <compare>
 #endif
 
+#define __glibcxx_want_robust_nonmodifying_seq_ops
+#include <bits/version.h>
+
 namespace std _GLIBCXX_VISIBILITY(default)
 {
 _GLIBCXX_BEGIN_NAMESPACE_VERSION
@@ -1648,10 +1651,7 @@ _GLIBCXX_BEGIN_NAMESPACE_ALGO
     }
 #endif // C++11
 
-#if __cplusplus > 201103L
-
-#define __cpp_lib_robust_nonmodifying_seq_ops 201304L
-
+#ifdef __cpp_lib_robust_nonmodifying_seq_ops
   /**
    *  @brief Tests a range for element-wise equality.
    *  @ingroup non_mutating_algorithms
@@ -1713,7 +1713,7 @@ _GLIBCXX_BEGIN_NAMESPACE_ALGO
       return _GLIBCXX_STD_A::__equal4(__first1, __last1, __first2, __last2,
 				      __binary_pred);
     }
-#endif // C++14
+#endif // __cpp_lib_robust_nonmodifying_seq_ops
 
   /**
    *  @brief Performs @b dictionary comparison on ranges.
@@ -1955,8 +1955,7 @@ _GLIBCXX_BEGIN_NAMESPACE_ALGO
 	__gnu_cxx::__ops::__iter_comp_iter(__binary_pred));
     }
 
-#if __cplusplus > 201103L
-
+#if __cpp_lib_robust_nonmodifying_seq_ops
   template<typename _InputIterator1, typename _InputIterator2,
 	   typename _BinaryPredicate>
     _GLIBCXX20_CONSTEXPR

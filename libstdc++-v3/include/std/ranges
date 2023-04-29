@@ -34,6 +34,19 @@
 
 #pragma GCC system_header
 
+#define __glibcxx_want_ranges_as_const
+#define __glibcxx_want_ranges_as_rvalue
+#define __glibcxx_want_ranges_cartesian_product
+#define __glibcxx_want_ranges_chunk
+#define __glibcxx_want_ranges_chunk_by
+#define __glibcxx_want_ranges_enumerate
+#define __glibcxx_want_ranges_join_with
+#define __glibcxx_want_ranges_repeat
+#define __glibcxx_want_ranges_slide
+#define __glibcxx_want_ranges_stride
+#define __glibcxx_want_ranges_zip
+#include <bits/version.h>
+
 #include <concepts>
 
 #if __cpp_lib_concepts
@@ -4390,10 +4403,7 @@ namespace views::__adaptor
     inline constexpr auto values = elements<1>;
   } // namespace views
 
-#if __cplusplus > 202002L
-
-#define __cpp_lib_ranges_zip 202110L
-
+#ifdef __cpp_lib_ranges_zip
   namespace __detail
   {
     template<typename... _Rs>
@@ -5831,9 +5841,9 @@ namespace views::__adaptor
 
     inline constexpr auto pairwise_transform = adjacent_transform<2>;
   }
+#endif // defined(__cpp_lib_ranges_zip)
 
-#define __cpp_lib_ranges_chunk 202202L
-
+#ifdef __cpp_lib_ranges_chunk
   namespace __detail
   {
     template<typename _Tp>
@@ -6370,9 +6380,9 @@ namespace views::__adaptor
 
     inline constexpr _Chunk chunk;
   }
+#endif // defined(__cpp_lib_ranges_chunk)
 
-#define __cpp_lib_ranges_slide 202202L
-
+#ifdef __cpp_lib_ranges_slide
   namespace __detail
   {
     template<typename _Vp>
@@ -6735,9 +6745,9 @@ namespace views::__adaptor
 
     inline constexpr _Slide slide;
   }
+#endif // defined(__cpp_lib_ranges_slide)
 
-#define __cpp_lib_ranges_chunk_by 202202L
-
+#ifdef __cpp_lib_ranges_chunk_by
   template<forward_range _Vp,
 	   indirect_binary_predicate<iterator_t<_Vp>, iterator_t<_Vp>> _Pred>
     requires view<_Vp> && is_object_v<_Pred>
@@ -6930,9 +6940,9 @@ namespace views::__adaptor
 
     inline constexpr _ChunkBy chunk_by;
   }
+#endif // defined(__cpp_lib_ranges_chunk_by)
 
-#define __cpp_lib_ranges_join_with 202202L
-
+#ifdef __cpp_lib_ranges_join_with
   namespace __detail
   {
     template<typename _Range, typename _Pattern>
@@ -7412,9 +7422,9 @@ namespace views::__adaptor
 
     inline constexpr _JoinWith join_with;
   } // namespace views
+#endif // defined(__cpp_lib_ranges_join_with)
 
-#define __cpp_lib_ranges_repeat 202207L
-
+#ifdef __cpp_lib_ranges_repeat
   template<copy_constructible _Tp, semiregular _Bound = unreachable_sentinel_t>
     requires is_object_v<_Tp> && same_as<_Tp, remove_cv_t<_Tp>>
       && (__detail::__is_integer_like<_Bound> || same_as<_Bound, unreachable_sentinel_t>)
@@ -7666,9 +7676,9 @@ namespace views::__adaptor
 	}
     }
   }
+#endif // defined(__cpp_lib_ranges_repeat)
 
-#define __cpp_lib_ranges_stride 202207L
-
+#ifdef __cpp_lib_ranges_stride
   template<input_range _Vp>
     requires view<_Vp>
   class stride_view : public view_interface<stride_view<_Vp>>
@@ -8019,9 +8029,9 @@ namespace views::__adaptor
 
     inline constexpr _Stride stride;
   }
+#endif // defined(__cpp_lib_ranges_stride)
 
-#define __cpp_lib_ranges_cartesian_product 202207L
-
+#ifdef __cpp_lib_ranges_cartesian_product
   namespace __detail
   {
     template<bool _Const, typename _First, typename... _Vs>
@@ -8542,9 +8552,9 @@ namespace views::__adaptor
 
     inline constexpr _CartesianProduct cartesian_product;
   }
+#endif // defined(__cpp_lib_ranges_cartesian_product)
 
-#define __cpp_lib_ranges_as_rvalue 202207L
-
+#ifdef __cpp_lib_ranges_as_rvalue
   template<input_range _Vp>
     requires view<_Vp>
   class as_rvalue_view : public view_interface<as_rvalue_view<_Vp>>
@@ -8634,9 +8644,9 @@ namespace views::__adaptor
 
     inline constexpr _AsRvalue as_rvalue;
   }
+#endif // defined(__cpp_lib_as_rvalue)
 
-#define __cpp_lib_ranges_enumerate 202302L
-
+#ifdef __cpp_lib_ranges_enumerate
   namespace __detail
   {
     template<typename _Range>
@@ -8937,9 +8947,9 @@ namespace views::__adaptor
 
     inline constexpr _Enumerate enumerate;
   }
+#endif // defined(__cpp_lib_ranges_enumerate)
 
-#define __cpp_lib_ranges_as_const 202207L
-
+#ifdef __cpp_lib_ranges_as_const
   template<view _Vp>
     requires input_range<_Vp>
   class as_const_view : public view_interface<as_const_view<_Vp>>
@@ -9043,7 +9053,7 @@ namespace views::__adaptor
 
     inline constexpr _AsConst as_const;
   }
-#endif // C++23
+#endif // defined(__cpp_lib_as_const)
 } // namespace ranges
 
   namespace views = ranges::views;
