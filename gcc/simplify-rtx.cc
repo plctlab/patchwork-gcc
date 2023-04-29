@@ -2535,6 +2535,10 @@ relational_result (machine_mode mode, machine_mode cmp_mode, rtx res)
     {
       if (res == const0_rtx)
 	return CONST0_RTX (mode);
+
+      if (VECTOR_BOOL_MODE_P (mode) && res == const1_rtx)
+	return CONSTM1_RTX (mode);
+
 #ifdef VECTOR_STORE_FLAG_VALUE
       rtx val = VECTOR_STORE_FLAG_VALUE (mode);
       if (val == NULL_RTX)
