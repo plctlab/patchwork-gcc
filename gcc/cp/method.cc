@@ -2245,6 +2245,26 @@ is_convertible_helper (tree from, tree to)
 {
   if (VOID_TYPE_P (from) && VOID_TYPE_P (to))
     return integer_one_node;
+  /* std::is_{,nothrow_}convertible test whether the imaginary function
+     definition
+
+       To test() { return std::declval<From>(); }
+
+     is well-formed.  A function can't return a function...  */
+  if (FUNC_OR_METHOD_TYPE_P (to)
+      /* ...neither can From be a function with cv-/ref-qualifiers:
+	 std::declval is defined as
+
+	  template<class T>
+	  typename std::add_rvalue_reference<T>::type declval() noexcept;
+
+	and std::add_rvalue_reference yields T when T is a function with
+	cv- or ref-qualifiers, making the definition ill-formed.
+	??? Should we check this in other uses of build_stub_object too?  */
+      || (FUNC_OR_METHOD_TYPE_P (from)
+	  && (type_memfn_quals (from) != TYPE_UNQUALIFIED
+	      || type_memfn_rqual (from) != REF_QUAL_NONE)))
+    return error_mark_node;
   cp_unevaluated u;
   tree expr = build_stub_object (from);
   deferring_access_check_sentinel acs (dk_no_deferred);
