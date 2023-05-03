@@ -5652,8 +5652,56 @@
   DONE;
 })
 
+;; Expand for builtin vcmpneb
+(define_expand "vcmpneb"
+  [(set (match_operand:V16QI 0 "altivec_register_operand" "=v")
+	 (not:V16QI
+	   (eq:V16QI (match_operand:V16QI 1 "altivec_register_operand" "v")
+		     (match_operand:V16QI 2 "altivec_register_operand" "v"))))]
+  ""
+  {
+  if (TARGET_P9_VECTOR)
+    emit_insn (gen_vcmpneb_p9 (operands[0], operands[1], operands[2]));
+  else
+    emit_insn (gen_altivec_vcmpequb_p (operands[0], operands[1],
+				       operands[2]));
+  DONE;
+  })
+
+;; Expand for builtin vcmpneh
+(define_expand "vcmpneh"
+  [(set (match_operand:V8HI 0 "altivec_register_operand" "=v")
+	 (not:V8HI
+	   (eq:V8HI (match_operand:V8HI 1 "altivec_register_operand" "v")
+		    (match_operand:V8HI 2 "altivec_register_operand" "v"))))]
+  ""
+  {
+  if (TARGET_P9_VECTOR)
+    emit_insn (gen_vcmpneh_p9 (operands[0], operands[1], operands[2]));
+  else
+    emit_insn (gen_altivec_vcmpequh_p (operands[0], operands[1],
+				       operands[2]));
+  DONE;
+  })
+
+;; Expand for builtin vcmpnew
+(define_expand "vcmpnew"
+  [(set (match_operand:V4SI 0 "altivec_register_operand" "=v")
+	 (not:V4SI
+	   (eq:V4SI (match_operand:V4SI 1 "altivec_register_operand" "v")
+		    (match_operand:V4SI 2 "altivec_register_operand" "v"))))]
+  ""
+  {
+    if (TARGET_P9_VECTOR)
+      emit_insn (gen_vcmpnew_p9 (operands[0], operands[1], operands[2]));
+    else
+      emit_insn (gen_altivec_vcmpequw_p (operands[0], operands[1],
+					 operands[2]));
+  DONE;
+  })
+
 ;; Vector Compare Not Equal Byte (specified/not+eq:)
-(define_insn "vcmpneb"
+(define_insn "vcmpneb_p9"
   [(set (match_operand:V16QI 0 "altivec_register_operand" "=v")
 	 (not:V16QI
 	   (eq:V16QI (match_operand:V16QI 1 "altivec_register_operand" "v")
@@ -5703,7 +5751,7 @@
   [(set_attr "type" "vecsimple")])
 
 ;; Vector Compare Not Equal Half Word (specified/not+eq:)
-(define_insn "vcmpneh"
+(define_insn "vcmpneh_p9"
   [(set (match_operand:V8HI 0 "altivec_register_operand" "=v")
 	(not:V8HI
 	  (eq:V8HI (match_operand:V8HI 1 "altivec_register_operand" "v")
@@ -5723,7 +5771,7 @@
   [(set_attr "type" "vecsimple")])
 
 ;; Vector Compare Not Equal Word (specified/not+eq:)
-(define_insn "vcmpnew"
+(define_insn "vcmpnew_p9"
   [(set (match_operand:V4SI 0 "altivec_register_operand" "=v")
 	(not:V4SI
 	  (eq:V4SI (match_operand:V4SI 1 "altivec_register_operand" "v")
