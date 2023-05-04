@@ -595,7 +595,7 @@
 ;; When performing `(a & (1UL << bitno)) ? 0 : -1` the combiner
 ;; usually has the `bitno` typed as X-mode (i.e. no further
 ;; zero-extension is performed around the bitno).
-(define_insn "*bext<mode>"
+(define_insn "*bext<mode>_2"
   [(set (match_operand:X 0 "register_operand" "=r")
 	(zero_extract:X (match_operand:X 1 "register_operand" "r")
 			(const_int 1)
@@ -719,6 +719,28 @@
    operands[8] = GEN_INT (setbit);
    operands[9] = GEN_INT (clearbit);
 })
+
+;; IF_THEN_ELSE: test for (a & (1 << BIT_NO))
+(define_insn_and_split "*branch<X:mode>_bext"
+  [(set (pc)
+	(if_then_else
+	  (match_operator 1 "equality_operator"
+        [(zero_extract:X (match_operand:X 2 "register_operand" "r")
+                (const_int 1)
+                (zero_extend:X (match_operand:QI 3 "register_operand" "r")))
+	    (const_int 0)])
+	 (label_ref (match_operand 0 "" ""))
+	 (pc)))
+   (clobber (match_scratch:X 4 "=&r"))]
+  "TARGET_ZBS"
+  "#"
+  "&& reload_completed"
+  [(set (match_dup 4) (zero_extract:X (match_dup 2)
+			          (const_int 1)
+			          (zero_extend:X (match_dup 3))))
+   (set (pc) (if_then_else (match_op_dup 1 [(match_dup 4) (const_int 0)])
+			   (label_ref (match_dup 0))
+			   (pc)))])
 
 ;; ZBKC or ZBC extension
 (define_insn "riscv_clmul_<mode>"
