@@ -15368,7 +15368,16 @@ tree_single_nonzero_warnv_p (tree t, bool *strict_overflow_p)
 	tree base = TREE_OPERAND (t, 0);
 
 	if (!DECL_P (base))
-	  base = get_base_address (base);
+	  {
+	    gcc_checking_assert (TREE_CODE (base) != WITH_SIZE_EXPR);
+	    /* Any component reference, even if at offset zero, requires
+	       a non-null base.  */
+	    if (handled_component_p (base)
+		&& !targetm.addr_space.zero_address_valid
+		      (TYPE_ADDR_SPACE (TREE_TYPE (TREE_TYPE (t)))))
+	      return true;
+	    base = get_base_address (base);
+	  }
 
 	if (base && TREE_CODE (base) == TARGET_EXPR)
 	  base = TARGET_EXPR_SLOT (base);
