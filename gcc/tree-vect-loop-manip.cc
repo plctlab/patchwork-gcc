@@ -385,6 +385,48 @@ vect_maybe_permute_loop_masks (gimple_seq *seq, rgroup_controls *dest_rgm,
   return false;
 }
 
+/* Try to use permutes to define the lens in DEST_RGM using the lens
+   in SRC_RGM, given that the former has twice as many lens as the
+   latter.  Return true on success, adding any new statements to SEQ.  */
+
+static bool
+vect_maybe_permute_loop_lens (tree iv_type, gimple_seq *seq,
+			      rgroup_controls *dest_rgm,
+			      rgroup_controls *src_rgm)
+{
+  tree ctrl_type = dest_rgm->type;
+  poly_uint64 nitems_per_ctrl
+    = TYPE_VECTOR_SUBPARTS (ctrl_type) * dest_rgm->factor;
+  if (dest_rgm->max_nscalars_per_iter <= src_rgm->max_nscalars_per_iter)
+    {
+      for (unsigned int i = 0; i < dest_rgm->controls.length (); ++i)
+	{
+	  tree src = src_rgm->controls[i / dest_rgm->controls.length ()];
+	  tree dest = dest_rgm->controls[i];
+	  gassign *stmt;
+	  if (i == 0)
+	    {
+	      /* MIN (X, VF*I/N) capped to the range [0, VF/N].  */
+	      tree factor = build_int_cst (iv_type, nitems_per_ctrl);
+	      stmt = gimple_build_assign (dest, MIN_EXPR, src, factor);
+	      gimple_seq_add_stmt (seq, stmt);
+	    }
+	  else
+	    {
+	      /* (X - MIN (X, VF*I/N)) capped to the range [0, VF/N].  */
+	      tree factor = build_int_cst (iv_type, nitems_per_ctrl * i);
+	      tree temp = make_ssa_name (iv_type);
+	      stmt = gimple_build_assign (temp, MIN_EXPR, src, factor);
+	      gimple_seq_add_stmt (seq, stmt);
+	      stmt = gimple_build_assign (dest, MINUS_EXPR, src, temp);
+	      gimple_seq_add_stmt (seq, stmt);
+	    }
+	}
+      return true;
+    }
+  return false;
+}
+
 /* Helper for vect_set_loop_condition_partial_vectors.  Generate definitions
    for all the rgroup controls in RGC and return a control that is nonzero
    when the loop needs to iterate.  Add any new preheader statements to
@@ -468,8 +510,9 @@ vect_set_loop_controls_directly (class loop *loop, loop_vec_info loop_vinfo,
   gimple_stmt_iterator incr_gsi;
   bool insert_after;
   standard_iv_increment_position (loop, &incr_gsi, &insert_after);
-  create_iv (build_int_cst (iv_type, 0), nitems_step, NULL_TREE, loop,
-	     &incr_gsi, insert_after, &index_before_incr, &index_after_incr);
+  create_iv (build_int_cst (iv_type, 0), PLUS_EXPR, nitems_step, NULL_TREE,
+	     loop, &incr_gsi, insert_after, &index_before_incr,
+	     &index_after_incr);
 
   tree zero_index = build_int_cst (compare_type, 0);
   tree test_index, test_limit, first_limit;
@@ -682,6 +725,300 @@ vect_set_loop_controls_directly (class loop *loop, loop_vec_info loop_vinfo,
   return next_ctrl;
 }
 
+/* Helper for vect_set_loop_condition_partial_vectors.  Generate definitions
+   for all the rgroup controls in RGC and return a control that is nonzero
+   when the loop needs to iterate.  Add any new preheader statements to
+   PREHEADER_SEQ.  Use LOOP_COND_GSI to insert code before the exit gcond.
+
+   RGC belongs to loop LOOP.  The loop originally iterated NITERS
+   times and has been vectorized according to LOOP_VINFO.
+
+   Unlike vect_set_loop_controls_directly which is iterating from 0-based IV
+   to TEST_LIMIT - bias.
+
+   In vect_set_loop_controls_by_select_vl, we are iterating from start at
+   IV = TEST_LIMIT - bias and keep subtract IV by the length calculated by
+   IFN_SELECT_VL pattern.
+
+   1. Single rgroup, the Gimple IR should be:
+
+	# vectp_B.6_8 = PHI <vectp_B.6_13(6), &B(5)>
+	# vectp_B.8_16 = PHI <vectp_B.8_17(6), &B(5)>
+	# vectp_A.11_19 = PHI <vectp_A.11_20(6), &A(5)>
+	# vectp_A.13_22 = PHI <vectp_A.13_23(6), &A(5)>
+	# ivtmp_26 = PHI <ivtmp_27(6), _25(5)>
+	_28 = .SELECT_VL (ivtmp_26, POLY_INT_CST [4, 4]);
+	ivtmp_15 = _28 * 4;
+	vect__1.10_18 = .LEN_LOAD (vectp_B.8_16, 128B, _28, 0);
+	_1 = B[i_10];
+	.LEN_STORE (vectp_A.13_22, 128B, _28, vect__1.10_18, 0);
+	i_7 = i_10 + 1;
+	vectp_B.8_17 = vectp_B.8_16 + ivtmp_15;
+	vectp_A.13_23 = vectp_A.13_22 + ivtmp_15;
+	ivtmp_27 = ivtmp_26 - _28;
+	if (ivtmp_27 != 0)
+	  goto <bb 6>; [83.33%]
+	else
+	  goto <bb 7>; [16.67%]
+
+   Note: We use the outcome of .SELECT_VL to adjust both loop control IV and
+   data reference pointer IV.
+
+   1). The result of .SELECT_VL:
+       _28 = .SELECT_VL (ivtmp_26, POLY_INT_CST [4, 4]);
+       The _28 is not necessary to be VF in any iteration, instead, we allow
+       _28 to be any value as long as _28 <= VF. Such flexible SELECT_VL
+       pattern allows target have various flexible optimizations in vector
+       loop iterations. Target like RISC-V has special application vector
+       length calculation instruction which will distribute even workload
+       in the last 2 iterations.
+
+       Other example is that we can allow even generate _28 <= VF / 2 so
+       that some machine can run vector codes in low power mode.
+
+   2). Loop control IV:
+       ivtmp_27 = ivtmp_26 - _28;
+       if (ivtmp_27 != 0)
+	 goto <bb 6>; [83.33%]
+       else
+	 goto <bb 7>; [16.67%]
+
+       This is the saturating-subtraction towards zero, the outcome of
+       .SELECT_VL wil make ivtmp_27 never underflow zero.
+
+   3). Data reference pointer IV:
+       ivtmp_15 = _28 * 4;
+       vectp_B.8_17 = vectp_B.8_16 + ivtmp_15;
+       vectp_A.13_23 = vectp_A.13_22 + ivtmp_15;
+
+       The pointer IV is adjusted accurately according to the .SELECT_VL.
+
+   2. Multiple rgroup, the Gimple IR should be:
+
+	# i_23 = PHI <i_20(6), 0(11)>
+	# vectp_f.8_51 = PHI <vectp_f.8_52(6), f_15(D)(11)>
+	# vectp_d.10_59 = PHI <vectp_d.10_60(6), d_18(D)(11)>
+	# ivtmp_70 = PHI <ivtmp_71(6), _69(11)>
+	# ivtmp_73 = PHI <ivtmp_74(6), _67(11)>
+	_72 = MIN_EXPR <ivtmp_70, 16>;
+	_75 = MIN_EXPR <ivtmp_73, 16>;
+	_1 = i_23 * 2;
+	_2 = (long unsigned int) _1;
+	_3 = _2 * 2;
+	_4 = f_15(D) + _3;
+	_5 = _2 + 1;
+	_6 = _5 * 2;
+	_7 = f_15(D) + _6;
+	.LEN_STORE (vectp_f.8_51, 128B, _75, { 1, 2, 1, 2, 1, 2, 1, 2 }, 0);
+	vectp_f.8_56 = vectp_f.8_51 + 16;
+	.LEN_STORE (vectp_f.8_56, 128B, _72, { 1, 2, 1, 2, 1, 2, 1, 2 }, 0);
+	_8 = (long unsigned int) i_23;
+	_9 = _8 * 4;
+	_10 = d_18(D) + _9;
+	_61 = _75 / 2;
+	.LEN_STORE (vectp_d.10_59, 128B, _61, { 3, 3, 3, 3 }, 0);
+	vectp_d.10_63 = vectp_d.10_59 + 16;
+	_64 = _72 / 2;
+	.LEN_STORE (vectp_d.10_63, 128B, _64, { 3, 3, 3, 3 }, 0);
+	i_20 = i_23 + 1;
+	vectp_f.8_52 = vectp_f.8_56 + 16;
+	vectp_d.10_60 = vectp_d.10_63 + 16;
+	ivtmp_74 = ivtmp_73 - _75;
+	ivtmp_71 = ivtmp_70 - _72;
+	if (ivtmp_74 != 0)
+	  goto <bb 6>; [83.33%]
+	else
+	  goto <bb 13>; [16.67%]
+
+   Note: We DO NOT use .SELECT_VL in SLP auto-vectorization for multiple
+   rgroups. Instead, we use MIN_EXPR to guarantee we always use VF as the
+   iteration amount for mutiple rgroups.
+
+   The analysis of the flow of multiple rgroups:
+	_72 = MIN_EXPR <ivtmp_70, 16>;
+	_75 = MIN_EXPR <ivtmp_73, 16>;
+	...
+	.LEN_STORE (vectp_f.8_51, 128B, _75, { 1, 2, 1, 2, 1, 2, 1, 2 }, 0);
+	vectp_f.8_56 = vectp_f.8_51 + 16;
+	.LEN_STORE (vectp_f.8_56, 128B, _72, { 1, 2, 1, 2, 1, 2, 1, 2 }, 0);
+	...
+	_61 = _75 / 2;
+	.LEN_STORE (vectp_d.10_59, 128B, _61, { 3, 3, 3, 3 }, 0);
+	vectp_d.10_63 = vectp_d.10_59 + 16;
+	_64 = _72 / 2;
+	.LEN_STORE (vectp_d.10_63, 128B, _64, { 3, 3, 3, 3 }, 0);
+
+  We use _72 = MIN_EXPR <ivtmp_70, 16>; to generate the number of the elements
+  to be processed in each iteration.
+
+  The related STOREs:
+    _72 = MIN_EXPR <ivtmp_70, 16>;
+    .LEN_STORE (vectp_f.8_56, 128B, _72, { 1, 2, 1, 2, 1, 2, 1, 2 }, 0);
+    _64 = _72 / 2;
+    .LEN_STORE (vectp_d.10_63, 128B, _64, { 3, 3, 3, 3 }, 0);
+  Since these 2 STOREs store 2 vectors that the second vector is half elements
+  of the first vector. So the length of second STORE will be _64 = _72 / 2;
+  It's similar to the VIEW_CONVERT of handling masks in SLP.
+
+  3. Multiple rgroups for non-SLP auto-vectorization.
+
+     # ivtmp_26 = PHI <ivtmp_27(4), _25(3)>
+     # ivtmp.35_10 = PHI <ivtmp.35_11(4), ivtmp.35_1(3)>
+     # ivtmp.36_2 = PHI <ivtmp.36_8(4), ivtmp.36_23(3)>
+     _28 = MIN_EXPR <ivtmp_26, POLY_INT_CST [8, 8]>;
+     loop_len_15 = MIN_EXPR <_28, POLY_INT_CST [4, 4]>;
+     loop_len_16 = _28 - loop_len_15;
+     _29 = (void *) ivtmp.35_10;
+     _7 = &MEM <vector([4,4]) int> [(int *)_29];
+     vect__1.25_17 = .LEN_LOAD (_7, 128B, loop_len_15, 0);
+     _33 = _29 + POLY_INT_CST [16, 16];
+     _34 = &MEM <vector([4,4]) int> [(int *)_33];
+     vect__1.26_19 = .LEN_LOAD (_34, 128B, loop_len_16, 0);
+     vect__2.27_20 = VEC_PACK_TRUNC_EXPR <vect__1.25_17, vect__1.26_19>;
+     _30 = (void *) ivtmp.36_2;
+     _31 = &MEM <vector([8,8]) short int> [(short int *)_30];
+     .LEN_STORE (_31, 128B, _28, vect__2.27_20, 0);
+     ivtmp_27 = ivtmp_26 - _28;
+     ivtmp.35_11 = ivtmp.35_10 + POLY_INT_CST [32, 32];
+     ivtmp.36_8 = ivtmp.36_2 + POLY_INT_CST [16, 16];
+     if (ivtmp_27 != 0)
+       goto <bb 4>; [83.33%]
+     else
+       goto <bb 5>; [16.67%]
+
+     The total length: _28 = MIN_EXPR <ivtmp_26, POLY_INT_CST [8, 8]>;
+
+     The length of first half vector:
+       loop_len_15 = MIN_EXPR <_28, POLY_INT_CST [4, 4]>;
+
+     The length of second half vector:
+       loop_len_15 = MIN_EXPR <_28, POLY_INT_CST [4, 4]>;
+       loop_len_16 = _28 - loop_len_15;
+
+     1). _28 always <= POLY_INT_CST [8, 8].
+     2). When _28 <= POLY_INT_CST [4, 4], second half vector is not processed.
+     3). When _28 > POLY_INT_CST [4, 4], second half vector is processed.
+*/
+
+static tree
+vect_set_loop_controls_by_select_vl (class loop *loop, loop_vec_info loop_vinfo,
+				     gimple_seq *preheader_seq,
+				     gimple_seq *header_seq,
+				     rgroup_controls *rgc, tree niters,
+				     unsigned int controls_length)
+{
+  tree compare_type = LOOP_VINFO_RGROUP_COMPARE_TYPE (loop_vinfo);
+  tree iv_type = LOOP_VINFO_RGROUP_IV_TYPE (loop_vinfo);
+  /* We are not allowing masked approach in SELECT_VL.  */
+  gcc_assert (!LOOP_VINFO_FULLY_MASKED_P (loop_vinfo));
+
+  tree ctrl_type = rgc->type;
+  unsigned int nitems_per_iter = rgc->max_nscalars_per_iter * rgc->factor;
+  poly_uint64 nitems_per_ctrl = TYPE_VECTOR_SUBPARTS (ctrl_type) * rgc->factor;
+  poly_uint64 vf = LOOP_VINFO_VECT_FACTOR (loop_vinfo);
+
+  /* Calculate the maximum number of item values that the rgroup
+     handles in total, the number that it handles for each iteration
+     of the vector loop.  */
+  tree nitems_total = niters;
+  if (nitems_per_iter != 1)
+    {
+      /* We checked before setting LOOP_VINFO_USING_PARTIAL_VECTORS_P that
+	 these multiplications don't overflow.  */
+      tree compare_factor = build_int_cst (compare_type, nitems_per_iter);
+      nitems_total = gimple_build (preheader_seq, MULT_EXPR, compare_type,
+				   nitems_total, compare_factor);
+    }
+
+  /* Convert the comparison value to the IV type (either a no-op or
+     a promotion).  */
+  nitems_total = gimple_convert (preheader_seq, iv_type, nitems_total);
+
+  /* Create an induction variable that counts the number of items
+     processed.  */
+  tree index_before_incr, index_after_incr;
+  gimple_stmt_iterator incr_gsi;
+  bool insert_after;
+  standard_iv_increment_position (loop, &incr_gsi, &insert_after);
+
+  /* Test the decremented IV, which will never underflow 0 since we have
+     IFN_SELECT_VL to gurantee that.  */
+  tree test_limit = nitems_total;
+
+  /* Provide a definition of each control in the group.  */
+  tree ctrl;
+  unsigned int i;
+  FOR_EACH_VEC_ELT_REVERSE (rgc->controls, i, ctrl)
+    {
+      /* Previous controls will cover BIAS items.  This control covers the
+	 next batch.  */
+      poly_uint64 bias = nitems_per_ctrl * i;
+      tree bias_tree = build_int_cst (iv_type, bias);
+
+      /* Rather than have a new IV that starts at TEST_LIMIT and goes down to
+	 BIAS, prefer to use the same TEST_LIMIT - BIAS based IV for each
+	 control and adjust the bound down by BIAS.  */
+      tree this_test_limit = test_limit;
+      if (i != 0)
+	{
+	  this_test_limit = gimple_build (preheader_seq, MAX_EXPR, iv_type,
+					  this_test_limit, bias_tree);
+	  this_test_limit = gimple_build (preheader_seq, MINUS_EXPR, iv_type,
+					  this_test_limit, bias_tree);
+	}
+
+      /* Create decrement IV.  */
+      create_iv (this_test_limit, MINUS_EXPR, ctrl, NULL_TREE, loop, &incr_gsi,
+		 insert_after, &index_before_incr, &index_after_incr);
+
+      poly_uint64 final_vf = vf * nitems_per_iter;
+      tree vf_step = build_int_cst (iv_type, final_vf);
+      tree res_len;
+      if (nitems_per_iter != 1 || controls_length != 1)
+	{
+	  /* For SLP, we can't allow non-VF number of elements to be processed
+	     in non-final iteration. We force the number of elements to be
+	   processed in each non-final iteration is VF elements. If we allow
+	   non-VF elements processing in non-final iteration will make SLP too
+	   complicated and produce inferior codegen.
+
+	       For example:
+
+		If non-final iteration process VF elements.
+
+		  ...
+		  .LEN_STORE (vectp_f.8_51, 128B, _71, { 1, 2, 1, 2 }, 0);
+		  .LEN_STORE (vectp_f.8_56, 128B, _72, { 1, 2, 1, 2 }, 0);
+		  ...
+
+		If non-final iteration process non-VF elements.
+
+		  ...
+		  .LEN_STORE (vectp_f.8_51, 128B, _71, { 1, 2, 1, 2 }, 0);
+		  if (_71 % 2 == 0)
+		   .LEN_STORE (vectp_f.8_56, 128B, _72, { 1, 2, 1, 2 }, 0);
+		  else
+		   .LEN_STORE (vectp_f.8_56, 128B, _72, { 2, 1, 2, 1 }, 0);
+		  ...
+
+	   This is the simple case of 2-elements interleaved vector SLP. We
+	   consider other interleave vector, the situation will become more
+	   complicated.  */
+	  res_len = gimple_build (header_seq, MIN_EXPR, iv_type,
+				  index_before_incr, vf_step);
+	}
+      else
+	{
+	  res_len = gimple_build (header_seq, IFN_SELECT_VL, iv_type,
+				  index_before_incr, vf_step);
+	}
+      gassign *assign = gimple_build_assign (ctrl, res_len);
+      gimple_seq_add_stmt (header_seq, assign);
+    }
+
+  return index_after_incr;
+}
+
 /* Set up the iteration condition and rgroup controls for LOOP, given
    that LOOP_VINFO_USING_PARTIAL_VECTORS_P is true for the vectorized
    loop.  LOOP_VINFO describes the vectorization of LOOP.  NITERS is
@@ -703,6 +1040,10 @@ vect_set_loop_condition_partial_vectors (class loop *loop,
 
   bool use_masks_p = LOOP_VINFO_FULLY_MASKED_P (loop_vinfo);
   tree compare_type = LOOP_VINFO_RGROUP_COMPARE_TYPE (loop_vinfo);
+  tree iv_type = LOOP_VINFO_RGROUP_IV_TYPE (loop_vinfo);
+  bool use_vl_p = !use_masks_p
+		  && direct_internal_fn_supported_p (IFN_SELECT_VL, iv_type,
+						     OPTIMIZE_FOR_SPEED);
   unsigned int compare_precision = TYPE_PRECISION (compare_type);
   tree orig_niters = niters;
 
@@ -752,17 +1093,32 @@ vect_set_loop_condition_partial_vectors (class loop *loop,
 	      continue;
 	  }
 
+	if (use_vl_p && rgc->controls.length () != 1)
+	  {
+	    rgroup_controls *sub_rgc
+	      = &(*controls)[nmasks / rgc->controls.length () - 1];
+	    if (!sub_rgc->controls.is_empty ()
+		&& vect_maybe_permute_loop_lens (iv_type, &header_seq, rgc,
+						 sub_rgc))
+	      continue;
+	  }
+
 	/* See whether zero-based IV would ever generate all-false masks
 	   or zero length before wrapping around.  */
 	bool might_wrap_p = vect_rgroup_iv_might_wrap_p (loop_vinfo, rgc);
 
 	/* Set up all controls for this group.  */
-	test_ctrl = vect_set_loop_controls_directly (loop, loop_vinfo,
-						     &preheader_seq,
-						     &header_seq,
-						     loop_cond_gsi, rgc,
-						     niters, niters_skip,
-						     might_wrap_p);
+	if (use_vl_p)
+	  test_ctrl
+	    = vect_set_loop_controls_by_select_vl (loop, loop_vinfo,
+						   &preheader_seq, &header_seq,
+						   rgc, niters, controls->length ());
+	else
+	  test_ctrl
+	    = vect_set_loop_controls_directly (loop, loop_vinfo, &preheader_seq,
+					       &header_seq, loop_cond_gsi, rgc,
+					       niters, niters_skip,
+					       might_wrap_p);
       }
 
   /* Emit all accumulated statements.  */
@@ -893,7 +1249,7 @@ vect_set_loop_condition_normal (class loop *loop, tree niters, tree step,
     }
 
   standard_iv_increment_position (loop, &incr_gsi, &insert_after);
-  create_iv (init, step, NULL_TREE, loop,
+  create_iv (init, PLUS_EXPR, step, NULL_TREE, loop,
              &incr_gsi, insert_after, &indx_before_incr, &indx_after_incr);
   indx_after_incr = force_gimple_operand_gsi (&loop_cond_gsi, indx_after_incr,
 					      true, NULL_TREE, true,

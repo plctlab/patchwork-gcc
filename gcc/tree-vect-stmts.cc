@@ -3147,6 +3147,61 @@ vect_get_data_ptr_increment (vec_info *vinfo,
   return iv_step;
 }
 
+/* Prepare the pointer IVs which needs to be updated by a variable amount.
+   Such variable amount is the outcome of .SELECT_VL. In this case, we can
+   allow each iteration process the flexible number of elements as long as
+   the number <= vf elments.
+
+   Return data reference according to SELECT_VL.
+   If new statements are needed, insert them before GSI.  */
+
+static tree
+get_select_vl_data_ref_ptr (vec_info *vinfo, stmt_vec_info stmt_info,
+			    tree aggr_type, class loop *at_loop, tree offset,
+			    tree *dummy, gimple_stmt_iterator *gsi,
+			    bool simd_lane_access_p, vec_loop_lens *loop_lens,
+			    dr_vec_info *dr_info,
+			    vect_memory_access_type memory_access_type)
+{
+  loop_vec_info loop_vinfo = dyn_cast<loop_vec_info> (vinfo);
+  tree step = vect_dr_behavior (vinfo, dr_info)->step;
+
+  /* TODO: We don't support gather/scatter or load_lanes/store_lanes for pointer
+     IVs are updated by variable amount but we will support them in the future.
+   */
+  gcc_assert (memory_access_type != VMAT_GATHER_SCATTER
+	      && memory_access_type != VMAT_LOAD_STORE_LANES);
+
+  /* When we support SELECT_VL pattern, we dynamic adjust
+     the memory address by .SELECT_VL result.
+
+     The result of .SELECT_VL is the number of elements to
+     be processed of each iteration. So the memory address
+     adjustment operation should be:
+
+     bytesize = GET_MODE_SIZE (element_mode (aggr_type));
+     addr = addr + .SELECT_VL (ARG..) * bytesize;
+  */
+  gimple *ptr_incr;
+  tree loop_len
+    = vect_get_loop_len (loop_vinfo, gsi, loop_lens, 1, aggr_type, 0);
+  tree len_type = TREE_TYPE (loop_len);
+  poly_uint64 bytesize = GET_MODE_SIZE (element_mode (aggr_type));
+  /* Since the outcome of .SELECT_VL is element size, we should adjust
+     it into bytesize so that it can be used in address pointer variable
+     amount IVs adjustment.  */
+  tree tmp = fold_build2 (MULT_EXPR, len_type, loop_len,
+			  build_int_cst (len_type, bytesize));
+  if (tree_int_cst_sgn (step) == -1)
+    tmp = fold_build1 (NEGATE_EXPR, len_type, tmp);
+  tree bump = make_temp_ssa_name (len_type, NULL, "ivtmp");
+  gassign *assign = gimple_build_assign (bump, tmp);
+  gsi_insert_before (gsi, assign, GSI_SAME_STMT);
+  return vect_create_data_ref_ptr (vinfo, stmt_info, aggr_type, at_loop, offset,
+				   dummy, gsi, &ptr_incr, simd_lane_access_p,
+				   bump);
+}
+
 /* Check and perform vectorization of BUILT_IN_BSWAP{16,32,64,128}.  */
 
 static bool
@@ -8285,7 +8340,7 @@ vectorizable_store (vec_info *vinfo,
 
       stride_base = cse_and_gimplify_to_preheader (loop_vinfo, stride_base);
       ivstep = cse_and_gimplify_to_preheader (loop_vinfo, ivstep);
-      create_iv (stride_base, ivstep, NULL,
+      create_iv (stride_base, PLUS_EXPR, ivstep, NULL,
 		 loop, &incr_gsi, insert_after,
 		 &offvar, NULL);
       incr = gsi_stmt (incr_gsi);
@@ -8546,6 +8601,17 @@ vectorizable_store (vec_info *vinfo,
 	    vect_get_gather_scatter_ops (loop_vinfo, loop, stmt_info,
 					 slp_node, &gs_info, &dataref_ptr,
 					 &vec_offsets);
+	  else if (loop_lens && loop_lens->length () == 1
+		   && direct_internal_fn_supported_p (
+		     IFN_SELECT_VL, LOOP_VINFO_RGROUP_IV_TYPE (loop_vinfo),
+		     OPTIMIZE_FOR_SPEED)
+		   && memory_access_type != VMAT_INVARIANT)
+	    dataref_ptr
+	      = get_select_vl_data_ref_ptr (vinfo, stmt_info, aggr_type,
+					    simd_lane_access_p ? loop : NULL,
+					    offset, &dummy, gsi,
+					    simd_lane_access_p, loop_lens,
+					    dr_info, memory_access_type);
 	  else
 	    dataref_ptr
 	      = vect_create_data_ref_ptr (vinfo, first_stmt_info, aggr_type,
@@ -8794,8 +8860,9 @@ vectorizable_store (vec_info *vinfo,
 	      else if (loop_lens)
 		{
 		  tree final_len
-		    = vect_get_loop_len (loop_vinfo, loop_lens,
-					 vec_num * ncopies, vec_num * j + i);
+		    = vect_get_loop_len (loop_vinfo, gsi, loop_lens,
+					 vec_num * ncopies, vectype,
+					 vec_num * j + i);
 		  tree ptr = build_int_cst (ref_type, align * BITS_PER_UNIT);
 		  machine_mode vmode = TYPE_MODE (vectype);
 		  opt_machine_mode new_ovmode
@@ -9456,7 +9523,7 @@ vectorizable_load (vec_info *vinfo,
 
       stride_base = cse_and_gimplify_to_preheader (loop_vinfo, stride_base);
       ivstep = cse_and_gimplify_to_preheader (loop_vinfo, ivstep);
-      create_iv (stride_base, ivstep, NULL,
+      create_iv (stride_base, PLUS_EXPR, ivstep, NULL,
 		 loop, &incr_gsi, insert_after,
 		 &offvar, NULL);
 
@@ -9934,6 +10001,16 @@ vectorizable_load (vec_info *vinfo,
 					   slp_node, &gs_info, &dataref_ptr,
 					   &vec_offsets);
 	    }
+	  else if (loop_lens && loop_lens->length () == 1
+		   && direct_internal_fn_supported_p (
+		     IFN_SELECT_VL, LOOP_VINFO_RGROUP_IV_TYPE (loop_vinfo),
+		     OPTIMIZE_FOR_SPEED)
+		   && memory_access_type != VMAT_INVARIANT)
+	    dataref_ptr
+	      = get_select_vl_data_ref_ptr (vinfo, stmt_info, aggr_type,
+					    at_loop, offset, &dummy, gsi,
+					    simd_lane_access_p, loop_lens,
+					    dr_info, memory_access_type);
 	  else
 	    dataref_ptr
 	      = vect_create_data_ref_ptr (vinfo, first_stmt_info, aggr_type,
@@ -10150,8 +10227,8 @@ vectorizable_load (vec_info *vinfo,
 		    else if (loop_lens && memory_access_type != VMAT_INVARIANT)
 		      {
 			tree final_len
-			  = vect_get_loop_len (loop_vinfo, loop_lens,
-					       vec_num * ncopies,
+			  = vect_get_loop_len (loop_vinfo, gsi, loop_lens,
+					       vec_num * ncopies, vectype,
 					       vec_num * j + i);
 			tree ptr = build_int_cst (ref_type,
 						  align * BITS_PER_UNIT);
