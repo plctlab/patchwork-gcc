@@ -1075,6 +1075,16 @@
    && peep2_reg_dead_p (2, operands[0])"
    [(set (match_dup 2) (match_dup 1))])
 
+;; Peephole to catch memory loads to VSX_REG and then moves to GENERAL_REGS.
+(define_peephole2
+  [(set (match_operand:VSX_M 0 "vsx_register_operand")
+	(match_operand:VSX_M 1 "memory_operand"))
+   (set (match_operand:VSX_M 2 "int_reg_operand")
+	(match_dup 0))]
+  "TARGET_POWERPC64 && VECTOR_MEM_VSX_P (<MODE>mode)
+  && peep2_reg_dead_p (2, operands[0])"
+  [(set (match_dup 2) (match_dup 1))])
+
 ;; Peephole to catch memory to memory transfers for TImode if TImode landed in
 ;; VSX registers on a little endian system.  The vector types and IEEE 128-bit
 ;; floating point are handled by the more generic swap elimination pass.
