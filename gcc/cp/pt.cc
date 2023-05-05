@@ -30772,7 +30772,7 @@ do_auto_deduction (tree type, tree init, tree auto_node,
 		   int flags /* = LOOKUP_NORMAL */,
 		   tree tmpl /* = NULL_TREE */)
 {
-  if (init == error_mark_node)
+  if (type == error_mark_node || init == error_mark_node)
     return error_mark_node;
 
   if (init && type_dependent_expression_p (init)
@@ -30805,6 +30805,17 @@ do_auto_deduction (tree type, tree init, tree auto_node,
       && (r = treat_lvalue_as_rvalue_p (maybe_undo_parenthesized_ref (init),
 					/*return*/true)))
     init = r;
+
+  if (init && BRACE_ENCLOSED_INITIALIZER_P (init))
+    {
+      /* We don't recurse here because we can't deduce from a nested
+	 initializer_list.  */
+      if (CONSTRUCTOR_ELTS (init))
+	for (constructor_elt &elt : CONSTRUCTOR_ELTS (init))
+	  elt.value = resolve_nondeduced_context (elt.value, complain);
+    }
+  else if (init)
+    init = resolve_nondeduced_context (init, complain);
 
   if (tree ctmpl = CLASS_PLACEHOLDER_TEMPLATE (auto_node))
     /* C++17 class template argument deduction.  */
@@ -30840,24 +30851,12 @@ do_auto_deduction (tree type, tree init, tree auto_node,
 	}
     }
 
-  if (type == error_mark_node)
+  if (type == error_mark_node || init == error_mark_node)
     return error_mark_node;
-
-  if (BRACE_ENCLOSED_INITIALIZER_P (init))
-    {
-      /* We don't recurse here because we can't deduce from a nested
-	 initializer_list.  */
-      if (CONSTRUCTOR_ELTS (init))
-	for (constructor_elt &elt : CONSTRUCTOR_ELTS (init))
-	  elt.value = resolve_nondeduced_context (elt.value, complain);
-    }
-  else
-    init = resolve_nondeduced_context (init, complain);
 
   tree targs;
   if (context == adc_decomp_type
       && auto_node == type
-      && init != error_mark_node
       && TREE_CODE (TREE_TYPE (init)) == ARRAY_TYPE)
     {
       /* [dcl.struct.bind]/1 - if decomposition declaration has no ref-qualifiers
