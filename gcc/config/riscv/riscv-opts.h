@@ -67,6 +67,7 @@ enum stack_protector_guard {
   SSP_GLOBAL			/* global canary */
 };
 
+
 /* RISC-V auto-vectorization preference.  */
 enum riscv_autovec_preference_enum {
   NO_AUTOVEC,
@@ -80,6 +81,15 @@ enum riscv_autovec_lmul_enum {
   RVV_M2 = 2,
   RVV_M4 = 4,
   RVV_M8 = 8
+};
+
+/* vectorization factor.  */
+enum riscv_vector_lmul_enum
+{
+  RVV_LMUL1 = 1,
+  RVV_LMUL2 = 2,
+  RVV_LMUL4 = 4,
+  RVV_LMUL8 = 8
 };
 
 #define MASK_ZICSR    (1 << 0)
