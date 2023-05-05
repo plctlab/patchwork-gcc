@@ -4356,6 +4356,10 @@ riscv_union_memmodels (enum memmodel model1, enum memmodel model2)
 static bool
 riscv_memmodel_needs_amo_acquire (enum memmodel model)
 {
+  /* ZTSO amo mappings require no annotations.  */
+  if (TARGET_ZTSO)
+    return false;
+
   switch (model)
     {
       case MEMMODEL_ACQ_REL:
@@ -4379,6 +4383,10 @@ riscv_memmodel_needs_amo_acquire (enum memmodel model)
 static bool
 riscv_memmodel_needs_amo_release (enum memmodel model)
 {
+  /* ZTSO amo mappings require no annotations.  */
+  if (TARGET_ZTSO)
+    return false;
+
   switch (model)
     {
       case MEMMODEL_ACQ_REL:
@@ -4575,14 +4583,20 @@ riscv_print_operand (FILE *file, rtx op, int letter)
       break;
 
     case 'I':
-      if (model == MEMMODEL_SEQ_CST)
+      if (TARGET_ZTSO && model != MEMMODEL_SEQ_CST)
+	/* LR ops only have an annotation for SEQ_CST in the Ztso mapping.  */
+	break;
+      else if (model == MEMMODEL_SEQ_CST)
 	fputs (".aqrl", file);
       else if (riscv_memmodel_needs_amo_acquire (model))
 	fputs (".aq", file);
       break;
 
     case 'J':
-      if (riscv_memmodel_needs_amo_release (model))
+      if (TARGET_ZTSO)
+	/* SC ops need no annotations in the Ztso mapping.  */
+	break;
+      else if (riscv_memmodel_needs_amo_release (model))
 	fputs (".rl", file);
       break;
 

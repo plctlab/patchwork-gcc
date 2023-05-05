@@ -108,6 +108,8 @@ static const riscv_implied_info_t riscv_implied_info[] =
   {"zhinx", "zhinxmin"},
   {"zhinxmin", "zfinx"},
 
+  {"ztso", "a"},
+
   {NULL, NULL}
 };
 
@@ -1264,6 +1266,8 @@ static const riscv_ext_flag_table_t riscv_ext_flag_table[] =
 
   {"svinval", &gcc_options::x_riscv_sv_subext, MASK_SVINVAL},
   {"svnapot", &gcc_options::x_riscv_sv_subext, MASK_SVNAPOT},
+
+  {"ztso", &gcc_options::x_riscv_ztso_subext, MASK_ZTSO},
 
   {"xtheadba",      &gcc_options::x_riscv_xthead_subext, MASK_XTHEADBA},
   {"xtheadbb",      &gcc_options::x_riscv_xthead_subext, MASK_XTHEADBB},
