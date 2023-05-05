@@ -248,4 +248,13 @@ th_mempair_output_move (rtx[4], bool, machine_mode, RTX_CODE);
 #endif
 
 extern bool riscv_use_divmod_expander (void);
+/* Routines implemented in riscv-v.cc.  */
+
+namespace riscv_vector {
+extern machine_mode riscv_vector_preferred_simd_mode (scalar_mode mode);
+extern bool riscv_vector_mask_mode_p (machine_mode);
+extern opt_machine_mode riscv_vector_get_mask_mode (machine_mode mode);
+extern rtx get_mask_policy_no_pred ();
+extern rtx get_tail_policy_no_pred ();
+}
 #endif /* ! GCC_RISCV_PROTOS_H */
