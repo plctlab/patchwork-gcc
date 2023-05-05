@@ -2069,8 +2069,8 @@ finish_mem_initializers (tree mem_inits)
    that the call to finish_decltype in do_auto_deduction will give the
    right result.  If EVEN_UNEVAL, do this even in unevaluated context.  */
 
-tree
-force_paren_expr (tree expr, bool even_uneval)
+static tree
+force_paren_expr (tree expr, bool even_uneval /* = false */)
 {
   /* This is only needed for decltype(auto) in C++14.  */
   if (cxx_dialect < cxx14)
