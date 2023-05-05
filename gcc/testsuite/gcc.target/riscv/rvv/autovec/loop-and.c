@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-additional-options "-O2 -ftree-vectorize -march=rv64gcv -mabi=lp64d" } */
+/* { dg-additional-options "-O2 -ftree-vectorize -march=rv64gcv -mabi=lp64d --param=riscv-autovec-preference=fixed-vlmax -mno-strict-align" } */
 
 #include <stdint.h>
 
@@ -10,8 +10,9 @@
       dst[i] = a[i] & b[i];				\
   }
 
-/* *int8_t not autovec currently. */
 #define TEST_ALL()	\
+ TEST_TYPE(int8_t)	\
+ TEST_TYPE(uint8_t)	\
  TEST_TYPE(int16_t)	\
  TEST_TYPE(uint16_t)	\
  TEST_TYPE(int32_t)	\
@@ -21,4 +22,4 @@
 
 TEST_ALL()
 
-/* { dg-final { scan-assembler-times {\tvand\.vv} 6 } } */
+/* { dg-final { scan-assembler-times {\tvand\.vv} 8 } } */

@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-additional-options "-O2 -ftree-vectorize -march=rv32gcv -mabi=ilp32d" } */
+/* { dg-additional-options "-O2 -ftree-vectorize -march=rv32gcv -mabi=ilp32d --param=riscv-autovec-preference=fixed-vlmax -mno-strict-align" } */
 
 #include <stdint.h>
 
@@ -10,8 +10,9 @@
       dst[i] = a[i] <= b[i] ? a[i] : b[i];			\
   }
 
-/* *int8_t not autovec currently. */
 #define TEST_ALL()	\
+ TEST_TYPE(int8_t)	\
+ TEST_TYPE(uint8_t)	\
  TEST_TYPE(int16_t)	\
  TEST_TYPE(uint16_t)	\
  TEST_TYPE(int32_t)	\
@@ -21,5 +22,5 @@
 
 TEST_ALL()
 
-/* { dg-final { scan-assembler-times {\tvmin\.vv} 3 } } */
-/* { dg-final { scan-assembler-times {\tvminu\.vv} 3 } } */
+/* { dg-final { scan-assembler-times {\tvmin\.vv} 4 } } */
+/* { dg-final { scan-assembler-times {\tvminu\.vv} 4 } } */
