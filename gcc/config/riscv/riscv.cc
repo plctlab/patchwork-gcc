@@ -3791,6 +3791,14 @@ riscv_get_arg_info (struct riscv_arg_info *info, const CUMULATIVE_ARGS *cum,
   info->gpr_offset = cum->num_gprs;
   info->fpr_offset = cum->num_fprs;
 
+  /* TODO: Currently, it will produce ICE for --param
+     riscv-autovec-preference=fixed-vlmax. So, we just return NULL_RTX here
+     let GCC genearte loads/stores. Ideally, GCC should either report
+     Warning message to tell user do not use RVV vector type in function
+     arg, or GCC just support function arg calling convention for RVV
+     directly.  */
+  if (riscv_v_ext_mode_p (mode))
+    return NULL_RTX;
   if (named)
     {
       riscv_aggregate_field fields[2];
