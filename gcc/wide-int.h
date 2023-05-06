@@ -1089,6 +1089,7 @@ public:
 
   /* FIXME: target-dependent, so should disappear.  */
   wide_int bswap () const;
+  wide_int bitreverse () const;
 };
 
 namespace wi
