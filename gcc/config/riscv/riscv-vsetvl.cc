@@ -3834,6 +3834,48 @@ pass_vsetvl::commit_vsetvls (void)
 	      const vector_insn_info *require
 		= m_vector_manager->vector_exprs[i];
 	      gcc_assert (require->valid_or_dirty_p ());
+
+	      /* Here we optimize the VSETVL is hoisted by LCM:
+
+		 Before LCM:
+		   bb 1:
+		     vsetvli a5,a2,e32,m1,ta,mu
+		   bb 2:
+		     vsetvli zero,a5,e32,m1,ta,mu
+		     ...
+
+		 After LCM:
+		   bb 1:
+		     vsetvli a5,a2,e32,m1,ta,mu
+		     LCM INSERTED: vsetvli zero,a5,e32,m1,ta,mu --> eliminate
+		   bb 2:
+		     ...
+	       */
+	      const basic_block pred_cfg_bb = eg->src;
+	      const auto block_info
+		= m_vector_manager->vector_block_infos[pred_cfg_bb->index];
+	      const insn_info *pred_insn = block_info.reaching_out.get_insn ();
+	      if (pred_insn && vsetvl_insn_p (pred_insn->rtl ())
+		  && require->get_avl_source ()
+		  && require->get_avl_source ()->insn ()
+		  && require->skip_avl_compatible_p (block_info.reaching_out))
+		{
+		  vector_insn_info new_info = *require;
+		  new_info.set_avl_info (
+		    block_info.reaching_out.get_avl_info ());
+		  new_info
+		    = block_info.reaching_out.merge (new_info, LOCAL_MERGE);
+		  change_vsetvl_insn (pred_insn, new_info);
+		  bitmap_clear_bit (m_vector_manager->vector_insert[ed], i);
+		  if (dump_file)
+		    fprintf (
+		      dump_file,
+		      "\nLCM INSERTED edge %d from bb %d to bb %d for VSETVL "
+		      "expr[%ld] is removed\n",
+		      ed, eg->src->index, eg->dest->index, i);
+		  continue;
+		}
+
 	      rtl_profile_for_edge (eg);
 	      start_sequence ();
 
