@@ -226,6 +226,12 @@
   return riscv_gpr_save_operation_p (op);
 })
 
+(define_special_predicate "gpr_multi_push_operation"
+  (match_code "parallel")
+{
+  return riscv_gpr_multi_push_operation_p (op);
+})
+
 ;; Predicates for the ZBS extension.
 (define_predicate "single_bit_mask_operand"
   (and (match_code "const_int")

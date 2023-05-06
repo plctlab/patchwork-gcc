@@ -106,6 +106,10 @@
   ;; Zihintpause unspec
   UNSPECV_PAUSE
 
+  ;; zc unspecs
+  UNSPECV_GPR_MULTI_PUSH
+  UNSPECV_GPR_MULTI_POP
+
   ;; XTheadFmv unspec
   UNSPEC_XTHEADFMV
   UNSPEC_XTHEADFMV_HW
@@ -135,6 +139,8 @@
    (EXCEPTION_RETURN		2)
    (VL_REGNUM			66)
    (VTYPE_REGNUM		67)
+   (PROLOGUE                   0)
+   (EPILOGUE                   1)
 ])
 
 (include "predicates.md")
@@ -3205,3 +3211,4 @@
 (include "sifive-7.md")
 (include "thead.md")
 (include "vector.md")
+(include "zc.md")
