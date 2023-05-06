@@ -338,6 +338,10 @@ typedef int shift_count_type __attribute__((mode (__libgcc_shift_count__)));
 #define __udiv_w_sdiv		__N(udiv_w_sdiv)
 #define __clear_cache		__N(clear_cache)
 #define __enable_execute_stack	__N(enable_execute_stack)
+#define __bitrevqi2		__N(bitrevqi2)
+#define __bitrevhi2		__N(bitrevhi2)
+#define __bitrevsi2		__N(bitrevsi2)
+#define __bitrevdi2		__N(bitrevdi2)
 
 #ifndef __powisf2
 #define __powisf2		__N(powisf2)
@@ -425,6 +429,15 @@ extern DWtype __addvDI3 (DWtype, DWtype);
 extern DWtype __subvDI3 (DWtype, DWtype);
 extern DWtype __mulvDI3 (DWtype, DWtype);
 extern DWtype __negvDI2 (DWtype);
+
+extern QItype __bitrevqi2 (QItype);
+extern HItype __bitrevhi2 (HItype);
+#if MIN_UNITS_PER_WORD > 1
+extern SItype __bitrevsi2 (SItype);
+#endif
+#if __SIZEOF_LONG_LONG__ > 4
+extern DItype __bitrevdi2 (DItype);
+#endif
 
 #ifdef COMPAT_SIMODE_TRAPPING_ARITHMETIC
 #define __absvsi2	__N(absvsi2)

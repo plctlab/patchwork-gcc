@@ -488,6 +488,54 @@ __bswapdi2 (DItype u)
 	  | (((u) & 0x00000000000000ffull) << 56));
 }
 #endif
+
+#ifdef L_bitrevqi2
+QItype
+__bitrevqi2 (QItype x)
+{
+  UQItype u = x;
+  u = (((u) >> 1) & 0x55) | (((u) & 0x55) << 1);
+  u = (((u) >> 2) & 0x33) | (((u) & 0x33) << 2);
+  return ((u) >> 4) | ((u) << 4);
+}
+#endif
+#ifdef L_bitrevhi2
+HItype
+__bitrevhi2 (HItype x)
+{
+  UHItype u = x;
+  u = (((u) >> 1) & 0x5555) | (((u) & 0x5555) << 1);
+  u = (((u) >> 2) & 0x3333) | (((u) & 0x3333) << 2);
+  u = (((u) >> 4) & 0x0f0f) | (((u) & 0x0f0f) << 4);
+  return ((u) >> 8) | ((u) << 8);
+}
+#endif
+#ifdef L_bitrevsi2
+SItype
+__bitrevsi2 (SItype x)
+{
+  USItype u = x;
+  u = (((u) >> 1) & 0x55555555) | (((u) & 0x55555555) << 1);
+  u = (((u) >> 2) & 0x33333333) | (((u) & 0x33333333) << 2);
+  u = (((u) >> 4) & 0x0f0f0f0f) | (((u) & 0x0f0f0f0f) << 4);
+  return __bswapsi2 (u);
+}
+#endif
+#ifdef L_bitrevdi2
+DItype
+__bitrevdi2 (DItype x)
+{
+  UDItype u = x;
+  u = (((u) >> 1) & 0x5555555555555555ll)
+      | (((u) & 0x5555555555555555ll) << 1);
+  u = (((u) >> 2) & 0x3333333333333333ll)
+      | (((u) & 0x3333333333333333ll) << 2);
+  u = (((u) >> 4) & 0x0f0f0f0f0f0f0f0fll)
+      | (((u) & 0x0f0f0f0f0f0f0f0fll) << 4);
+  return __bswapdi2 (u);
+}
+#endif
+
 #ifdef L_ffssi2
 #undef int
 int

@@ -218,6 +218,13 @@ These functions return the number of bits set in @var{a}.
 These functions return the @var{a} byteswapped.
 @end deftypefn
 
+@deftypefn {Runtime Function} int8_t __bitrevqi2 (int8_t @var{a})
+@deftypefnx {Runtime Function} int16_t __bitrevhi2 (int16_t @var{a})
+@deftypefnx {Runtime Function} int32_t __bitrevsi2 (int32_t @var{a})
+@deftypefnx {Runtime Function} int64_t __bitrevdi2 (int64_t @var{a})
+These functions return the bit reversed @var{a}.
+@end deftypefn
+
 @node Soft float library routines
 @section Routines for floating point emulation
 @cindex soft float library

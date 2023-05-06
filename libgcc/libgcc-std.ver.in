@@ -1944,3 +1944,12 @@ GCC_7.0.0 {
   __PFX__divmoddi4
   __PFX__divmodti4
 }
+
+%inherit GCC_14.0.0 GCC_7.0.0
+GCC_14.0.0 {
+  # bit reversal functions
+  __PFX__bitrevqi2
+  __PFX__bitrevhi2
+  __PFX__bitrevsi2
+  __PFX__bitrevdi2
+}
