@@ -4026,7 +4026,8 @@ pass_vsetvl::local_eliminate_vsetvl_insn (const vector_insn_info &dem) const
 	{
 	  if (i->is_call () || i->is_asm ()
 	      || find_access (i->defs (), VL_REGNUM)
-	      || find_access (i->defs (), VTYPE_REGNUM))
+	      || find_access (i->defs (), VTYPE_REGNUM)
+	      || find_access (i->defs (), REGNO (vl)))
 	    return;
 
 	  if (has_vtype_op (i->rtl ()))
@@ -4049,6 +4050,52 @@ pass_vsetvl::local_eliminate_vsetvl_insn (const vector_insn_info &dem) const
 	      change_vsetvl_insn (insn, new_info);
 	      eliminate_insn (PREV_INSN (i->rtl ()));
 	      return;
+	    }
+	}
+
+      /* Here we optimize the VSETVL is hoisted by LCM:
+
+	 Before LCM:
+	   bb 1:
+	     vsetvli a5,a2,e32,m1,ta,mu
+	   bb 2:
+	     vsetvli zero,a5,e32,m1,ta,mu
+	     ...
+
+	 After LCM:
+	   bb 1:
+	     vsetvli a5,a2,e32,m1,ta,mu
+	     LCM INSERTED: vsetvli zero,a5,e32,m1,ta,mu --> eliminate
+	   bb 2:
+	     ...
+      Such instruction can not be accessed in RTL_SSA when we don't re-init
+      the new RTL_SSA framework but it is definetely at the END of the block. */
+      rtx_insn *end_vsetvl = BB_END (bb->cfg_bb ());
+      if (!vsetvl_discard_result_insn_p (end_vsetvl))
+	{
+	  if (JUMP_P (end_vsetvl)
+	      && vsetvl_discard_result_insn_p (PREV_INSN (end_vsetvl)))
+	    end_vsetvl = PREV_INSN (end_vsetvl);
+	  else
+	    return;
+	}
+
+      if (single_succ_p (bb->cfg_bb ()))
+	{
+	  edge e = single_succ_edge (bb->cfg_bb ());
+	  auto require
+	    = m_vector_manager->vector_block_infos[e->dest->index].local_dem;
+	  const auto reaching_out
+	    = m_vector_manager->vector_block_infos[bb->index ()].reaching_out;
+	  if (require.get_avl_source ()
+	      && require.skip_avl_compatible_p (reaching_out)
+	      && reaching_out.get_insn () == insn
+	      && get_vl (insn->rtl ()) == get_avl (end_vsetvl))
+	    {
+	      require.set_avl_info (reaching_out.get_avl_info ());
+	      require = reaching_out.merge (require, LOCAL_MERGE);
+	      change_vsetvl_insn (insn, require);
+	      eliminate_insn (end_vsetvl);
 	    }
 	}
     }
