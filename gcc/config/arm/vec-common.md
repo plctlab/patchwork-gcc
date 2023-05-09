@@ -116,6 +116,13 @@
    "ARM_HAVE_<MODE>_ARITH"
 )
 
+(define_expand "smin<mode>3"
+  [(set (match_operand:VH 0 "s_register_operand")
+	(smin:VH (match_operand:VH 1 "s_register_operand")
+		 (match_operand:VH 2 "s_register_operand")))]
+   "ARM_HAVE_<MODE>_ARITH"
+)
+
 (define_expand "umin<mode>3"
   [(set (match_operand:VINTW 0 "s_register_operand")
 	(umin:VINTW (match_operand:VINTW 1 "s_register_operand")
@@ -127,6 +134,13 @@
   [(set (match_operand:VALLW 0 "s_register_operand")
 	(smax:VALLW (match_operand:VALLW 1 "s_register_operand")
 		    (match_operand:VALLW 2 "s_register_operand")))]
+   "ARM_HAVE_<MODE>_ARITH"
+)
+
+(define_expand "smax<mode>3"
+  [(set (match_operand:VH 0 "s_register_operand")
+	(smax:VH (match_operand:VH 1 "s_register_operand")
+		 (match_operand:VH 2 "s_register_operand")))]
    "ARM_HAVE_<MODE>_ARITH"
 )
 
