@@ -1913,11 +1913,27 @@ AC_ARG_ENABLE(host-shared,
 
 AC_SUBST(host_shared)
 
+# Enable --enable-host-pie.
+AC_ARG_ENABLE(host-pie,
+[AS_HELP_STRING([--enable-host-pie],
+       [build host code as PIE])])
+AC_SUBST(enable_host_pie)
+
+if test x$host_shared = xyes; then
+  PICFLAG=-fPIC
+elif test x$enable_host_pie = xyes; then
+  PICFLAG=-fPIE
+else
+  PICFLAG=
+fi
+
+AC_SUBST(PICFLAG)
+
 # If we are building PIC/PIE host executables, and we are building dependent
 # libs (e.g. GMP) in-tree those libs need to be configured to generate PIC
 # code.
 host_libs_picflag=
-if test "$host_shared" = "yes";then
+if test "$host_shared" = "yes" -o "$enable_host_pie" = "yes"; then
 host_libs_picflag='--with-pic'
 fi
 AC_SUBST(host_libs_picflag)
