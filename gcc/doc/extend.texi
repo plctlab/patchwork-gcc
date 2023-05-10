@@ -18570,10 +18570,12 @@ instructions.
 @defbuiltin{{void} vec_xst_trunc (vector signed __int128, signed long long, signed char *)}
 @defbuiltinx{{void} vec_xst_trunc (vector signed __int128, signed long long, signed short *)}
 @defbuiltinx{{void} vec_xst_trunc (vector signed __int128, signed long long, signed int *)}
+@defbuiltinx{{void} vec_xst_trunc (vector signed __int128, signed long long, signed long *)}
 @defbuiltinx{{void} vec_xst_trunc (vector signed __int128, signed long long, signed long long *)}
 @defbuiltinx{{void} vec_xst_trunc (vector unsigned __int128, signed long long, unsigned char *)}
 @defbuiltinx{{void} vec_xst_trunc (vector unsigned __int128, signed long long, unsigned short *)}
 @defbuiltinx{{void} vec_xst_trunc (vector unsigned __int128, signed long long, unsigned int *)}
+@defbuiltinx{{void} vec_xst_trunc (vector unsigned __int128, signed long long, unsigned long *)}
 @defbuiltinx{{void} vec_xst_trunc (vector unsigned __int128, signed long long, unsigned long long *)}
 
 Truncate and store the rightmost element of a vector, as if implemented by the

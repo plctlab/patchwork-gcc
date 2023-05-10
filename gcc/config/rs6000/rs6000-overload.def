@@ -4872,6 +4872,10 @@
     TR_STXVRWX  TR_STXVRWX_S
   void __builtin_vec_xst_trunc (vuq, signed long long, unsigned int *);
     TR_STXVRWX  TR_STXVRWX_U
+  void __builtin_vec_xst_trunc (vsq, signed long long, signed long *);
+    TR_STXVRLX  TR_STXVRLX_S
+  void __builtin_vec_xst_trunc (vuq, signed long long, unsigned long *);
+    TR_STXVRLX  TR_STXVRLX_U
   void __builtin_vec_xst_trunc (vsq, signed long long, signed long long *);
     TR_STXVRDX  TR_STXVRDX_S
   void __builtin_vec_xst_trunc (vuq, signed long long, unsigned long long *);
