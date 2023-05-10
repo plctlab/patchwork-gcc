@@ -1401,6 +1401,26 @@
   smax umax smin umin mult div udiv mod umod
 ])
 
+(define_code_attr BINOP_TO_UPPERCASE [
+    (plus "PLUS")
+    (minus "MINUS")
+    (and "AND")
+    (ior "IOR")
+    (xor "XOR")
+    (ashift "ASHIFT")
+    (ashiftrt "ASHIFTRT")
+    (lshiftrt "LSHIFTRT")
+    (smax "SMAX")
+    (umax "UMAX")
+    (smin "SMIN")
+    (umin "UMIN")
+    (mult "MULT")
+    (div "DIV")
+    (udiv "UDIV")
+    (mod "MOD")
+    (umod "UMOD")
+])
+
 (define_code_iterator any_int_unop [neg not])
 
 (define_code_iterator any_commutative_binop [plus and ior xor
@@ -1408,6 +1428,8 @@
 ])
 
 (define_code_iterator any_non_commutative_binop [minus div udiv mod umod])
+
+(define_code_iterator any_immediate_binop [plus minus and ior xor])
 
 (define_code_iterator any_sat_int_binop [ss_plus ss_minus us_plus us_minus])
 (define_code_iterator sat_int_plus_binop [ss_plus us_plus])

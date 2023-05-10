@@ -53,7 +53,7 @@ namespace riscv_vector {
 template <int MAX_OPERANDS> class insn_expander
 {
 public:
-  insn_expander () : m_opno (0) {}
+  insn_expander () : m_opno (0), has_dest(false) {}
   void add_output_operand (rtx x, machine_mode mode)
   {
     create_output_operand (&m_ops[m_opno++], x, mode);
@@ -84,6 +84,44 @@ public:
     add_input_operand (gen_int_mode (type, Pmode), Pmode);
   }
 
+  void set_dest_and_mask (rtx mask, rtx dest, machine_mode mask_mode)
+  {
+    dest_mode = GET_MODE (dest);
+    has_dest = true;
+
+    add_output_operand (dest, dest_mode);
+
+    if (mask)
+      add_input_operand (mask, GET_MODE (mask));
+    else
+      add_all_one_mask_operand (mask_mode);
+
+    add_vundef_operand (dest_mode);
+  }
+
+  void set_len_and_policy (rtx len, bool vlmax_p)
+    {
+      gcc_assert (has_dest);
+      gcc_assert (len || vlmax_p);
+
+      if (len)
+	add_input_operand (len, Pmode);
+      else
+	{
+	  rtx vlmax = gen_reg_rtx (Pmode);
+	  emit_vlmax_vsetvl (dest_mode, vlmax);
+	  add_input_operand (vlmax, Pmode);
+	}
+
+      if (GET_MODE_CLASS (dest_mode) != MODE_VECTOR_BOOL)
+	add_policy_operand (get_prefer_tail_policy (), get_prefer_mask_policy ());
+
+      if (vlmax_p)
+	add_avl_type_operand (avl_type::VLMAX);
+      else
+	add_avl_type_operand (avl_type::NONVLMAX);
+    }
+
   void expand (enum insn_code icode, bool temporary_volatile_p = false)
   {
     if (temporary_volatile_p)
@@ -97,6 +135,8 @@ public:
 
 private:
   int m_opno;
+  bool has_dest;
+  machine_mode dest_mode;
   expand_operand m_ops[MAX_OPERANDS];
 };
 
@@ -190,11 +230,11 @@ autovec_use_vlmax_p (void)
 }
 
 /* Emit an RVV unmask && vl mov from SRC to DEST.  */
+template <int MAX_OPERANDS>
 static void
-emit_pred_op (unsigned icode, rtx mask, rtx dest, rtx src, rtx len,
-	      machine_mode mask_mode, bool vlmax_p)
+set_expander_dest_and_mask (insn_expander<MAX_OPERANDS> &e, rtx mask, rtx dest,
+			    machine_mode mask_mode)
 {
-  insn_expander<8> e;
   machine_mode mode = GET_MODE (dest);
 
   e.add_output_operand (dest, mode);
@@ -205,27 +245,39 @@ emit_pred_op (unsigned icode, rtx mask, rtx dest, rtx src, rtx len,
     e.add_all_one_mask_operand (mask_mode);
 
   e.add_vundef_operand (mode);
+}
+
+
+/* Emit an RVV unmask && vl mov from SRC to DEST.  */
+static void
+emit_pred_op (unsigned icode, rtx mask, rtx dest, rtx src, rtx len,
+	      machine_mode mask_mode, bool vlmax_p)
+{
+  insn_expander<8> e;
+  e.set_dest_and_mask (mask, dest, mask_mode);
 
   e.add_input_operand (src, GET_MODE (src));
 
-  if (len)
-    e.add_input_operand (len, Pmode);
-  else
-    {
-      rtx vlmax = gen_reg_rtx (Pmode);
-      emit_vlmax_vsetvl (mode, vlmax);
-      e.add_input_operand (vlmax, Pmode);
-    }
-
-  if (GET_MODE_CLASS (mode) != MODE_VECTOR_BOOL)
-    e.add_policy_operand (get_prefer_tail_policy (), get_prefer_mask_policy ());
-
-  if (vlmax_p)
-    e.add_avl_type_operand (avl_type::VLMAX);
-  else
-    e.add_avl_type_operand (avl_type::NONVLMAX);
+  e.set_len_and_policy (len, vlmax_p);
 
   e.expand ((enum insn_code) icode, MEM_P (dest) || MEM_P (src));
+}
+
+/* Emit an RVV unmask && vl mov from SRC to DEST.  */
+static void
+emit_pred_binop (unsigned icode, rtx mask, rtx dest, rtx src1, rtx src2,
+		 rtx len, machine_mode mask_mode, machine_mode op2mode,
+		 bool vlmax_p)
+{
+  insn_expander<9> e;
+  e.set_dest_and_mask (mask, dest, mask_mode);
+
+  e.add_input_operand (src1, GET_MODE (src1));
+  e.add_input_operand (src2, op2mode == VOIDmode ? GET_MODE (src2) : op2mode);
+
+  e.set_len_and_policy (len, vlmax_p);
+
+  e.expand ((enum insn_code) icode, MEM_P (dest) || MEM_P (src1) || MEM_P (src2));
 }
 
 void
@@ -246,6 +298,14 @@ emit_nonvlmax_op (unsigned icode, rtx dest, rtx src, rtx len,
 		  machine_mode mask_mode)
 {
   emit_pred_op (icode, NULL_RTX, dest, src, len, mask_mode, false);
+}
+
+void
+emit_nonvlmax_binop (unsigned icode, rtx dest, rtx src1, rtx src2, rtx len,
+		     machine_mode mask_mode, machine_mode op2mode)
+{
+  emit_pred_binop (icode, NULL_RTX, dest, src1, src2, len, mask_mode, op2mode,
+		   false);
 }
 
 static void

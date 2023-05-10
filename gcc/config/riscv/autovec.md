@@ -58,3 +58,36 @@
     DONE;
   }
 )
+
+;; =========================================================================
+;; == Binary integer operations
+;; =========================================================================
+
+(define_expand "<optab><mode>3"
+  [(set (match_operand:VI 0 "register_operand")
+    (any_int_binop:VI
+     (match_operand:VI 1 "<binop_rhs1_predicate>")
+     (match_operand:VI 2 "<binop_rhs2_predicate>")))]
+  "TARGET_VECTOR"
+{
+  if (!register_operand (operands[2], <MODE>mode))
+    {
+      rtx cst;
+      gcc_assert (const_vec_duplicate_p(operands[2], &cst));
+      machine_mode inner = <VEL>mode;
+      machine_mode op2mode = Pmode;
+      if (inner == E_QImode || inner == E_HImode || inner == E_SImode)
+	op2mode = inner;
+
+      riscv_vector::emit_nonvlmax_binop (code_for_pred_scalar
+					 (<BINOP_TO_UPPERCASE>, <MODE>mode),
+					 operands[0], operands[1], cst,
+					 NULL_RTX, <VM>mode, op2mode);
+    }
+  else
+    riscv_vector::emit_nonvlmax_binop (code_for_pred
+				       (<BINOP_TO_UPPERCASE>, <MODE>mode),
+				       operands[0], operands[1], operands[2],
+				       NULL_RTX, <VM>mode);
+  DONE;
+})
