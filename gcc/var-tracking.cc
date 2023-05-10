@@ -116,8 +116,13 @@
 #include "fibonacci_heap.h"
 #include "print-rtl.h"
 #include "function-abi.h"
+#include "mux-utils.h"
 
 typedef fibonacci_heap <long, basic_block_def> bb_heap_t;
+
+/* A declaration of a variable, or an RTL value being handled like a
+   declaration by pointer_mux.  */
+typedef pointer_mux<tree_node, rtx_def> decl_or_value;
 
 /* var-tracking.cc assumes that tree code with the same value as VALUE rtx code
    has no chance to appear in REG_EXPR/MEM_EXPRs and isn't a decl.
@@ -196,15 +201,11 @@ struct micro_operation
 };
 
 
-/* A declaration of a variable, or an RTL value being handled like a
-   declaration.  */
-typedef void *decl_or_value;
-
 /* Return true if a decl_or_value DV is a DECL or NULL.  */
 static inline bool
 dv_is_decl_p (decl_or_value dv)
 {
-  return !dv || (int) TREE_CODE ((tree) dv) != (int) VALUE;
+  return dv.is_first ();
 }
 
 /* Return true if a decl_or_value is a VALUE rtl.  */
@@ -219,7 +220,7 @@ static inline tree
 dv_as_decl (decl_or_value dv)
 {
   gcc_checking_assert (dv_is_decl_p (dv));
-  return (tree) dv;
+  return dv.known_first ();
 }
 
 /* Return the value in the decl_or_value.  */
@@ -227,14 +228,15 @@ static inline rtx
 dv_as_value (decl_or_value dv)
 {
   gcc_checking_assert (dv_is_value_p (dv));
-  return (rtx)dv;
+  return dv.known_second ();
 }
 
 /* Return the opaque pointer in the decl_or_value.  */
 static inline void *
 dv_as_opaque (decl_or_value dv)
 {
-  return dv;
+  return dv.is_first () ? (void *) dv.known_first ()
+    : (void *) dv.known_second ();
 }
 
 
@@ -503,9 +505,7 @@ variable_hasher::hash (const variable *v)
 inline bool
 variable_hasher::equal (const variable *v, const void *y)
 {
-  decl_or_value dv = CONST_CAST2 (decl_or_value, const void *, y);
-
-  return (dv_as_opaque (v->dv) == dv_as_opaque (dv));
+  return dv_as_opaque (v->dv) == y;
 }
 
 /* Free the element of VARIABLE_HTAB (its type is struct variable_def).  */
@@ -1396,8 +1396,7 @@ onepart_pool_allocate (onepart_enum onepart)
 static inline decl_or_value
 dv_from_decl (tree decl)
 {
-  decl_or_value dv;
-  dv = decl;
+  decl_or_value dv = decl_or_value::first (decl);
   gcc_checking_assert (dv_is_decl_p (dv));
   return dv;
 }
@@ -1406,8 +1405,7 @@ dv_from_decl (tree decl)
 static inline decl_or_value
 dv_from_value (rtx value)
 {
-  decl_or_value dv;
-  dv = value;
+  decl_or_value dv = decl_or_value::second (value);
   gcc_checking_assert (dv_is_value_p (dv));
   return dv;
 }
@@ -1519,7 +1517,7 @@ static attrs *
 attrs_list_member (attrs *list, decl_or_value dv, HOST_WIDE_INT offset)
 {
   for (; list; list = list->next)
-    if (dv_as_opaque (list->dv) == dv_as_opaque (dv) && list->offset == offset)
+    if (list->dv == dv && list->offset == offset)
       return list;
   return NULL;
 }
@@ -1661,7 +1659,8 @@ shared_hash_find_slot_unshare_1 (shared_hash **pvars, decl_or_value dv,
 {
   if (shared_hash_shared (*pvars))
     *pvars = shared_hash_unshare (*pvars);
-  return shared_hash_htab (*pvars)->find_slot_with_hash (dv, dvhash, ins);
+  return shared_hash_htab (*pvars)->find_slot_with_hash (dv_as_opaque (dv),
+							 dvhash, ins);
 }
 
 static inline variable **
@@ -1678,7 +1677,8 @@ shared_hash_find_slot_unshare (shared_hash **pvars, decl_or_value dv,
 static inline variable **
 shared_hash_find_slot_1 (shared_hash *vars, decl_or_value dv, hashval_t dvhash)
 {
-  return shared_hash_htab (vars)->find_slot_with_hash (dv, dvhash,
+  return shared_hash_htab (vars)->find_slot_with_hash (dv_as_opaque (dv),
+						       dvhash,
 						       shared_hash_shared (vars)
 						       ? NO_INSERT : INSERT);
 }
@@ -1695,7 +1695,8 @@ static inline variable **
 shared_hash_find_slot_noinsert_1 (shared_hash *vars, decl_or_value dv,
 				  hashval_t dvhash)
 {
-  return shared_hash_htab (vars)->find_slot_with_hash (dv, dvhash, NO_INSERT);
+  return shared_hash_htab (vars)->find_slot_with_hash (dv_as_opaque (dv),
+						       dvhash, NO_INSERT);
 }
 
 static inline variable **
@@ -1710,7 +1711,7 @@ shared_hash_find_slot_noinsert (shared_hash *vars, decl_or_value dv)
 static inline variable *
 shared_hash_find_1 (shared_hash *vars, decl_or_value dv, hashval_t dvhash)
 {
-  return shared_hash_htab (vars)->find_with_hash (dv, dvhash);
+  return shared_hash_htab (vars)->find_with_hash (dv_as_opaque (dv), dvhash);
 }
 
 static inline variable *
@@ -1807,7 +1808,7 @@ unshare_variable (dataflow_set *set, variable **slot, variable *var,
   if (var->in_changed_variables)
     {
       variable **cslot
-	= changed_variables->find_slot_with_hash (var->dv,
+	= changed_variables->find_slot_with_hash (dv_as_opaque (var->dv),
 						  dv_htab_hash (var->dv),
 						  NO_INSERT);
       gcc_assert (*cslot == (void *) var);
@@ -1831,8 +1832,8 @@ vars_copy (variable_table_type *dst, variable_table_type *src)
     {
       variable **dstp;
       var->refcount++;
-      dstp = dst->find_slot_with_hash (var->dv, dv_htab_hash (var->dv),
-				       INSERT);
+      dstp = dst->find_slot_with_hash (dv_as_opaque (var->dv),
+				       dv_htab_hash (var->dv), INSERT);
       *dstp = var;
     }
 }
@@ -1866,8 +1867,7 @@ var_reg_decl_set (dataflow_set *set, rtx loc, enum var_init_status initialized,
     dv = dv_from_decl (var_debug_decl (dv_as_decl (dv)));
 
   for (node = set->regs[REGNO (loc)]; node; node = node->next)
-    if (dv_as_opaque (node->dv) == dv_as_opaque (dv)
-	&& node->offset == offset)
+    if (node->dv == dv && node->offset == offset)
       break;
   if (!node)
     attrs_list_insert (&set->regs[REGNO (loc)], dv, offset, loc);
@@ -1966,7 +1966,7 @@ var_reg_delete_and_set (dataflow_set *set, rtx loc, bool modify,
   for (node = *nextp; node; node = next)
     {
       next = node->next;
-      if (dv_as_opaque (node->dv) != decl || node->offset != offset)
+      if (node->dv.first_or_null () != decl || node->offset != offset)
 	{
 	  delete_variable_part (set, node->loc, node->dv, node->offset);
 	  delete node;
@@ -3242,7 +3242,7 @@ find_loc_in_1pdv (rtx loc, variable *var, variable_table_type *vars)
   if (!var->n_var_parts)
     return NULL;
 
-  gcc_checking_assert (loc != dv_as_opaque (var->dv));
+  gcc_checking_assert (loc != var->dv.second_or_null ());
 
   loc_code = GET_CODE (loc);
   for (node = var->var_part[0].loc_chain; node; node = node->next)
@@ -3286,7 +3286,7 @@ find_loc_in_1pdv (rtx loc, variable *var, variable_table_type *vars)
       gcc_checking_assert (!node->next);
 
       dv = dv_from_value (node->loc);
-      rvar = vars->find_with_hash (dv, dv_htab_hash (dv));
+      rvar = vars->find_with_hash (dv_as_opaque (dv), dv_htab_hash (dv));
       return find_loc_in_1pdv (loc, rvar, vars);
     }
 
@@ -3832,16 +3832,14 @@ canonicalize_values_star (variable **slot, dataflow_set *set)
 
 	    while (list)
 	      {
-		if (list->offset == 0
-		    && (dv_as_opaque (list->dv) == dv_as_opaque (dv)
-			|| dv_as_opaque (list->dv) == dv_as_opaque (cdv)))
+		if (list->offset == 0 && (list->dv == dv || list->dv == cdv))
 		  break;
 
 		list = list->next;
 	      }
 
 	    gcc_assert (list);
-	    if (dv_as_opaque (list->dv) == dv_as_opaque (dv))
+	    if (list->dv == dv)
 	      {
 		list->dv = cdv;
 		for (listp = &list->next; (list = *listp); listp = &list->next)
@@ -3849,7 +3847,7 @@ canonicalize_values_star (variable **slot, dataflow_set *set)
 		    if (list->offset)
 		      continue;
 
-		    if (dv_as_opaque (list->dv) == dv_as_opaque (cdv))
+		    if (list->dv == cdv)
 		      {
 			*listp = list->next;
 			delete list;
@@ -3857,17 +3855,17 @@ canonicalize_values_star (variable **slot, dataflow_set *set)
 			break;
 		      }
 
-		    gcc_assert (dv_as_opaque (list->dv) != dv_as_opaque (dv));
+		    gcc_assert (list->dv != dv);
 		  }
 	      }
-	    else if (dv_as_opaque (list->dv) == dv_as_opaque (cdv))
+	    else if (list->dv == cdv)
 	      {
 		for (listp = &list->next; (list = *listp); listp = &list->next)
 		  {
 		    if (list->offset)
 		      continue;
 
-		    if (dv_as_opaque (list->dv) == dv_as_opaque (dv))
+		    if (list->dv == dv)
 		      {
 			*listp = list->next;
 			delete list;
@@ -3875,7 +3873,7 @@ canonicalize_values_star (variable **slot, dataflow_set *set)
 			break;
 		      }
 
-		    gcc_assert (dv_as_opaque (list->dv) != dv_as_opaque (cdv));
+		    gcc_assert (list->dv != cdv);
 		  }
 	      }
 	    else
@@ -3884,9 +3882,7 @@ canonicalize_values_star (variable **slot, dataflow_set *set)
 	    if (flag_checking)
 	      while (list)
 		{
-		  if (list->offset == 0
-		      && (dv_as_opaque (list->dv) == dv_as_opaque (dv)
-			  || dv_as_opaque (list->dv) == dv_as_opaque (cdv)))
+		  if (list->offset == 0 && (list->dv == dv || list->dv == cdv))
 		    gcc_unreachable ();
 
 		  list = list->next;
@@ -4475,7 +4471,7 @@ variable_post_merge_new_vals (variable **slot, dfset_post_merge *dfpm)
 			check_dupes = true;
 			break;
 		      }
-		    else if (dv_as_opaque (att->dv) == dv_as_opaque (var->dv))
+		    else if (att->dv == var->dv)
 		      curp = attp;
 		  }
 
@@ -4485,7 +4481,7 @@ variable_post_merge_new_vals (variable **slot, dfset_post_merge *dfpm)
 		  while (*curp)
 		    if ((*curp)->offset == 0
 			&& GET_MODE ((*curp)->loc) == GET_MODE (node->loc)
-			&& dv_as_opaque ((*curp)->dv) == dv_as_opaque (var->dv))
+			&& (*curp)->dv == var->dv)
 		      break;
 		    else
 		      curp = &(*curp)->next;
@@ -4664,7 +4660,7 @@ find_mem_expr_in_1pdv (tree expr, rtx val, variable_table_type *vars)
 	      && !VALUE_RECURSED_INTO (val));
 
   dv = dv_from_value (val);
-  var = vars->find_with_hash (dv, dv_htab_hash (dv));
+  var = vars->find_with_hash (dv_as_opaque (dv), dv_htab_hash (dv));
 
   if (!var)
     return NULL;
@@ -4989,7 +4985,7 @@ dump_onepart_variable_differences (variable *var1, variable *var2)
 
   gcc_assert (var1 != var2);
   gcc_assert (dump_file);
-  gcc_assert (dv_as_opaque (var1->dv) == dv_as_opaque (var2->dv));
+  gcc_assert (var1->dv == var2->dv);
   gcc_assert (var1->n_var_parts == 1
 	      && var2->n_var_parts == 1);
 
@@ -5054,8 +5050,7 @@ variable_different_p (variable *var1, variable *var2)
 
   if (var1->onepart && var1->n_var_parts)
     {
-      gcc_checking_assert (dv_as_opaque (var1->dv) == dv_as_opaque (var2->dv)
-			   && var1->n_var_parts == 1);
+      gcc_checking_assert (var1->dv == var2->dv && var1->n_var_parts == 1);
       /* One-part values have locations in a canonical order.  */
       return onepart_variable_different_p (var1, var2);
     }
@@ -5103,7 +5098,8 @@ dataflow_set_different (dataflow_set *old_set, dataflow_set *new_set)
 			       var1, variable, hi)
     {
       variable_table_type *htab = shared_hash_htab (new_set->vars);
-      variable *var2 = htab->find_with_hash (var1->dv, dv_htab_hash (var1->dv));
+      variable *var2 = htab->find_with_hash (dv_as_opaque (var1->dv),
+					     dv_htab_hash (var1->dv));
 
       if (!var2)
 	{
@@ -5140,7 +5136,8 @@ dataflow_set_different (dataflow_set *old_set, dataflow_set *new_set)
 			       var1, variable, hi)
     {
       variable_table_type *htab = shared_hash_htab (old_set->vars);
-      variable *var2 = htab->find_with_hash (var1->dv, dv_htab_hash (var1->dv));
+      variable *var2 = htab->find_with_hash (dv_as_opaque (var1->dv),
+					     dv_htab_hash (var1->dv));
       if (!var2)
 	{
 	  if (details)
@@ -7422,7 +7419,8 @@ variable_from_dropped (decl_or_value dv, enum insert_option insert)
   variable *empty_var;
   onepart_enum onepart;
 
-  slot = dropped_values->find_slot_with_hash (dv, dv_htab_hash (dv), insert);
+  slot = dropped_values->find_slot_with_hash (dv_as_opaque (dv),
+					      dv_htab_hash (dv), insert);
 
   if (!slot)
     return NULL;
@@ -7493,7 +7491,8 @@ variable_was_changed (variable *var, dataflow_set *set)
       /* Remember this decl or VALUE has been added to changed_variables.  */
       set_dv_changed (var->dv, true);
 
-      slot = changed_variables->find_slot_with_hash (var->dv, hash, INSERT);
+      slot = changed_variables->find_slot_with_hash (dv_as_opaque (var->dv),
+						     hash, INSERT);
 
       if (*slot)
 	{
@@ -7520,9 +7519,10 @@ variable_was_changed (variable *var, dataflow_set *set)
 
 	  if (onepart == ONEPART_VALUE || onepart == ONEPART_DEXPR)
 	    {
-	      dslot = dropped_values->find_slot_with_hash (var->dv,
-							   dv_htab_hash (var->dv),
-							   INSERT);
+	      dslot =
+		dropped_values->find_slot_with_hash (dv_as_opaque (var->dv),
+						     dv_htab_hash (var->dv),
+						     INSERT);
 	      empty_var = *dslot;
 
 	      if (empty_var)
@@ -7656,7 +7656,7 @@ set_slot_part (dataflow_set *set, rtx loc, variable **slot,
     onepart = dv_onepart_p (dv);
 
   gcc_checking_assert (offset == 0 || !onepart);
-  gcc_checking_assert (loc != dv_as_opaque (dv));
+  gcc_checking_assert (loc != dv.second_or_null ());
 
   if (! flag_var_tracking_uninit)
     initialized = VAR_INIT_STATUS_INITIALIZED;
@@ -7684,7 +7684,7 @@ set_slot_part (dataflow_set *set, rtx loc, variable **slot,
     {
       int r = -1, c = 0;
 
-      gcc_assert (dv_as_opaque (var->dv) == dv_as_opaque (dv));
+      gcc_assert (var->dv == dv);
 
       pos = 0;
 
@@ -7950,8 +7950,7 @@ clobber_slot_part (dataflow_set *set, rtx loc, variable **slot,
 		  for (anode = *anextp; anode; anode = anext)
 		    {
 		      anext = anode->next;
-		      if (dv_as_opaque (anode->dv) == dv_as_opaque (var->dv)
-			  && anode->offset == offset)
+		      if (anode->dv == var->dv && anode->offset == offset)
 			{
 			  delete anode;
 			  *anextp = anext;
@@ -8199,7 +8198,7 @@ loc_exp_insert_dep (variable *var, rtx x, variable_table_type *vars)
 
   /* ??? Build a vector of variables parallel to EXPANDING, to avoid
      an additional look up?  */
-  xvar = vars->find_with_hash (dv, dv_htab_hash (dv));
+  xvar = vars->find_with_hash (dv_as_opaque (dv), dv_htab_hash (dv));
 
   if (!xvar)
     {
@@ -8307,7 +8306,7 @@ notify_dependents_of_resolved_value (variable *ivar, variable_table_type *vars)
 	    continue;
       }
 
-      var = vars->find_with_hash (dv, dv_htab_hash (dv));
+      var = vars->find_with_hash (dv_as_opaque (dv), dv_htab_hash (dv));
 
       if (!var)
 	var = variable_from_dropped (dv, NO_INSERT);
@@ -8552,7 +8551,7 @@ vt_expand_loc_callback (rtx x, bitmap regs,
       return NULL;
     }
 
-  var = elcd->vars->find_with_hash (dv, dv_htab_hash (dv));
+  var = elcd->vars->find_with_hash (dv_as_opaque (dv), dv_htab_hash (dv));
 
   if (!var)
     {
@@ -8959,8 +8958,9 @@ remove_value_from_changed_variables (rtx val)
   variable **slot;
   variable *var;
 
-  slot = changed_variables->find_slot_with_hash (dv, dv_htab_hash (dv),
-						NO_INSERT);
+  slot = changed_variables->find_slot_with_hash (dv_as_opaque (dv),
+						 dv_htab_hash (dv),
+						 NO_INSERT);
   var = *slot;
   var->in_changed_variables = false;
   changed_variables->clear_slot (slot);
@@ -8980,12 +8980,15 @@ notify_dependents_of_changed_value (rtx val, variable_table_type *htab,
   loc_exp_dep *led;
   decl_or_value dv = dv_from_rtx (val);
 
-  slot = changed_variables->find_slot_with_hash (dv, dv_htab_hash (dv),
-						NO_INSERT);
+  slot = changed_variables->find_slot_with_hash (dv_as_opaque (dv),
+						 dv_htab_hash (dv),
+						 NO_INSERT);
   if (!slot)
-    slot = htab->find_slot_with_hash (dv, dv_htab_hash (dv), NO_INSERT);
+    slot = htab->find_slot_with_hash (dv_as_opaque (dv), dv_htab_hash (dv),
+				      NO_INSERT);
   if (!slot)
-    slot = dropped_values->find_slot_with_hash (dv, dv_htab_hash (dv),
+    slot = dropped_values->find_slot_with_hash (dv_as_opaque (dv),
+						dv_htab_hash (dv),
 						NO_INSERT);
   var = *slot;
 
@@ -9017,14 +9020,14 @@ notify_dependents_of_changed_value (rtx val, variable_table_type *htab,
 	  break;
 
 	case ONEPART_VDECL:
-	  ivar = htab->find_with_hash (ldv, dv_htab_hash (ldv));
+	  ivar = htab->find_with_hash (dv_as_opaque (ldv), dv_htab_hash (ldv));
 	  gcc_checking_assert (!VAR_LOC_DEP_LST (ivar));
 	  variable_was_changed (ivar, NULL);
 	  break;
 
 	case NOT_ONEPART:
 	  delete led;
-	  ivar = htab->find_with_hash (ldv, dv_htab_hash (ldv));
+	  ivar = htab->find_with_hash (dv_as_opaque (ldv), dv_htab_hash (ldv));
 	  if (ivar)
 	    {
 	      int i = ivar->n_var_parts;
@@ -9119,7 +9122,8 @@ emit_notes_for_differences_1 (variable **slot, variable_table_type *new_vars)
   variable *old_var, *new_var;
 
   old_var = *slot;
-  new_var = new_vars->find_with_hash (old_var->dv, dv_htab_hash (old_var->dv));
+  new_var = new_vars->find_with_hash (dv_as_opaque (old_var->dv),
+				      dv_htab_hash (old_var->dv));
 
   if (!new_var)
     {
@@ -9191,7 +9195,8 @@ emit_notes_for_differences_2 (variable **slot, variable_table_type *old_vars)
   variable *old_var, *new_var;
 
   new_var = *slot;
-  old_var = old_vars->find_with_hash (new_var->dv, dv_htab_hash (new_var->dv));
+  old_var = old_vars->find_with_hash (dv_as_opaque (new_var->dv),
+				      dv_htab_hash (new_var->dv));
   if (!old_var)
     {
       int i;

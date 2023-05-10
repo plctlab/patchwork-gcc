@@ -72,6 +72,18 @@ public:
   // Return true unless the pointer is a null A pointer.
   explicit operator bool () const { return m_ptr; }
 
+  // Return true if class has the same m_ptr, or false.
+  bool operator == (const pointer_mux &other)
+    {
+      return this->m_ptr == other.m_ptr;
+    }
+
+  // Return true if class has the different m_ptr, or false.
+  bool operator != (const pointer_mux &other)
+    {
+      return this->m_ptr != other.m_ptr;
+    }
+
   // Assign A and B pointers respectively.
   void set_first (T1 *ptr) { *this = first (ptr); }
   void set_second (T2 *ptr) { *this = second (ptr); }
