@@ -4284,7 +4284,7 @@ AC_DEFUN([GLIBCXX_CHECK_PTHREAD_COND_CLOCKWAIT], [
       [glibcxx_cv_PTHREAD_COND_CLOCKWAIT=no])
   ])
   if test $glibcxx_cv_PTHREAD_COND_CLOCKWAIT = yes; then
-    AC_DEFINE(_GLIBCXX_USE_PTHREAD_COND_CLOCKWAIT, 1, [Define if pthread_cond_clockwait is available in <pthread.h>.])
+    AC_DEFINE(_GLIBCXX_USE_PTHREAD_COND_CLOCKWAIT, (_GLIBCXX_TSAN==0), [Define if pthread_cond_clockwait is available in <pthread.h>.])
   fi
 
   CXXFLAGS="$ac_save_CXXFLAGS"
@@ -4314,7 +4314,7 @@ AC_DEFUN([GLIBCXX_CHECK_PTHREAD_MUTEX_CLOCKLOCK], [
       [glibcxx_cv_PTHREAD_MUTEX_CLOCKLOCK=no])
   ])
   if test $glibcxx_cv_PTHREAD_MUTEX_CLOCKLOCK = yes; then
-    AC_DEFINE(_GLIBCXX_USE_PTHREAD_MUTEX_CLOCKLOCK, 1, [Define if pthread_mutex_clocklock is available in <pthread.h>.])
+    AC_DEFINE(_GLIBCXX_USE_PTHREAD_MUTEX_CLOCKLOCK, (_GLIBCXX_TSAN==0), [Define if pthread_mutex_clocklock is available in <pthread.h>.])
   fi
 
   CXXFLAGS="$ac_save_CXXFLAGS"
@@ -4346,7 +4346,7 @@ AC_DEFUN([GLIBCXX_CHECK_PTHREAD_RWLOCK_CLOCKLOCK], [
       [glibcxx_cv_PTHREAD_RWLOCK_CLOCKLOCK=no])
   ])
   if test $glibcxx_cv_PTHREAD_RWLOCK_CLOCKLOCK = yes; then
-    AC_DEFINE(_GLIBCXX_USE_PTHREAD_RWLOCK_CLOCKLOCK, 1, [Define if pthread_rwlock_clockrdlock and pthread_rwlock_clockwrlock are available in <pthread.h>.])
+    AC_DEFINE(_GLIBCXX_USE_PTHREAD_RWLOCK_CLOCKLOCK, (_GLIBCXX_TSAN==0), [Define if pthread_rwlock_clockrdlock and pthread_rwlock_clockwrlock are available in <pthread.h>.])
   fi
 
   CXXFLAGS="$ac_save_CXXFLAGS"
