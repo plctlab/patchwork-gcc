@@ -138,6 +138,13 @@ lra_debug_elim_table (void)
   print_elim_table (stderr);
 }
 
+/* Work around -Wmaybe-uninitialized false positive during autoprofiledbootstrap.  */
+
+# if GCC_VERSION >= 4007
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+
 /* Setup possibility of elimination in elimination table element EP to
    VALUE.  Setup FRAME_POINTER_NEEDED if elimination from frame
    pointer to stack pointer is not possible anymore.  */
@@ -151,6 +158,10 @@ setup_can_eliminate (class lra_elim_table *ep, bool value)
   if (!frame_pointer_needed)
     REGNO_POINTER_ALIGN (HARD_FRAME_POINTER_REGNUM) = 0;
 }
+
+# if GCC_VERSION >= 4007
+#pragma GCC diagnostic pop
+#endif
 
 /* Map: eliminable "from" register -> its current elimination,
    or NULL if none.  The elimination table may contain more than

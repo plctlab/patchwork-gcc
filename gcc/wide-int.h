@@ -1806,6 +1806,13 @@ wi::get_binary_precision (const T1 &x, const T2 &y)
 			get_binary_result (x, y));
 }
 
+/* Work around -Wmaybe-uninitialized false positive during autoprofiledbootstrap.  */
+
+# if GCC_VERSION >= 4007
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+
 /* Copy the contents of Y to X, but keeping X's current precision.  */
 template <typename T1, typename T2>
 inline void
@@ -1820,6 +1827,10 @@ wi::copy (T1 &x, const T2 &y)
   while (++i < len);
   x.set_len (len, y.is_sign_extended);
 }
+
+# if GCC_VERSION >= 4007
+#pragma GCC diagnostic pop
+#endif
 
 /* Return true if X fits in a HOST_WIDE_INT with no loss of precision.  */
 template <typename T>

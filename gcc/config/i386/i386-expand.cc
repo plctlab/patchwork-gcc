@@ -20419,6 +20419,13 @@ expand_vec_perm_pblendv (struct expand_vec_perm_d *d)
 
 static bool expand_vec_perm_interleave3 (struct expand_vec_perm_d *d);
 
+/* Work around -Wstringop-overflow false positive during autoprofiledbootstrap.  */
+
+# if GCC_VERSION >= 7001
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
+#endif
+
 /* A subroutine of ix86_expand_vec_perm_const_1.  Try to simplify
    a two vector permutation into a single vector permutation by using
    an interleave operation to merge the vectors.  */
@@ -20736,6 +20743,10 @@ expand_vec_perm_interleave2 (struct expand_vec_perm_d *d)
   emit_insn (seq);
   return true;
 }
+
+# if GCC_VERSION >= 7001
+#pragma GCC diagnostic pop
+#endif
 
 /* A subroutine of ix86_expand_vec_perm_const_1.  Try to simplify
    a single vector cross-lane permutation into vpermq followed

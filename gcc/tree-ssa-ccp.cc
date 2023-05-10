@@ -1978,6 +1978,13 @@ bit_value_binop (enum tree_code code, signop sgn, int width,
     }
 }
 
+/* Work around -Wmaybe-uninitialized false positive during autoprofiledbootstrap.  */
+
+# if GCC_VERSION >= 4007
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+
 /* Return the propagation value when applying the operation CODE to
    the value RHS yielding type TYPE.  */
 
@@ -2012,6 +2019,10 @@ bit_value_unop (enum tree_code code, tree type, tree rhs)
     }
   return val;
 }
+
+# if GCC_VERSION >= 4007
+#pragma GCC diagnostic pop
+#endif
 
 /* Return the propagation value when applying the operation CODE to
    the values RHS1 and RHS2 yielding type TYPE.  */

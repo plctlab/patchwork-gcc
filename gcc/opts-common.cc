@@ -1388,6 +1388,7 @@ candidates_list_and_hint (const char *arg, char *&str,
       p[len] = ' ';
       p += len + 1;
     }
+  gcc_assert(p > str);
   p[-1] = '\0';
   return find_closest_string (arg, &candidates);
 }

@@ -4033,7 +4033,8 @@ debug_tree_odr_name (tree type, bool demangle)
       odr = cplus_demangle (odr, opts);
     }
 
-  fprintf (stderr, "%s\n", odr);
+  if (odr != NULL)
+    fprintf (stderr, "%s\n", odr);
 }
 
 /* Register ODR enum so we later stream record about its values.  */
