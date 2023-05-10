@@ -1,0 +1,8 @@
+/* { dg-do run { target { riscv_vector } } } */
+/* { dg-additional-options "-std=c99 -fno-vect-cost-model -march=rv64gcv --param=riscv-autovec-preference=fixed-vlmax -save-temps" } */
+
+#include "vand-template.h"
+#include "vand-run-template.h"
+
+/* { dg-final { scan-assembler-times {\tvand\.vv} 12 } } */
+/* { dg-final { scan-assembler-times {\tvand\.vi} 6 } } */
