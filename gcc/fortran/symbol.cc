@@ -3216,7 +3216,7 @@ gfc_find_symtree_in_proc (const char* name, gfc_namespace* ns)
    any parent namespaces if requested by a nonzero parent_flag.
    Returns nonzero if the name is ambiguous.  */
 
-int
+bool
 gfc_find_sym_tree (const char *name, gfc_namespace *ns, int parent_flag,
 		   gfc_symtree **result)
 {
