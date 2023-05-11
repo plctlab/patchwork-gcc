@@ -358,13 +358,23 @@ if __name__ == '__main__':
                              'file')
     parser.add_argument('--update-copyright', action='store_true',
                         help='Update copyright in ChangeLog files')
+    parser.add_argument('--commit', const='HEAD', nargs='?',
+                        help='Use a specific commit instead of a '
+                             'patch file or stdin. (essentially git show '
+                             'commit-id | git gcc-mklog)')
     args = parser.parse_args()
     if args.input == '-':
         args.input = None
     if args.directory:
         root = args.directory
 
-    data = open(args.input, newline='\n') if args.input else sys.stdin
+    if args.commit:
+        args.input = None
+        data = subprocess.check_output('git show {}'.format(args.commit),
+                                       shell=True, encoding='utf8').strip()
+    else:
+        data = open(args.input, newline='\n') if args.input else sys.stdin
+
     if args.update_copyright:
         update_copyright(data)
     else:
