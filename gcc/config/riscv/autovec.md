@@ -132,7 +132,7 @@
   [(set (match_operand:VI 0 "register_operand")
     (any_shift:VI
      (match_operand:VI 1 "register_operand")
-     (match_operand:<VEL> 2 "csr_operand")))]
+     (match_operand:<VEL> 2 "vector_scalar_shift_operand")))]
   "TARGET_VECTOR"
 {
   if (!CONST_SCALAR_INT_P (operands[2]))
