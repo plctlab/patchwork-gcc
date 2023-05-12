@@ -4610,6 +4610,8 @@ the use of break, use the @option{--with-divide=breaks}
 @command{configure} option when configuring GCC@.  The default is to
 use traps on systems that support them.
 
+GNU Binutils 2.21 or newer is required.
+
 @html
 <hr />
 @end html
