@@ -359,26 +359,33 @@ merge_and_complain (vec<cl_decoded_option> &decoded_options,
 	case OPT_fcf_protection_:
 	  /* Default to link-time option, else append or check identical.  */
 	  if (!cf_protection_option
-	      || cf_protection_option->value == CF_CHECK)
+	      || !memcmp (cf_protection_option->arg, "check", 5))
 	    {
+	      const char* parg = decoded_options[existing_opt].arg;
 	      if (existing_opt == -1)
 		decoded_options.safe_push (*foption);
-	      else if (decoded_options[existing_opt].value != foption->value)
+	      else if ((strlen (parg) != strlen (foption->arg))
+		       || memcmp (parg, foption->arg, strlen (foption->arg)))
 		{
 		  if (cf_protection_option
-		      && cf_protection_option->value == CF_CHECK)
+		      && !memcmp (cf_protection_option->arg, "check", 5))
 		    fatal_error (input_location,
 				 "option %qs with mismatching values"
 				 " (%s, %s)",
 				 "-fcf-protection",
-				 decoded_options[existing_opt].arg,
+				 parg,
 				 foption->arg);
 		  else
 		    {
 		      /* Merge and update the -fcf-protection option.  */
-		      decoded_options[existing_opt].value
-			&= (foption->value & CF_FULL);
-		      switch (decoded_options[existing_opt].value)
+		      HOST_WIDE_INT flags1
+			= parse_cf_protection_options (foption->arg,
+						       input_location);
+		      HOST_WIDE_INT flags2
+			= parse_cf_protection_options (parg,
+						       input_location);
+		      flags2 &= (flags1 & CF_FULL);
+		      switch (flags2)
 			{
 			case CF_NONE:
 			  decoded_options[existing_opt].arg = "none";

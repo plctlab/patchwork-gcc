@@ -2187,6 +2187,81 @@ get_closest_sanitizer_option (const string_fragment &arg,
   return bm.get_best_meaningful_candidate ();
 }
 
+unsigned int
+parse_cf_protection_options (const char *p, location_t loc)
+{
+  unsigned int flags = 0;
+  bool combined = false;
+  while (*p != 0)
+    {
+      size_t len;
+      const char *comma = strchr (p, ',');
+      if (comma == NULL)
+	len = strlen (p);
+      else
+	{
+	  combined = true;
+	  len = comma - p;
+	}
+
+      if (len == 0)
+	{
+	  p = comma + 1;
+	  continue;
+	}
+
+      switch (len)
+	{
+	case 4:
+	  if (!memcmp (p, "full", 4))
+	    {
+	      if (combined && flags != CF_NONE)
+		warning_at (loc, 0, "better to use %<-fcf-protection=%> "
+			    "option: full alone instead of in a combination");
+	      flags |= CF_FULL;
+	    }
+	  else if (!memcmp (p, "none", 4))
+	    {
+	      if (combined && flags != CF_NONE)
+		warning_at (loc, 0, "combination of %<-fcf-protection=%> "
+			    "option: none is ignored");
+	    }
+	  else
+	    error_at (loc, "unrecognized argument to %<-fcf-protection=%> "
+		      "option: %.4s", p);
+	  break;
+	case 5:
+	  if (!memcmp (p, "check", 5))
+	    {
+	      if (combined && flags != CF_CHECK)
+		error_at (loc, "Combination for %<-fcf-protection=%> "
+			  "option: check is not valid");
+	      flags |= CF_CHECK;
+	    }
+	  else
+	    error_at (loc, "unrecognized argument to %<-fcf-protection=%> "
+		      "option: %.5s", p);
+	  break;
+	case 6:
+	  if (!memcmp (p, "branch", 6))
+	    flags |= CF_BRANCH;
+	  else if (!memcmp (p, "return", 6))
+	    flags |= CF_RETURN;
+	  else
+	    error_at (loc, "unrecognized argument to %<-fcf-protection=%> "
+		      "option: %.6s", p);
+	  break;
+	default:
+	  error_at (loc, "unrecognized argument to %<-fcf-protection=%> "
+		    "option: %.*s", (int) len, p);
+	}
+
+      if (comma == NULL)
+	break;
+      p = comma + 1;
+    }
+  return flags;
+}
 /* Parse comma separated sanitizer suboptions from P for option SCODE,
    adjust previous FLAGS and return new ones.  If COMPLAIN is false,
    don't issue diagnostics.  */
@@ -2671,6 +2746,10 @@ common_handle_option (struct gcc_options *opts,
     case OPT__completion_:
       break;
 
+    case OPT_fcf_protection_:
+      opts->x_flag_cf_protection
+	= parse_cf_protection_options (arg, loc);
+      break;
     case OPT_fsanitize_:
       opts_set->x_flag_sanitize = true;
       opts->x_flag_sanitize
