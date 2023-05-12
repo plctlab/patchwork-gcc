@@ -280,11 +280,15 @@ struct ira_allocno
   /* Regno for allocno or cap.  */
   int regno;
   /* Mode of the allocno which is the mode of the corresponding
-     pseudo-register.  */
-  ENUM_BITFIELD (machine_mode) mode : 8;
+     pseudo-register.  Note the bitsize of mode should be exactly
+     the same as the definition of rtx_def, aka RTX_MACHINE_MODE_BITSIZE
+     in rtl.h.  */
+  ENUM_BITFIELD (machine_mode) mode : 16;
   /* Widest mode of the allocno which in at least one case could be
-     for paradoxical subregs where wmode > mode.  */
-  ENUM_BITFIELD (machine_mode) wmode : 8;
+     for paradoxical subregs where wmode > mode.  Note the bitsize of
+     wmode should be exactly the same as the definition of rtx_def,
+     aka RTX_MACHINE_MODE_BITSIZE in rtl.h.  */
+  ENUM_BITFIELD (machine_mode) wmode : 16;
   /* Register class which should be used for allocation for given
      allocno.  NO_REGS means that we should use memory.  */
   ENUM_BITFIELD (reg_class) aclass : 16;

@@ -253,8 +253,10 @@ private:
   // Bits for future expansion.
   unsigned int m_spare : 2;
 
-  // The value returned by the accessor above.
-  machine_mode m_mode : 8;
+  // The value returned by the accessor above.  Note the bitsize of
+  // m_mode should be exactly the same as the definition of rtx_def,
+  // aka RTX_MACHINE_MODE_BITSIZE in rtl.h.
+  machine_mode m_mode : 16;
 };
 
 // A contiguous array of access_info pointers.  Used to represent a

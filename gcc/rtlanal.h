@@ -99,8 +99,9 @@ public:
   unsigned int flags : 16;
 
   /* The mode of the reference.  If IS_MULTIREG, this is the mode of
-     REGNO - MULTIREG_OFFSET.  */
-  machine_mode mode : 8;
+     REGNO - MULTIREG_OFFSET.  Note the bitsize of mode should be exactly
+     the same as the definition of rtx_def,  */
+  machine_mode mode : 16;
 
   /* If IS_MULTIREG, the offset of REGNO from the start of the register.  */
   unsigned int multireg_offset : 8;

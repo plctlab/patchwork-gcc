@@ -63,6 +63,9 @@ enum rtx_code  {
 # define NON_GENERATOR_NUM_RTX_CODE ((int) MATCH_OPERAND)
 #endif
 
+#define RTX_CODE_BITSIZE 8
+#define RTX_MACHINE_MODE_BITSIZE 16
+
 /* Register Transfer Language EXPRESSIONS CODE CLASSES */
 
 enum rtx_class  {
@@ -310,10 +313,10 @@ struct GTY((desc("0"), tag("0"),
 	    chain_next ("RTX_NEXT (&%h)"),
 	    chain_prev ("RTX_PREV (&%h)"))) rtx_def {
   /* The kind of expression this is.  */
-  ENUM_BITFIELD(rtx_code) code: 16;
+  ENUM_BITFIELD(rtx_code) code: RTX_CODE_BITSIZE;
 
   /* The kind of value the expression has.  */
-  ENUM_BITFIELD(machine_mode) mode : 8;
+  ENUM_BITFIELD(machine_mode) mode : RTX_MACHINE_MODE_BITSIZE;
 
   /* 1 in a MEM if we should keep the alias set for this mem unchanged
      when we access a component.
@@ -2164,7 +2167,7 @@ subreg_shape::operator != (const subreg_shape &other) const
 inline unsigned HOST_WIDE_INT
 subreg_shape::unique_id () const
 {
-  { STATIC_ASSERT (MAX_MACHINE_MODE <= 256); }
+  { STATIC_ASSERT (MAX_MACHINE_MODE <= (1 << RTX_MACHINE_MODE_BITSIZE)); }
   { STATIC_ASSERT (NUM_POLY_INT_COEFFS <= 3); }
   { STATIC_ASSERT (sizeof (offset.coeffs[0]) <= 2); }
   int res = (int) inner_mode + ((int) outer_mode << 8);
