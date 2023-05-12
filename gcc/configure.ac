@@ -5270,6 +5270,13 @@ EOF
 pointers into PC-relative form.])
     fi
 
+    gcc_GAS_CHECK_FEATURE([mips1 recognize ssnop], gcc_cv_as_mips1_ssnop,
+                          [-mabi=32 -mips1], [ssnop],,,)
+    if test x$gcc_cv_as_mips1_ssnop = xno; then
+      AC_MSG_ERROR(
+	[New binutils is required to support ssnop even for MIPS I: 2.21+])
+    fi
+
     gcc_GAS_CHECK_FEATURE([-mnan= support],
       gcc_cv_as_mips_nan,
       [-mnan=2008],,,
