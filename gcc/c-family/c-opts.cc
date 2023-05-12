@@ -1021,6 +1021,10 @@ c_common_post_options (const char **pfilename)
   SET_OPTION_IF_UNSET (&global_options, &global_options_set,
 		       flag_delete_dead_exceptions, true);
 
+  if (!global_options_set.x_flag_pedantic_errors
+      && global_options_set.x_flag_permissive)
+    global_dc->pedantic_errors = !flag_permissive;
+
   if (cxx_dialect >= cxx11)
     {
       /* If we're allowing C++0x constructs, don't warn about C++98

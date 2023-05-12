@@ -3438,10 +3438,17 @@ issue.  Currently, the only such diagnostic issued by G++ is the one for
 a name having multiple meanings within a class.
 
 @opindex fpermissive
+@opindex fno-permissive
 @item -fpermissive
 Downgrade some diagnostics about nonconformant code from errors to
 warnings.  Thus, using @option{-fpermissive} allows some
 nonconforming code to compile.
+
+Conversely, @option{-fno-permissive} can be used to upgrade some
+diagnostics about nonconformant code from warnings to errors.  This
+differs from @option{-pedantic-errors} in that the latter also implies
+@option{-Wpedantic}; this option does not enable additional
+diagnostics, only upgrades the severity of those that are enabled.
 
 @opindex fno-pretty-templates
 @opindex fpretty-templates
