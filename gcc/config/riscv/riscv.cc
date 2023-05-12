@@ -126,6 +126,14 @@ struct GTY(())  riscv_frame_info {
   /* How much the GPR save/restore routines adjust sp (or 0 if unused).  */
   unsigned save_libcall_adjustment;
 
+  /* the minimum number of bytes, in multiples of 16-byte address increments,
+     required to cover the registers in a multi push & pop.  */
+  unsigned multi_push_adj_base;
+
+  /* the number of additional 16-byte address increments allocated for the stack frame
+     in a multi push & pop.  */
+  unsigned multi_push_adj_addi;
+
   /* Offsets of fixed-point and floating-point save areas from frame bottom */
   poly_int64 gp_sp_offset;
   poly_int64 fp_sp_offset;
@@ -421,6 +429,21 @@ static const struct riscv_tune_info riscv_tune_info_table[] = {
   { TUNE_NAME, PIPELINE_MODEL, & TUNE_INFO},
 #include "riscv-cores.def"
 };
+
+typedef enum
+{
+  SI_IDX = 0,
+  DI_IDX,
+  MAX_MODE_IDX = DI_IDX
+} mode_idx;
+
+typedef enum
+{
+  PUSH_IDX = 0,
+  POP_IDX,
+  POPRET_IDX,
+  MAX_OP_IDX = POPRET_IDX
+} op_idx;
 
 void riscv_frame_info::reset(void)
 {
@@ -4892,6 +4915,37 @@ riscv_save_reg_p (unsigned int regno)
   return false;
 }
 
+/* Return TRUE if Zcmp push and pop insns should be
+   avoided. FALSE otherwise.
+   Only use multi push & pop if all GPRs masked can be covered,
+   and stack access is SP based,
+   and GPRs are at top of the stack frame,
+   and no conflicts in stack allocation with other features  */
+static bool
+riscv_avoid_multi_push(const struct riscv_frame_info *frame)
+{
+  if (!TARGET_ZCMP
+      || crtl->calls_eh_return
+      || frame_pointer_needed
+      || cfun->machine->interrupt_handler_p
+      || cfun->machine->varargs_size != 0
+      || crtl->args.pretend_args_size != 0
+      || (frame->mask & ~ MULTI_PUSH_GPR_MASK))
+    return true;
+
+  return false;
+}
+
+/* Determine whether to use multi push insn.  */
+static bool
+riscv_use_multi_push(const struct riscv_frame_info *frame)
+{
+  if (riscv_avoid_multi_push (frame))
+    return false;
+
+  return (frame->multi_push_adj_base != 0);
+}
+
 /* Return TRUE if a libcall to save/restore GPRs should be
    avoided.  FALSE otherwise.  */
 static bool
@@ -4929,6 +4983,51 @@ riscv_save_libcall_count (unsigned mask)
   abort ();
 }
 
+/* calculate number of s regs in multi push and pop.
+   Note that {s0-s10} is not valid in Zcmp, use {s0-s11} instead.  */
+static unsigned
+riscv_multi_push_sregs_count (unsigned mask)
+{
+  unsigned num = riscv_save_libcall_count (mask);
+  return (num == ZCMP_INVALID_S0S10_SREGS_COUNTS)
+    ? ZCMP_S0S11_SREGS_COUNTS
+    : num;
+}
+
+/* calculate number of regs(ra, s0-sx) in multi push and pop.  */
+static unsigned
+riscv_multi_push_regs_count (unsigned mask)
+{
+  /* 1 is for ra  */
+  return riscv_multi_push_sregs_count (mask) + 1;
+}
+
+/* Handle 16 bytes align for poly_int.  */
+static poly_int64
+riscv_16bytes_align (poly_int64 value)
+{
+  return aligned_upper_bound (value, 16);
+}
+
+static HOST_WIDE_INT
+riscv_16bytes_align (HOST_WIDE_INT value)
+{
+  return ROUND_UP(value, 16);
+}
+
+/* Handle stack align for poly_int.  */
+static poly_int64
+riscv_stack_align (poly_int64 value)
+{
+  return aligned_upper_bound (value, PREFERRED_STACK_BOUNDARY / 8);
+}
+
+static HOST_WIDE_INT
+riscv_stack_align (HOST_WIDE_INT value)
+{
+  return RISCV_STACK_ALIGN (value);
+}
+
 /* Populate the current function's riscv_frame_info structure.
 
    RISC-V stack frames grown downward.  High addresses are at the top.
@@ -4954,7 +5053,7 @@ riscv_save_libcall_count (unsigned mask)
 	|  GPR save area                |       + UNITS_PER_WORD
 	|                               |
 	+-------------------------------+ <-- stack_pointer_rtx + fp_sp_offset
-	|                               |       + UNITS_PER_HWVALUE
+	|                               |       + UNITS_PER_FP_REG
 	|  FPR save area                |
 	|                               |
 	+-------------------------------+ <-- frame_pointer_rtx (virtual)
@@ -4972,19 +5071,6 @@ riscv_save_libcall_count (unsigned mask)
    hard_frame_pointer_rtx unchanged.  */
 
 static HOST_WIDE_INT riscv_first_stack_step (struct riscv_frame_info *frame, poly_int64 remaining_size);
-
-/* Handle stack align for poly_int.  */
-static poly_int64
-riscv_stack_align (poly_int64 value)
-{
-  return aligned_upper_bound (value, PREFERRED_STACK_BOUNDARY / 8);
-}
-
-static HOST_WIDE_INT
-riscv_stack_align (HOST_WIDE_INT value)
-{
-  return RISCV_STACK_ALIGN (value);
-}
 
 static void
 riscv_compute_frame_info (void)
@@ -5033,8 +5119,9 @@ riscv_compute_frame_info (void)
   if (frame->mask)
     {
       x_save_size = riscv_stack_align (num_x_saved * UNITS_PER_WORD);
-      unsigned num_save_restore = 1 + riscv_save_libcall_count (frame->mask);
 
+      /* 1 is for ra  */
+      unsigned num_save_restore = 1 + riscv_save_libcall_count (frame->mask);
       /* Only use save/restore routines if they don't alter the stack size.  */
       if (riscv_stack_align (num_save_restore * UNITS_PER_WORD) == x_save_size
           && !riscv_avoid_save_libcall ())
@@ -5046,6 +5133,15 @@ riscv_compute_frame_info (void)
 
 	  frame->save_libcall_adjustment = x_save_size;
 	}
+
+      if (!riscv_avoid_multi_push (frame))
+        {
+          /* num(ra, s0-sx)  */
+          unsigned num_multi_push =
+            riscv_multi_push_regs_count (frame->mask);
+          x_save_size = riscv_stack_align (num_multi_push * UNITS_PER_WORD);
+          frame->multi_push_adj_base = riscv_16bytes_align (x_save_size);
+        }
     }
 
   /* At the bottom of the frame are any outgoing stack arguments. */
@@ -5060,7 +5156,15 @@ riscv_compute_frame_info (void)
   frame->fp_sp_offset = offset - UNITS_PER_FP_REG;
   /* Next are the callee-saved GPRs. */
   if (frame->mask)
-    offset += x_save_size;
+    {
+      offset += x_save_size;
+      /* align to 16 bytes and add paddings to GPR part to honor
+         both stack alignment and zcmp pus/pop size alignment. */
+      if (riscv_use_multi_push (frame)
+          && known_lt(offset,
+                      frame->multi_push_adj_base + ZCMP_SP_INC_STEP * ZCMP_MAX_SPIMM))
+        offset = riscv_16bytes_align (offset);
+    }
   frame->gp_sp_offset = offset - UNITS_PER_WORD;
   /* The hard frame pointer points above the callee-saved GPRs. */
   frame->hard_frame_pointer_offset = offset;
@@ -5404,6 +5508,42 @@ riscv_adjust_libcall_cfi_prologue ()
   return dwarf;
 }
 
+static rtx
+riscv_adjust_multi_push_cfi_prologue (int saved_size)
+{
+  rtx dwarf = NULL_RTX;
+  rtx adjust_sp_rtx, reg, mem, insn;
+  unsigned int mask = cfun->machine->frame.mask;
+  int offset;
+  int saved_cnt = 0;
+
+  if (mask & S10_MASK)
+    mask |= S11_MASK;
+
+  for (int regno = GP_REG_LAST; regno >= GP_REG_FIRST; regno--)
+    if (BITSET_P (mask & MULTI_PUSH_GPR_MASK, regno - GP_REG_FIRST))
+      {
+        /* The save order is s11-s0, ra
+           from high to low addr.  */
+        offset = saved_size - UNITS_PER_WORD * (++saved_cnt);
+
+        reg = gen_rtx_REG (SImode, regno);
+        mem = gen_frame_mem (SImode, plus_constant (Pmode,
+                                                    stack_pointer_rtx,
+                                                    offset));
+
+        insn = gen_rtx_SET (mem, reg);
+        dwarf = alloc_reg_note (REG_CFA_OFFSET, insn, dwarf);
+      }
+
+  /* Debug info for adjust sp.  */
+  adjust_sp_rtx = gen_rtx_SET (stack_pointer_rtx,
+                               plus_constant(Pmode, stack_pointer_rtx, -saved_size));
+  dwarf = alloc_reg_note (REG_CFA_ADJUST_CFA, adjust_sp_rtx,
+                          dwarf);
+  return dwarf;
+}
+
 static void
 riscv_emit_stack_tie (void)
 {
@@ -5411,6 +5551,152 @@ riscv_emit_stack_tie (void)
     emit_insn (gen_stack_tiesi (stack_pointer_rtx, hard_frame_pointer_rtx));
   else
     emit_insn (gen_stack_tiedi (stack_pointer_rtx, hard_frame_pointer_rtx));
+}
+
+static rtx
+get_slot_offset_rtx (int slot_idx)
+{
+  HOST_WIDE_INT slot_offset = -1 * (slot_idx + 1) * GET_MODE_SIZE (word_mode);
+  return GEN_INT (slot_offset);
+}
+
+/*zcmp multi push and pop function ptr array  */
+const insn_gen_fn gen_push_pop [MAX_OP_IDX + 1][MAX_MODE_IDX + 1][ZCMP_MAX_GRP_SLOTS] =
+{{{(insn_gen_fn::stored_funcptr) gen_gpr_multi_push_up_to_ra_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_push_up_to_s0_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_push_up_to_s1_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_push_up_to_s2_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_push_up_to_s3_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_push_up_to_s4_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_push_up_to_s5_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_push_up_to_s6_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_push_up_to_s7_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_push_up_to_s8_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_push_up_to_s9_si,
+   NULL,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_push_up_to_s11_si},
+  {(insn_gen_fn::stored_funcptr) gen_gpr_multi_push_up_to_ra_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_push_up_to_s0_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_push_up_to_s1_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_push_up_to_s2_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_push_up_to_s3_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_push_up_to_s4_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_push_up_to_s5_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_push_up_to_s6_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_push_up_to_s7_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_push_up_to_s8_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_push_up_to_s9_di,
+   NULL,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_push_up_to_s11_di}},
+ {{(insn_gen_fn::stored_funcptr) gen_gpr_multi_pop_up_to_ra_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_pop_up_to_s0_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_pop_up_to_s1_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_pop_up_to_s2_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_pop_up_to_s3_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_pop_up_to_s4_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_pop_up_to_s5_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_pop_up_to_s6_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_pop_up_to_s7_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_pop_up_to_s8_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_pop_up_to_s9_si,
+   NULL,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_pop_up_to_s11_si},
+  {(insn_gen_fn::stored_funcptr) gen_gpr_multi_pop_up_to_ra_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_pop_up_to_s0_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_pop_up_to_s1_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_pop_up_to_s2_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_pop_up_to_s3_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_pop_up_to_s4_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_pop_up_to_s5_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_pop_up_to_s6_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_pop_up_to_s7_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_pop_up_to_s8_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_pop_up_to_s9_di,
+   NULL,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_pop_up_to_s11_di}},
+ {{(insn_gen_fn::stored_funcptr) gen_gpr_multi_popret_up_to_ra_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_popret_up_to_s0_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_popret_up_to_s1_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_popret_up_to_s2_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_popret_up_to_s3_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_popret_up_to_s4_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_popret_up_to_s5_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_popret_up_to_s6_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_popret_up_to_s7_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_popret_up_to_s8_si,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_popret_up_to_s9_si,
+   NULL,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_popret_up_to_s11_si},
+  {(insn_gen_fn::stored_funcptr) gen_gpr_multi_popret_up_to_ra_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_popret_up_to_s0_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_popret_up_to_s1_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_popret_up_to_s2_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_popret_up_to_s3_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_popret_up_to_s4_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_popret_up_to_s5_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_popret_up_to_s6_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_popret_up_to_s7_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_popret_up_to_s8_di,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_popret_up_to_s9_di,
+   NULL,
+   (insn_gen_fn::stored_funcptr) gen_gpr_multi_popret_up_to_s11_di}}};
+
+static rtx
+riscv_gen_multi_push_pop_insn (op_idx op, HOST_WIDE_INT adj_size, unsigned int regs_num)
+{
+  rtx stack_adj = GEN_INT (adj_size);
+  rtx slots[ZCMP_MAX_GRP_SLOTS];
+
+  for (int slot_idx = 0; slot_idx < ZCMP_MAX_GRP_SLOTS; slot_idx++)
+    slots[slot_idx] = get_slot_offset_rtx (slot_idx);
+
+  switch (regs_num)
+    {
+    case 1:
+      return (gen_push_pop[op][TARGET_64BIT][regs_num - 1])
+        (stack_adj, slots[0]);
+    case 2:
+      return (gen_push_pop[op][TARGET_64BIT][regs_num - 1])
+        (stack_adj, slots[0], slots[1]);
+    case 3:
+      return (gen_push_pop[op][TARGET_64BIT][regs_num - 1])
+        (stack_adj, slots[0], slots[1], slots[2]);
+    case 4:
+      return (gen_push_pop[op][TARGET_64BIT][regs_num - 1])
+        (stack_adj, slots[0], slots[1], slots[2], slots[3]);
+    case 5:
+      return (gen_push_pop[op][TARGET_64BIT][regs_num - 1])
+        (stack_adj, slots[0], slots[1], slots[2], slots[3], slots[4]);
+    case 6:
+      return (gen_push_pop[op][TARGET_64BIT][regs_num - 1])
+        (stack_adj, slots[0], slots[1], slots[2], slots[3], slots[4], slots[5]);
+    case 7:
+      return (gen_push_pop[op][TARGET_64BIT][regs_num - 1])
+        (stack_adj, slots[0], slots[1], slots[2], slots[3], slots[4], slots[5],
+        slots[6]);
+    case 8:
+      return (gen_push_pop[op][TARGET_64BIT][regs_num - 1])
+        (stack_adj, slots[0], slots[1], slots[2], slots[3], slots[4], slots[5],
+        slots[6], slots[7]);
+    case 9:
+      return (gen_push_pop[op][TARGET_64BIT][regs_num - 1])
+        (stack_adj, slots[0], slots[1], slots[2], slots[3], slots[4], slots[5],
+        slots[6], slots[7], slots[8]);
+    case 10:
+      return (gen_push_pop[op][TARGET_64BIT][regs_num - 1])
+        (stack_adj, slots[0], slots[1], slots[2], slots[3], slots[4], slots[5],
+        slots[6], slots[7], slots[8], slots[9]);
+    case 11:
+      return (gen_push_pop[op][TARGET_64BIT][regs_num - 1])
+        (stack_adj, slots[0], slots[1], slots[2], slots[3], slots[4], slots[5],
+        slots[6], slots[7], slots[8], slots[9], slots[10]);
+    case 13:
+      return (gen_push_pop[op][TARGET_64BIT][regs_num - 1])
+        (stack_adj, slots[0], slots[1], slots[2], slots[3], slots[4], slots[5],
+        slots[6], slots[7], slots[8], slots[9], slots[10], slots[11], slots[12]);
+    default:
+      gcc_unreachable ();
+    }
 }
 
 /* Expand the "prologue" pattern.  */
@@ -5421,7 +5707,8 @@ riscv_expand_prologue (void)
   struct riscv_frame_info *frame = &cfun->machine->frame;
   poly_int64 remaining_size = frame->total_size;
   unsigned mask = frame->mask;
-  rtx insn;
+  int spimm, multi_push_additional, stack_adj;
+  rtx insn, dwarf = NULL_RTX;
 
   if (flag_stack_usage_info)
     current_function_static_stack_size = constant_lower_bound (remaining_size);
@@ -5429,8 +5716,35 @@ riscv_expand_prologue (void)
   if (cfun->machine->naked_p)
     return;
 
+  /* prefer muti-push to save-restore libcall.  */
+  if (riscv_use_multi_push(frame))
+    {
+      remaining_size -= frame->multi_push_adj_base;
+      if (known_gt(remaining_size, 2 * ZCMP_SP_INC_STEP))
+        spimm = 3;
+      else if (known_gt(remaining_size, ZCMP_SP_INC_STEP))
+        spimm = 2;
+      else if (known_gt(remaining_size, 0))
+        spimm = 1;
+      else
+        spimm = 0;
+      multi_push_additional = spimm * ZCMP_SP_INC_STEP;
+      frame->multi_push_adj_addi = multi_push_additional;
+      remaining_size -= multi_push_additional;
+
+      /* emit multi push insn & dwarf along with it.  */
+      stack_adj = frame->multi_push_adj_base + multi_push_additional;
+      insn = emit_insn (riscv_gen_multi_push_pop_insn(PUSH_IDX,
+        -stack_adj, riscv_multi_push_regs_count(frame->mask)));
+      dwarf = riscv_adjust_multi_push_cfi_prologue (stack_adj);
+      RTX_FRAME_RELATED_P (insn) = 1;
+      REG_NOTES (insn) = dwarf;
+
+      /* Temporarily fib that we need not save GPRs.  */
+      frame->mask = 0; 
+    }
   /* When optimizing for size, call a subroutine to save the registers.  */
-  if (riscv_use_save_libcall (frame))
+  else if (riscv_use_save_libcall (frame))
     {
       rtx dwarf = NULL_RTX;
       dwarf = riscv_adjust_libcall_cfi_prologue ();
@@ -5446,13 +5760,15 @@ riscv_expand_prologue (void)
   /* Save the registers.  */
   if ((frame->mask | frame->fmask) != 0)
     {
-      HOST_WIDE_INT step1 = riscv_first_stack_step (frame, remaining_size);
-
-      insn = gen_add3_insn (stack_pointer_rtx,
-			    stack_pointer_rtx,
-			    GEN_INT (-step1));
-      RTX_FRAME_RELATED_P (emit_insn (insn)) = 1;
-      remaining_size -= step1;
+      if (known_gt (remaining_size, frame->frame_pointer_offset))
+        {
+          HOST_WIDE_INT step1 = riscv_first_stack_step (frame, remaining_size);
+          remaining_size -= step1;
+          insn = gen_add3_insn (stack_pointer_rtx,
+                                stack_pointer_rtx,
+                                GEN_INT (-step1));
+          RTX_FRAME_RELATED_P (emit_insn (insn)) = 1;
+        }
       riscv_for_each_saved_reg (remaining_size, riscv_save_reg, false, false);
     }
 
@@ -5510,6 +5826,32 @@ riscv_expand_prologue (void)
 }
 
 static rtx
+riscv_adjust_multi_pop_cfi_epilogue (int saved_size)
+{
+  rtx dwarf = NULL_RTX;
+  rtx adjust_sp_rtx, reg;
+  unsigned int mask = cfun->machine->frame.mask;
+
+  if (mask & S10_MASK)
+    mask |= S11_MASK;
+
+  /* Debug info for adjust sp.  */
+  adjust_sp_rtx = gen_rtx_SET (stack_pointer_rtx,
+                               plus_constant(Pmode, stack_pointer_rtx, saved_size));
+  dwarf = alloc_reg_note (REG_CFA_ADJUST_CFA, adjust_sp_rtx,
+                          dwarf);
+
+  for (int regno = GP_REG_FIRST; regno <= GP_REG_LAST; regno++)
+    if (BITSET_P (mask, regno - GP_REG_FIRST))
+      {
+        reg = gen_rtx_REG (SImode, regno);
+        dwarf = alloc_reg_note (REG_CFA_RESTORE, reg, dwarf);
+      }
+
+  return dwarf;
+}
+
+static rtx
 riscv_adjust_libcall_cfi_epilogue ()
 {
   rtx dwarf = NULL_RTX;
@@ -5548,10 +5890,18 @@ riscv_expand_epilogue (int style)
   struct riscv_frame_info *frame = &cfun->machine->frame;
   unsigned mask = frame->mask;
   HOST_WIDE_INT step2 = 0;
-  bool use_restore_libcall = ((style == NORMAL_RETURN)
-			      && riscv_use_save_libcall (frame));
-  unsigned libcall_size = (use_restore_libcall
-			   ? frame->save_libcall_adjustment : 0);
+  bool use_multi_pop_normal = ((style == NORMAL_RETURN)
+                              && riscv_use_multi_push (frame));
+  bool use_multi_pop_sibcall = ((style == SIBCALL_RETURN)
+                              && riscv_use_multi_push (frame));
+  bool use_multi_pop = use_multi_pop_normal || use_multi_pop_sibcall;
+
+  bool use_restore_libcall = !use_multi_pop && ((style == NORMAL_RETURN)
+                              && riscv_use_save_libcall (frame));
+  unsigned libcall_size = use_restore_libcall && !use_multi_pop ?
+                            frame->save_libcall_adjustment : 0;
+  unsigned multipop_size = use_multi_pop ?
+                            frame->multi_push_adj_base + frame->multi_push_adj_addi : 0;
   rtx ra = gen_rtx_REG (Pmode, RETURN_ADDR_REGNUM);
   rtx insn;
 
@@ -5622,18 +5972,25 @@ riscv_expand_epilogue (int style)
       REG_NOTES (insn) = dwarf;
     }
 
-  if (use_restore_libcall)
-    frame->mask = 0; /* Temporarily fib for GPRs.  */
+  if (use_restore_libcall || use_multi_pop)
+    frame->mask = 0; /* Temporarily fib that we need not save GPRs.  */
 
   /* If we need to restore registers, deallocate as much stack as
      possible in the second step without going out of range.  */
-  if ((frame->mask | frame->fmask) != 0)
+  if (use_multi_pop)
+    {
+      if (frame->fmask
+          && known_gt (frame->total_size - multipop_size,
+                      frame->frame_pointer_offset))
+        step2 = riscv_first_stack_step (frame, frame->total_size - multipop_size);
+    }
+  else if ((frame->mask | frame->fmask) != 0)
     step2 = riscv_first_stack_step (frame, frame->total_size - libcall_size);
 
-  if (use_restore_libcall)
+  if (use_restore_libcall || use_multi_pop)
     frame->mask = mask; /* Undo the above fib.  */
 
-  poly_int64 step1 = frame->total_size - step2 - libcall_size;
+  poly_int64 step1 = frame->total_size - step2 - libcall_size - multipop_size ;
 
   /* Set TARGET to BASE + STEP1.  */
   if (known_gt (step1, 0))
@@ -5668,7 +6025,7 @@ riscv_expand_epilogue (int style)
 					   adjust));
 	  rtx dwarf = NULL_RTX;
 	  rtx cfa_adjust_rtx = gen_rtx_PLUS (Pmode, stack_pointer_rtx,
-					     GEN_INT (step2));
+					     GEN_INT (step2 + libcall_size + multipop_size));
 
 	  dwarf = alloc_reg_note (REG_CFA_DEF_CFA, cfa_adjust_rtx, dwarf);
 	  RTX_FRAME_RELATED_P (insn) = 1;
@@ -5683,15 +6040,15 @@ riscv_expand_epilogue (int style)
       epilogue_cfa_sp_offset = step2;
     }
 
-  if (use_restore_libcall)
+  if (use_restore_libcall || use_multi_pop)
     frame->mask = 0; /* Temporarily fib that we need not save GPRs.  */
 
   /* Restore the registers.  */
-  riscv_for_each_saved_reg (frame->total_size - step2 - libcall_size,
+  riscv_for_each_saved_reg (frame->total_size - step2 - libcall_size - multipop_size,
 			    riscv_restore_reg,
 			    true, style == EXCEPTION_RETURN);
 
-  if (use_restore_libcall)
+  if (use_restore_libcall || use_multi_pop)
       frame->mask = mask; /* Undo the above fib.  */
 
   if (need_barrier_p)
@@ -5705,14 +6062,30 @@ riscv_expand_epilogue (int style)
 
       rtx dwarf = NULL_RTX;
       rtx cfa_adjust_rtx = gen_rtx_PLUS (Pmode, stack_pointer_rtx,
-					 const0_rtx);
+					 GEN_INT (libcall_size + multipop_size));
       dwarf = alloc_reg_note (REG_CFA_DEF_CFA, cfa_adjust_rtx, dwarf);
       RTX_FRAME_RELATED_P (insn) = 1;
 
       REG_NOTES (insn) = dwarf;
     }
 
-  if (use_restore_libcall)
+  if (use_multi_pop)
+    {
+      unsigned regs_count = riscv_multi_push_regs_count (frame->mask);
+      if (use_multi_pop_normal)
+        insn = emit_jump_insn (
+          riscv_gen_multi_push_pop_insn (POPRET_IDX, multipop_size, regs_count));
+      else
+        insn= emit_insn (
+          riscv_gen_multi_push_pop_insn(POP_IDX, multipop_size, regs_count));
+
+      rtx dwarf = riscv_adjust_multi_pop_cfi_epilogue (multipop_size);
+      RTX_FRAME_RELATED_P (insn) = 1;
+      REG_NOTES (insn) = dwarf;
+      if (use_multi_pop_normal)
+        return;
+    }
+  else if (use_restore_libcall)
     {
       rtx dwarf = riscv_adjust_libcall_cfi_epilogue ();
       insn = emit_insn (gen_gpr_restore (GEN_INT (riscv_save_libcall_count (mask))));
@@ -6990,6 +7363,30 @@ riscv_gen_gpr_save_insn (struct riscv_frame_info *frame)
 	      BITSET_P (frame->mask, gpr_save_reg_order[veclen - 1]));
 
   return gen_rtx_PARALLEL (VOIDmode, vec);
+}
+
+static HOST_WIDE_INT zcmp_base_adj(int regs_num)
+{
+  return riscv_16bytes_align ((regs_num) * GET_MODE_SIZE (word_mode));
+}
+
+static HOST_WIDE_INT zcmp_additional_adj(HOST_WIDE_INT total, int regs_num)
+{
+  return total - zcmp_base_adj(regs_num);
+}
+
+bool riscv_zcmp_valid_slot_offset_p (HOST_WIDE_INT offset, int slot_idx)
+{
+  return offset == -1 * (slot_idx + 1) * GET_MODE_SIZE (word_mode);
+}
+
+bool riscv_zcmp_valid_stack_adj_bytes_p (HOST_WIDE_INT total, int regs_num)
+{
+  HOST_WIDE_INT additioanl_bytes = zcmp_additional_adj(total, regs_num);
+  return additioanl_bytes == 0
+         || additioanl_bytes  == 1 * ZCMP_SP_INC_STEP
+         || additioanl_bytes  == 2 * ZCMP_SP_INC_STEP
+         || additioanl_bytes  == ZCMP_MAX_SPIMM * ZCMP_SP_INC_STEP;
 }
 
 /* Return true if it's valid gpr_save pattern.  */

@@ -113,6 +113,7 @@
 
 (define_constants
   [(RETURN_ADDR_REGNUM		1)
+   (SP_REGNUM 			2)
    (GP_REGNUM 			3)
    (TP_REGNUM			4)
    (T0_REGNUM			5)
@@ -3205,3 +3206,4 @@
 (include "sifive-7.md")
 (include "thead.md")
 (include "vector.md")
+(include "zc.md")
