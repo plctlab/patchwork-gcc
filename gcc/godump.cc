@@ -791,7 +791,7 @@ go_format_type (class godump_container *container, tree type,
 	tree real_type;
 
 	real_type = TREE_TYPE (type);
-	if (TREE_CODE (real_type) == REAL_TYPE)
+	if (SCALAR_FLOAT_TYPE_P (real_type))
 	  {
 	    switch (TYPE_PRECISION (real_type))
 	      {
@@ -1100,7 +1100,7 @@ go_output_typedef (class godump_container *container, tree decl)
   if (TREE_CODE (TREE_TYPE (decl)) == ENUMERAL_TYPE
       && TYPE_SIZE (TREE_TYPE (decl)) != 0
       && !container->decls_seen.contains (TREE_TYPE (decl))
-      && (TYPE_CANONICAL (TREE_TYPE (decl)) == NULL_TREE
+      && (TYPE_STRUCTURAL_EQUALITY_P (TREE_TYPE (decl))
 	  || !container->decls_seen.contains
 				    (TYPE_CANONICAL (TREE_TYPE (decl)))))
     {

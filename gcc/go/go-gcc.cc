@@ -1168,7 +1168,7 @@ Gcc_backend::fill_in_array(Btype* fill, Btype* element_type,
   if (element_type_tree == error_mark_node || length_tree == error_mark_node)
     return this->error_type();
 
-  gcc_assert(TYPE_SIZE(element_type_tree) != NULL_TREE);
+  gcc_assert (COMPLETE_TYPE_P (element_type_tree));
 
   length_tree = fold_convert(sizetype, length_tree);
 
@@ -1347,7 +1347,7 @@ Gcc_backend::named_type(const std::string& name, Btype* btype,
   if (TYPE_NAME(type) == NULL_TREE
       && location.gcc_location() == BUILTINS_LOCATION
       && (TREE_CODE(type) == INTEGER_TYPE
-	  || TREE_CODE(type) == REAL_TYPE
+	  || SCALAR_FLOAT_TYPE_P (type)
 	  || TREE_CODE(type) == COMPLEX_TYPE
 	  || TREE_CODE(type) == BOOLEAN_TYPE))
     {
@@ -1670,7 +1670,7 @@ Gcc_backend::convert_expression(Btype* type, Bexpression* expr,
     }
   else if (TREE_CODE(type_tree) == INTEGER_TYPE)
     ret = fold(convert_to_integer(type_tree, expr_tree));
-  else if (TREE_CODE(type_tree) == REAL_TYPE)
+  else if (SCALAR_FLOAT_TYPE_P (type_tree))
     ret = fold(convert_to_real(type_tree, expr_tree));
   else if (TREE_CODE(type_tree) == COMPLEX_TYPE)
     ret = fold(convert_to_complex(type_tree, expr_tree));
@@ -1880,7 +1880,7 @@ operator_to_tree_code(Operator op, tree type)
       code = MULT_EXPR;
       break;
     case OPERATOR_DIV:
-      if (TREE_CODE(type) == REAL_TYPE || TREE_CODE(type) == COMPLEX_TYPE)
+      if (SCALAR_FLOAT_TYPE_P (type) || TREE_CODE (type) == COMPLEX_TYPE)
 	code = RDIV_EXPR;
       else
 	code = TRUNC_DIV_EXPR;
@@ -2223,7 +2223,7 @@ Gcc_backend::init_statement(Bfunction*, Bvariable* var, Bexpression* init)
   tree init_tree = init->get_tree();
   if (var_tree == error_mark_node || init_tree == error_mark_node)
     return this->error_statement();
-  gcc_assert(TREE_CODE(var_tree) == VAR_DECL);
+  gcc_assert (VAR_P (var_tree));
 
   // To avoid problems with GNU ld, we don't make zero-sized
   // externally visible variables.  That might lead us to doing an
