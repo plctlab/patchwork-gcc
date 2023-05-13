@@ -2267,7 +2267,7 @@ CompileExpr::type_cast_expression (tree type_to_cast_to, tree expr_tree,
       // FIXME check for TREE_OVERFLOW?
       return cast;
     }
-  else if (TREE_CODE (type_to_cast_to) == REAL_TYPE)
+  else if (SCALAR_FLOAT_TYPE_P (type_to_cast_to))
     {
       tree cast = convert_to_real (type_to_cast_to, expr_tree);
       // FIXME

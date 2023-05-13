@@ -25,7 +25,7 @@ namespace Analysis {
 static void
 check_decl (tree *t)
 {
-  rust_assert (TREE_CODE (*t) == VAR_DECL || TREE_CODE (*t) == PARM_DECL
+  rust_assert (VAR_P (*t) || TREE_CODE (*t) == PARM_DECL
 	       || TREE_CODE (*t) == CONST_DECL);
 
   tree var_name = DECL_NAME (*t);
