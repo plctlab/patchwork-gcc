@@ -54,7 +54,7 @@
 
    Keep these checks in ascending code order.  */
 #define ARITHMETIC_TYPE_P(TYPE)                                                \
-  (RS_INTEGRAL_TYPE_P (TYPE) || TREE_CODE (TYPE) == REAL_TYPE                  \
+  (RS_INTEGRAL_TYPE_P (TYPE) || SCALAR_FLOAT_TYPE_P (TYPE)		  \
    || TREE_CODE (TYPE) == COMPLEX_TYPE)
 
 /* True iff TYPE is cv decltype(nullptr).  */
@@ -3250,7 +3250,7 @@ identifier_p (tree t)
 inline bool
 gnu_vector_type_p (const_tree type)
 {
-  return TREE_CODE (type) == VECTOR_TYPE && !TYPE_INDIVISIBLE_P (type);
+  return VECTOR_TYPE_P (type) && !TYPE_INDIVISIBLE_P (type);
 }
 
 extern vec<tree, va_gc> *
