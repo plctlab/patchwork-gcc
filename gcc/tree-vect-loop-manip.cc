@@ -385,6 +385,58 @@ vect_maybe_permute_loop_masks (gimple_seq *seq, rgroup_controls *dest_rgm,
   return false;
 }
 
+/* Try to use adjust loop lens for non-SLP multiple-rgroups.
+
+     _36 = MIN_EXPR <ivtmp_34, VF>;
+
+     First length (MIN (X, VF/N)):
+       loop_len_15 = MIN_EXPR <_36, VF/N>;
+
+     Second length:
+       tmp = _36 - loop_len_15;
+       loop_len_16 = MIN (tmp, VF/N);
+
+     Third length:
+       tmp2 = tmp - loop_len_16;
+       loop_len_17 = MIN (tmp2, VF/N);
+
+     Forth length:
+       tmp3 = tmp2 - loop_len_17;
+       loop_len_18 = MIN (tmp3, VF/N);  */
+
+static void
+vect_adjust_loop_lens (tree iv_type, gimple_seq *seq, rgroup_controls *dest_rgm,
+		       rgroup_controls *src_rgm)
+{
+  tree ctrl_type = dest_rgm->type;
+  poly_uint64 nitems_per_ctrl
+    = TYPE_VECTOR_SUBPARTS (ctrl_type) * dest_rgm->factor;
+
+  for (unsigned int i = 0; i < dest_rgm->controls.length (); ++i)
+    {
+      tree src = src_rgm->controls[i / dest_rgm->controls.length ()];
+      tree dest = dest_rgm->controls[i];
+      tree length_limit = build_int_cst (iv_type, nitems_per_ctrl);
+      gassign *stmt;
+      if (i == 0)
+	{
+	  /* MIN (X, VF*I/N) capped to the range [0, VF/N].  */
+	  stmt = gimple_build_assign (dest, MIN_EXPR, src, length_limit);
+	  gimple_seq_add_stmt (seq, stmt);
+	}
+      else
+	{
+	  /* (MIN (remain, VF*I/N)) capped to the range [0, VF/N].  */
+	  tree temp = make_ssa_name (iv_type);
+	  stmt = gimple_build_assign (temp, MINUS_EXPR, src,
+				      dest_rgm->controls[i - 1]);
+	  gimple_seq_add_stmt (seq, stmt);
+	  stmt = gimple_build_assign (dest, MIN_EXPR, temp, length_limit);
+	  gimple_seq_add_stmt (seq, stmt);
+	}
+    }
+}
+
 /* Helper for vect_set_loop_condition_partial_vectors.  Generate definitions
    for all the rgroup controls in RGC and return a control that is nonzero
    when the loop needs to iterate.  Add any new preheader statements to
@@ -468,9 +520,10 @@ vect_set_loop_controls_directly (class loop *loop, loop_vec_info loop_vinfo,
   gimple_stmt_iterator incr_gsi;
   bool insert_after;
   standard_iv_increment_position (loop, &incr_gsi, &insert_after);
-  create_iv (build_int_cst (iv_type, 0), PLUS_EXPR, nitems_step, NULL_TREE,
-	     loop, &incr_gsi, insert_after, &index_before_incr,
-	     &index_after_incr);
+  if (!LOOP_VINFO_USING_DECREMENTING_IV_P (loop_vinfo))
+    create_iv (build_int_cst (iv_type, 0), PLUS_EXPR, nitems_step, NULL_TREE,
+	       loop, &incr_gsi, insert_after, &index_before_incr,
+	       &index_after_incr);
 
   tree zero_index = build_int_cst (compare_type, 0);
   tree test_index, test_limit, first_limit;
@@ -552,8 +605,13 @@ vect_set_loop_controls_directly (class loop *loop, loop_vec_info loop_vinfo,
   /* Convert the IV value to the comparison type (either a no-op or
      a demotion).  */
   gimple_seq test_seq = NULL;
-  test_index = gimple_convert (&test_seq, compare_type, test_index);
-  gsi_insert_seq_before (test_gsi, test_seq, GSI_SAME_STMT);
+  if (LOOP_VINFO_USING_DECREMENTING_IV_P (loop_vinfo))
+    test_limit = gimple_convert (preheader_seq, iv_type, nitems_total);
+  else
+    {
+      test_index = gimple_convert (&test_seq, compare_type, test_index);
+      gsi_insert_seq_before (test_gsi, test_seq, GSI_SAME_STMT);
+    }
 
   /* Provide a definition of each control in the group.  */
   tree next_ctrl = NULL_TREE;
@@ -585,6 +643,101 @@ vect_set_loop_controls_directly (class loop *loop, loop_vec_info loop_vinfo,
 	  this_test_limit = gimple_build (preheader_seq, MINUS_EXPR,
 					  compare_type, this_test_limit,
 					  bias_tree);
+	}
+
+      if (LOOP_VINFO_USING_DECREMENTING_IV_P (loop_vinfo))
+	{
+	  /* Create decrement IV:
+
+	     Case 1 (single rgroup):
+		...
+		_10 = (unsigned long) count_12(D);
+		...
+		# ivtmp_9 = PHI <ivtmp_35(6), _10(5)>
+		_36 = MIN_EXPR <ivtmp_9, POLY_INT_CST [4, 4]>;
+		...
+		vect__4.8_28 = .LEN_LOAD (_17, 32B, _36, 0);
+		...
+		ivtmp_35 = ivtmp_9 - _36;
+		...
+		if (ivtmp_35 != 0)
+		  goto <bb 4>; [83.33%]
+		else
+		  goto <bb 5>; [16.67%]
+
+	     Case 2 (SLP multiple rgroup):
+		...
+		_38 = (unsigned long) n_12(D);
+		_39 = _38 * 2;
+		_40 = MAX_EXPR <_39, 16>;
+		_41 = _40 - 16;
+		...
+		# ivtmp_42 = PHI <ivtmp_43(4), _41(3)>
+		# ivtmp_45 = PHI <ivtmp_46(4), _39(3)>
+		...
+		_44 = MIN_EXPR <ivtmp_42, 32>;
+		_47 = MIN_EXPR <ivtmp_45, 32>;
+		...
+		.LEN_STORE (_6, 8B, _47, ...);
+		...
+		.LEN_STORE (_25, 8B, _44, ...);
+		_33 = _47 / 2;
+		...
+		.LEN_STORE (_8, 16B, _33, ...);
+		_36 = _44 / 2;
+		...
+		.LEN_STORE (_15, 16B, _36, ...);
+		ivtmp_46 = ivtmp_45 - _47;
+		ivtmp_43 = ivtmp_42 - _44;
+		...
+		if (ivtmp_46 != 0)
+		  goto <bb 4>; [83.33%]
+		else
+		  goto <bb 5>; [16.67%]
+
+	     Case 3 (non-SLP multiple rgroup):
+		...
+		_38 = (unsigned long) n_12(D);
+		...
+		# ivtmp_38 = PHI <ivtmp_39(3), 100(2)>
+		...
+		_40 = MIN_EXPR <ivtmp_38, POLY_INT_CST [8, 8]>;
+		loop_len_21 = MIN_EXPR <_40, POLY_INT_CST [2, 2]>;
+		_41 = _40 - loop_len_21;
+		loop_len_20 = MIN_EXPR <_41, POLY_INT_CST [2, 2]>;
+		_42 = _40 - loop_len_20;
+		loop_len_19 = MIN_EXPR <_42, POLY_INT_CST [2, 2]>;
+		_43 = _40 - loop_len_19;
+		loop_len_16 = MIN_EXPR <_43, POLY_INT_CST [2, 2]>;
+		...
+		vect__4.8_15 = .LEN_LOAD (_6, 64B, loop_len_21, 0);
+		...
+		vect__4.9_8 = .LEN_LOAD (_13, 64B, loop_len_20, 0);
+		...
+		vect__4.10_28 = .LEN_LOAD (_46, 64B, loop_len_19, 0);
+		...
+		vect__4.11_30 = .LEN_LOAD (_49, 64B, loop_len_16, 0);
+		vect__7.13_31 = VEC_PACK_TRUNC_EXPR <vect__4.8_15, vect__4.9_8>;
+		vect__7.13_32 = VEC_PACK_TRUNC_EXPR <vect__4.10_28, vect__4.11_30>;
+		vect__7.12_33 = VEC_PACK_TRUNC_EXPR <vect__7.13_31, vect__7.13_32>;
+		...
+		.LEN_STORE (_14, 16B, _40, vect__7.12_33, 0);
+		ivtmp_39 = ivtmp_38 - _40;
+		...
+		if (ivtmp_39 != 0)
+		  goto <bb 3>; [92.31%]
+		else
+		  goto <bb 4>; [7.69%]
+	  */
+	  create_iv (this_test_limit, MINUS_EXPR, ctrl, NULL_TREE, loop,
+		     &incr_gsi, insert_after, &index_before_incr,
+		     &index_after_incr);
+	  tree step = gimple_build (header_seq, MIN_EXPR, iv_type,
+				    index_before_incr, nitems_step);
+	  gassign *assign = gimple_build_assign (ctrl, step);
+	  gimple_seq_add_stmt (header_seq, assign);
+	  next_ctrl = index_after_incr;
+	  continue;
 	}
 
       /* Create the initial control.  First include all items that
@@ -704,6 +857,7 @@ vect_set_loop_condition_partial_vectors (class loop *loop,
 
   bool use_masks_p = LOOP_VINFO_FULLY_MASKED_P (loop_vinfo);
   tree compare_type = LOOP_VINFO_RGROUP_COMPARE_TYPE (loop_vinfo);
+  tree iv_type = LOOP_VINFO_RGROUP_IV_TYPE (loop_vinfo);
   unsigned int compare_precision = TYPE_PRECISION (compare_type);
   tree orig_niters = niters;
 
@@ -751,6 +905,19 @@ vect_set_loop_condition_partial_vectors (class loop *loop,
 	    if (!half_rgc->controls.is_empty ()
 		&& vect_maybe_permute_loop_masks (&header_seq, rgc, half_rgc))
 	      continue;
+	  }
+
+	if (LOOP_VINFO_USING_DECREMENTING_IV_P (loop_vinfo)
+	    && rgc->max_nscalars_per_iter == 1
+	    && rgc != &LOOP_VINFO_LENS (loop_vinfo)[0])
+	  {
+	    rgroup_controls *sub_rgc
+	      = &(*controls)[nmasks / rgc->controls.length () - 1];
+	    if (!sub_rgc->controls.is_empty ())
+	      {
+		vect_adjust_loop_lens (iv_type, &header_seq, rgc, sub_rgc);
+		continue;
+	      }
 	  }
 
 	/* See whether zero-based IV would ever generate all-false masks
