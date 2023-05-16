@@ -28156,6 +28156,9 @@ package body Sem_Util is
                Ent := Defining_Identifier (Ent);
                exit;
 
+            when N_Entity =>
+               exit;
+
             when others =>
                null;
          end case;
