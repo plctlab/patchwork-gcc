@@ -224,3 +224,57 @@ optimize_successive_divisions_p (tree divisor, tree inner_div)
     }
   return true;
 }
+
+/* Return true if "(X - N * M) / N + M" can be optimized into "X / N".
+   Otherwise return false.
+
+   For unsigned,
+   If sign bit of M is 0 (clz is 0), valid range is [N*M, MAX].
+   If sign bit of M is 1, valid range is [0, MAX - N*(-M)].
+
+   For signed,
+   If N*M > 0, valid range: [MIN+N*M, 0] + [N*M, MAX]
+   If N*M < 0, valid range: [MIN, -(-N*M)] + [0, MAX - (-N*M)].  */
+
+static bool
+optimize_x_minus_NM_div_N_plus_M (tree x, wide_int n, wide_int m, tree type)
+{
+  wide_int max = wi::max_value (type);
+  signop sgn = TYPE_SIGN (type);
+  wide_int nm;
+  wi::overflow_type ovf;
+  if (TYPE_UNSIGNED (type) && wi::clz (m) == 0)
+    nm = wi::mul (n, -m, sgn, &ovf);
+  else
+    nm = wi::mul (n, m, sgn, &ovf);
+
+  if (ovf != wi::OVF_NONE)
+    return false;
+
+  value_range vr0;
+  if (!get_range_query (cfun)->range_of_expr (vr0, x) || vr0.varying_p ()
+      || vr0.undefined_p ())
+    return false;
+
+  wide_int wmin0 = vr0.lower_bound ();
+  wide_int wmax0 = vr0.upper_bound ();
+  wide_int min = wi::min_value (type);
+
+  /* unsigned */
+  if ((TYPE_UNSIGNED (type)))
+    /* M > 0 (clz != 0): [N*M, MAX],  M < 0 : [0, MAX-N*(-M)]  */
+    return wi::clz (m) != 0 ? wi::ge_p (wmin0, nm, sgn)
+			    : wi::le_p (wmax0, max - nm, sgn);
+
+  /* signed, N*M > 0 */
+  else if (wi::gt_p (nm, 0, sgn))
+    /* [N*M, MAX] or [MIN+N*M, 0] */
+    return wi::ge_p (wmin0, nm, sgn)
+	   || (wi::ge_p (wmin0, min + nm, sgn) && wi::le_p (wmax0, 0, sgn));
+
+  /* signed, N*M < 0 */
+  /* [MIN, N*M] or [0, MAX + N*M]*/
+  else
+    return wi::le_p (wmax0, nm, sgn)
+	   || (wi::ge_p (wmin0, 0, sgn) && wi::le_p (wmax0, max - (-nm), sgn));
+}

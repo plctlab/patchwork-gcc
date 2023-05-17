@@ -942,6 +942,28 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
 #endif
    ))))
 
+#if GIMPLE
+/* Simplify ((t + -N*M) / N + M) -> t / N.  */
+(for div (trunc_div exact_div)
+ (simplify
+  (plus (div (plus @0 INTEGER_CST@1) INTEGER_CST@2) INTEGER_CST@3)
+  (with {wide_int n = wi::to_wide (@2); wide_int m = wi::to_wide (@3);}
+    (if (INTEGRAL_TYPE_P (type)
+	 && n * m == -wi::to_wide (@1)
+	 && optimize_x_minus_NM_div_N_plus_M (@0, n, m, type))
+    (div @0 @2)))))
+
+/* Simplify ((t + -(M<<N)) >> N + M) -> t >> N.  */
+(simplify
+ (plus (rshift (plus @0 INTEGER_CST@1) INTEGER_CST@2) INTEGER_CST@3)
+ (with {wide_int n = wi::to_wide (@2); wide_int m = wi::to_wide (@3);}
+   (if (INTEGRAL_TYPE_P (type)
+	&& (m << n) == -wi::to_wide (@1)
+	&& optimize_x_minus_NM_div_N_plus_M (@0,
+	     wi::one (TYPE_PRECISION (type)) << n, m, type))
+    (rshift @0 @2))))
+#endif
+
 (for op (negate abs)
  /* Simplify cos(-x) and cos(|x|) -> cos(x).  Similarly for cosh.  */
  (for coss (COS COSH)
