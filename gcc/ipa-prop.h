@@ -309,12 +309,25 @@ public:
 class GTY(()) ipa_vr
 {
 public:
-  /* The data fields below are valid only if known is true.  */
-  bool known;
-  enum value_range_kind type;
-  wide_int min;
-  wide_int max;
-  bool nonzero_p (tree) const;
+  ipa_vr ();
+  ipa_vr (const vrange &);
+  void set_unknown ();
+  bool known_p () const { return m_storage != NULL; }
+  void get_vrange (vrange &, tree type) const;
+  void streamer_read (lto_input_block *, data_in *);
+  void streamer_write (output_block *) const;
+
+private:
+  friend void gt_pch_nx (struct ipa_vr &);
+  friend void gt_ggc_mx (struct ipa_vr &);
+  friend void gt_pch_nx (struct ipa_vr *, gt_pointer_operator, void *);
+
+  vrange_storage *m_storage;
+  // vrange_storage is typeless, but we need to know what type of
+  // range that is being streamed out (irange, frange, etc).  AFAICT,
+  // there's no way to get at the underlying type by the time we
+  // stream out in write_ipcp_transformation_info.
+  tree m_type;
 };
 
 /* A jump function for a callsite represents the values passed as actual
