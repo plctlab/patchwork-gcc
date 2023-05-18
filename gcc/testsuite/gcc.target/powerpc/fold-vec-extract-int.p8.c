@@ -13,7 +13,7 @@
 
 /* { dg-final { scan-assembler-times {\mvspltw\M} 3 { target lp64 } } } */
 /* { dg-final { scan-assembler-times {\mmfvsrwz\M} 3 { target lp64 } } } */
-/* { dg-final { scan-assembler-times {\mrldicl\M} 7 { target { le } } } } */
+/* { dg-final { scan-assembler-times {\mrldicl\M} 5 { target { le } } } } */
 /* { dg-final { scan-assembler-times {\mrldicl\M} 4 { target { lp64 && be } } } } */
 /* { dg-final { scan-assembler-times {\msubfic\M} 3 { target { le } } } } */
 /* { dg-final { scan-assembler-times {\msldi\M} 3  { target lp64 } } } */
