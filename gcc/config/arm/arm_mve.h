@@ -5049,7 +5049,7 @@ __extension__ extern __inline int32x4_t
 __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
 __arm_vadcq_s32 (int32x4_t __a, int32x4_t __b, unsigned * __carry)
 {
-  __builtin_arm_set_fpscr_nzcvqc((__builtin_arm_get_fpscr_nzcvqc () & ~0x20000000u) | (*__carry << 29));
+  __builtin_arm_set_fpscr_nzcvqc((__builtin_arm_get_fpscr_nzcvqc () & ~0x20000000u) | ((*__carry & 0x1u) << 29));
   int32x4_t __res = __builtin_mve_vadcq_sv4si (__a, __b);
   *__carry = (__builtin_arm_get_fpscr_nzcvqc () >> 29) & 0x1u;
   return __res;
@@ -5059,7 +5059,7 @@ __extension__ extern __inline uint32x4_t
 __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
 __arm_vadcq_u32 (uint32x4_t __a, uint32x4_t __b, unsigned * __carry)
 {
-  __builtin_arm_set_fpscr_nzcvqc((__builtin_arm_get_fpscr_nzcvqc () & ~0x20000000u) | (*__carry << 29));
+  __builtin_arm_set_fpscr_nzcvqc((__builtin_arm_get_fpscr_nzcvqc () & ~0x20000000u) | ((*__carry & 0x1u) << 29));
   uint32x4_t __res = __builtin_mve_vadcq_uv4si (__a, __b);
   *__carry = (__builtin_arm_get_fpscr_nzcvqc () >> 29) & 0x1u;
   return __res;
@@ -5069,7 +5069,7 @@ __extension__ extern __inline int32x4_t
 __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
 __arm_vadcq_m_s32 (int32x4_t __inactive, int32x4_t __a, int32x4_t __b, unsigned * __carry, mve_pred16_t __p)
 {
-  __builtin_arm_set_fpscr_nzcvqc((__builtin_arm_get_fpscr_nzcvqc () & ~0x20000000u) | (*__carry << 29));
+  __builtin_arm_set_fpscr_nzcvqc((__builtin_arm_get_fpscr_nzcvqc () & ~0x20000000u) | ((*__carry & 0x1u) << 29));
   int32x4_t __res = __builtin_mve_vadcq_m_sv4si (__inactive, __a, __b, __p);
   *__carry = (__builtin_arm_get_fpscr_nzcvqc () >> 29) & 0x1u;
   return __res;
@@ -5079,7 +5079,7 @@ __extension__ extern __inline uint32x4_t
 __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
 __arm_vadcq_m_u32 (uint32x4_t __inactive, uint32x4_t __a, uint32x4_t __b, unsigned * __carry, mve_pred16_t __p)
 {
-  __builtin_arm_set_fpscr_nzcvqc((__builtin_arm_get_fpscr_nzcvqc () & ~0x20000000u) | (*__carry << 29));
+  __builtin_arm_set_fpscr_nzcvqc((__builtin_arm_get_fpscr_nzcvqc () & ~0x20000000u) | ((*__carry & 0x1u) << 29));
   uint32x4_t __res =  __builtin_mve_vadcq_m_uv4si (__inactive, __a, __b, __p);
   *__carry = (__builtin_arm_get_fpscr_nzcvqc () >> 29) & 0x1u;
   return __res;
@@ -5125,7 +5125,7 @@ __extension__ extern __inline int32x4_t
 __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
 __arm_vsbcq_s32 (int32x4_t __a, int32x4_t __b, unsigned * __carry)
 {
-  __builtin_arm_set_fpscr_nzcvqc((__builtin_arm_get_fpscr_nzcvqc () & ~0x20000000u) | (*__carry << 29));
+  __builtin_arm_set_fpscr_nzcvqc((__builtin_arm_get_fpscr_nzcvqc () & ~0x20000000u) | ((*__carry & 0x1u) << 29));
   int32x4_t __res = __builtin_mve_vsbcq_sv4si (__a, __b);
   *__carry = (__builtin_arm_get_fpscr_nzcvqc () >> 29) & 0x1u;
   return __res;
@@ -5135,7 +5135,7 @@ __extension__ extern __inline uint32x4_t
 __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
 __arm_vsbcq_u32 (uint32x4_t __a, uint32x4_t __b, unsigned * __carry)
 {
-  __builtin_arm_set_fpscr_nzcvqc((__builtin_arm_get_fpscr_nzcvqc () & ~0x20000000u) | (*__carry << 29));
+  __builtin_arm_set_fpscr_nzcvqc((__builtin_arm_get_fpscr_nzcvqc () & ~0x20000000u) | ((*__carry & 0x1u) << 29));
   uint32x4_t __res =  __builtin_mve_vsbcq_uv4si (__a, __b);
   *__carry = (__builtin_arm_get_fpscr_nzcvqc () >> 29) & 0x1u;
   return __res;
@@ -5145,7 +5145,7 @@ __extension__ extern __inline int32x4_t
 __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
 __arm_vsbcq_m_s32 (int32x4_t __inactive, int32x4_t __a, int32x4_t __b, unsigned * __carry, mve_pred16_t __p)
 {
-  __builtin_arm_set_fpscr_nzcvqc((__builtin_arm_get_fpscr_nzcvqc () & ~0x20000000u) | (*__carry << 29));
+  __builtin_arm_set_fpscr_nzcvqc((__builtin_arm_get_fpscr_nzcvqc () & ~0x20000000u) | ((*__carry & 0x1u) << 29));
   int32x4_t __res = __builtin_mve_vsbcq_m_sv4si (__inactive, __a, __b, __p);
   *__carry = (__builtin_arm_get_fpscr_nzcvqc () >> 29) & 0x1u;
   return __res;
@@ -5155,7 +5155,7 @@ __extension__ extern __inline uint32x4_t
 __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
 __arm_vsbcq_m_u32 (uint32x4_t __inactive, uint32x4_t __a, uint32x4_t __b, unsigned * __carry, mve_pred16_t __p)
 {
-  __builtin_arm_set_fpscr_nzcvqc((__builtin_arm_get_fpscr_nzcvqc () & ~0x20000000u) | (*__carry << 29));
+  __builtin_arm_set_fpscr_nzcvqc((__builtin_arm_get_fpscr_nzcvqc () & ~0x20000000u) | ((*__carry & 0x1u) << 29));
   uint32x4_t __res = __builtin_mve_vsbcq_m_uv4si (__inactive, __a, __b, __p);
   *__carry = (__builtin_arm_get_fpscr_nzcvqc () >> 29) & 0x1u;
   return __res;
