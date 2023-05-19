@@ -13080,12 +13080,15 @@ do_store_flag (sepops ops, rtx target, machine_mode mode)
      so we just call into the folder and expand its result.  */
 
   if ((code == NE || code == EQ)
-      && integer_zerop (arg1)
+      && (integer_zerop (arg1)
+	  || integer_pow2p (arg1))
       && (TYPE_PRECISION (ops->type) != 1 || TYPE_UNSIGNED (ops->type)))
     {
       wide_int nz = tree_nonzero_bits (arg0);
 
-      if (wi::popcount (nz) == 1)
+      if (wi::popcount (nz) == 1
+	  && (integer_zerop (arg1)
+	      || wi::to_wide (arg1) == nz))
 	{
 	  tree op0;
 	  tree op1;
@@ -13103,11 +13106,13 @@ do_store_flag (sepops ops, rtx target, machine_mode mode)
 	      op0 = arg0;
 	      op1 = wide_int_to_tree (TREE_TYPE (op0), nz);
 	    }
-	  enum tree_code tcode = code == NE ? NE_EXPR : EQ_EXPR;
+	  enum tree_code tcode = EQ_EXPR;
+	  if ((code == NE) ^ !integer_zerop (arg1))
+	    tcode = NE_EXPR;
 	  type = lang_hooks.types.type_for_mode (mode, unsignedp);
 	  tree temp = fold_build2_loc (loc, BIT_AND_EXPR, TREE_TYPE (op0),
 				       op0, op1);
-	  temp = fold_single_bit_test (loc, tcode, temp, arg1, type);
+	  temp = fold_single_bit_test (loc, tcode, temp, build_zero_cst (type), type);
 	  if (temp)
 	    return expand_expr (temp, target, VOIDmode, EXPAND_NORMAL);
 	}
