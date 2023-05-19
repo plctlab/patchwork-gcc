@@ -13083,15 +13083,30 @@ do_store_flag (sepops ops, rtx target, machine_mode mode)
       && integer_zerop (arg1)
       && (TYPE_PRECISION (ops->type) != 1 || TYPE_UNSIGNED (ops->type)))
     {
-      gimple *srcstmt = get_def_for_expr (arg0, BIT_AND_EXPR);
-      if (srcstmt
-	  && integer_pow2p (gimple_assign_rhs2 (srcstmt)))
+      wide_int nz = tree_nonzero_bits (arg0);
+
+      if (wi::popcount (nz) == 1)
 	{
+	  tree op0;
+	  tree op1;
+	  gimple *srcstmt = get_def_for_expr (arg0, BIT_AND_EXPR);
+	  /* If the defining statement was (x & POW2), then remove the and
+	     as we are going to add it back. */
+	  if (srcstmt
+	      && integer_pow2p (gimple_assign_rhs2 (srcstmt)))
+	    {
+	      op0 = gimple_assign_rhs1 (srcstmt);
+	      op1 = gimple_assign_rhs2 (srcstmt);
+	    }
+	  else
+	    {
+	      op0 = arg0;
+	      op1 = wide_int_to_tree (TREE_TYPE (op0), nz);
+	    }
 	  enum tree_code tcode = code == NE ? NE_EXPR : EQ_EXPR;
 	  type = lang_hooks.types.type_for_mode (mode, unsignedp);
-	  tree temp = fold_build2_loc (loc, BIT_AND_EXPR, TREE_TYPE (arg1),
-				       gimple_assign_rhs1 (srcstmt),
-				       gimple_assign_rhs2 (srcstmt));
+	  tree temp = fold_build2_loc (loc, BIT_AND_EXPR, TREE_TYPE (op0),
+				       op0, op1);
 	  temp = fold_single_bit_test (loc, tcode, temp, arg1, type);
 	  if (temp)
 	    return expand_expr (temp, target, VOIDmode, EXPAND_NORMAL);
