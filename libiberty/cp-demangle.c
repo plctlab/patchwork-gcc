@@ -1947,6 +1947,7 @@ const struct demangle_operator_info cplus_demangle_operators[] =
   { "ng", NL ("-"),         1 },
   { "nt", NL ("!"),         1 },
   { "nw", NL ("new"),       3 },
+  { "nx", NL ("noexcept"),  1 },
   { "oR", NL ("|="),        2 },
   { "oo", NL ("||"),        2 },
   { "or", NL ("|"),         2 },
