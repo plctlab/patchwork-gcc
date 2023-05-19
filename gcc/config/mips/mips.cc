@@ -8313,6 +8313,12 @@ mips_expand_block_move (rtx dest, rtx src, rtx length)
 	}
       else if (optimize)
 	{
+	  /* When the length is big enough, the lib call has better performace
+	     than load/store insns.
+	     In most platform, the value is about 64-128.
+	     And in fact lib call may be optimized with SIMD */
+	  if (INTVAL(length) >= 64)
+	    return false;
 	  mips_block_move_loop (dest, src, INTVAL (length),
 				MIPS_MAX_MOVE_BYTES_PER_LOOP_ITER);
 	  return true;
