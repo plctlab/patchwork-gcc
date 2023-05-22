@@ -30,6 +30,7 @@
 #ifndef _GLIBCXX_PREDEFINED_OPS_H
 #define _GLIBCXX_PREDEFINED_OPS_H	1
 
+#include <version>
 #include <bits/move.h>
 
 namespace __gnu_cxx
@@ -377,6 +378,7 @@ namespace __ops
 	  _GLIBCXX_MOVE(__comp._M_comp), __it);
     }
 
+#if !__cpp_lib_not_fn
   template<typename _Predicate>
     struct _Iter_negate
     {
@@ -400,6 +402,7 @@ namespace __ops
     inline _Iter_negate<_Predicate>
     __negate(_Iter_pred<_Predicate> __pred)
     { return _Iter_negate<_Predicate>(_GLIBCXX_MOVE(__pred._M_pred)); }
+#endif
 
 } // namespace __ops
 } // namespace __gnu_cxx
