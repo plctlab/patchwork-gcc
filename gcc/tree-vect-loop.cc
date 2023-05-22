@@ -2725,6 +2725,16 @@ start_over:
       && !vect_verify_loop_lens (loop_vinfo))
     LOOP_VINFO_CAN_USE_PARTIAL_VECTORS_P (loop_vinfo) = false;
 
+  /* If we're vectorizing an loop that uses length "controls" and
+     can iterate more than once, we apply decrementing IV approach
+     in loop control.  */
+  if (LOOP_VINFO_CAN_USE_PARTIAL_VECTORS_P (loop_vinfo)
+      && !LOOP_VINFO_LENS (loop_vinfo).is_empty ()
+      && !(LOOP_VINFO_NITERS_KNOWN_P (loop_vinfo)
+	   && known_le (LOOP_VINFO_INT_NITERS (loop_vinfo),
+			LOOP_VINFO_VECT_FACTOR (loop_vinfo))))
+    LOOP_VINFO_USING_DECREMENTING_IV_P (loop_vinfo) = true;
+
   /* If we're vectorizing an epilogue loop, the vectorized loop either needs
      to be able to handle fewer than VF scalars, or needs to have a lower VF
      than the main loop.  */
