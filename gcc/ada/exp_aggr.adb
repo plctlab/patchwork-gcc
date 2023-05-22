@@ -3839,6 +3839,7 @@ package body Exp_Aggr is
       Comp := First (Component_Associations (N));
       while Present (Comp) loop
          Selector := Entity (First (Choices (Comp)));
+         pragma Assert (Present (Selector));
 
          --  C++ constructors
 
