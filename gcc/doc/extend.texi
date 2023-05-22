@@ -18274,6 +18274,16 @@ The @code{__builtin_recipdiv}, and @code{__builtin_recipdivf}
 functions generate multiple instructions to implement division using
 the reciprocal estimate instructions.
 
+double __builtin_mffscrn (const int);
+double __builtin_mffscrn (double);
+
+The @code{__builtin_mffscrn} returns the contents of the control bits DRN, VE,
+OE, UE, ZE, XE, NI, RN in the FPSCR are returned with RN updated appropriately.
+In the case of the const int variant of the builtin, RN is set to the 2-bit
+value specified in the builtin.  In the case of the double builtin variant, the
+2-bit value in the double argument that corresponds to the RN location in the
+FPSCR is updated.
+
 The following functions require @option{-mhard-float} and
 @option{-mmultiple} options.
 
