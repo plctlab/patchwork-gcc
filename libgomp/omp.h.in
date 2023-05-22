@@ -146,7 +146,8 @@ typedef enum omp_alloctrait_key_t
   omp_atk_fallback = 5,
   omp_atk_fb_data = 6,
   omp_atk_pinned = 7,
-  omp_atk_partition = 8
+  omp_atk_partition = 8,
+  __omp_alloctrait_key_t_max__ = __INT_MAX__
 } omp_alloctrait_key_t;
 
 typedef enum omp_alloctrait_value_t
