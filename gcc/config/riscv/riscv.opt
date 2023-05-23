@@ -295,3 +295,7 @@ Enum(riscv_autovec_lmul) String(m8) Value(RVV_M8)
 -param=riscv-autovec-lmul=
 Target RejectNegative Joined Enum(riscv_autovec_lmul) Var(riscv_autovec_lmul) Init(RVV_M1)
 -param=riscv-autovec-lmul=<string>	Set the RVV LMUL of auto-vectorization in the RISC-V port.
+
+mdisable-multilib-check
+Target Bool Var(riscv_disable_multilib_check) Init(0)
+Disable multilib checking by riscv_multi_lib_check().
