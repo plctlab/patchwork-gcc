@@ -2433,6 +2433,7 @@ capture_info::walk_c_expr (c_expr *e)
 /* The current label failing the current matched pattern during
    code generation.  */
 static char *fail_label;
+static bool needs_label;
 
 /* Code generation off the decision tree and the refered AST nodes.  */
 
@@ -2611,6 +2612,7 @@ expr::gen_transform (FILE *f, int indent, const char *dest, bool gimple,
       fprintf_indent (f, indent,
 		      "if (!_r%d) goto %s;\n",
 		      depth, fail_label);
+      needs_label = true;
       if (*opr == CONVERT_EXPR)
 	{
 	  indent -= 4;
@@ -2640,11 +2642,13 @@ expr::gen_transform (FILE *f, int indent, const char *dest, bool gimple,
 	{
 	  fprintf_indent (f, indent, "if (!_r%d)\n", depth);
 	  fprintf_indent (f, indent, "  goto %s;\n", fail_label);
+	  needs_label = true;
 	}
       if (force_leaf)
 	{
 	  fprintf_indent (f, indent, "if (EXPR_P (_r%d))\n", depth);
 	  fprintf_indent (f, indent, "  goto %s;\n", fail_label);
+	  needs_label = true;
 	}
       if (*opr == CONVERT_EXPR)
 	{
@@ -3409,7 +3413,8 @@ dt_simplify::gen_1 (FILE *f, int indent, bool gimple, operand *result)
   char local_fail_label[256];
   snprintf (local_fail_label, 256, "next_after_fail%u", ++fail_label_cnt);
   fail_label = local_fail_label;
-  bool needs_label = false;
+  needs_label = false;
+  bool needs_label_1 = false;
 
   /* Analyze captures and perform early-outs on the incoming arguments
      that cover cases we cannot handle.  */
@@ -3484,8 +3489,8 @@ dt_simplify::gen_1 (FILE *f, int indent, bool gimple, operand *result)
 
   if (s->kind == simplify::SIMPLIFY)
     {
-      fprintf_indent (f, indent, "if (UNLIKELY (!dbg_cnt (match))) goto %s;\n", fail_label);
-      needs_label = true;
+      fprintf_indent (f, indent, "if (UNLIKELY (!dbg_cnt (match))) goto %s_1;\n", fail_label);
+      needs_label_1 = true;
     }
 
   fprintf_indent (f, indent, "if (UNLIKELY (debug_dump)) "
@@ -3718,7 +3723,22 @@ dt_simplify::gen_1 (FILE *f, int indent, bool gimple, operand *result)
   indent -= 2;
   fprintf_indent (f, indent, "}\n");
   if (needs_label)
-    fprintf (f, "%s:;\n", fail_label);
+    {
+      fprintf (f, "%s:;\n", fail_label);
+      if (s->kind == simplify::SIMPLIFY)
+	{
+	  fprintf_indent (f, indent, "if (UNLIKELY (debug_dump)) "
+			  "fprintf (dump_file, \"Pattern failed ");
+	  fprintf (f, "%%s:%%d, %%s:%%d\\n\", ");
+	  output_line_directive (f,
+				 result ? result->location : s->match->location, true,
+				 true);
+	  fprintf (f, ", __FILE__, __LINE__);\n");
+	}
+    }
+  if (needs_label_1)
+    fprintf (f, "%s_1:;\n", fail_label);
+  needs_label = false;
   fail_label = NULL;
 }
 
