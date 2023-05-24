@@ -468,6 +468,38 @@ vect_set_loop_controls_directly (class loop *loop, loop_vec_info loop_vinfo,
   gimple_stmt_iterator incr_gsi;
   bool insert_after;
   standard_iv_increment_position (loop, &incr_gsi, &insert_after);
+  if (LOOP_VINFO_USING_DECREMENTING_IV_P (loop_vinfo))
+    {
+      /* single rgroup:
+	 ...
+	 _10 = (unsigned long) count_12(D);
+	 ...
+	 # ivtmp_9 = PHI <ivtmp_35(6), _10(5)>
+	 _36 = MIN_EXPR <ivtmp_9, POLY_INT_CST [4, 4]>;
+	 ...
+	 vect__4.8_28 = .LEN_LOAD (_17, 32B, _36, 0);
+	 ...
+	 ivtmp_35 = ivtmp_9 - _36;
+	 ...
+	 if (ivtmp_35 != 0)
+	   goto <bb 4>; [83.33%]
+	 else
+	   goto <bb 5>; [16.67%]
+      */
+      nitems_total = gimple_convert (preheader_seq, iv_type, nitems_total);
+      tree step = rgc->controls.length () == 1 ? rgc->controls[0]
+					       : make_ssa_name (iv_type);
+      /* Create decrement IV.  */
+      create_iv (nitems_total, MINUS_EXPR, step, NULL_TREE, loop, &incr_gsi,
+		 insert_after, &index_before_incr, &index_after_incr);
+      gimple_seq_add_stmt (header_seq, gimple_build_assign (step, MIN_EXPR,
+							    index_before_incr,
+							    nitems_step));
+      LOOP_VINFO_DECREMENTING_IV_STEP (loop_vinfo) = step;
+      return index_after_incr;
+    }
+
+  /* Create increment IV.  */
   create_iv (build_int_cst (iv_type, 0), PLUS_EXPR, nitems_step, NULL_TREE,
 	     loop, &incr_gsi, insert_after, &index_before_incr,
 	     &index_after_incr);
@@ -683,6 +715,63 @@ vect_set_loop_controls_directly (class loop *loop, loop_vec_info loop_vinfo,
   return next_ctrl;
 }
 
+/* Try to use adjust loop lens for multiple-rgroups.
+
+     _36 = MIN_EXPR <ivtmp_34, VF>;
+
+     First length (MIN (X, VF/N)):
+       loop_len_15 = MIN_EXPR <_36, VF/N>;
+
+     Second length:
+       tmp = _36 - loop_len_15;
+       loop_len_16 = MIN (tmp, VF/N);
+
+     Third length:
+       tmp2 = tmp - loop_len_16;
+       loop_len_17 = MIN (tmp2, VF/N);
+
+     Last length:
+       loop_len_18 = tmp2 - loop_len_17;
+*/
+
+static void
+vect_adjust_loop_lens_control (tree iv_type, gimple_seq *seq,
+			       rgroup_controls *dest_rgm, tree step)
+{
+  tree ctrl_type = dest_rgm->type;
+  poly_uint64 nitems_per_ctrl
+    = TYPE_VECTOR_SUBPARTS (ctrl_type) * dest_rgm->factor;
+  tree length_limit = build_int_cst (iv_type, nitems_per_ctrl);
+
+  for (unsigned int i = 0; i < dest_rgm->controls.length (); ++i)
+    {
+      tree ctrl = dest_rgm->controls[i];
+      if (i == 0)
+	{
+	  /* First iteration: MIN (X, VF/N) capped to the range [0, VF/N].  */
+	  gassign *assign
+	    = gimple_build_assign (ctrl, MIN_EXPR, step, length_limit);
+	  gimple_seq_add_stmt (seq, assign);
+	}
+      else if (i == dest_rgm->controls.length () - 1)
+	{
+	  /* Last iteration: Remain capped to the range [0, VF/N].  */
+	  gassign *assign = gimple_build_assign (ctrl, MINUS_EXPR, step,
+						 dest_rgm->controls[i - 1]);
+	  gimple_seq_add_stmt (seq, assign);
+	}
+      else
+	{
+	  /* (MIN (remain, VF*I/N)) capped to the range [0, VF/N].  */
+	  step = gimple_build (seq, MINUS_EXPR, iv_type, step,
+			       dest_rgm->controls[i - 1]);
+	  gassign *assign
+	    = gimple_build_assign (ctrl, MIN_EXPR, step, length_limit);
+	  gimple_seq_add_stmt (seq, assign);
+	}
+    }
+}
+
 /* Set up the iteration condition and rgroup controls for LOOP, given
    that LOOP_VINFO_USING_PARTIAL_VECTORS_P is true for the vectorized
    loop.  LOOP_VINFO describes the vectorization of LOOP.  NITERS is
@@ -753,17 +842,85 @@ vect_set_loop_condition_partial_vectors (class loop *loop,
 	      continue;
 	  }
 
-	/* See whether zero-based IV would ever generate all-false masks
-	   or zero length before wrapping around.  */
-	bool might_wrap_p = vect_rgroup_iv_might_wrap_p (loop_vinfo, rgc);
+	if (!LOOP_VINFO_USING_DECREMENTING_IV_P (loop_vinfo)
+	    || !LOOP_VINFO_DECREMENTING_IV_STEP (loop_vinfo))
+	  {
+	    /* See whether zero-based IV would ever generate all-false masks
+	       or zero length before wrapping around.  */
+	    bool might_wrap_p = vect_rgroup_iv_might_wrap_p (loop_vinfo, rgc);
 
-	/* Set up all controls for this group.  */
-	test_ctrl = vect_set_loop_controls_directly (loop, loop_vinfo,
-						     &preheader_seq,
-						     &header_seq,
-						     loop_cond_gsi, rgc,
-						     niters, niters_skip,
-						     might_wrap_p);
+	    /* Set up all controls for this group.  */
+	    test_ctrl
+	      = vect_set_loop_controls_directly (loop, loop_vinfo,
+						 &preheader_seq, &header_seq,
+						 loop_cond_gsi, rgc, niters,
+						 niters_skip, might_wrap_p);
+	  }
+
+	/* Decrement IV only run vect_set_loop_controls_directly once.  */
+	if (LOOP_VINFO_USING_DECREMENTING_IV_P (loop_vinfo)
+	    && rgc->controls.length () > 1)
+	  {
+	    /*
+	       - Multiple rgroup (SLP):
+		 ...
+		 _38 = (unsigned long) bnd.7_29;
+		 _39 = _38 * 2;
+		 ...
+		 # ivtmp_41 = PHI <ivtmp_42(6), _39(5)>
+		 ...
+		 _43 = MIN_EXPR <ivtmp_41, 32>;
+		 loop_len_26 = MIN_EXPR <_43, 16>;
+		 loop_len_25 = _43 - loop_len_26;
+		 ...
+		 .LEN_STORE (_6, 8B, loop_len_26, ...);
+		 ...
+		 .LEN_STORE (_25, 8B, loop_len_25, ...);
+		 _33 = loop_len_26 / 2;
+		 ...
+		 .LEN_STORE (_8, 16B, _33, ...);
+		 _36 = loop_len_25 / 2;
+		 ...
+		 .LEN_STORE (_15, 16B, _36, ...);
+		 ivtmp_42 = ivtmp_41 - _43;
+		 ...
+
+	       - Multiple rgroup (non-SLP):
+		 ...
+		 _38 = (unsigned long) n_12(D);
+		 ...
+		 # ivtmp_38 = PHI <ivtmp_39(3), 100(2)>
+		 ...
+		 _40 = MIN_EXPR <ivtmp_38, POLY_INT_CST [8, 8]>;
+		 loop_len_21 = MIN_EXPR <_40, POLY_INT_CST [2, 2]>;
+		 _41 = _40 - loop_len_21;
+		 loop_len_20 = MIN_EXPR <_41, POLY_INT_CST [2, 2]>;
+		 _42 = _40 - loop_len_20;
+		 loop_len_19 = MIN_EXPR <_42, POLY_INT_CST [2, 2]>;
+		 _43 = _40 - loop_len_19;
+		 loop_len_16 = MIN_EXPR <_43, POLY_INT_CST [2, 2]>;
+		 ...
+		 vect__4.8_15 = .LEN_LOAD (_6, 64B, loop_len_21, 0);
+		 ...
+		 vect__4.9_8 = .LEN_LOAD (_13, 64B, loop_len_20, 0);
+		 ...
+		 vect__4.10_28 = .LEN_LOAD (_46, 64B, loop_len_19, 0);
+		 ...
+		 vect__4.11_30 = .LEN_LOAD (_49, 64B, loop_len_16, 0);
+		 vect__7.13_31 = VEC_PACK_TRUNC_EXPR <...>,
+		 vect__7.13_32 = VEC_PACK_TRUNC_EXPR <...>;
+		 vect__7.12_33 = VEC_PACK_TRUNC_EXPR <...>;
+		 ...
+		 .LEN_STORE (_14, 16B, _40, vect__7.12_33, 0);
+		 ivtmp_39 = ivtmp_38 - _40;
+		 ...
+	    */
+	    tree iv_type = LOOP_VINFO_RGROUP_IV_TYPE (loop_vinfo);
+	    tree step = LOOP_VINFO_DECREMENTING_IV_STEP (loop_vinfo);
+	    gcc_assert (step);
+	    vect_adjust_loop_lens_control (iv_type, &header_seq, rgc, step);
+	    break;
+	  }
       }
 
   /* Emit all accumulated statements.  */
