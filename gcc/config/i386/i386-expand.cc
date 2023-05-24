@@ -296,7 +296,7 @@ ix86_convert_const_wide_int_to_broadcast (machine_mode mode, rtx op)
   /* Don't use integer vector broadcast if we can't move from GPR to SSE
      register directly.  */
   if (!TARGET_INTER_UNIT_MOVES_TO_VEC)
-    return nullptr;
+    return NULL_RTX;
 
   /* Convert CONST_WIDE_INT to a non-standard SSE constant integer
      broadcast only if vector broadcast is available.  */
@@ -305,7 +305,7 @@ ix86_convert_const_wide_int_to_broadcast (machine_mode mode, rtx op)
       || standard_sse_constant_p (op, mode)
       || (CONST_WIDE_INT_NUNITS (op) * HOST_BITS_PER_WIDE_INT
 	  != GET_MODE_BITSIZE (mode)))
-    return nullptr;
+    return NULL_RTX;
 
   HOST_WIDE_INT val = CONST_WIDE_INT_ELT (op, 0);
   HOST_WIDE_INT val_broadcast;
@@ -326,12 +326,12 @@ ix86_convert_const_wide_int_to_broadcast (machine_mode mode, rtx op)
 			      val_broadcast))
     broadcast_mode = DImode;
   else
-    return nullptr;
+    return NULL_RTX;
 
   /* Check if OP can be broadcasted from VAL.  */
   for (int i = 1; i < CONST_WIDE_INT_NUNITS (op); i++)
     if (val != CONST_WIDE_INT_ELT (op, i))
-      return nullptr;
+      return NULL_RTX;
 
   unsigned int nunits = (GET_MODE_SIZE (mode)
 			 / GET_MODE_SIZE (broadcast_mode));
@@ -525,7 +525,7 @@ ix86_expand_move (machine_mode mode, rtx operands[])
 	    {
 	      rtx tmp = ix86_convert_const_wide_int_to_broadcast
 		(GET_MODE (op0), op1);
-	      if (tmp != nullptr)
+	      if (tmp != NULL_RTX)
 		op1 = tmp;
 	    }
 	}
@@ -541,13 +541,13 @@ ix86_broadcast_from_constant (machine_mode mode, rtx op)
 {
   int nunits = GET_MODE_NUNITS (mode);
   if (nunits < 2)
-    return nullptr;
+    return NULL_RTX;
 
   /* Don't use integer vector broadcast if we can't move from GPR to SSE
      register directly.  */
   if (!TARGET_INTER_UNIT_MOVES_TO_VEC
       && INTEGRAL_MODE_P (mode))
-    return nullptr;
+    return NULL_RTX;
 
   /* Convert CONST_VECTOR to a non-standard SSE constant integer
      broadcast only if vector broadcast is available.  */
@@ -557,7 +557,7 @@ ix86_broadcast_from_constant (machine_mode mode, rtx op)
 		|| GET_MODE_INNER (mode) == DImode))
 	|| FLOAT_MODE_P (mode))
       || standard_sse_constant_p (op, mode))
-    return nullptr;
+    return NULL_RTX;
 
   /* Don't broadcast from a 64-bit integer constant in 32-bit mode.
      We can still put 64-bit integer constant in memory when
@@ -565,14 +565,14 @@ ix86_broadcast_from_constant (machine_mode mode, rtx op)
   if (GET_MODE_INNER (mode) == DImode && !TARGET_64BIT
       && (!TARGET_AVX512F
 	  || (GET_MODE_SIZE (mode) < 64 && !TARGET_AVX512VL)))
-    return nullptr;
+    return NULL_RTX;
 
   if (GET_MODE_INNER (mode) == TImode)
-    return nullptr;
+    return NULL_RTX;
 
   rtx constant = get_pool_constant (XEXP (op, 0));
   if (GET_CODE (constant) != CONST_VECTOR)
-    return nullptr;
+    return NULL_RTX;
 
   /* There could be some rtx like
      (mem/u/c:V16QI (symbol_ref/u:DI ("*.LC1")))
@@ -581,8 +581,8 @@ ix86_broadcast_from_constant (machine_mode mode, rtx op)
     {
       constant = simplify_subreg (mode, constant, GET_MODE (constant),
 				  0);
-      if (constant == nullptr || GET_CODE (constant) != CONST_VECTOR)
-	return nullptr;
+      if (constant == NULL_RTX || GET_CODE (constant) != CONST_VECTOR)
+	return NULL_RTX;
     }
 
   rtx first = XVECEXP (constant, 0, 0);
@@ -592,7 +592,7 @@ ix86_broadcast_from_constant (machine_mode mode, rtx op)
       rtx tmp = XVECEXP (constant, 0, i);
       /* Vector duplicate value.  */
       if (!rtx_equal_p (tmp, first))
-	return nullptr;
+	return NULL_RTX;
     }
 
   return first;
@@ -641,7 +641,7 @@ ix86_expand_vector_move (machine_mode mode, rtx operands[])
 	  machine_mode mode = GET_MODE (op0);
 	  rtx tmp = ix86_convert_const_wide_int_to_broadcast
 	    (mode, op1);
-	  if (tmp == nullptr)
+	  if (tmp == NULL_RTX)
 	    op1 = validize_mem (force_const_mem (mode, op1));
 	  else
 	    op1 = tmp;
@@ -656,7 +656,7 @@ ix86_expand_vector_move (machine_mode mode, rtx operands[])
 	  && CONSTANT_POOL_ADDRESS_P (XEXP (op1, 0))))
     {
       rtx first = ix86_broadcast_from_constant (mode, op1);
-      if (first != nullptr)
+      if (first != NULL_RTX)
 	{
 	  /* Broadcast to XMM/YMM/ZMM register from an integer
 	     constant or scalar mem.  */
@@ -5797,7 +5797,7 @@ ix86_extract_perm_from_pool_constant (int* perm, rtx mem)
     {
       constant = simplify_subreg (mode, constant, GET_MODE (constant), 0);
 
-      if (constant == nullptr || GET_CODE (constant) != CONST_VECTOR)
+      if (constant == NULL_RTX || GET_CODE (constant) != CONST_VECTOR)
 	return false;
     }
 
