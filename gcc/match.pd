@@ -3182,6 +3182,7 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
     (convert (plus:c @@0 @1)))
    (if (INTEGRAL_TYPE_P (type)
 	&& TYPE_OVERFLOW_UNDEFINED (type)
+	&& TREE_CODE (@1) != INTEGER_CST
 	&& element_precision (type) <= element_precision (TREE_TYPE (@1)))
     (with { tree utype = unsigned_type_for (type); }
      (convert (negate (convert:utype @1))))
@@ -3201,6 +3202,7 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
     (convert (pointer_plus @@0 @1)))
    (if (INTEGRAL_TYPE_P (type)
 	&& TYPE_OVERFLOW_UNDEFINED (type)
+	&& TREE_CODE (@1) != INTEGER_CST
 	&& element_precision (type) <= element_precision (TREE_TYPE (@1)))
     (with { tree utype = unsigned_type_for (type); }
      (convert (negate (convert:utype @1))))
