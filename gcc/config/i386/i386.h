@@ -1801,7 +1801,9 @@ typedef struct ix86_args {
    is the number of bytes at a time which we can move efficiently.
    MOVE_MAX_PIECES defaults to MOVE_MAX.  */
 
-#define MOVE_MAX \
+#define MOVE_MAX MOVE_MAX_VEC (2 * UNITS_PER_WORD)
+#define MOVE_MAX_PIECES MOVE_MAX_VEC (UNITS_PER_WORD)
+#define MOVE_MAX_VEC(NONVEC) \
   ((TARGET_AVX512F \
     && (ix86_move_max == PVW_AVX512 \
 	|| ix86_store_max == PVW_AVX512)) \
@@ -1813,7 +1815,7 @@ typedef struct ix86_args {
       : ((TARGET_SSE2 \
 	  && TARGET_SSE_UNALIGNED_LOAD_OPTIMAL \
 	  && TARGET_SSE_UNALIGNED_STORE_OPTIMAL) \
-	 ? 16 : UNITS_PER_WORD)))
+	 ? 16 : (NONVEC))))
 
 /* STORE_MAX_PIECES is the number of bytes at a time that we can store
    efficiently.  Allow 16/32/64 bytes only if inter-unit move is enabled
