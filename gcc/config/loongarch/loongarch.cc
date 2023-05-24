@@ -321,6 +321,18 @@ loongarch_flatten_aggregate_field (const_tree type,
 	  || !tree_fits_uhwi_p (TYPE_SIZE (type)))
 	return -1;
 
+      if (default_is_empty_record (type))
+	{
+	  if (n < 2)
+	    {
+	      fields[n].type = type;
+	      fields[n].offset = offset;
+	      return n + 1;
+	    }
+	  else
+	    return -1;
+	}
+
       for (tree f = TYPE_FIELDS (type); f; f = DECL_CHAIN (f))
 	if (TREE_CODE (f) == FIELD_DECL)
 	  {
@@ -458,6 +470,7 @@ loongarch_pass_aggregate_in_fpr_and_gpr_p (const_tree type,
     {
       num_float += SCALAR_FLOAT_TYPE_P (fields[i].type);
       num_int += INTEGRAL_TYPE_P (fields[i].type);
+      num_int += (TREE_CODE (fields[i].type) == RECORD_TYPE);
     }
 
   return num_int == 1 && num_float == 1;
