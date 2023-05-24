@@ -11,7 +11,7 @@
 
 /* { dg-final { scan-assembler-times {\mli\M} 6 } } */
 /* { dg-final { scan-assembler-times {\maddi\M|\madd\M} 9 { target lp64 } } } */
-/* { dg-final { scan-assembler-times {\maddi\M|\madd\M} 12 { target ilp32 } } } */
+/* { dg-final { scan-assembler-times {\maddi\M|\madd\M} 9 { target ilp32 } } } */
 /* { dg-final { scan-assembler-times {\mrldic\M|\mrlwinm\M} 3 } } */
 /* { dg-final { scan-assembler-times {\mstxvw4x\M|\mstvx\M} 6 } } */
 /* { dg-final { scan-assembler-times "lhz|lha|lhzx|lhax" 6 } } */
