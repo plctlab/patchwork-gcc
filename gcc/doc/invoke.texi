@@ -1218,6 +1218,7 @@ See RS/6000 and PowerPC Options.
 -msmall-data-limit=@var{N-bytes}
 -msave-restore  -mno-save-restore
 -mshorten-memrefs  -mno-shorten-memrefs
+-mfold-mem-offsets  -mno-fold-mem-offsets
 -mstrict-align  -mno-strict-align
 -mcmodel=medlow  -mcmodel=medany
 -mexplicit-relocs  -mno-explicit-relocs
@@ -29043,6 +29044,13 @@ replacing a load/store of 'base register + large offset' with a new load/store
 of 'new base + small offset'.  If the new base gets stored in a compressed
 register, then the new load/store can be compressed.  Currently targets 32-bit
 integer load/stores only.
+
+@opindex mfold-mem-offsets
+@item -mfold-mem-offsets
+@itemx -mno-fold-mem-offsets
+Do or do not attempt to move constant addition calculations used to for memory
+offsets to the corresponding memory instructions.  The default is
+@option{-mfold-mem-offsets} at levels @option{-O2}, @option{-O3}.
 
 @opindex mstrict-align
 @item -mstrict-align
