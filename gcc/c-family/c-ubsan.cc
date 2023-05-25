@@ -362,6 +362,10 @@ ubsan_instrument_bounds (location_t loc, tree array, tree *index,
 {
   tree type = TREE_TYPE (array);
   tree domain = TYPE_DOMAIN (type);
+  /* whether the array ref is a flexible array member with valid element_count
+     attribute.  */
+  bool fam_has_count_attr = false;
+  tree element_count = NULL_TREE;
 
   if (domain == NULL_TREE)
     return NULL_TREE;
@@ -375,6 +379,17 @@ ubsan_instrument_bounds (location_t loc, tree array, tree *index,
 	  && COMPLETE_TYPE_P (type)
 	  && integer_zerop (TYPE_SIZE (type)))
 	bound = build_int_cst (TREE_TYPE (TYPE_MIN_VALUE (domain)), -1);
+      /* If the array ref is to flexible array member field which has
+	 element_count attribute.  We can use the information from the
+	 attribute as the bound to instrument the reference.  */
+      else if ((element_count = component_ref_get_element_count (array))
+		!= NULL_TREE)
+	{
+	  fam_has_count_attr = true;
+	  bound = fold_build2 (MINUS_EXPR, TREE_TYPE (element_count),
+			       element_count,
+			       build_int_cst (TREE_TYPE (element_count), 1));
+	}
       else
 	return NULL_TREE;
     }
@@ -387,6 +402,7 @@ ubsan_instrument_bounds (location_t loc, tree array, tree *index,
      -fsanitize=bounds-strict.  */
   tree base = get_base_address (array);
   if (!sanitize_flags_p (SANITIZE_BOUNDS_STRICT)
+      && !fam_has_count_attr
       && TREE_CODE (array) == COMPONENT_REF
       && base && (INDIRECT_REF_P (base) || TREE_CODE (base) == MEM_REF))
     {
