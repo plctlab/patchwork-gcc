@@ -2817,12 +2817,17 @@ expand_simple_operations (tree expr, tree stop, hash_map<tree, tree> &cache)
 	return expr;
       /* Fallthru.  */
     case POINTER_PLUS_EXPR:
-      /* And increments and decrements by a constant are simple.  */
+      /* And increments and decrements by a constant are simple.
+	 Also expand increments from an invariant base (but do not follow
+	 a variable offset).  */
       e1 = gimple_assign_rhs2 (stmt);
-      if (!is_gimple_min_invariant (e1))
+      if (is_gimple_min_invariant (e1))
+	ee = expand_simple_operations (e, stop, cache);
+      else if (is_gimple_min_invariant (e))
+	ee = e;
+      else
 	return expr;
 
-      ee = expand_simple_operations (e, stop, cache);
       return fold_build2 (code, TREE_TYPE (expr), ee, e1);
 
     default:
