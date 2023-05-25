@@ -1,4 +1,5 @@
 /* { dg-do run } */
+/* { dg-additional-options "-fext-numeric-literals" { target c++ } } */
 
 #include <stdio.h>
 

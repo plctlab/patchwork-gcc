@@ -1862,7 +1862,8 @@ reference_binding (tree rto, tree rfrom, tree expr, bool c_cast_p, int flags,
           = (TYPE_REF_IS_RVALUE (rto) == !is_lvalue);
 
       if ((gl_kind & clk_bitfield) != 0
-	  || ((gl_kind & clk_packed) != 0 && !TYPE_PACKED (to)))
+	  || ((gl_kind & clk_packed) != 0 && !TYPE_PACKED (to))
+	  || (gl_kind & clk_reversed) != 0)
 	/* For the purposes of overload resolution, we ignore the fact
 	   this expression is a bitfield or packed field. (In particular,
 	   [over.ics.ref] says specifically that a function with a
@@ -8084,7 +8085,8 @@ build_temp (tree expr, tree type, int flags,
      binding the field to the reference parameter to the copy constructor, and
      we'll end up with an infinite loop.  If we can use a bitwise copy, then
      do that now.  */
-  if ((lvalue_kind (expr) & clk_packed)
+  if (((lvalue_kind (expr) & clk_packed)
+       || (lvalue_kind (expr) & clk_reversed))
       && CLASS_TYPE_P (TREE_TYPE (expr))
       && !type_has_nontrivial_copy_init (TREE_TYPE (expr)))
     return get_target_expr (expr, complain);
@@ -8781,6 +8783,9 @@ convert_like_internal (conversion *convs, tree expr, tree fn, int argnum,
 		    else if (lvalue & clk_packed)
 		      error_at (loc, "cannot bind packed field %qE to %qT",
 				expr, ref_type);
+		    else if (lvalue & clk_reversed)
+		      error_at (loc, "cannot bind reversed endian field %qE to %qT",
+				expr, ref_type);
 		    else
 		      error_at (loc, "cannot bind rvalue %qE to %qT",
 				expr, ref_type);
@@ -8798,6 +8803,14 @@ convert_like_internal (conversion *convs, tree expr, tree fn, int argnum,
 		&& type_has_nontrivial_copy_init (type))
 	      {
 		error_at (loc, "cannot bind packed field %qE to %qT",
+			  expr, ref_type);
+		return error_mark_node;
+	      }
+	    if ((lvalue & clk_reversed)
+		&& CLASS_TYPE_P (type)
+		&& type_has_nontrivial_copy_init (type))
+	      {
+		error_at (loc, "cannot bind reversed endian field %qE to %qT",
 			  expr, ref_type);
 		return error_mark_node;
 	      }
