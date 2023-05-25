@@ -1038,17 +1038,20 @@ _mm512_maskz_slli_epi64 (__mmask8 __U, __m512i __A, unsigned int __B)
 }
 #else
 #define _mm512_slli_epi64(X, C)						   \
-  ((__m512i) __builtin_ia32_psllqi512_mask ((__v8di)(__m512i)(X), (int)(C),\
-    (__v8di)(__m512i)_mm512_undefined_epi32 (),\
+  ((__m512i) __builtin_ia32_psllqi512_mask ((__v8di)(__m512i)(X),		\
+  	(unsigned int)(C),													\
+    (__v8di)(__m512i)_mm512_undefined_epi32 (),							\
     (__mmask8)-1))
 
 #define _mm512_mask_slli_epi64(W, U, X, C)				   \
-  ((__m512i) __builtin_ia32_psllqi512_mask ((__v8di)(__m512i)(X), (int)(C),\
-    (__v8di)(__m512i)(W),\
+  ((__m512i) __builtin_ia32_psllqi512_mask ((__v8di)(__m512i)(X),		\
+  	(unsigned int)(C),													\
+    (__v8di)(__m512i)(W),												\
     (__mmask8)(U)))
 
 #define _mm512_maskz_slli_epi64(U, X, C)                                   \
-  ((__m512i) __builtin_ia32_psllqi512_mask ((__v8di)(__m512i)(X), (int)(C),\
+  ((__m512i) __builtin_ia32_psllqi512_mask ((__v8di)(__m512i)(X),			\
+  	(unsigned int)(C),														\
     (__v8di)(__m512i)_mm512_setzero_si512 (),\
     (__mmask8)(U)))
 #endif
@@ -1117,17 +1120,20 @@ _mm512_maskz_srli_epi64 (__mmask8 __U, __m512i __A, unsigned int __B)
 }
 #else
 #define _mm512_srli_epi64(X, C)						   \
-  ((__m512i) __builtin_ia32_psrlqi512_mask ((__v8di)(__m512i)(X), (int)(C),\
+  ((__m512i) __builtin_ia32_psrlqi512_mask ((__v8di)(__m512i)(X),	\
+  	(unsigned int)(C),												\
     (__v8di)(__m512i)_mm512_undefined_epi32 (),\
     (__mmask8)-1))
 
 #define _mm512_mask_srli_epi64(W, U, X, C)				   \
-  ((__m512i) __builtin_ia32_psrlqi512_mask ((__v8di)(__m512i)(X), (int)(C),\
+  ((__m512i) __builtin_ia32_psrlqi512_mask ((__v8di)(__m512i)(X),	\
+  	(unsigned int)(C),												\
     (__v8di)(__m512i)(W),\
     (__mmask8)(U)))
 
 #define _mm512_maskz_srli_epi64(U, X, C)                                   \
-  ((__m512i) __builtin_ia32_psrlqi512_mask ((__v8di)(__m512i)(X), (int)(C),\
+  ((__m512i) __builtin_ia32_psrlqi512_mask ((__v8di)(__m512i)(X),		\
+  	(unsigned int)(C),													\
     (__v8di)(__m512i)_mm512_setzero_si512 (),\
     (__mmask8)(U)))
 #endif
@@ -1196,17 +1202,20 @@ _mm512_maskz_srai_epi64 (__mmask8 __U, __m512i __A, unsigned int __B)
 }
 #else
 #define _mm512_srai_epi64(X, C)						   \
-  ((__m512i) __builtin_ia32_psraqi512_mask ((__v8di)(__m512i)(X), (int)(C),\
+  ((__m512i) __builtin_ia32_psraqi512_mask ((__v8di)(__m512i)(X),	\
+  	(unsigned int)(C),												\
     (__v8di)(__m512i)_mm512_undefined_epi32 (),\
     (__mmask8)-1))
 
 #define _mm512_mask_srai_epi64(W, U, X, C)				   \
-  ((__m512i) __builtin_ia32_psraqi512_mask ((__v8di)(__m512i)(X), (int)(C),\
+  ((__m512i) __builtin_ia32_psraqi512_mask ((__v8di)(__m512i)(X),	\
+  	(unsigned int)(C),												\
     (__v8di)(__m512i)(W),\
     (__mmask8)(U)))
 
 #define _mm512_maskz_srai_epi64(U, X, C)				   \
-  ((__m512i) __builtin_ia32_psraqi512_mask ((__v8di)(__m512i)(X), (int)(C),\
+  ((__m512i) __builtin_ia32_psraqi512_mask ((__v8di)(__m512i)(X),	\
+  	(unsigned int)(C),												\
     (__v8di)(__m512i)_mm512_setzero_si512 (),\
     (__mmask8)(U)))
 #endif
@@ -1275,17 +1284,20 @@ _mm512_maskz_slli_epi32 (__mmask16 __U, __m512i __A, unsigned int __B)
 }
 #else
 #define _mm512_slli_epi32(X, C)						    \
-  ((__m512i) __builtin_ia32_pslldi512_mask ((__v16si)(__m512i)(X), (int)(C),\
+  ((__m512i) __builtin_ia32_pslldi512_mask ((__v16si)(__m512i)(X),	\
+  	(unsigned int)(C),												\
     (__v16si)(__m512i)_mm512_undefined_epi32 (),\
     (__mmask16)-1))
 
 #define _mm512_mask_slli_epi32(W, U, X, C)                                  \
-  ((__m512i) __builtin_ia32_pslldi512_mask ((__v16si)(__m512i)(X), (int)(C),\
+  ((__m512i) __builtin_ia32_pslldi512_mask ((__v16si)(__m512i)(X),	\
+  	(unsigned int)(C),												\
     (__v16si)(__m512i)(W),\
     (__mmask16)(U)))
 
 #define _mm512_maskz_slli_epi32(U, X, C)                                    \
-  ((__m512i) __builtin_ia32_pslldi512_mask ((__v16si)(__m512i)(X), (int)(C),\
+  ((__m512i) __builtin_ia32_pslldi512_mask ((__v16si)(__m512i)(X),	\
+  	(unsigned int)(C),												\
     (__v16si)(__m512i)_mm512_setzero_si512 (),\
     (__mmask16)(U)))
 #endif
@@ -1354,17 +1366,20 @@ _mm512_maskz_srli_epi32 (__mmask16 __U, __m512i __A, unsigned int __B)
 }
 #else
 #define _mm512_srli_epi32(X, C)						    \
-  ((__m512i) __builtin_ia32_psrldi512_mask ((__v16si)(__m512i)(X), (int)(C),\
+  ((__m512i) __builtin_ia32_psrldi512_mask ((__v16si)(__m512i)(X),		\
+  	(unsigned int)(C),													\
     (__v16si)(__m512i)_mm512_undefined_epi32 (),\
     (__mmask16)-1))
 
 #define _mm512_mask_srli_epi32(W, U, X, C)                                  \
-  ((__m512i) __builtin_ia32_psrldi512_mask ((__v16si)(__m512i)(X), (int)(C),\
+  ((__m512i) __builtin_ia32_psrldi512_mask ((__v16si)(__m512i)(X),		\
+  	(unsigned int)(C),													\
     (__v16si)(__m512i)(W),\
     (__mmask16)(U)))
 
 #define _mm512_maskz_srli_epi32(U, X, C)				    \
-  ((__m512i) __builtin_ia32_psrldi512_mask ((__v16si)(__m512i)(X), (int)(C),\
+  ((__m512i) __builtin_ia32_psrldi512_mask ((__v16si)(__m512i)(X),		\
+  	(unsigned int)(C),													\
     (__v16si)(__m512i)_mm512_setzero_si512 (),\
     (__mmask16)(U)))
 #endif
@@ -1433,17 +1448,20 @@ _mm512_maskz_srai_epi32 (__mmask16 __U, __m512i __A, unsigned int __B)
 }
 #else
 #define _mm512_srai_epi32(X, C)						    \
-  ((__m512i) __builtin_ia32_psradi512_mask ((__v16si)(__m512i)(X), (int)(C),\
+  ((__m512i) __builtin_ia32_psradi512_mask ((__v16si)(__m512i)(X),	\
+  	(unsigned int)(C),												\
     (__v16si)(__m512i)_mm512_undefined_epi32 (),\
     (__mmask16)-1))
 
 #define _mm512_mask_srai_epi32(W, U, X, C)				    \
-  ((__m512i) __builtin_ia32_psradi512_mask ((__v16si)(__m512i)(X), (int)(C),\
+  ((__m512i) __builtin_ia32_psradi512_mask ((__v16si)(__m512i)(X),	\
+  	(unsigned int)(C),												\
     (__v16si)(__m512i)(W),\
     (__mmask16)(U)))
 
 #define _mm512_maskz_srai_epi32(U, X, C)				    \
-  ((__m512i) __builtin_ia32_psradi512_mask ((__v16si)(__m512i)(X), (int)(C),\
+  ((__m512i) __builtin_ia32_psradi512_mask ((__v16si)(__m512i)(X),	\
+  	(unsigned int)(C),												\
     (__v16si)(__m512i)_mm512_setzero_si512 (),\
     (__mmask16)(U)))
 #endif
