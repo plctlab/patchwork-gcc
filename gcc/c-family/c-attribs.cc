@@ -103,6 +103,8 @@ static tree handle_warn_if_not_aligned_attribute (tree *, tree, tree,
 						  int, bool *);
 static tree handle_strict_flex_array_attribute (tree *, tree, tree,
 						 int, bool *);
+static tree handle_element_count_attribute (tree *, tree, tree,
+					   int, bool *);
 static tree handle_weak_attribute (tree *, tree, tree, int, bool *) ;
 static tree handle_noplt_attribute (tree *, tree, tree, int, bool *) ;
 static tree handle_alias_ifunc_attribute (bool, tree *, tree, tree, bool *);
@@ -373,6 +375,8 @@ const struct attribute_spec c_common_attribute_table[] =
 			      handle_warn_if_not_aligned_attribute, NULL },
   { "strict_flex_array",      1, 1, true, false, false, false,
 			      handle_strict_flex_array_attribute, NULL },
+  { "element_count",	      1, 1, true, false, false, false,
+			      handle_element_count_attribute, NULL },
   { "weak",                   0, 0, true,  false, false, false,
 			      handle_weak_attribute, NULL },
   { "noplt",                   0, 0, true,  false, false, false,
@@ -2549,6 +2553,53 @@ handle_strict_flex_array_attribute (tree *node, tree name,
       error_at (DECL_SOURCE_LOCATION (decl),
 		"%qE attribute argument %qE is not an integer constant"
 		" between 0 and 3", name, argval);
+      *no_add_attrs = true;
+    }
+
+  return NULL_TREE;
+}
+
+/* Handle a "element_count" attribute; arguments as in
+   struct attribute_spec.handler.  */
+
+static tree
+handle_element_count_attribute (tree *node, tree name,
+				tree args, int ARG_UNUSED (flags),
+				bool *no_add_attrs)
+{
+  tree decl = *node;
+  tree argval = TREE_VALUE (args);
+
+  /* This attribute only applies to field decls of a structure.  */
+  if (TREE_CODE (decl) != FIELD_DECL)
+    {
+      error_at (DECL_SOURCE_LOCATION (decl),
+		"%qE attribute may not be specified for non-field"
+		" declaration %q+D", name, decl);
+      *no_add_attrs = true;
+    }
+  /* This attribute only applies to field with array type.  */
+  else if (TREE_CODE (TREE_TYPE (decl)) != ARRAY_TYPE)
+    {
+      error_at (DECL_SOURCE_LOCATION (decl),
+		"%qE attribute may not be specified for a non-array field",
+		name);
+      *no_add_attrs = true;
+    }
+  /* This attribute only applies to a C99 flexible array member type.  */
+  else if (! c_flexible_array_member_type_p (TREE_TYPE (decl)))
+    {
+      error_at (DECL_SOURCE_LOCATION (decl),
+		"%qE attribute may not be specified for a non"
+		" flexible array member field",
+		name);
+      *no_add_attrs = true;
+    }
+  /* The argument of the attribute should be a string.  */
+  else if (TREE_CODE (argval) != STRING_CST)
+    {
+      error_at (DECL_SOURCE_LOCATION (decl),
+		"%qE attribute argument not a string", name);
       *no_add_attrs = true;
     }
 
