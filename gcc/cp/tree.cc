@@ -186,6 +186,9 @@ lvalue_kind (const_tree ref)
 	}
       else if (DECL_PACKED (TREE_OPERAND (ref, 1)))
 	op1_lvalue_kind |= clk_packed;
+      else if (AGGREGATE_TYPE_P (TREE_TYPE (TREE_OPERAND (ref, 0)))
+	       && TYPE_REVERSE_STORAGE_ORDER (TREE_TYPE (TREE_OPERAND (ref, 0))))
+	op1_lvalue_kind |= clk_reversed;
 
       return op1_lvalue_kind;
 
@@ -342,7 +345,7 @@ lvalue_kind (const_tree ref)
   /* It can't be both a pseudo-lvalue and a non-addressable lvalue.
      A COND_EXPR of those should be wrapped in a TARGET_EXPR.  */
   if ((op1_lvalue_kind & (clk_rvalueref|clk_class))
-      && (op1_lvalue_kind & (clk_bitfield|clk_packed)))
+      && (op1_lvalue_kind & (clk_bitfield|clk_packed|clk_reversed)))
     op1_lvalue_kind = clk_none;
   return op1_lvalue_kind;
 }

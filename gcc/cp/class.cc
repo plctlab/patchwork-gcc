@@ -4387,6 +4387,28 @@ layout_nonempty_base_or_field (record_layout_info rli,
       field_p = true;
     }
 
+  /* Rewrite the type of array fields with scalar component
+     if the enclosing type has reverse storage order  */
+  if (TYPE_REVERSE_STORAGE_ORDER (rli->t)
+      && TREE_CODE (decl) == FIELD_DECL
+      && TREE_CODE (TREE_TYPE (decl)) == ARRAY_TYPE)
+    {
+      tree ftype = TREE_TYPE (decl);
+      tree ctype = strip_array_types (ftype);
+      if (!RECORD_OR_UNION_TYPE_P (ctype) && TYPE_MODE (ctype) != QImode)
+	{
+	  tree fmain_type = TYPE_MAIN_VARIANT (ftype);
+	  tree *typep = &fmain_type;
+	  do {
+	    *typep = build_distinct_type_copy (*typep);
+	    TYPE_REVERSE_STORAGE_ORDER (*typep) = 1;
+	    typep = &TREE_TYPE (*typep);
+	  } while (TREE_CODE (*typep) == ARRAY_TYPE);
+	  TREE_TYPE (decl)
+	    = cp_build_qualified_type (fmain_type, TYPE_QUALS (ftype));
+	}
+    }
+
   /* Try to place the field.  It may take more than one try if we have
      a hard time placing the field without putting two objects of the
      same type at the same address.  */
