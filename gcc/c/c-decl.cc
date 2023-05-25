@@ -5187,19 +5187,6 @@ set_array_declarator_inner (struct c_declarator *decl,
   return decl;
 }
 
-/* Determine whether TYPE is a ISO C99 flexible array memeber type "[]".  */
-static bool
-flexible_array_member_type_p (const_tree type)
-{
-  if (TREE_CODE (type) == ARRAY_TYPE
-      && TYPE_SIZE (type) == NULL_TREE
-      && TYPE_DOMAIN (type) != NULL_TREE
-      && TYPE_MAX_VALUE (TYPE_DOMAIN (type)) == NULL_TREE)
-    return true;
-
-  return false;
-}
-
 /* Determine whether TYPE is a one-element array type "[1]".  */
 static bool
 one_element_array_type_p (const_tree type)
@@ -5236,7 +5223,7 @@ add_flexible_array_elts_to_size (tree decl, tree init)
 
   elt = CONSTRUCTOR_ELTS (init)->last ().value;
   type = TREE_TYPE (elt);
-  if (flexible_array_member_type_p (type))
+  if (c_flexible_array_member_type_p (type))
     {
       complete_array_type (&type, elt, false);
       DECL_SIZE (decl)
@@ -9084,7 +9071,7 @@ is_flexible_array_member_p (bool is_last_field,
 
   bool is_zero_length_array = zero_length_array_type_p (TREE_TYPE (x));
   bool is_one_element_array = one_element_array_type_p (TREE_TYPE (x));
-  bool is_flexible_array = flexible_array_member_type_p (TREE_TYPE (x));
+  bool is_flexible_array = c_flexible_array_member_type_p (TREE_TYPE (x));
 
   unsigned int strict_flex_array_level = c_strict_flex_array_level_of (x);
 
@@ -9114,6 +9101,45 @@ is_flexible_array_member_p (bool is_last_field,
   return false;
 }
 
+/* Verify the argument of the element_count attribute of the flexible array
+   member FIELD_DECL is a valid field of the containing structure's fieldlist,
+   FIELDLIST, Report error when it's not.  */
+static void
+verify_element_count_attribute (tree fieldlist, tree field_decl)
+{
+  tree attr_element_count = lookup_attribute ("element_count",
+					      DECL_ATTRIBUTES (field_decl));
+
+  if (!attr_element_count)
+    return;
+
+  /* If there is an element_count attribute attached to the field,
+     verify it.  */
+
+  const char *fieldname
+    = TREE_STRING_POINTER (TREE_VALUE (TREE_VALUE (attr_element_count)));
+
+  /* Verify the argument of the attrbute is a valid field of the
+     containing structure.  */
+
+  tree element_count_field = NULL_TREE;
+  for (tree field = fieldlist; field; field = DECL_CHAIN (field))
+    if (TREE_CODE (field) == FIELD_DECL
+	&& DECL_NAME (field) != NULL
+	&& strcmp (IDENTIFIER_POINTER (DECL_NAME (field)), fieldname) == 0)
+      {
+	element_count_field = field;
+	break;
+      }
+
+  /* Error when the field is not found in the containing structure.  */
+  if (!element_count_field)
+      error_at (DECL_SOURCE_LOCATION (field_decl),
+		"%qE attribute argument not a field declaration"
+		" in the same structure",
+		(get_attribute_name (attr_element_count)));
+  return;
+}
 
 /* Fill in the fields of a RECORD_TYPE or UNION_TYPE node, T.
    LOC is the location of the RECORD_TYPE or UNION_TYPE's definition.
@@ -9234,7 +9260,7 @@ finish_struct (location_t loc, tree t, tree fieldlist, tree attributes,
 	DECL_PACKED (x) = 1;
 
       /* Detect flexible array member in an invalid context.  */
-      if (flexible_array_member_type_p (TREE_TYPE (x)))
+      if (c_flexible_array_member_type_p (TREE_TYPE (x)))
 	{
 	  if (TREE_CODE (t) == UNION_TYPE)
 	    {
@@ -9255,6 +9281,9 @@ finish_struct (location_t loc, tree t, tree fieldlist, tree attributes,
 			"members");
 	      TREE_TYPE (x) = error_mark_node;
 	    }
+	  /* if there is an element_count attribute attached to this field,
+	     verify it.  */
+	  verify_element_count_attribute (fieldlist, x);
 	}
 
       if (pedantic && TREE_CODE (t) == RECORD_TYPE
