@@ -585,6 +585,7 @@ addr_object_size (struct object_size_info *osi, const_tree ptr,
   if (pt_var != TREE_OPERAND (ptr, 0))
     {
       tree var;
+      tree element_count_ref = NULL_TREE;
 
       if (object_size_type & OST_SUBOBJECT)
 	{
@@ -600,11 +601,12 @@ addr_object_size (struct object_size_info *osi, const_tree ptr,
 	    var = TREE_OPERAND (var, 0);
 	  if (var != pt_var && TREE_CODE (var) == ARRAY_REF)
 	    var = TREE_OPERAND (var, 0);
-	  if (! TYPE_SIZE_UNIT (TREE_TYPE (var))
+	  if (! component_ref_has_element_count_p (var)
+	     && ((! TYPE_SIZE_UNIT (TREE_TYPE (var))
 	      || ! tree_fits_uhwi_p (TYPE_SIZE_UNIT (TREE_TYPE (var)))
 	      || (pt_var_size && TREE_CODE (pt_var_size) == INTEGER_CST
 		  && tree_int_cst_lt (pt_var_size,
-				      TYPE_SIZE_UNIT (TREE_TYPE (var)))))
+				      TYPE_SIZE_UNIT (TREE_TYPE (var)))))))
 	    var = pt_var;
 	  else if (var != pt_var && TREE_CODE (pt_var) == MEM_REF)
 	    {
@@ -612,6 +614,7 @@ addr_object_size (struct object_size_info *osi, const_tree ptr,
 	      /* For &X->fld, compute object size if fld isn't a flexible array
 		 member.  */
 	      bool is_flexible_array_mem_ref = false;
+
 	      while (v && v != pt_var)
 		switch (TREE_CODE (v))
 		  {
@@ -639,6 +642,8 @@ addr_object_size (struct object_size_info *osi, const_tree ptr,
 			break;
 		      }
 		    is_flexible_array_mem_ref = array_ref_flexible_size_p (v);
+		    element_count_ref = component_ref_get_element_count (v);
+
 		    while (v != pt_var && TREE_CODE (v) == COMPONENT_REF)
 		      if (TREE_CODE (TREE_TYPE (TREE_OPERAND (v, 0)))
 			  != UNION_TYPE
@@ -652,8 +657,11 @@ addr_object_size (struct object_size_info *osi, const_tree ptr,
 			   == RECORD_TYPE)
 		      {
 			/* compute object size only if v is not a
-			   flexible array member.  */
-			if (!is_flexible_array_mem_ref)
+			   flexible array member or the flexible array member
+			   has a known element count indicated by the user
+			   through attribute element_count.  */
+			if (!is_flexible_array_mem_ref
+			    || element_count_ref)
 			  {
 			    v = NULL_TREE;
 			    break;
@@ -686,9 +694,24 @@ addr_object_size (struct object_size_info *osi, const_tree ptr,
 
       if (var != pt_var)
 	{
-	  var_size = TYPE_SIZE_UNIT (TREE_TYPE (var));
-	  if (!TREE_CONSTANT (var_size))
-	    var_size = get_or_create_ssa_default_def (cfun, var_size);
+	  if (!element_count_ref)
+	    {
+	      var_size = TYPE_SIZE_UNIT (TREE_TYPE (var));
+	      if (!TREE_CONSTANT (var_size))
+		var_size = get_or_create_ssa_default_def (cfun, var_size);
+	    }
+	  else
+	    {
+	      gcc_assert (TREE_CODE (var) == COMPONENT_REF
+			  && TREE_CODE (TREE_TYPE (var)) == ARRAY_TYPE);
+	      tree element_size = TYPE_SIZE_UNIT (TREE_TYPE (TREE_TYPE (var)));
+	      var_size
+		= size_binop (MULT_EXPR,
+			      fold_convert (sizetype, element_count_ref),
+			      fold_convert (sizetype, element_size));
+	      if (!todo)
+		todo = TODO_update_ssa_only_virtuals;
+	    }
 	  if (!var_size)
 	    return false;
 	}

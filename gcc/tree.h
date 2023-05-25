@@ -5582,6 +5582,16 @@ extern tree get_base_address (tree t);
    of EXP, an ARRAY_REF or an ARRAY_RANGE_REF.  */
 extern tree array_ref_element_size (tree);
 
+/* Give a component_ref that has an array type, return true when an
+   attribute element_count attached to the corresponding FIELD_DECL.  */
+extern bool component_ref_has_element_count_p (tree);
+
+/* Give a component_ref that has an array type, return the object that
+   represents its element_count per the attribute element_count attached to
+   the corresponding FIELD_DECL.  return NULL_TREE when cannot find such
+   object.  */
+extern tree component_ref_get_element_count (tree);
+
 /* Return a typenode for the "standard" C type with a given name.  */
 extern tree get_typenode_from_name (const char *);
 
