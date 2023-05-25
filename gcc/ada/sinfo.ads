@@ -1706,6 +1706,7 @@ package Sinfo is
    --      Abstract_State
    --      Contract_Cases
    --      Depends
+   --      Exceptional_Cases
    --      Extensions_Visible
    --      Global
    --      Initial_Condition
@@ -1720,6 +1721,7 @@ package Sinfo is
    --      Refined_Global
    --      Refined_Post
    --      Refined_State
+   --      Subprogram_Variant
    --      Test_Case
 
    --  Is_Homogeneous_Aggregate
