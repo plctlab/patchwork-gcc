@@ -12745,6 +12745,99 @@ array_ref_element_size (tree exp)
     return SUBSTITUTE_PLACEHOLDER_IN_EXPR (TYPE_SIZE_UNIT (elmt_type), exp);
 }
 
+/*  For a component_ref that has an array type ARRAY_REF, return TRUE when
+    an element_count attribute attached to the corresponding FIELD_DECL.
+    return FALSE otherwise.  */
+bool
+component_ref_has_element_count_p (tree array_ref)
+{
+  if (TREE_CODE (array_ref) != COMPONENT_REF)
+    return false;
+
+  if (TREE_CODE (TREE_TYPE (array_ref)) != ARRAY_TYPE)
+    return false;
+
+  tree struct_object = TREE_OPERAND (array_ref, 0);
+  tree struct_type = TREE_TYPE (struct_object);
+
+  if (!RECORD_OR_UNION_TYPE_P (struct_type))
+    return false;
+  tree field_decl = TREE_OPERAND (array_ref, 1);
+  tree attr_element_count = lookup_attribute ("element_count",
+					      DECL_ATTRIBUTES (field_decl));
+
+  if (!attr_element_count)
+    return false;
+  return true;
+}
+
+
+/* For a component_ref that has an array type ARRAY_REF, get the object that
+   represents its element_count per the attribute element_count attached to
+   the corresponding FIELD_DECL.  return NULL_TREE when cannot find such
+   object.
+   For example, if:
+
+    struct P {
+      int k;
+      int x[] __attribute__ ((element_count ("k")));
+    } *p;
+
+    for the following reference:
+
+    p->x[b]
+
+    the object that represents its element count will be:
+
+    p->k
+
+    So, when component_ref_get_element_count (p->x[b]) is called, p->k should be
+    returned.
+*/
+
+tree
+component_ref_get_element_count (tree array_ref)
+{
+  if (! component_ref_has_element_count_p (array_ref))
+    return NULL_TREE;
+
+  tree struct_object = TREE_OPERAND (array_ref, 0);
+  tree struct_type = TREE_TYPE (struct_object);
+  tree field_decl = TREE_OPERAND (array_ref, 1);
+  tree attr_element_count = lookup_attribute ("element_count",
+					      DECL_ATTRIBUTES (field_decl));
+  gcc_assert (attr_element_count);
+
+  /* If there is an element_count attribute attached to the field,
+     get the field that maps to the element_count.  */
+
+  const char *fieldname
+    = TREE_STRING_POINTER (TREE_VALUE (TREE_VALUE (attr_element_count)));
+
+  tree element_count_field = NULL_TREE;
+  for (tree field = TYPE_FIELDS (struct_type); field;
+       field = DECL_CHAIN (field))
+    if (TREE_CODE (field) == FIELD_DECL
+	&& DECL_NAME (field) != NULL
+	&& strcmp (IDENTIFIER_POINTER (DECL_NAME (field)), fieldname) == 0)
+      {
+	element_count_field = field;
+	break;
+      }
+
+  gcc_assert (element_count_field);
+
+  /* generate the tree node that represent the element_count of this array
+     ref.  This is a COMPONENT_REF to the element_count_field of the
+     containing structure.  */
+
+  tree element_count_ref = build3 (COMPONENT_REF,
+				   TREE_TYPE (element_count_field),
+				   struct_object, element_count_field,
+				   NULL_TREE);
+  return element_count_ref;
+}
+
 /* Return a tree representing the lower bound of the array mentioned in
    EXP, an ARRAY_REF or an ARRAY_RANGE_REF.  */
 
