@@ -7501,6 +7501,27 @@ When both the attribute and the option present at the same time, the level of
 the strictness for the specific trailing array field is determined by the
 attribute.
 
+@cindex @code{element_count} variable attribute
+@item element_count ("@var{count}")
+The @code{element_count} attribute may be attached to the flexible array
+member of a structure.  It indicates that the number of the elements of the
+array is given by the field named "@var{count}" in the same structure as the
+flexible array member.  GCC uses this information to improve the results of
+@code{__builtin_dynamic_object_size} and array bound sanitizer.
+
+For instance, the following declaration:
+
+@smallexample
+struct P @{
+  size_t count;
+  int array[] __attribute__ ((element_count ("count")));
+@};
+@end smallexample
+
+@noindent
+specify that @code{array} is a flexible array member whose number of element
+is given by the field "@code{count}" in the same structure.
+
 @cindex @code{alloc_size} variable attribute
 @item alloc_size (@var{position})
 @itemx alloc_size (@var{position-1}, @var{position-2})
