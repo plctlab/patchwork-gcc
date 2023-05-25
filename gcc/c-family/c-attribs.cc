@@ -1794,7 +1794,7 @@ handle_scalar_storage_order_attribute (tree *node, tree name, tree args,
       return NULL_TREE;
     }
 
-  if (RECORD_OR_UNION_TYPE_P (type) && !c_dialect_cxx ())
+  if (RECORD_OR_UNION_TYPE_P (type))
     {
       bool reverse = false;
 
