@@ -104,6 +104,7 @@ extern void riscv_parse_arch_string (const char *, struct gcc_options *, locatio
 extern bool riscv_hard_regno_rename_ok (unsigned, unsigned);
 
 rtl_opt_pass * make_pass_shorten_memrefs (gcc::context *ctxt);
+rtl_opt_pass * make_pass_fold_mem_offsets (gcc::context *ctxt);
 rtl_opt_pass * make_pass_vsetvl (gcc::context *ctxt);
 
 /* Information about one CPU we know about.  */

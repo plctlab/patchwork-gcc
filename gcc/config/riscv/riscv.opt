@@ -105,6 +105,10 @@ Convert BASE + LARGE_OFFSET addresses to NEW_BASE + SMALL_OFFSET to allow more
 memory accesses to be generated as compressed instructions.  Currently targets
 32-bit integer load/stores.
 
+mfold-mem-offsets
+Target Bool Var(riscv_mfold_mem_offsets) Init(1)
+Fold instructions calculating memory offsets to the memory access instruction if possible.
+
 mcmodel=
 Target RejectNegative Joined Enum(code_model) Var(riscv_cmodel) Init(TARGET_DEFAULT_CMODEL)
 Specify the code model.
