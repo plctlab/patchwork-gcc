@@ -12322,7 +12322,7 @@ package body Sem_Ch3 is
       --  Check all components to ensure no default expressions
 
       if Present (Clist) then
-         Comp := First (Component_Items (Clist));
+         Comp := First_Non_Pragma (Component_Items (Clist));
          while Present (Comp) loop
             if Present (Expression (Comp)) then
                Error_Msg_N
@@ -12330,7 +12330,7 @@ package body Sem_Ch3 is
                   & "default expression", Expression (Comp));
             end if;
 
-            Next (Comp);
+            Next_Non_Pragma (Comp);
          end loop;
       end if;
    end Check_CPP_Type_Has_No_Defaults;
