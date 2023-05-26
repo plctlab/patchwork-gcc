@@ -1228,7 +1228,8 @@ See RS/6000 and PowerPC Options.
 -mstack-protector-guard=@var{guard}  -mstack-protector-guard-reg=@var{reg}
 -mstack-protector-guard-offset=@var{offset}
 -mcsr-check -mno-csr-check
--minline-atomics  -mno-inline-atomics}
+-minline-atomics  -mno-inline-atomics
+-mno-multilib-check}
 
 @emph{RL78 Options}
 @gccoptlist{-msim  -mmul=none  -mmul=g13  -mmul=g14  -mallregs
@@ -29127,6 +29128,12 @@ which register to use as base register for reading the canary,
 and from what offset from that base register. There is no default
 register or offset as this is entirely for use within the Linux
 kernel.
+
+@opindex mno-multilib-check
+@item -mno-multilib-check
+Disable the check on the correctness of multilib. When the correct multilib
+is notmatched, the default multilib will be used. This has certain risks
+and is not recommended in a production environment.
 @end table
 
 @node RL78 Options
