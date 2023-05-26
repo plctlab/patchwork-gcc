@@ -125,6 +125,7 @@ complex_class (enum mode_class c)
     case MODE_INT: return MODE_COMPLEX_INT;
     case MODE_PARTIAL_INT: return MODE_COMPLEX_INT;
     case MODE_FLOAT: return MODE_COMPLEX_FLOAT;
+    case MODE_VECTOR_INT: return MODE_COMPLEX_VECTOR_INT;
     default:
       error ("no complex class for class %s", mode_class_names[c]);
       return MODE_RANDOM;
@@ -382,6 +383,7 @@ complete_mode (struct mode_data *m)
 
     case MODE_COMPLEX_INT:
     case MODE_COMPLEX_FLOAT:
+    case MODE_COMPLEX_VECTOR_INT:
       /* Complex modes should have a component indicated, but no more.  */
       validate_mode (m, UNSET, UNSET, SET, UNSET, UNSET);
       m->ncomponents = 2;
@@ -1173,10 +1175,10 @@ inline __attribute__((__always_inline__))\n\
 #else\n\
 extern __inline__ __attribute__((__always_inline__, __gnu_inline__))\n\
 #endif\n\
-unsigned char\n\
+unsigned short\n\
 mode_unit_size_inline (machine_mode mode)\n\
 {\n\
-  extern CONST_MODE_UNIT_SIZE unsigned char mode_unit_size[NUM_MACHINE_MODES];\
+  extern CONST_MODE_UNIT_SIZE unsigned short mode_unit_size[NUM_MACHINE_MODES];\
 \n\
   gcc_assert (mode >= 0 && mode < NUM_MACHINE_MODES);\n\
   switch (mode)\n\
@@ -1683,7 +1685,7 @@ emit_mode_unit_size (void)
   int c;
   struct mode_data *m;
 
-  print_maybe_const_decl ("%sunsigned char", "mode_unit_size",
+  print_maybe_const_decl ("%sunsigned short", "mode_unit_size",
 			  "NUM_MACHINE_MODES", adj_bytesize);
 
   for_all_modes (c, m)
@@ -1873,6 +1875,7 @@ emit_mode_adjustments (void)
 	    {
 	    case MODE_COMPLEX_INT:
 	    case MODE_COMPLEX_FLOAT:
+            case MODE_COMPLEX_VECTOR_INT:
 	      printf ("  mode_size[E_%smode] = 2*s;\n", m->name);
 	      printf ("  mode_unit_size[E_%smode] = s;\n", m->name);
 	      printf ("  mode_base_align[E_%smode] = s & (~s + 1);\n",
@@ -1920,6 +1923,7 @@ emit_mode_adjustments (void)
 	    {
 	    case MODE_COMPLEX_INT:
 	    case MODE_COMPLEX_FLOAT:
+	    case MODE_COMPLEX_VECTOR_INT:
 	      printf ("  mode_base_align[E_%smode] = s;\n", m->name);
 	      break;
 

@@ -267,6 +267,7 @@ UACCUM_MODE (UTA, 16, 64, 64); /* 64.64 */
 COMPLEX_MODES (INT);
 COMPLEX_MODES (PARTIAL_INT);
 COMPLEX_MODES (FLOAT);
+/* COMPLEX_MODES (VECTOR_INT);  Let's enable these per architecture.  */
 
 /* Decimal floating point modes.  */
 DECIMAL_FLOAT_MODE (SD, 4, decimal_single_format);

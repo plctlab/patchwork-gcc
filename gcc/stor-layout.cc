@@ -391,6 +391,7 @@ int_mode_for_mode (machine_mode mode)
     case MODE_VECTOR_ACCUM:
     case MODE_VECTOR_UFRACT:
     case MODE_VECTOR_UACCUM:
+    case MODE_COMPLEX_VECTOR_INT:
       return int_mode_for_size (GET_MODE_BITSIZE (mode), 0);
 
     case MODE_OPAQUE:

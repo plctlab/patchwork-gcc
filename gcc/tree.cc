@@ -7695,7 +7695,8 @@ build_complex_type (tree component_type, bool named)
 {
   gcc_assert (INTEGRAL_TYPE_P (component_type)
 	      || SCALAR_FLOAT_TYPE_P (component_type)
-	      || FIXED_POINT_TYPE_P (component_type));
+	      || FIXED_POINT_TYPE_P (component_type)
+	      || VECTOR_INTEGER_TYPE_P (component_type));
 
   /* Make a node of the sort we want.  */
   tree probe = make_node (COMPLEX_TYPE);
