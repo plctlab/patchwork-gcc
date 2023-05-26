@@ -27968,6 +27968,18 @@ value_dependent_expression_p (tree expression)
       else if (TYPE_REF_P (TREE_TYPE (expression)))
 	/* FIXME cp_finish_decl doesn't fold reference initializers.  */
 	return true;
+      /* We have a constexpr variable and we're processing a template.  When
+	 there's lifetime extension involved (for which finish_compound_literal
+	 used to create a temporary), we'll not be able to evaluate the
+	 variable until instantiating, so pretend it's value-dependent.  */
+      else if (DECL_DECLARED_CONSTEXPR_P (expression)
+	       && !TREE_CONSTANT (expression)
+	       /* When there's nothing to initialize, we'll never mark the
+		  VAR_DECL TREE_CONSTANT, therefore it would remain
+		  value-dependent and we wouldn't instantiate.  */
+	       && !is_really_empty_class (TREE_TYPE (expression),
+					  /*ignore_vptr*/false))
+	return true;
       return false;
 
     case DYNAMIC_CAST_EXPR:
