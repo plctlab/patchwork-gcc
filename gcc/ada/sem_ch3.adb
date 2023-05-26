@@ -15169,8 +15169,8 @@ package body Sem_Ch3 is
       Loc         : constant Source_Ptr := Sloc (Subt);
       Comp_List   : constant Elist_Id   := New_Elmt_List;
       Parent_Type : constant Entity_Id  := Etype (Typ);
-      Assoc_List  : constant List_Id    := New_List;
 
+      Assoc_List            : List_Id;
       Discr_Val             : Elmt_Id;
       Errors                : Boolean;
       New_C                 : Entity_Id;
@@ -15199,8 +15199,10 @@ package body Sem_Ch3 is
 
       procedure Collect_Fixed_Components (Typ : Entity_Id) is
       begin
-      --  Build association list for discriminants, and find components of the
-      --  variant part selected by the values of the discriminants.
+         --  Build association list for discriminants, and find components of
+         --  the variant part selected by the values of the discriminants.
+
+         Assoc_List := New_List;
 
          Old_C := First_Discriminant (Typ);
          Discr_Val := First_Elmt (Constraints);
@@ -15301,13 +15303,13 @@ package body Sem_Ch3 is
       -----------------------
 
       function Is_Variant_Record (T : Entity_Id) return Boolean is
+         Decl : constant Node_Id := Parent (T);
       begin
-         return Nkind (Parent (T)) = N_Full_Type_Declaration
-           and then Nkind (Type_Definition (Parent (T))) = N_Record_Definition
-           and then Present (Component_List (Type_Definition (Parent (T))))
+         return Nkind (Decl) = N_Full_Type_Declaration
+           and then Nkind (Type_Definition (Decl)) = N_Record_Definition
+           and then Present (Component_List (Type_Definition (Decl)))
            and then
-             Present
-               (Variant_Part (Component_List (Type_Definition (Parent (T)))));
+             Present (Variant_Part (Component_List (Type_Definition (Decl))));
       end Is_Variant_Record;
 
    --  Start of processing for Create_Constrained_Components
@@ -15435,10 +15437,10 @@ package body Sem_Ch3 is
          Gather_Components
            (Typ,
             Component_List (Type_Definition (Parent (Typ))),
-            Governed_By          => Assoc_List,
-            Into                 => Comp_List,
-            Report_Errors        => Errors,
-            Allow_Compile_Time   => True);
+            Governed_By        => Assoc_List,
+            Into               => Comp_List,
+            Report_Errors      => Errors,
+            Allow_Compile_Time => True);
          pragma Assert (not Errors or else Serious_Errors_Detected > 0);
 
          Create_All_Components;
@@ -15458,10 +15460,10 @@ package body Sem_Ch3 is
          Gather_Components
            (Typ,
             Component_List (Type_Definition (Parent (Parent_Type))),
-            Governed_By          => Assoc_List,
-            Into                 => Comp_List,
-            Report_Errors        => Errors,
-            Allow_Compile_Time   => True);
+            Governed_By        => Assoc_List,
+            Into               => Comp_List,
+            Report_Errors      => Errors,
+            Allow_Compile_Time => True);
 
          --  Note: previously there was a check at this point that no errors
          --  were detected. As a consequence of AI05-220 there may be an error
