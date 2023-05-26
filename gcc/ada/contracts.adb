@@ -1631,7 +1631,7 @@ package body Contracts is
       --     return
       --        Result_Obj : constant Typ := _Wrapped_Statements
       --     do
-      --        <postconditions statments>
+      --        <postconditions statements>
       --     end return;
       --  end;
 
@@ -1649,7 +1649,7 @@ package body Contracts is
       --
       --  begin
       --     _Wrapped_Statements;
-      --     <postconditions statments>
+      --     <postconditions statements>
       --  end;
 
       --  Create Identifier
