@@ -765,6 +765,23 @@ real_insn_for_shadow (rtx_insn *insn)
   return pair->i1;
 }
 
+/* Return true if INSN is unrecog that starts a live range.  */
+
+static bool
+unrecog_insn_for_forw_only_p (rtx_insn *insn)
+{
+  if (insn && !INSN_P (insn) && recog_memoized (insn) >= 0)
+    return false;
+
+  if ((GET_CODE (PATTERN (insn)) == CLOBBER
+       || GET_CODE (PATTERN (insn)) == USE)
+      && !sd_lists_empty_p (insn, SD_LIST_FORW)
+      && sd_lists_empty_p (insn, SD_LIST_BACK))
+    return true;
+
+  return false;
+}
+
 /* For a pair P of insns, return the fixed distance in cycles from the first
    insn after which the second must be scheduled.  */
 static int
@@ -6320,11 +6337,28 @@ prune_ready_list (state_t temp_state, bool first_cycle_insn_p,
 	    }
 	  else if (recog_memoized (insn) < 0)
 	    {
-	      if (!first_cycle_insn_p
-		  && (GET_CODE (PATTERN (insn)) == ASM_INPUT
-		      || asm_noperands (PATTERN (insn)) >= 0))
-		cost = 1;
-	      reason = "asm";
+	      if (GET_CODE (PATTERN (insn)) == ASM_INPUT
+		  || asm_noperands (PATTERN (insn)) >= 0)
+		{
+		  reason = "asm";
+		  if (!first_cycle_insn_p)
+		    cost = 1;
+		}
+	      else if (unrecog_insn_for_forw_only_p (insn))
+		{
+		  reason = "unrecog insn";
+		  if (!first_cycle_insn_p)
+		    cost = 1;
+		  else
+		    {
+		      int j = i;
+		      while (n > ++j)
+			if (!unrecog_insn_for_forw_only_p (ready_element (&ready, j)))
+			  break;
+
+		      cost = (j == n) ? 0 : 1;
+		    }
+		}
 	    }
 	  else if (sched_pressure != SCHED_PRESSURE_NONE)
 	    {
