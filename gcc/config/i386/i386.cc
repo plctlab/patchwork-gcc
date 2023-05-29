@@ -15864,7 +15864,8 @@ ix86_match_ccmode (rtx insn, machine_mode req_mode)
   if (GET_CODE (set) == PARALLEL)
     set = XVECEXP (set, 0, 0);
   gcc_assert (GET_CODE (set) == SET);
-  gcc_assert (GET_CODE (SET_SRC (set)) == COMPARE);
+  gcc_assert (GET_CODE (SET_SRC (set)) == COMPARE
+	      || GET_CODE (SET_SRC (set)) == UNSPEC);
 
   set_mode = GET_MODE (SET_DEST (set));
   switch (set_mode)
@@ -15890,10 +15891,12 @@ ix86_match_ccmode (rtx insn, machine_mode req_mode)
     case E_CCZmode:
       break;
 
-    case E_CCGZmode:
-
-    case E_CCAmode:
     case E_CCCmode:
+      if (req_mode == CCmode)
+	break;
+      /* FALLTHRU */
+    case E_CCGZmode:
+    case E_CCAmode:
     case E_CCOmode:
     case E_CCPmode:
     case E_CCSmode:
