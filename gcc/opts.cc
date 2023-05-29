@@ -1559,6 +1559,10 @@ public:
   vec<const char *> m_values;
 };
 
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
+#endif
 /* Print help for a specific front-end, etc.  */
 static void
 print_filtered_help (unsigned int include_flags,
@@ -1913,7 +1917,9 @@ print_filtered_help (unsigned int include_flags,
       printf ("\n\n");
     }
 }
-
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 /* Display help for a specified type of option.
    The options must have ALL of the INCLUDE_FLAGS set
    ANY of the flags in the ANY_FLAGS set

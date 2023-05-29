@@ -97,6 +97,564 @@ static bool defer_stack_allocation (tree, bool);
 
 static void record_alignment_for_reg_var (unsigned int);
 
+/* For light SRA in expander about paramaters and returns.  */
+namespace {
+
+struct access
+{
+  /* Each accessing on the aggragate is about OFFSET/SIZE and BASE.  */
+  HOST_WIDE_INT offset;
+  HOST_WIDE_INT size;
+  tree base;
+  bool writing;
+
+  /* The context expression of this access.  */
+  tree expr;
+
+  /* The rtx for the access: link to incoming/returning register(s).  */
+  rtx rtx_val;
+};
+
+typedef struct access *access_p;
+
+/* Expr (tree) -> Acess (access_p) map.  */
+static hash_map<tree, access_p> *expr_access_vec;
+
+/* Base (tree) -> Vector (vec<access_p> *) map.  */
+static hash_map<tree, auto_vec<access_p> > *base_access_vec;
+
+/* Return a vector of pointers to accesses for the variable given in BASE or
+ NULL if there is none.  */
+
+static vec<access_p> *
+get_base_access_vector (tree base)
+{
+  return base_access_vec->get (base);
+}
+
+/* Remove DECL from candidates for SRA.  */
+static void
+disqualify_candidate (tree decl)
+{
+  decl = get_base_address (decl);
+  base_access_vec->remove (decl);
+}
+
+/* Create and insert access for EXPR. Return created access, or NULL if it is
+   not possible.  */
+static struct access *
+create_access (tree expr, bool write)
+{
+  poly_int64 poffset, psize, pmax_size;
+  bool reverse;
+
+  tree base
+    = get_ref_base_and_extent (expr, &poffset, &psize, &pmax_size, &reverse);
+
+  if (!DECL_P (base))
+    return NULL;
+
+  vec<access_p> *access_vec = get_base_access_vector (base);
+  if (!access_vec)
+    return NULL;
+
+  /* TODO: support reverse. */
+  if (reverse)
+    {
+      disqualify_candidate (expr);
+      return NULL;
+    }
+
+  HOST_WIDE_INT offset, size, max_size;
+  if (!poffset.is_constant (&offset) || !psize.is_constant (&size)
+      || !pmax_size.is_constant (&max_size))
+    return NULL;
+
+  if (size != max_size || size == 0 || offset < 0 || size < 0
+      || offset + size > tree_to_shwi (DECL_SIZE (base)))
+    return NULL;
+
+  struct access *access = XNEWVEC (struct access, 1);
+
+  memset (access, 0, sizeof (struct access));
+  access->base = base;
+  access->offset = offset;
+  access->size = size;
+  access->expr = expr;
+  access->writing = write;
+  access->rtx_val = NULL_RTX;
+
+  access_vec->safe_push (access);
+
+  return access;
+}
+
+/* Return true if VAR is a candidate for SRA.  */
+static bool
+add_sra_candidate (tree var)
+{
+  tree type = TREE_TYPE (var);
+
+  if (!AGGREGATE_TYPE_P (type) || TREE_THIS_VOLATILE (var)
+      || !COMPLETE_TYPE_P (type) || !tree_fits_shwi_p (TYPE_SIZE (type))
+      || tree_to_shwi (TYPE_SIZE (type)) == 0
+      || TYPE_MAIN_VARIANT (type) == TYPE_MAIN_VARIANT (va_list_type_node))
+    return false;
+
+  base_access_vec->get_or_insert (var);
+
+  return true;
+}
+
+/* Callback of walk_stmt_load_store_addr_ops visit_addr used to remove
+   operands with address taken.  */
+static tree
+visit_addr (tree *tp, int *, void *)
+{
+  tree op = *tp;
+  if (op && DECL_P (op))
+    disqualify_candidate (op);
+
+  return NULL;
+}
+
+/* Scan expression EXPR and create access structures for all accesses to
+   candidates for scalarization.  Return the created access or NULL if none is
+   created.  */
+static struct access *
+build_access_from_expr (tree expr, bool write)
+{
+  if (TREE_CODE (expr) == VIEW_CONVERT_EXPR)
+    expr = TREE_OPERAND (expr, 0);
+
+  if (TREE_CODE (expr) == BIT_FIELD_REF || storage_order_barrier_p (expr)
+      || TREE_THIS_VOLATILE (expr))
+    {
+      disqualify_candidate (expr);
+      return NULL;
+    }
+
+  switch (TREE_CODE (expr))
+    {
+      case MEM_REF: {
+	tree op = TREE_OPERAND (expr, 0);
+	if (TREE_CODE (op) == ADDR_EXPR)
+	  disqualify_candidate (TREE_OPERAND (op, 0));
+	break;
+      }
+    case ADDR_EXPR:
+    case IMAGPART_EXPR:
+    case REALPART_EXPR:
+      disqualify_candidate (TREE_OPERAND (expr, 0));
+      break;
+    case VAR_DECL:
+    case PARM_DECL:
+    case RESULT_DECL:
+    case COMPONENT_REF:
+    case ARRAY_REF:
+    case ARRAY_RANGE_REF:
+      return create_access (expr, write);
+      break;
+    default:
+      break;
+    }
+
+  return NULL;
+}
+
+/* Scan function and look for interesting expressions and create access
+   structures for them.  */
+static void
+scan_function (void)
+{
+  basic_block bb;
+
+  FOR_EACH_BB_FN (bb, cfun)
+    {
+      for (gphi_iterator gsi = gsi_start_phis (bb); !gsi_end_p (gsi);
+	   gsi_next (&gsi))
+	{
+	  gphi *phi = gsi.phi ();
+	  for (size_t i = 0; i < gimple_phi_num_args (phi); i++)
+	    {
+	      tree t = gimple_phi_arg_def (phi, i);
+	      walk_tree (&t, visit_addr, NULL, NULL);
+	    }
+	}
+
+      for (gimple_stmt_iterator gsi = gsi_start_nondebug_after_labels_bb (bb);
+	   !gsi_end_p (gsi); gsi_next_nondebug (&gsi))
+	{
+	  gimple *stmt = gsi_stmt (gsi);
+	  switch (gimple_code (stmt))
+	    {
+	      case GIMPLE_RETURN: {
+		tree r = gimple_return_retval (as_a<greturn *> (stmt));
+		if (r && VAR_P (r) && r != DECL_RESULT (current_function_decl))
+		  build_access_from_expr (r, true);
+	      }
+	      break;
+	    case GIMPLE_ASSIGN:
+	      if (gimple_assign_single_p (stmt) && !gimple_clobber_p (stmt))
+		{
+		  tree lhs = gimple_assign_lhs (stmt);
+		  tree rhs = gimple_assign_rhs1 (stmt);
+		  if (TREE_CODE (rhs) == CONSTRUCTOR)
+		    disqualify_candidate (lhs);
+		  else
+		    {
+		      build_access_from_expr (rhs, false);
+		      build_access_from_expr (lhs, true);
+		    }
+		}
+	      break;
+	    default:
+	      walk_gimple_op (stmt, visit_addr, NULL);
+	      break;
+	    }
+	}
+    }
+}
+
+/* Collect the parameter and returns with type which is suitable for
+ * scalarization.  */
+static bool
+collect_light_sra_candidates (void)
+{
+  bool ret = false;
+
+  /* Collect parameters.  */
+  for (tree parm = DECL_ARGUMENTS (current_function_decl); parm;
+       parm = DECL_CHAIN (parm))
+    ret |= add_sra_candidate (parm);
+
+  /* Collect VARs on returns.  */
+  if (DECL_RESULT (current_function_decl))
+    {
+      edge_iterator ei;
+      edge e;
+      FOR_EACH_EDGE (e, ei, EXIT_BLOCK_PTR_FOR_FN (cfun)->preds)
+	if (greturn *r = safe_dyn_cast<greturn *> (*gsi_last_bb (e->src)))
+	  {
+	    tree val = gimple_return_retval (r);
+	    if (val && VAR_P (val))
+	      ret |= add_sra_candidate (val);
+	  }
+    }
+
+  return ret;
+}
+
+/* Now, only scalarize the parms only with reading
+   or returns only with writing.  */
+bool
+check_access_vec (tree const &base, auto_vec<access_p> const &access_vec,
+		  auto_vec<tree> *unqualify_vec)
+{
+  bool read = false;
+  bool write = false;
+  for (unsigned int j = 0; j < access_vec.length (); j++)
+    {
+      struct access *access = access_vec[j];
+      if (access->writing)
+	write = true;
+      else
+	read = true;
+
+      if (write && read)
+	break;
+    }
+  if ((write && read) || (!write && !read))
+    unqualify_vec->safe_push (base);
+
+  return true;
+}
+
+/* Analyze all the accesses, remove those inprofitable candidates.
+   And build the expr->access map.  */
+static void
+analyze_accesses ()
+{
+  auto_vec<tree> unqualify_vec;
+  base_access_vec->traverse<auto_vec<tree> *, check_access_vec> (
+    &unqualify_vec);
+
+  tree base;
+  unsigned i;
+  FOR_EACH_VEC_ELT (unqualify_vec, i, base)
+    disqualify_candidate (base);
+}
+
+static void
+prepare_expander_sra ()
+{
+  if (optimize <= 0)
+    return;
+
+  base_access_vec = new hash_map<tree, auto_vec<access_p> >;
+  expr_access_vec = new hash_map<tree, access_p>;
+
+  if (collect_light_sra_candidates ())
+    {
+      scan_function ();
+      analyze_accesses ();
+    }
+}
+
+static void
+free_expander_sra ()
+{
+  if (optimize <= 0 || !expr_access_vec)
+    return;
+  delete expr_access_vec;
+  expr_access_vec = 0;
+  delete base_access_vec;
+  base_access_vec = 0;
+}
+} /* namespace */
+
+/* Check If there is an sra access for the expr.
+   Return the correspond scalar sym for the access. */
+rtx
+get_scalar_rtx_for_aggregate_expr (tree expr)
+{
+  if (!expr_access_vec)
+    return NULL_RTX;
+  access_p *access = expr_access_vec->get (expr);
+  return access ? (*access)->rtx_val : NULL_RTX;
+}
+
+extern rtx
+expand_shift (enum tree_code, machine_mode, rtx, poly_int64, rtx, int);
+
+/* Compute/Set RTX registers for those accesses on BASE.  */
+void
+set_scalar_rtx_for_aggregate_access (tree base, rtx regs)
+{
+  if (!base_access_vec)
+    return;
+  vec<access_p> *access_vec = get_base_access_vector (base);
+  if (!access_vec)
+    return;
+
+  /* Go through each access, compute corresponding rtx(regs or subregs)
+     for the expression.  */
+  int n = access_vec->length ();
+  int cur_access_index = 0;
+  for (; cur_access_index < n; cur_access_index++)
+    {
+      access_p acc = (*access_vec)[cur_access_index];
+      machine_mode expr_mode = TYPE_MODE (TREE_TYPE (acc->expr));
+      /* non BLK in mult registers*/
+      if (expr_mode != BLKmode
+	  && known_gt (acc->size, GET_MODE_BITSIZE (word_mode)))
+	break;
+
+      int start_index = -1;
+      int end_index = -1;
+      HOST_WIDE_INT left_margin_bits = 0;
+      HOST_WIDE_INT right_margin_bits = 0;
+      int cur_index = XEXP (XVECEXP (regs, 0, 0), 0) ? 0 : 1;
+      for (; cur_index < XVECLEN (regs, 0); cur_index++)
+	{
+	  rtx slot = XVECEXP (regs, 0, cur_index);
+	  HOST_WIDE_INT off = UINTVAL (XEXP (slot, 1)) * BITS_PER_UNIT;
+	  HOST_WIDE_INT size
+	    = GET_MODE_BITSIZE (GET_MODE (XEXP (slot, 0))).to_constant ();
+	  if (off <= acc->offset && off + size > acc->offset)
+	    {
+	      start_index = cur_index;
+	      left_margin_bits = acc->offset - off;
+	    }
+	  if (off + size >= acc->offset + acc->size)
+	    {
+	      end_index = cur_index;
+	      right_margin_bits = off + size - (acc->offset + acc->size);
+	      break;
+	    }
+	}
+      /* accessing pading and outof bound.  */
+      if (start_index < 0 || end_index < 0)
+	break;
+
+      /* Need a parallel for possible multi-registers. */
+      if (expr_mode == BLKmode || end_index > start_index)
+	{
+	  /* Can not support start from middle of a register.  */
+	  if (left_margin_bits != 0)
+	    break;
+
+	  int len = end_index - start_index + 1;
+	  const int margin = 3; /* more space for SI, HI, QI.  */
+	  rtx *tmps = XALLOCAVEC (rtx, len + (right_margin_bits ? margin : 0));
+
+	  HOST_WIDE_INT start_off
+	    = UINTVAL (XEXP (XVECEXP (regs, 0, start_index), 1));
+	  int pos = 0;
+	  for (; pos < len - (right_margin_bits ? 1 : 0); pos++)
+	    {
+	      int index = start_index + pos;
+	      rtx orig_reg = XEXP (XVECEXP (regs, 0, index), 0);
+	      machine_mode mode = GET_MODE (orig_reg);
+	      rtx reg = NULL_RTX;
+	      if (HARD_REGISTER_P (orig_reg))
+		{
+		  /* Reading from param hard reg need to be moved to a temp.  */
+		  gcc_assert (!acc->writing);
+		  reg = gen_reg_rtx (mode);
+		  emit_move_insn (reg, orig_reg);
+		}
+	      else
+		reg = orig_reg;
+
+	      HOST_WIDE_INT off = UINTVAL (XEXP (XVECEXP (regs, 0, index), 1));
+	      tmps[pos]
+		= gen_rtx_EXPR_LIST (mode, reg, GEN_INT (off - start_off));
+	    }
+
+	  /* There are some fields are in part of registers.   */
+	  if (right_margin_bits != 0)
+	    {
+	      if (acc->writing)
+		break;
+
+	      gcc_assert ((right_margin_bits % BITS_PER_UNIT) == 0);
+	      HOST_WIDE_INT off_byte
+		= UINTVAL (XEXP (XVECEXP (regs, 0, end_index), 1)) - start_off;
+	      rtx orig_reg = XEXP (XVECEXP (regs, 0, end_index), 0);
+	      machine_mode orig_mode = GET_MODE (orig_reg);
+	      gcc_assert (GET_MODE_CLASS (orig_mode) == MODE_INT);
+
+	      machine_mode mode_aux[] = {SImode, HImode, QImode};
+	      HOST_WIDE_INT reg_size
+		= GET_MODE_BITSIZE (orig_mode).to_constant ();
+	      HOST_WIDE_INT off_bits = 0;
+	      for (unsigned long j = 0;
+		   j < sizeof (mode_aux) / sizeof (mode_aux[0]); j++)
+		{
+		  HOST_WIDE_INT submode_bitsize
+		    = GET_MODE_BITSIZE (mode_aux[j]).to_constant ();
+		  if (reg_size - right_margin_bits - off_bits
+		      >= submode_bitsize)
+		    {
+		      rtx reg = gen_reg_rtx (orig_mode);
+		      emit_move_insn (reg, orig_reg);
+
+		      poly_uint64 lowpart_off
+			= subreg_lowpart_offset (mode_aux[j], orig_mode);
+		      int lowpart_off_bits
+			= lowpart_off.to_constant () * BITS_PER_UNIT;
+		      int shift_bits = lowpart_off_bits >= off_bits
+					 ? (lowpart_off_bits - off_bits)
+					 : (off_bits - lowpart_off_bits);
+		      if (shift_bits > 0)
+			reg = expand_shift (RSHIFT_EXPR, orig_mode, reg,
+					    shift_bits, NULL, 1);
+		      rtx subreg = gen_lowpart (mode_aux[j], reg);
+		      rtx off = GEN_INT (off_byte);
+		      tmps[pos++]
+			= gen_rtx_EXPR_LIST (mode_aux[j], subreg, off);
+		      off_byte += submode_bitsize / BITS_PER_UNIT;
+		      off_bits += submode_bitsize;
+		    }
+		}
+	    }
+
+	  /* Currently, PARALLELs with register elements for param/returns
+	     are using BLKmode.  */
+	  acc->rtx_val = gen_rtx_PARALLEL (TYPE_MODE (TREE_TYPE (acc->expr)),
+					   gen_rtvec_v (pos, tmps));
+	  continue;
+	}
+
+      /* The access corresponds to one reg.  */
+      if (end_index == start_index && left_margin_bits == 0
+	  && right_margin_bits == 0)
+	{
+	  rtx orig_reg = XEXP (XVECEXP (regs, 0, start_index), 0);
+	  rtx reg = NULL_RTX;
+	  if (HARD_REGISTER_P (orig_reg))
+	    {
+	      /* Reading from param hard reg need to be moved to a temp.  */
+	      gcc_assert (!acc->writing);
+	      reg = gen_reg_rtx (GET_MODE (orig_reg));
+	      emit_move_insn (reg, orig_reg);
+	    }
+	  else
+	    reg = orig_reg;
+	  if (GET_MODE (orig_reg) != expr_mode)
+	    reg = gen_lowpart (expr_mode, reg);
+
+	  acc->rtx_val = reg;
+	  continue;
+	}
+
+      /* It is accessing a filed which is part of a register.  */
+      scalar_int_mode imode;
+      if (!acc->writing && end_index == start_index
+	  && int_mode_for_size (acc->size, 1).exists (&imode))
+	{
+	  /* get and copy original register inside the param.  */
+	  rtx orig_reg = XEXP (XVECEXP (regs, 0, start_index), 0);
+	  machine_mode mode = GET_MODE (orig_reg);
+	  gcc_assert (GET_MODE_CLASS (mode) == MODE_INT);
+	  rtx reg = gen_reg_rtx (mode);
+	  emit_move_insn (reg, orig_reg);
+
+	  /* shift to expect part. */
+	  poly_uint64 lowpart_off = subreg_lowpart_offset (imode, mode);
+	  int lowpart_off_bits = lowpart_off.to_constant () * BITS_PER_UNIT;
+	  int shift_bits = lowpart_off_bits >= left_margin_bits
+			     ? (lowpart_off_bits - left_margin_bits)
+			     : (left_margin_bits - lowpart_off_bits);
+	  if (shift_bits > 0)
+	    reg = expand_shift (RSHIFT_EXPR, mode, reg, shift_bits, NULL, 1);
+
+	  /* move corresond part subreg to result.  */
+	  rtx subreg = gen_lowpart (imode, reg);
+	  rtx result = gen_reg_rtx (imode);
+	  emit_move_insn (result, subreg);
+
+	  if (expr_mode != imode)
+	    result = gen_lowpart (expr_mode, result);
+
+	  acc->rtx_val = result;
+	  continue;
+	}
+
+      break;
+    }
+
+  /* Some access expr(s) are not scalarized.  */
+  if (cur_access_index != n)
+    disqualify_candidate (base);
+  else
+    {
+      /* Add elements to expr->access map.  */
+      for (int j = 0; j < n; j++)
+	{
+	  access_p access = (*access_vec)[j];
+	  expr_access_vec->put (access->expr, access);
+	}
+    }
+}
+
+void
+set_scalar_rtx_for_returns ()
+{
+  tree res = DECL_RESULT (current_function_decl);
+  gcc_assert (res);
+  edge_iterator ei;
+  edge e;
+  FOR_EACH_EDGE (e, ei, EXIT_BLOCK_PTR_FOR_FN (cfun)->preds)
+    if (greturn *r = safe_dyn_cast<greturn *> (*gsi_last_bb (e->src)))
+      {
+	tree val = gimple_return_retval (r);
+	if (val && VAR_P (val))
+	  set_scalar_rtx_for_aggregate_access (val, DECL_RTL (res));
+      }
+}
+
 /* Return an expression tree corresponding to the RHS of GIMPLE
    statement STMT.  */
 
@@ -3778,7 +4336,8 @@ expand_return (tree retval)
 
   /* If we are returning the RESULT_DECL, then the value has already
      been stored into it, so we don't have to do anything special.  */
-  if (TREE_CODE (retval_rhs) == RESULT_DECL)
+  if (TREE_CODE (retval_rhs) == RESULT_DECL
+      || get_scalar_rtx_for_aggregate_expr (retval_rhs))
     expand_value_return (result_rtl);
 
   /* If the result is an aggregate that is being returned in one (or more)
@@ -4422,6 +4981,9 @@ expand_debug_expr (tree exp)
   int unsignedp = TYPE_UNSIGNED (TREE_TYPE (exp));
   addr_space_t as;
   scalar_int_mode op0_mode, op1_mode, addr_mode;
+  rtx x = get_scalar_rtx_for_aggregate_expr (exp);
+  if (x)
+    return NULL_RTX;/* optimized out.  */
 
   switch (TREE_CODE_CLASS (TREE_CODE (exp)))
     {
@@ -6630,6 +7192,8 @@ pass_expand::execute (function *fun)
 	    avoid_deep_ter_for_debug (gsi_stmt (gsi), 0);
     }
 
+  prepare_expander_sra ();
+
   /* Mark arrays indexed with non-constant indices with TREE_ADDRESSABLE.  */
   auto_bitmap forced_stack_vars;
   discover_nonconstant_array_refs (forced_stack_vars);
@@ -7062,6 +7626,7 @@ pass_expand::execute (function *fun)
       loop_optimizer_finalize ();
     }
 
+  free_expander_sra ();
   timevar_pop (TV_POST_EXPAND);
 
   return 0;
