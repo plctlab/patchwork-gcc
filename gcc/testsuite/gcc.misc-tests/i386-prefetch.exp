@@ -82,6 +82,13 @@ if $tracelevel then {
     strace $tracelevel
 }
 
+if { [board_info target exists multilib_flags]
+     && [string match "* -march=*" " [board_info target multilib_flags] "] } {
+    # Multilib flags come after the -march flags we pass and override
+    # them, so skip these tests when such flags are passed.
+    return
+}
+
 # Load support procs.
 load_lib gcc-dg.exp
 load_lib torture-options.exp
@@ -89,13 +96,6 @@ load_lib torture-options.exp
 # Initialize harness.
 dg-init
 torture-init
-
-if { [board_info target exists multilib_flags]
-     && [string match "* -march=*" " [board_info target multilib_flags] "] } {
-    # Multilib flags come after the -march flags we pass and override
-    # them, so skip these tests when such flags are passed.
-    return
-}
 
 set-torture-options $PREFETCH_NONE
 gcc-dg-runtest [lsort [glob -nocomplain $srcdir/$subdir/i386-pf-none-*.c]] "" ""
