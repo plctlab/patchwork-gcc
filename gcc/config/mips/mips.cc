@@ -8308,6 +8308,12 @@ mips_expand_block_move (rtx dest, rtx src, rtx length)
 	  || MEM_ALIGN (dest) < MIPS_MIN_MOVE_MEM_ALIGN))
     return false;
 
+  if ((ISA_HAS_LWL_LWR || ISA_HAS_UNALIGNED_ACCESS)
+      && INTVAL (length) > MIPS_MAX_MOVE_BYTES_STRAIGHT * 2
+      && MEM_ALIGN (src) < BITS_PER_WORD
+      && MEM_ALIGN (dest) < BITS_PER_WORD)
+    return false;
+
   if (INTVAL (length) <= MIPS_MAX_MOVE_BYTES_PER_LOOP_ITER)
     {
       mips_block_move_straight (dest, src, INTVAL (length));
