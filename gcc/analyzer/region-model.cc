@@ -507,7 +507,7 @@ public:
 
   bool terminate_path_p () const final override { return true; }
 
-  bool emit (rich_location *rich_loc) final override
+  bool emit (rich_location *rich_loc, logger *) final override
   {
     switch (m_pkind)
       {
@@ -638,7 +638,7 @@ public:
     return OPT_Wanalyzer_shift_count_negative;
   }
 
-  bool emit (rich_location *rich_loc) final override
+  bool emit (rich_location *rich_loc, logger *) final override
   {
     return warning_at (rich_loc, get_controlling_option (),
 		       "shift by negative count (%qE)", m_count_cst);
@@ -685,7 +685,7 @@ public:
     return OPT_Wanalyzer_shift_count_overflow;
   }
 
-  bool emit (rich_location *rich_loc) final override
+  bool emit (rich_location *rich_loc, logger *) final override
   {
     return warning_at (rich_loc, get_controlling_option (),
 		       "shift by count (%qE) >= precision of type (%qi)",
@@ -1736,7 +1736,7 @@ check_external_function_for_access_attr (const gcall *call,
 	  tree ptr_tree = gimple_call_arg (call, access->ptrarg);
 	  const svalue *ptr_sval = get_rvalue (ptr_tree, &my_ctxt);
 	  const region *reg = deref_rvalue (ptr_sval, ptr_tree, &my_ctxt);
-	  check_region_for_write (reg, &my_ctxt);
+	  check_region_for_write (reg, nullptr, &my_ctxt);
 	  /* We don't use the size arg for now.  */
 	}
     }
@@ -2544,8 +2544,8 @@ region_model::deref_rvalue (const svalue *ptr_sval, tree ptr_tree,
 		const poisoned_svalue *poisoned_sval
 		  = as_a <const poisoned_svalue *> (ptr_sval);
 		enum poison_kind pkind = poisoned_sval->get_poison_kind ();
-		ctxt->warn (make_unique<poisoned_value_diagnostic>
-			      (ptr, pkind, NULL, NULL));
+		ctxt->warn (::make_unique<poisoned_value_diagnostic>
+			      (ptr, pkind, nullptr, nullptr));
 	      }
 	  }
       }
@@ -2598,7 +2598,7 @@ public:
     return OPT_Wanalyzer_write_to_const;
   }
 
-  bool emit (rich_location *rich_loc) final override
+  bool emit (rich_location *rich_loc, logger *) final override
   {
     auto_diagnostic_group d;
     bool warned;
@@ -2666,7 +2666,7 @@ public:
     return OPT_Wanalyzer_write_to_string_literal;
   }
 
-  bool emit (rich_location *rich_loc) final override
+  bool emit (rich_location *rich_loc, logger *) final override
   {
     return warning_at (rich_loc, get_controlling_option (),
 		       "write to string literal");
@@ -2764,6 +2764,15 @@ region_model::get_capacity (const region *reg) const
       /* Look through sized regions to get at the capacity
 	 of the underlying regions.  */
       return get_capacity (reg->get_parent_region ());
+    case RK_STRING:
+      {
+	/* "Capacity" here means "size".  */
+	const string_region *string_reg = as_a <const string_region *> (reg);
+	tree string_cst = string_reg->get_string_cst ();
+	return m_mgr->get_or_create_int_cst (size_type_node,
+					     TREE_STRING_LENGTH (string_cst));
+      }
+      break;
     }
 
   if (const svalue *recorded = get_dynamic_extents (reg))
@@ -2802,11 +2811,14 @@ region_model::get_string_size (const region *reg) const
 }
 
 /* If CTXT is non-NULL, use it to warn about any problems accessing REG,
-   using DIR to determine if this access is a read or write.  */
+   using DIR to determine if this access is a read or write.
+   If SVAL_HINT is non-NULL, use it as a hint in diagnostics
+   about the value that would be written to REG.  */
 
 void
 region_model::check_region_access (const region *reg,
 				   enum access_direction dir,
+				   const svalue *sval_hint,
 				   region_model_context *ctxt) const
 {
   /* Fail gracefully if CTXT is NULL.  */
@@ -2814,7 +2826,7 @@ region_model::check_region_access (const region *reg,
     return;
 
   check_region_for_taint (reg, dir, ctxt);
-  check_region_bounds (reg, dir, ctxt);
+  check_region_bounds (reg, dir, sval_hint, ctxt);
 
   switch (dir)
     {
@@ -2833,9 +2845,10 @@ region_model::check_region_access (const region *reg,
 
 void
 region_model::check_region_for_write (const region *dest_reg,
+				      const svalue *sval_hint,
 				      region_model_context *ctxt) const
 {
-  check_region_access (dest_reg, DIR_WRITE, ctxt);
+  check_region_access (dest_reg, DIR_WRITE, sval_hint, ctxt);
 }
 
 /* If CTXT is non-NULL, use it to warn about any problems reading from REG.  */
@@ -2844,7 +2857,7 @@ void
 region_model::check_region_for_read (const region *src_reg,
 				     region_model_context *ctxt) const
 {
-  check_region_access (src_reg, DIR_READ, ctxt);
+  check_region_access (src_reg, DIR_READ, NULL, ctxt);
 }
 
 /* Concrete subclass for casts of pointers that lead to trailing bytes.  */
@@ -2880,7 +2893,7 @@ public:
     return OPT_Wanalyzer_allocation_size;
   }
 
-  bool emit (rich_location *rich_loc) final override
+  bool emit (rich_location *rich_loc, logger *) final override
   {
     diagnostic_metadata m;
     m.add_cwe (131);
@@ -3240,7 +3253,7 @@ region_model::set_value (const region *lhs_reg, const svalue *rhs_sval,
 
   check_region_size (lhs_reg, rhs_sval, ctxt);
 
-  check_region_for_write (lhs_reg, ctxt);
+  check_region_for_write (lhs_reg, rhs_sval, ctxt);
 
   m_store.set_value (m_mgr->get_store_manager(), lhs_reg, rhs_sval,
 		     ctxt ? ctxt->get_uncertainty () : NULL);
@@ -3873,7 +3886,12 @@ region_model::get_representative_path_var_1 (const svalue *sval,
 
   /* Prevent infinite recursion.  */
   if (visited->contains (sval))
-    return path_var (NULL_TREE, 0);
+    {
+      if (sval->get_kind () == SK_CONSTANT)
+	return path_var (sval->maybe_get_constant (), 0);
+      else
+	return path_var (NULL_TREE, 0);
+    }
   visited->add (sval);
 
   /* Handle casts by recursion into get_representative_path_var.  */
@@ -4978,7 +4996,7 @@ public:
     return same_tree_p (m_arg, ((const float_as_size_arg &) other).m_arg);
   }
 
-  bool emit (rich_location *rich_loc) final override
+  bool emit (rich_location *rich_loc, logger *) final override
   {
     diagnostic_metadata m;
     bool warned = warning_meta (rich_loc, m, get_controlling_option (),
@@ -5340,7 +5358,7 @@ public:
     return OPT_Wanalyzer_exposure_through_uninit_copy;
   }
 
-  bool emit (rich_location *rich_loc) final override
+  bool emit (rich_location *rich_loc, logger *) final override
   {
     diagnostic_metadata m;
     /* CWE-200: Exposure of Sensitive Information to an Unauthorized Actor.  */
