@@ -6205,6 +6205,16 @@
   [(set_attr "type" "rev")]
 )
 
+;; Similar pattern to mache (rotate (bswap) 16)
+(define_insn "aarch64_rev16<mode>2_alt3"
+  [(set (match_operand:GPI 0 "register_operand" "=r")
+        (rotate:GPI (bswap:GPI (match_operand:GPI 1 "register_operand" "r"))
+                    (const_int 16)))]
+  ""
+  "rev16\\t%<w>0, %<w>1"
+  [(set_attr "type" "rev")]
+)
+
 ;; zero_extend version of above
 (define_insn "*bswapsi2_uxtw"
   [(set (match_operand:DI 0 "register_operand" "=r")
