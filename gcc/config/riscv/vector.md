@@ -24,7 +24,7 @@
 ;;
 ;; - Intrinsics (https://github.com/riscv/rvv-intrinsic-doc)
 ;; - Auto-vectorization (autovec.md)
-;; - Combine optimization (TBD)
+;; - Optimization (autovec-opt.md)
 
 (include "vector-iterators.md")
 
@@ -3160,10 +3160,10 @@
 	     (reg:SI VL_REGNUM)
 	     (reg:SI VTYPE_REGNUM)] UNSPEC_VPREDICATE)
 	  (mult:VWEXTI
-	    (sign_extend:VWEXTI
-	      (match_operand:<V_DOUBLE_TRUNC> 3 "register_operand" "   vr,   vr"))
 	    (zero_extend:VWEXTI
-	      (match_operand:<V_DOUBLE_TRUNC> 4 "register_operand" "   vr,   vr")))
+	      (match_operand:<V_DOUBLE_TRUNC> 4 "register_operand" "   vr,   vr"))
+	    (sign_extend:VWEXTI
+	      (match_operand:<V_DOUBLE_TRUNC> 3 "register_operand" "   vr,   vr")))
 	  (match_operand:VWEXTI 2 "vector_merge_operand"           "   vu,    0")))]
   "TARGET_VECTOR"
   "vwmulsu.vv\t%0,%3,%4%p1"
@@ -8198,3 +8198,4 @@
 )
 
 (include "autovec.md")
+(include "autovec-opt.md")
