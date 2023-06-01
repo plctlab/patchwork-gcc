@@ -171,9 +171,28 @@ nearest_common_dominator_of_uses (def_operand_p def_p, bool *debug_stmts)
   return commondom;
 }
 
+/* Return TRUE if immediate uses of the defs in
+   STMT occur in the same block as STMT, FALSE otherwise.  */
+
+static bool
+def_use_same_block (gimple *stmt)
+{
+  def_operand_p def;
+  ssa_op_iter iter;
+
+  FOR_EACH_SSA_DEF_OPERAND (def, stmt, iter, SSA_OP_DEF)
+    {
+      gimple *def_stmt = SSA_NAME_DEF_STMT (DEF_FROM_PTR (def));
+      if ((gimple_bb (def_stmt) == gimple_bb (stmt)))
+	return true;
+     }
+  return false;
+}
+
 /* Given EARLY_BB and LATE_BB, two blocks in a path through the dominator
    tree, return the best basic block between them (inclusive) to place
-   statements.
+   statements. The best basic block should be an immediate dominator of
+   best basic block if the use stmt is after the call.
 
    We want the most control dependent block in the shallowest loop nest.
 
@@ -190,7 +209,8 @@ nearest_common_dominator_of_uses (def_operand_p def_p, bool *debug_stmts)
 static basic_block
 select_best_block (basic_block early_bb,
 		   basic_block late_bb,
-		   gimple *stmt)
+		   gimple *stmt,
+		   gimple *use)
 {
   basic_block best_bb = late_bb;
   basic_block temp_bb = late_bb;
@@ -237,7 +257,40 @@ select_best_block (basic_block early_bb,
       /* If result of comparsion is unknown, prefer EARLY_BB.
 	 Thus use !(...>=..) rather than (...<...)  */
       && !(best_bb->count * 100 >= early_bb->count * threshold))
-    return best_bb;
+    {
+      basic_block new_best_bb = get_immediate_dominator (CDI_DOMINATORS, best_bb);
+      /* Return best_bb if def and use are in same block otherwise new_best_bb.
+
+	 Things to consider:
+
+	   new_best_bb is not equal to best_bb and early_bb.
+
+	   stmt is not call.
+
+	   new_best_bb doesnt have any phis.
+
+	   use basic block is not equal to early_bb.
+
+	   use basic block post dominates to new_best_bb.
+
+	   new_best_bb dominates early_bb.  */
+      if (new_best_bb && use
+	  && new_best_bb != best_bb
+	  && new_best_bb != early_bb
+	  && !is_gimple_call (stmt)
+	  && gsi_end_p (gsi_start_phis (new_best_bb))
+	  && gimple_bb (use) != early_bb
+	  && !is_gimple_call (use)
+	  && dominated_by_p (CDI_POST_DOMINATORS, new_best_bb, gimple_bb (use))
+	  && dominated_by_p (CDI_DOMINATORS, new_best_bb, early_bb))
+	{
+	  if (def_use_same_block (use))
+	    return best_bb;
+
+	  return new_best_bb;
+	}
+	return best_bb;
+    }
 
   /* No better block found, so return EARLY_BB, which happens to be the
      statement's original block.  */
@@ -439,7 +492,7 @@ statement_sink_location (gimple *stmt, basic_block frombb,
       if (!dominated_by_p (CDI_DOMINATORS, commondom, frombb))
 	return false;
 
-      commondom = select_best_block (frombb, commondom, stmt);
+      commondom = select_best_block (frombb, commondom, stmt, NULL);
 
       if (commondom == frombb)
 	return false;	
@@ -456,19 +509,17 @@ statement_sink_location (gimple *stmt, basic_block frombb,
 	    continue;
 	  break;
 	}
+
       use = USE_STMT (one_use);
 
       if (gimple_code (use) != GIMPLE_PHI)
 	{
-	  sinkbb = select_best_block (frombb, gimple_bb (use), stmt);
+	  sinkbb = select_best_block (frombb, gimple_bb (use), stmt, use);
 
 	  if (sinkbb == frombb)
 	    return false;
 
-	  if (sinkbb == gimple_bb (use))
-	    *togsi = gsi_for_stmt (use);
-	  else
-	    *togsi = gsi_after_labels (sinkbb);
+	  *togsi = gsi_after_labels (sinkbb);
 
 	  return true;
 	}
@@ -480,7 +531,7 @@ statement_sink_location (gimple *stmt, basic_block frombb,
   if (!sinkbb)
     return false;
   
-  sinkbb = select_best_block (frombb, sinkbb, stmt);
+  sinkbb = select_best_block (frombb, sinkbb, stmt, NULL);
   if (!sinkbb || sinkbb == frombb)
     return false;
 
