@@ -4433,7 +4433,48 @@ estimate_num_insns (gimple *stmt, eni_weights *weights)
 	tree decl;
 
 	if (gimple_call_internal_p (stmt))
-	  return 0;
+	  {
+	    switch (gimple_call_internal_fn (stmt))
+	      {
+	      default:
+		return 1;
+
+	      case IFN_GOMP_TARGET_REV:
+	      case IFN_GOMP_USE_SIMT:
+	      case IFN_GOMP_SIMT_ENTER_ALLOC:
+	      case IFN_GOMP_SIMT_EXIT:
+	      case IFN_GOMP_SIMT_LANE:
+	      case IFN_GOMP_SIMT_VF:
+	      case IFN_GOMP_SIMT_LAST_LANE:
+	      case IFN_GOMP_SIMT_ORDERED_PRED:
+	      case IFN_GOMP_SIMT_VOTE_ANY:
+	      case IFN_GOMP_SIMT_XCHG_BFLY:
+	      case IFN_GOMP_SIMT_XCHG_IDX:
+	      case IFN_GOMP_SIMD_LANE:
+	      case IFN_GOMP_SIMD_VF:
+	      case IFN_GOMP_SIMD_LAST_LANE:
+	      case IFN_GOMP_SIMD_ORDERED_START:
+	      case IFN_GOMP_SIMD_ORDERED_END:
+	      case IFN_BUILTIN_EXPECT:
+	      case IFN_ANNOTATE:
+	      case IFN_NOP:
+	      case IFN_UNIQUE:
+	      case IFN_DEFERRED_INIT:
+	      case IFN_ASSUME:
+		return 0;
+
+	      case IFN_UBSAN_NULL:
+	      case IFN_UBSAN_BOUNDS:
+	      case IFN_UBSAN_VPTR:
+	      case IFN_UBSAN_CHECK_ADD:
+	      case IFN_UBSAN_CHECK_SUB:
+	      case IFN_UBSAN_CHECK_MUL:
+	      case IFN_UBSAN_PTR:
+	      case IFN_UBSAN_OBJECT_SIZE:
+		/* Estimating a compare and jump.  */
+		return 2;
+	      }
+	  }
 	else if ((decl = gimple_call_fndecl (stmt))
 		 && fndecl_built_in_p (decl))
 	  {

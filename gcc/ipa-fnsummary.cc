@@ -2862,16 +2862,19 @@ analyze_function_body (struct cgraph_node *node, bool early)
 		 to happen, but we cannot do that for call statements
 		 because edges are accounted specially.  */
 
-	      if (*(is_gimple_call (stmt) ? &bb_predicate : &p) != false)
+	      if (*(is_gimple_call (stmt) && !gimple_call_internal_p (stmt)
+		    ? &bb_predicate : &p) != false)
 		{
 		  time += final_time;
 		  size += this_size;
 		}
 
 	      /* We account everything but the calls.  Calls have their own
-	         size/time info attached to cgraph edges.  This is necessary
-	         in order to make the cost disappear after inlining.  */
-	      if (!is_gimple_call (stmt))
+		 size/time info attached to cgraph edges.  This is necessary
+		 in order to make the cost disappear after inlining.  The only
+		 exceptions are internal calls.  */
+	      if (!is_gimple_call (stmt)
+		  || gimple_call_internal_p (stmt))
 		{
 		  if (prob)
 		    {
