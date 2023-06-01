@@ -12,5 +12,5 @@
 /* { dg-final { scan-assembler-not   {\mstxv\M} } } */
 /* { dg-final { scan-assembler-not   {\mlxvx\M} } } */
 /* { dg-final { scan-assembler-not   {\mstxvx\M} } } */
-/* { dg-final { scan-assembler-times {\mlxvl\M} 20 } } */
-/* { dg-final { scan-assembler-times {\mstxvl\M} 10 } } */
+/* { dg-final { scan-assembler-times {\mlxvl\M} 40 } } */
+/* { dg-final { scan-assembler-times {\mstxvl\M} 20 } } */

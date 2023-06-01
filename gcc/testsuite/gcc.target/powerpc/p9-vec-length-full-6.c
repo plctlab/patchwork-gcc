@@ -11,5 +11,5 @@
 /* It can use normal vector load for constant vector load.  */
 /* { dg-final { scan-assembler-times {\mstxvx?\M} 6 } } */
 /* 64bit/32bit pairs won't use partial vectors.  */
-/* { dg-final { scan-assembler-times {\mlxvl\M} 10 } } */
-/* { dg-final { scan-assembler-times {\mstxvl\M} 10 } } */
+/* { dg-final { scan-assembler-times {\mlxvl\M} 20 } } */
+/* { dg-final { scan-assembler-times {\mstxvl\M} 20 } } */

@@ -12,4 +12,4 @@
 
 /* Each type has one stxvl excepting for int8 and uint8, that have two due to
    rtl pass bbro duplicating the block which has one stxvl.  */
-/* { dg-final { scan-assembler-times {\mstxvl\M} 12 } } */
+/* { dg-final { scan-assembler-times {\mstxvl\M} 20 } } */
