@@ -3367,6 +3367,7 @@ close_brackets:
       else
 	gfc_error ("Missing right parenthesis at %C");
       m = MATCH_ERROR;
+      goto no_match;
     }
   else
      /* All tests passed.  */
@@ -4716,6 +4717,9 @@ get_kind:
       gfc_error ("Malformed type-spec at %C");
       return MATCH_ERROR;
     }
+
+  if (m == MATCH_ERROR)
+    return MATCH_ERROR;
 
   /* Defer association of the KIND expression of function results
      until after USE and IMPORT statements.  */
