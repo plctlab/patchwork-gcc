@@ -5162,6 +5162,49 @@ vectorizable_conversion (vec_info *vinfo,
 	return false;
       if (supportable_convert_operation (code, vectype_out, vectype_in, &code1))
 	break;
+      if ((code == FLOAT_EXPR
+	   && GET_MODE_SIZE (lhs_mode) > GET_MODE_SIZE (rhs_mode))
+	  || (code == FIX_TRUNC_EXPR
+	      && GET_MODE_SIZE (rhs_mode) > GET_MODE_SIZE (lhs_mode)))
+	{
+	  bool float_expr_p = code == FLOAT_EXPR;
+	  scalar_mode imode = float_expr_p ? rhs_mode : lhs_mode;
+	  fltsz = GET_MODE_SIZE (float_expr_p ? lhs_mode : rhs_mode);
+	  code1 = float_expr_p ? code : NOP_EXPR;
+	  codecvt1 = float_expr_p ? NOP_EXPR : code;
+	  FOR_EACH_2XWIDER_MODE (rhs_mode_iter, imode)
+	    {
+	      imode = rhs_mode_iter.require ();
+	      if (GET_MODE_SIZE (imode) > fltsz)
+		break;
+
+	      cvt_type
+		= build_nonstandard_integer_type (GET_MODE_BITSIZE (imode),
+						  0);
+	      cvt_type = get_vectype_for_scalar_type (vinfo, cvt_type,
+						      slp_node);
+	      /* This should only happened for SLP as long as loop vectorizer
+		 only supports same-sized vector.  */
+	      if (cvt_type == NULL_TREE
+		  || maybe_ne (TYPE_VECTOR_SUBPARTS (cvt_type), nunits_in)
+		  || !supportable_convert_operation (code1, vectype_out,
+						     cvt_type, &code1)
+		  || !supportable_convert_operation (codecvt1, cvt_type,
+						     vectype_in, &codecvt1))
+		continue;
+
+	      found_mode = true;
+	      break;
+	    }
+
+	  if (found_mode)
+	    {
+	      multi_step_cvt++;
+	      interm_types.safe_push (cvt_type);
+	      cvt_type = NULL_TREE;
+	      break;
+	    }
+	}
       /* FALLTHRU */
     unsupported:
       if (dump_enabled_p ())
@@ -5381,7 +5424,18 @@ vectorizable_conversion (vec_info *vinfo,
 	{
 	  /* Arguments are ready, create the new vector stmt.  */
 	  gcc_assert (TREE_CODE_LENGTH (code1) == unary_op);
-	  gassign *new_stmt = gimple_build_assign (vec_dest, code1, vop0);
+	  gassign* new_stmt;
+	  if (multi_step_cvt)
+	    {
+	      gcc_assert (multi_step_cvt == 1);
+	      new_stmt = gimple_build_assign (vec_dest, codecvt1, vop0);
+	      new_temp = make_ssa_name (vec_dest, new_stmt);
+	      gimple_assign_set_lhs (new_stmt, new_temp);
+	      vect_finish_stmt_generation (vinfo, stmt_info, new_stmt, gsi);
+	      vop0 = new_temp;
+	      vec_dest = vec_dsts[0];
+	    }
+	  new_stmt = gimple_build_assign (vec_dest, code1, vop0);
 	  new_temp = make_ssa_name (vec_dest, new_stmt);
 	  gimple_assign_set_lhs (new_stmt, new_temp);
 	  vect_finish_stmt_generation (vinfo, stmt_info, new_stmt, gsi);
