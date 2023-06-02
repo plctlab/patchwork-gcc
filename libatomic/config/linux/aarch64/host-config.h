@@ -35,10 +35,19 @@
 #endif
 #define IFUNC_NCOND(N)	(1)
 
-#if N == 16 && IFUNC_ALT != 0
+#endif /* HAVE_IFUNC */
+
+/* All 128-bit atomic functions are defined in aarch64/atomic_16.S.  */
+#if N == 16
 # define DONE 1
 #endif
 
-#endif /* HAVE_IFUNC */
+/* State we have lock-free 128-bit atomics.  */
+#undef FAST_ATOMIC_LDST_16
+#define FAST_ATOMIC_LDST_16		1
+#undef MAYBE_HAVE_ATOMIC_CAS_16
+#define MAYBE_HAVE_ATOMIC_CAS_16	1
+#undef MAYBE_HAVE_ATOMIC_EXCHANGE_16
+#define MAYBE_HAVE_ATOMIC_EXCHANGE_16	1
 
 #include_next <host-config.h>
