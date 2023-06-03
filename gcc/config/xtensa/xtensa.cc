@@ -857,6 +857,16 @@ xtensa_expand_conditional_branch (rtx *operands, machine_mode mode)
   switch (mode)
     {
     case E_SFmode:
+      if ((test_code == EQ || test_code == NE)
+	  && const_float_0_operand (cmp1, SFmode))
+	{
+	  emit_move_insn (cmp1 = gen_reg_rtx (SImode),
+			  gen_rtx_SUBREG (SImode, cmp0, 0));
+	  emit_insn (gen_addsi3 (cmp1, cmp1, cmp1));
+	  cmp = gen_int_relational (test_code, cmp1, const0_rtx);
+	  break;
+	}
+
       if (TARGET_HARD_FLOAT)
 	{
 	  cmp = gen_float_relational (test_code, cmp0, cmp1);
@@ -987,6 +997,34 @@ xtensa_expand_scc (rtx operands[4], machine_mode cmp_mode)
   rtx cmp;
   rtx one_tmp, zero_tmp;
   rtx (*gen_fn) (rtx, rtx, rtx, rtx, rtx);
+
+  if (cmp_mode == SFmode)
+    {
+      if (const_float_0_operand (operands[3], SFmode))
+	switch (GET_CODE (operands[1]))
+	  {
+	  case EQ:
+	    emit_move_insn (cmp = gen_reg_rtx (SImode),
+			    gen_rtx_SUBREG (SImode, operands[2], 0));
+	    emit_insn (gen_addsi3 (cmp, cmp, cmp));
+	    emit_insn (gen_eq_zero (dest, cmp));
+	    return 1;
+
+	  case NE:
+	    emit_move_insn (cmp = gen_reg_rtx (SImode),
+			    gen_rtx_SUBREG (SImode, operands[2], 0));
+	    emit_insn (gen_addsi3 (cmp, cmp, cmp));
+	    one_tmp = force_reg (SImode, const1_rtx);
+	    emit_insn (gen_movsicc_ne0_reg_zero (dest, cmp, one_tmp));
+	    return 1;
+
+	  default:
+	    gcc_unreachable ();
+	  }
+
+      if (! register_operand (operands[3], SFmode))
+	return 0;
+    }
 
   if (!(cmp = gen_conditional_move (GET_CODE (operands[1]), cmp_mode,
 				    operands[2], operands[3])))
@@ -4409,6 +4447,11 @@ xtensa_rtx_costs (rtx x, machine_mode mode, int outer_code,
       return true;
 
     case CONST_DOUBLE:
+      if (outer_code == COMPARE && const_float_0_operand (x, SFmode))
+	{
+	  *total = 0;
+	  return true;
+	}
       if (TARGET_CONST16)
 	*total = COSTS_N_INSNS (4);
       else

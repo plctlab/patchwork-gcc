@@ -1724,11 +1724,11 @@
 })
 
 (define_expand "cbranchsf4"
-  [(match_operator 0 "comparison_operator"
+  [(match_operator 0 "cstoresf_cbranchsf_operator"
     [(match_operand:SF 1 "register_operand")
-     (match_operand:SF 2 "register_operand")])
+     (match_operand:SF 2 "cstoresf_cbranchsf_operand")])
    (match_operand 3 "")]
-  "TARGET_HARD_FLOAT"
+  ""
 {
   xtensa_expand_conditional_branch (operands, SFmode);
   DONE;
@@ -2182,10 +2182,10 @@
 
 (define_expand "cstoresf4"
   [(match_operand:SI 0 "register_operand")
-   (match_operator:SI 1 "comparison_operator"
+   (match_operator:SI 1 "cstoresf_cbranchsf_operator"
     [(match_operand:SF 2 "register_operand")
-     (match_operand:SF 3 "register_operand")])]
-  "TARGET_HARD_FLOAT"
+     (match_operand:SF 3 "cstoresf_cbranchsf_operand")])]
+  ""
 {
   if (!xtensa_expand_scc (operands, SFmode))
     FAIL;
@@ -2249,6 +2249,30 @@
   [(set_attr "type"	"move,move")
    (set_attr "mode"	"SI")
    (set_attr "length"	"3,3")])
+
+(define_insn_and_split "movsicc_ne0_reg_zero"
+  [(set (match_operand:SI 0 "register_operand" "=a")
+	(if_then_else:SI (ne (match_operand:SI 1 "register_operand" "r")
+			     (const_int 0))
+			 (match_operand:SI 2 "register_operand" "r")
+			 (const_int 0)))]
+  ""
+  "#"
+  ""
+  [(set (match_dup 0)
+	(match_dup 2))
+   (set (match_dup 0)
+	(if_then_else:SI (ne (match_dup 1)
+			     (const_int 0))
+			 (match_dup 0)
+			 (match_dup 1)))]
+  ""
+  [(set_attr "type"	"move")
+   (set_attr "mode"	"SI")
+   (set (attr "length")
+	(if_then_else (match_test "TARGET_DENSITY")
+		      (const_int 5)
+		      (const_int 6)))])
 
 (define_insn "movsfcc_internal0"
   [(set (match_operand:SF 0 "register_operand" "=a,a,f,f")
@@ -2974,6 +2998,23 @@
 	(if_then_else (match_test "TARGET_DENSITY")
 		      (const_int 5)
 		      (const_int 6)))])
+
+(define_insn_and_split "eq_zero"
+  [(set (match_operand:SI 0 "register_operand" "=a")
+	(eq:SI (match_operand:SI 1 "register_operand" "r")
+	       (const_int 0)))]
+  "TARGET_NSA"
+  "#"
+  "&& 1"
+  [(set (match_dup 0)
+	(clz:SI (match_dup 1)))
+   (set (match_dup 0)
+	(lshiftrt:SI (match_dup 0)
+		     (const_int 5)))]
+  ""
+  [(set_attr "type"	"move")
+   (set_attr "mode"	"SI")
+   (set_attr "length"	"6")])
 
 (define_peephole2
   [(set (match_operand:SI 0 "register_operand")

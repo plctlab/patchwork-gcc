@@ -155,11 +155,11 @@
 			    && CONSTANT_P (op)
 			    && GET_MODE_SIZE (mode) % UNITS_PER_WORD == 0")))))
 
-;; Accept the floating point constant 1 in the appropriate mode.
-(define_predicate "const_float_1_operand"
+;; Accept the floating point constant 0 in the appropriate mode.
+(define_predicate "const_float_0_operand"
   (match_code "const_double")
 {
-  return real_equal (CONST_DOUBLE_REAL_VALUE (op), &dconst1);
+  return real_equal (CONST_DOUBLE_REAL_VALUE (op), &dconst0);
 })
 
 (define_predicate "fpmem_offset_operand"
@@ -179,6 +179,13 @@
   return false;
 })
 
+(define_predicate "cstoresf_cbranchsf_operand"
+  (ior (and (match_test "TARGET_HARD_FLOAT")
+	    (match_operand 0 "register_operand"))
+       (and (match_code "const_double")
+	    (match_test "real_equal (CONST_DOUBLE_REAL_VALUE (op),
+				     &dconst0)"))))
+
 (define_predicate "branch_operator"
   (match_code "eq,ne,lt,ge"))
 
@@ -193,6 +200,12 @@
 
 (define_predicate "xtensa_cstoresi_operator"
   (match_code "eq,ne,gt,ge,lt,le"))
+
+(define_predicate "cstoresf_cbranchsf_operator"
+  (ior (and (match_test "TARGET_HARD_FLOAT")
+	    (match_operand 0 "comparison_operator"))
+       (and (match_test "!TARGET_HARD_FLOAT")
+	    (match_operand 0 "boolean_operator"))))
 
 (define_predicate "xtensa_shift_per_byte_operator"
   (match_code "ashift,ashiftrt,lshiftrt"))
