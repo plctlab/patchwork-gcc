@@ -7135,6 +7135,9 @@ inline_string_cmp (rtx target, tree var_str, const char *const_str,
   scalar_int_mode unit_mode
     = as_a <scalar_int_mode> TYPE_MODE (unit_type_node);
 
+  /* We do the intermediate steps in WORD_MODE, then convert
+     to mode at the end of the sequence.  */
+  rtx intermediate_result = gen_reg_rtx (word_mode);
   start_sequence ();
 
   for (unsigned HOST_WIDE_INT i = 0; i < length; i++)
@@ -7145,25 +7148,27 @@ inline_string_cmp (rtx target, tree var_str, const char *const_str,
       rtx op0 = (const_str_n == 1) ? const_rtx : var_rtx;
       rtx op1 = (const_str_n == 1) ? var_rtx : const_rtx;
 
-      op0 = convert_modes (mode, unit_mode, op0, 1);
-      op1 = convert_modes (mode, unit_mode, op1, 1);
-      rtx diff = expand_simple_binop (mode, MINUS, op0, op1,
-				      result, 1, OPTAB_WIDEN);
+      op0 = convert_modes (word_mode, unit_mode, op0, 1);
+      op1 = convert_modes (word_mode, unit_mode, op1, 1);
+      rtx diff = expand_simple_binop (word_mode, MINUS, op0, op1,
+				      intermediate_result, 1, OPTAB_WIDEN);
 
-      /* Force the difference into result register.  We cannot reassign
-	 result here ("result = diff") or we may end up returning
-	 uninitialized result when expand_simple_binop allocates a new
-	 pseudo-register for returning.  */
-      if (diff != result)
-	emit_move_insn (result, diff);
+      /* Force the difference into intermediate result register.  We cannot
+	 reassign the intermediate result here ("intermediate_result = diff")
+	 or we may end up returning uninitialized result when
+	 expand_simple_binop allocates a new pseudo-register for returning.  */
+      if (diff != intermediate_result)
+	emit_move_insn (intermediate_result, diff);
 
       if (i < length - 1)
-	emit_cmp_and_jump_insns (result, CONST0_RTX (mode), NE, NULL_RTX,
-	    			 mode, true, ne_label);
+	emit_cmp_and_jump_insns (intermediate_result, CONST0_RTX (word_mode),
+				 NE, NULL_RTX, word_mode, true, ne_label);
       offset += GET_MODE_SIZE (unit_mode);
     }
 
   emit_label (ne_label);
+  /* Now convert the intermediate result to the final result.  */
+  emit_move_insn (result, gen_lowpart (mode, intermediate_result));
   rtx_insn *insns = get_insns ();
   end_sequence ();
   emit_insn (insns);
