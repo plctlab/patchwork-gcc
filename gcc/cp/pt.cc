@@ -9928,16 +9928,27 @@ lookup_template_class (tree d1, tree arglist, tree in_decl, tree context,
 	 template.  */
 
       /* Shortcut looking up the current class scope again.  */
-      if (current_class_type)
-	if (tree ti = CLASSTYPE_TEMPLATE_INFO (current_class_type))
+      for (tree scope = current_nonlambda_class_type ();
+	   scope != NULL_TREE;
+	   scope = TYPE_P (scope) ? TYPE_CONTEXT (scope) : DECL_CONTEXT (scope))
+	{
+	  if (!CLASS_TYPE_P (scope))
+	    continue;
+
+	  tree ti = CLASSTYPE_TEMPLATE_INFO (scope);
+	  if (!ti || TMPL_ARGS_DEPTH (TI_ARGS (ti)) < arg_depth)
+	    break;
+
 	  if (gen_tmpl == most_general_template (TI_TEMPLATE (ti))
 	      && comp_template_args (arglist, TI_ARGS (ti)))
-	    return current_class_type;
+	    return scope;
+	}
 
       /* Calculate the BOUND_ARGS.  These will be the args that are
 	 actually tsubst'd into the definition to create the
 	 instantiation.  */
-      arglist = coerce_template_parms (parmlist, arglist, gen_tmpl, complain);
+      if (PRIMARY_TEMPLATE_P (gen_tmpl))
+	arglist = coerce_template_parms (parmlist, arglist, gen_tmpl, complain);
 
       if (arglist == error_mark_node)
 	/* We were unable to bind the arguments.  */
