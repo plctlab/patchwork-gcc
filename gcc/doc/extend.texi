@@ -19724,6 +19724,10 @@ double scalar_insert_exp (double significand, unsigned long long int exponent);
 ieee_128 scalar_insert_exp (unsigned __int128 significand,
                             unsigned long long int exponent);
 ieee_128 scalar_insert_exp (ieee_128 significand, unsigned long long int exponent);
+vector unsigned long long __builtin_scalar_extract_exp_to_vec (ieee_128);
+vector unsigned __int128  __builtin_scalar_extract_sig_to_vec (ieee_128);
+vector ieee_128 __builtin_scalar_insert_exp_vqp (vector unsigned __int128,
+                                                 vector unsigned long long);
 
 int scalar_cmp_exp_gt (double arg1, double arg2);
 int scalar_cmp_exp_lt (double arg1, double arg2);
@@ -19779,6 +19783,12 @@ the most significant bit of the @code{significand} argument.
 The significand and exponent components of the result are composed of
 the least significant 15 bits of the @code{exponent} argument and the
 least significant 112 bits of the @code{significand} argument respectively.
+
+The @code{__builtin_scalar_extract_exp_to_vec},
+@code{__builtin_scalar_extract_sig_to_vec} and
+@code{__builtin_scalar_insert_exp_vqp} are similar to
+@code{scalar_extract_exp}, @code{scalar_extract_sig} and
+@code{scalar_insert_exp} except they operate on vector arguments.
 
 The @code{scalar_cmp_exp_gt}, @code{scalar_cmp_exp_lt},
 @code{scalar_cmp_exp_eq}, and @code{scalar_cmp_exp_unordered} built-in
