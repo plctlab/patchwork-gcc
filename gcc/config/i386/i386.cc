@@ -18525,6 +18525,13 @@ ix86_gimple_fold_builtin (gimple_stmt_iterator *gsi)
       /* FALLTHRU.  */
     case IX86_BUILTIN_PBLENDVB128:
     case IX86_BUILTIN_BLENDVPS:
+      /* Don't fold PBLENDVB when funsigned-char since mask < 0
+	 will always be false in the gimple level.  */
+      if ((fn_code == IX86_BUILTIN_PBLENDVB128
+	   || fn_code == IX86_BUILTIN_PBLENDVB256)
+	  && !flag_signed_char)
+	break;
+
       gcc_assert (n_args == 3);
       arg0 = gimple_call_arg (stmt, 0);
       arg1 = gimple_call_arg (stmt, 1);
