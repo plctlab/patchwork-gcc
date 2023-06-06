@@ -29,6 +29,7 @@
 
 #include "simd_detail.h"
 #include "numeric_traits.h"
+#include <bits/stl_algo.h>
 #include <bit>
 #include <bitset>
 #ifdef _GLIBCXX_DEBUG_UB
@@ -2425,25 +2426,38 @@ template <typename _Tp>
 #define _GLIBCXX_SIMD_PPC_INTRIN(_Tp)                                          \
   template <>                                                                  \
     struct __intrinsic_type_impl<_Tp> { using type = __vector _Tp; }
-_GLIBCXX_SIMD_PPC_INTRIN(float);
 #ifdef __VSX__
-_GLIBCXX_SIMD_PPC_INTRIN(double);
+#define _GLIBCXX_SIMD_PPC_INTRIN_VSX(_Tp) _GLIBCXX_SIMD_PPC_INTRIN(_Tp)
+#else
+#define _GLIBCXX_SIMD_PPC_INTRIN_VSX(_Tp)                                                          \
+  template <>                                                                                      \
+    struct __intrinsic_type_impl<_Tp>                                                              \
+    {}
 #endif
+#if defined __VSX__ || __SIZEOF_LONG__ == 4
+#define _GLIBCXX_SIMD_PPC_INTRIN_VSX_4(_Tp) _GLIBCXX_SIMD_PPC_INTRIN(_Tp)
+#else
+#define _GLIBCXX_SIMD_PPC_INTRIN_VSX_4(_Tp)                                                        \
+  template <>                                                                                      \
+    struct __intrinsic_type_impl<_Tp>                                                              \
+    {}
+#endif
+
+_GLIBCXX_SIMD_PPC_INTRIN(float);
+_GLIBCXX_SIMD_PPC_INTRIN_VSX(double);
 _GLIBCXX_SIMD_PPC_INTRIN(signed char);
 _GLIBCXX_SIMD_PPC_INTRIN(unsigned char);
 _GLIBCXX_SIMD_PPC_INTRIN(signed short);
 _GLIBCXX_SIMD_PPC_INTRIN(unsigned short);
 _GLIBCXX_SIMD_PPC_INTRIN(signed int);
 _GLIBCXX_SIMD_PPC_INTRIN(unsigned int);
-#if defined __VSX__ || __SIZEOF_LONG__ == 4
-_GLIBCXX_SIMD_PPC_INTRIN(signed long);
-_GLIBCXX_SIMD_PPC_INTRIN(unsigned long);
-#endif
-#ifdef __VSX__
-_GLIBCXX_SIMD_PPC_INTRIN(signed long long);
-_GLIBCXX_SIMD_PPC_INTRIN(unsigned long long);
-#endif
+_GLIBCXX_SIMD_PPC_INTRIN_VSX_4(signed long);
+_GLIBCXX_SIMD_PPC_INTRIN_VSX_4(unsigned long);
+_GLIBCXX_SIMD_PPC_INTRIN_VSX(signed long long);
+_GLIBCXX_SIMD_PPC_INTRIN_VSX(unsigned long long);
 #undef _GLIBCXX_SIMD_PPC_INTRIN
+#undef _GLIBCXX_SIMD_PPC_INTRIN_VSX
+#undef _GLIBCXX_SIMD_PPC_INTRIN_VSX_4
 
 template <typename _Tp, size_t _Bytes>
   struct __intrinsic_type<_Tp, _Bytes, enable_if_t<__is_vectorizable_v<_Tp> && _Bytes <= 16>>
