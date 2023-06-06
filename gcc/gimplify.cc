@@ -225,6 +225,7 @@ struct gimplify_omp_ctx
   vec<tree> loop_iter_var;
   location_t location;
   enum omp_clause_default_kind default_kind;
+  enum omp_clause_default_kind oacc_data_default_kind;
   enum omp_region_type region_type;
   enum tree_code code;
   bool combined_loop;
@@ -459,6 +460,8 @@ new_omp_context (enum omp_region_type region_type)
     c->default_kind = OMP_CLAUSE_DEFAULT_SHARED;
   else
     c->default_kind = OMP_CLAUSE_DEFAULT_UNSPECIFIED;
+  if (gimplify_omp_ctxp)
+    c->oacc_data_default_kind = gimplify_omp_ctxp->oacc_data_default_kind;
   c->defaultmap[GDMK_SCALAR] = GOVD_MAP;
   c->defaultmap[GDMK_SCALAR_TARGET] = GOVD_MAP;
   c->defaultmap[GDMK_AGGREGATE] = GOVD_MAP;
@@ -12088,6 +12091,8 @@ gimplify_scan_omp_clauses (tree *list_p, gimple_seq *pre_p,
 
 	case OMP_CLAUSE_DEFAULT:
 	  ctx->default_kind = OMP_CLAUSE_DEFAULT_KIND (c);
+	  if (code == OACC_DATA)
+	    ctx->oacc_data_default_kind = OMP_CLAUSE_DEFAULT_KIND (c);
 	  break;
 
 	case OMP_CLAUSE_INCLUSIVE:
@@ -12134,6 +12139,21 @@ gimplify_scan_omp_clauses (tree *list_p, gimple_seq *pre_p,
 	*list_p = OMP_CLAUSE_CHAIN (c);
       else
 	list_p = &OMP_CLAUSE_CHAIN (c);
+    }
+
+  if ((code == OACC_PARALLEL
+       || code == OACC_KERNELS
+       || code == OACC_SERIAL)
+      && ctx->default_kind == OMP_CLAUSE_DEFAULT_SHARED
+      && ctx->oacc_data_default_kind != OMP_CLAUSE_DEFAULT_UNSPECIFIED)
+    {
+      ctx->default_kind = ctx->oacc_data_default_kind;
+
+      /* Append actual default clause on compute construct. Not really needed
+	 for omp_notice_variable to work properly, but for debug dump files.  */
+      c = build_omp_clause (UNKNOWN_LOCATION, OMP_CLAUSE_DEFAULT);
+      OMP_CLAUSE_DEFAULT_KIND (c) = ctx->oacc_data_default_kind;
+      *list_p = c;
     }
 
   ctx->clauses = *orig_list_p;
