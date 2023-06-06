@@ -4524,6 +4524,12 @@ gfc_trans_oacc_construct (gfc_code *code)
 	break;
       case EXEC_OACC_HOST_DATA:
 	construct_code = OACC_HOST_DATA;
+	if (code->ext.omp_clauses->lists[OMP_LIST_USE_DEVICE] == NULL)
+	  {
+	    error_at (gfc_get_location (&code->loc),
+		      "%<host_data%> construct requires %<use_device%> clause");
+	    return NULL_TREE;
+	  }
 	break;
       default:
 	gcc_unreachable ();
