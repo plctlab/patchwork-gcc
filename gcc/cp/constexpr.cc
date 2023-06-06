@@ -8110,11 +8110,14 @@ instantiate_cx_fn_r (tree *tp, int *walk_subtrees, void */*data*/)
       && DECL_DECLARED_CONSTEXPR_P (*tp)
       && !DECL_INITIAL (*tp)
       && !trivial_fn_p (*tp)
-      && DECL_TEMPLOID_INSTANTIATION (*tp)
+      && (DECL_TEMPLOID_INSTANTIATION (*tp) || DECL_DEFAULTED_FN (*tp))
       && !uid_sensitive_constexpr_evaluation_p ())
     {
       ++function_depth;
-      instantiate_decl (*tp, /*defer_ok*/false, /*expl_inst*/false);
+      if (DECL_TEMPLOID_INSTANTIATION (*tp))
+	instantiate_decl (*tp, /*defer_ok*/false, /*expl_inst*/false);
+      else
+	synthesize_method (*tp);
       --function_depth;
     }
   else if (TREE_CODE (*tp) == CALL_EXPR
