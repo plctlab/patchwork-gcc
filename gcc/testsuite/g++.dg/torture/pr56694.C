@@ -1,4 +1,5 @@
 // { dg-do compile }
+// { dg-require-effective-target exceptions_enabled }
 // { dg-options "-fopenmp" }
 // { dg-require-effective-target fopenmp }
 

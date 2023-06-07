@@ -1,4 +1,5 @@
 // PR c++/29318
+// { dg-require-effective-target exceptions_enabled }
 // { dg-options "" }
 
 #include <typeinfo>

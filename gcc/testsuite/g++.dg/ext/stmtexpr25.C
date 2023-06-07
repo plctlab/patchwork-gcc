@@ -1,6 +1,7 @@
 // PR c++/81073
 // { dg-options "" }
 // { dg-do compile { target c++11 } }
+// { dg-require-effective-target exceptions_enabled }
 
 struct test { const int *addr; };
 

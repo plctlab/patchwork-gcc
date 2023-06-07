@@ -1,4 +1,5 @@
 // { dg-do compile }
+// { dg-require-effective-target exceptions_enabled }
 // { dg-options "-std=c++2a" }
 
 consteval int bar (int i) { if (i != 1) throw 1; return 0; }	// { dg-error "is not a constant expression" }

@@ -3,6 +3,7 @@
 // Compile with -g to verify the warning deals properly with debug
 // statements.
 // { dg-do compile }
+// { dg-require-effective-target exceptions_enabled }
 // { dg-options "-O2 -Wstringop-truncation -g" }
 
 extern "C" char* strncpy (char*, const char*, __SIZE_TYPE__);

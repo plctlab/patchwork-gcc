@@ -1,5 +1,7 @@
 // PR c++/31952
 
+// { dg-require-effective-target exceptions_enabled }
+
 int
 f0 (int bar)     // { dg-message "previously" }
 try

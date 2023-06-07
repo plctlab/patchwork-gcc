@@ -1,5 +1,6 @@
 // PR c++/99895
 // { dg-do compile { target c++20 } }
+// { dg-require-effective-target exceptions_enabled }
 
 struct fixed_string {
   consteval int size(int n) const {

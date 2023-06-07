@@ -1,5 +1,6 @@
 /* PR middle-end/88232 - Please implement -Winfinite-recursion
    { dg-do compile }
+   { dg-require-effective-target exceptions_enabled }
    { dg-options "-Wall -Winfinite-recursion" } */
 
 typedef __SIZE_TYPE__ size_t;

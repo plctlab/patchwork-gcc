@@ -1,5 +1,7 @@
 // PR c++/107310
 
+// { dg-require-effective-target exceptions_enabled }
+
 struct f
 {
   ~f();

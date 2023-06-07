@@ -1,4 +1,5 @@
 // PR c++/33492
+// { dg-require-effective-target exceptions_enabled }
 // { dg-options "" }
 
 void foo()

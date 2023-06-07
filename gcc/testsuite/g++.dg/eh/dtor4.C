@@ -1,5 +1,7 @@
 // PR c++/109172
 
+// { dg-require-effective-target exceptions_enabled }
+
 class Demo
 {
   ~Demo();

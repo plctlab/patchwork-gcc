@@ -1,5 +1,7 @@
 // PR c++/97675
 
+// { dg-require-effective-target exceptions_enabled }
+
 struct Base { };
 struct Child : Base { };
 int main() {
