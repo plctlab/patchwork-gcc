@@ -5,6 +5,8 @@
 // Incorrect construction and destruction of multi-dimensional
 // array of class.
 
+// { dg-require-effective-target exceptions_enabled }
+
 extern void array5_x (void);
 
 int

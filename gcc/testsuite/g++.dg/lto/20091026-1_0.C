@@ -1,4 +1,5 @@
 // { dg-lto-do link }
+// { dg-require-effective-target exceptions_enabled }
 // { dg-extra-ld-options "-r -nostdlib -flinker-output=nolto-rel" }
 
 #include "20091026-1_a.h"

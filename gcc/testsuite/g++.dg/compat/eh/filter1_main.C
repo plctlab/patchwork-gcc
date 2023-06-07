@@ -2,6 +2,8 @@
 
 // Split into pieces for binary compatibility testing October 2002
 
+// { dg-require-effective-target exceptions_enabled }
+
 extern void filter1_x (void);
 
 int
