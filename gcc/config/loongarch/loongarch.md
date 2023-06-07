@@ -2926,9 +2926,11 @@
   DONE;
 })
 
+;; Jump to the jump table Avoid using the $r1 register to prevent
+;; affecting hardware branch prediction.
 (define_insn "@tablejump<mode>"
   [(set (pc)
-	(match_operand:P 0 "register_operand" "r"))
+	(match_operand:P 0 "register_operand" "q"))
    (use (label_ref (match_operand 1 "" "")))]
   ""
   "jr\t%0"
