@@ -6297,7 +6297,7 @@ gcn_hsa_declare_function_name (FILE *file, const char *name, tree)
   fprintf (file, "\t  .amdhsa_system_vgpr_workitem_id\t%i\n",
 	   (cfun->machine->args.requested & (1 << WORK_ITEM_ID_Z_ARG))
 	   ? 2
-	   : cfun->machine->args.requested & (1 << WORK_ITEM_ID_Y_ARG)
+	   : (cfun->machine->args.requested & (1 << WORK_ITEM_ID_Y_ARG))
 	   ? 1 : 0);
   fprintf (file,
 	   "\t  .amdhsa_next_free_vgpr\t%i\n"
