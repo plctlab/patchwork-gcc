@@ -1,7 +1,6 @@
 /* { dg-do compile } */
-/* Skip this everywhere for now.  Once we have a target with
-   divmod enabled, only skip for -O0, -O1, -Og, -Oz, -Os.  */
-/* { dg-skip-if "" { *-*-* } { } } */
+/* { dg-options "-mtune=veyron-v1 -mabi=lp64" } */
+/* { dg-skip-if "" { *-*-* } { "-O0" "-O1" "-Og" "-Oz" "-Os" } } */
 
 void
 foo(int a, int b, int *c, int *d)

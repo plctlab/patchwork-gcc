@@ -366,6 +366,21 @@ static const struct riscv_tune_param thead_c906_tune_info = {
   false		/* use_divmod_expansion */
 };
 
+/* Costs to use when optimizing for Ventana Micro Veyron V1.  */
+static const struct riscv_tune_param veyron_v1_tune_info = {
+  {COSTS_N_INSNS (4), COSTS_N_INSNS (5)},	/* fp_add */
+  {COSTS_N_INSNS (4), COSTS_N_INSNS (5)},	/* fp_mul */
+  {COSTS_N_INSNS (9), COSTS_N_INSNS (17)},	/* fp_div */
+  {COSTS_N_INSNS (4), COSTS_N_INSNS (4)},	/* int_mul */
+  {COSTS_N_INSNS (12), COSTS_N_INSNS (20)},	/* int_div */
+  4,						/* issue_rate */
+  4,						/* branch_cost */
+  5,						/* memory_cost */
+  8,						/* fmv_cost */
+  false,					/* slow_unaligned_access */
+  true,					/* use_divmod_expansion */
+};
+
 /* Costs to use when optimizing for size.  */
 static const struct riscv_tune_param optimize_size_tune_info = {
   {COSTS_N_INSNS (1), COSTS_N_INSNS (1)},	/* fp_add */
