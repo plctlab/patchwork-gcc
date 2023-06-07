@@ -942,6 +942,64 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
 #endif
    ))))
 
+#if GIMPLE
+(for div (trunc_div exact_div)
+ /* Simplify (t + M*N) / N -> t / N + M.  */
+ (simplify
+  (div (plus:c @0 (mult:c @1 @2)) @2)
+  (if (INTEGRAL_TYPE_P (type)
+       && plus_mult_no_ovf_and_keep_sign (@0, @1, @2, PLUS_EXPR, type))
+  (plus (div @0 @2) @1)))
+
+ /* Simplify (t - M*N) / N -> t / N - M.  */
+ (simplify
+  (div (minus @0 (mult:c @1 @2)) @2)
+  (if (INTEGRAL_TYPE_P (type)
+       && plus_mult_no_ovf_and_keep_sign (@0, @1, @2, MINUS_EXPR,  type))
+  (minus (div @0 @2) @1)))
+
+ /* Simplify (t + C) / N -> t / N + C / N where C is multiple of N  */
+ (simplify
+  (div (plus @0 INTEGER_CST@1) INTEGER_CST@2)
+  (with
+   { tree repaired_c = @1;
+     if (TYPE_UNSIGNED (type) && tree_int_cst_sign_bit (@1))
+       repaired_c = fold_build1 (NEGATE_EXPR, type, @1);
+   }
+   (if (INTEGRAL_TYPE_P (type)
+	&& multiple_of_p (type, repaired_c, @2)
+	&& plus_no_ovf_and_keep_sign (@0, @1, type))
+     (with
+      { wide_int m;
+	wide_int c = wi::to_wide (@1);
+	wide_int n = wi::to_wide (@2);
+	wi::overflow_type ovf;
+	if (TYPE_UNSIGNED (type) && tree_int_cst_sign_bit (@1))
+	  m = -wi::div_trunc (-c, n, TYPE_SIGN (type), &ovf);
+	else
+	  m = wi::div_trunc (c, n, TYPE_SIGN (type), &ovf);
+	gcc_assert (ovf == wi::OVF_NONE);
+      }
+   (plus (div @0 @2) { wide_int_to_tree(type, m); }))))))
+
+/* Simplify (t + C) >> N -> t >> N + C>>N if low N bits of C is 0.  */
+(simplify
+ (rshift (plus @0 INTEGER_CST@1) INTEGER_CST@2)
+ (if (INTEGRAL_TYPE_P (type) && !tree_int_cst_sign_bit (@2)
+      && wi::ctz (wi::to_wide (@1)) >= wi::to_wide (@2).to_shwi ()
+      && plus_no_ovf_and_keep_sign (@0, @1, type))
+  (with
+   { wide_int m;
+     wide_int c = wi::to_wide (@1);
+     wide_int n = wi::to_wide (@2);
+     if (TYPE_UNSIGNED (type) && tree_int_cst_sign_bit (@1))
+       m = -wi::rshift (-c, n, TYPE_SIGN (type));
+     else
+       m = wi::rshift (c, n, TYPE_SIGN (type));
+   }
+ (plus (rshift @0 @2) { wide_int_to_tree(type, m); }))))
+#endif
+
 (for op (negate abs)
  /* Simplify cos(-x) and cos(|x|) -> cos(x).  Similarly for cosh.  */
  (for coss (COS COSH)

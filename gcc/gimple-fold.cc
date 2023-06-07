@@ -9349,3 +9349,164 @@ gimple_stmt_integer_valued_real_p (gimple *stmt, int depth)
       return false;
     }
 }
+
+/* Return true if "X * Y" may be overflow.  */
+
+bool
+maybe_mult_overflow (value_range &x, value_range &y, signop sgn)
+{
+  wide_int wmin0 = x.lower_bound ();
+  wide_int wmax0 = x.upper_bound ();
+  wide_int wmin1 = y.lower_bound ();
+  wide_int wmax1 = y.upper_bound ();
+
+  wi::overflow_type min_ovf, max_ovf;
+  wi::mul (wmin0, wmin1, sgn, &min_ovf);
+  wi::mul (wmax0, wmax1, sgn, &max_ovf);
+  if (min_ovf == wi::OVF_NONE && max_ovf == wi::OVF_NONE)
+    {
+      wi::mul (wmin0, wmax1, sgn, &min_ovf);
+      wi::mul (wmax0, wmin1, sgn, &max_ovf);
+      if (min_ovf == wi::OVF_NONE && max_ovf == wi::OVF_NONE)
+	return false;
+    }
+  return true;
+}
+
+/* Return true if "X + Y" may be overflow.  */
+
+static bool
+maybe_plus_overflow (value_range &x, value_range &y, signop sgn)
+{
+  wide_int wmin0 = x.lower_bound ();
+  wide_int wmax0 = x.upper_bound ();
+  wide_int wmin1 = y.lower_bound ();
+  wide_int wmax1 = y.upper_bound ();
+
+  wi::overflow_type min_ovf, max_ovf;
+  wi::add (wmax0, wmax1, sgn, &min_ovf);
+  wi::add (wmin0, wmin1, sgn, &max_ovf);
+  if (min_ovf == wi::OVF_NONE && max_ovf == wi::OVF_NONE)
+    return false;
+
+  return true;
+}
+
+/* Return true if "X - Y" may be overflow.  */
+
+static bool
+maybe_minus_overflow (value_range &x, value_range &y, signop sgn)
+{
+  wide_int wmin0 = x.lower_bound ();
+  wide_int wmax0 = x.upper_bound ();
+  wide_int wmin1 = y.lower_bound ();
+  wide_int wmax1 = y.upper_bound ();
+
+  wi::overflow_type min_ovf, max_ovf;
+  wi::sub (wmin0, wmax1, sgn, &min_ovf);
+  wi::sub (wmax0, wmin1, sgn, &max_ovf);
+  if (min_ovf == wi::OVF_NONE && max_ovf == wi::OVF_NONE)
+    return false;
+
+  return true;
+}
+
+/* Return true if there is no overflow in the expression.
+   And no sign change on the plus/minus for X.
+   CODE is PLUS_EXPR, if the expression is "X + N * M".
+   CODE is MINUS_EXPR, if the expression is "X - N * M".
+   TYPE is the integer type of the expressions.  */
+
+bool
+plus_mult_no_ovf_and_keep_sign (tree x, tree m, tree n, tree_code code,
+				tree type)
+{
+  value_range vr0;
+  value_range vr1;
+  value_range vr2;
+
+  if (get_range_query (cfun)->range_of_expr (vr0, x)
+      && get_range_query (cfun)->range_of_expr (vr1, n)
+      && get_range_query (cfun)->range_of_expr (vr2, m) && !vr0.varying_p ()
+      && !vr0.undefined_p () && !vr1.varying_p () && !vr1.undefined_p ()
+      && !vr2.varying_p () && !vr2.undefined_p ())
+    {
+      signop sgn = TYPE_SIGN (type);
+      if (!TYPE_OVERFLOW_UNDEFINED (type))
+	{
+	  if (maybe_mult_overflow (vr1, vr2, sgn))
+	    {
+	      m = fold_build1 (NEGATE_EXPR, type, m);
+	      if (get_range_query (cfun)->range_of_expr (vr2, m)
+		  && !vr2.varying_p () && !vr2.undefined_p ()
+		  && !maybe_mult_overflow (vr1, vr2, sgn))
+		code = (code == MINUS_EXPR) ? PLUS_EXPR : MINUS_EXPR;
+	      else
+		return false;
+	    }
+
+	  /* Get range of N*M  */
+	  tree mult = fold_build2 (MULT_EXPR, type, n, m);
+	  value_range vr3;
+	  bool r = get_range_query (cfun)->range_of_expr (vr3, mult);
+	  gcc_assert (r && !vr3.varying_p () && !vr3.undefined_p ());
+
+	  bool overflow = code == MINUS_EXPR
+			    ? maybe_minus_overflow (vr0, vr3, sgn)
+			    : maybe_plus_overflow (vr0, vr3, sgn);
+	  if (overflow)
+	    return false;
+	}
+
+      /* The value cross "0" is also a concern.  */
+      if (sgn == UNSIGNED)
+	return true;
+      tree op
+	= fold_build2 (code, type, x, fold_build2 (MULT_EXPR, type, n, m));
+      value_range vr4;
+      if (get_range_query (cfun)->range_of_expr (vr4, op) && !vr4.varying_p ()
+	  && !vr4.undefined_p ())
+	{
+	  /* X and (X +- N*M) are both positive (or both negtive).  */
+	  if ((wi::ge_p (vr0.lower_bound (), 0, sgn)
+	       && wi::ge_p (vr4.lower_bound (), 0, sgn))
+	      || (wi::le_p (vr0.upper_bound (), 0, sgn)
+		  && wi::le_p (vr4.upper_bound (), 0, sgn)))
+	    return true;
+	}
+    }
+
+return false;
+}
+
+/* Return true if there is no overflow and no sign change in "X + C".
+   C is a constant integer.  */
+
+bool
+plus_no_ovf_and_keep_sign (tree x, tree c, tree type)
+{
+  value_range vr;
+  if (get_range_query (cfun)->range_of_expr (vr, x) && !vr.varying_p ()
+      && !vr.undefined_p ())
+    {
+      wi::overflow_type ovf = wi::OVF_NONE;
+      wide_int min = vr.lower_bound ();
+      wide_int max = vr.upper_bound ();
+      wide_int wc = wi::to_wide (c);
+      if (!TYPE_OVERFLOW_UNDEFINED (type))
+	{
+	  if (tree_int_cst_sign_bit (c))
+	    wi::sub (min, -wc, TYPE_SIGN (type), &ovf);
+	  else
+	    wi::add (max, wc, TYPE_SIGN (type), &ovf);
+	}
+      if (ovf == wi::OVF_NONE)
+	/* unsigned, or 't' and 't + C' are both positive/negative.  */
+	if (TYPE_UNSIGNED (type)
+	    || (wi::ge_p (min, 0, SIGNED) && wi::ge_p (min + wc, 0, SIGNED))
+	    || (wi::le_p (max, 0, SIGNED) && wi::le_p (max + wc, 0, SIGNED)))
+	  return true;
+    }
+
+  return false;
+}
