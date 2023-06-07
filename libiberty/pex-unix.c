@@ -814,9 +814,9 @@ pex_unix_fdopenw (struct pex_obj *obj ATTRIBUTE_UNUSED, int fd,
 }
 
 static void
-pex_unix_cleanup (struct pex_obj *obj ATTRIBUTE_UNUSED)
-{
 #if !defined (HAVE_WAIT4) && !defined (HAVE_WAITPID)
+pex_unix_cleanup (struct pex_obj *obj)
+{
   while (obj->sysdep != NULL)
     {
       struct status_list *this;
@@ -827,5 +827,9 @@ pex_unix_cleanup (struct pex_obj *obj ATTRIBUTE_UNUSED)
       free (this);
       obj->sysdep = (void *) next;
     }
-#endif
 }
+#else
+pex_unix_cleanup (struct pex_obj *obj ATTRIBUTE_UNUSED)
+{
+}
+#endif
