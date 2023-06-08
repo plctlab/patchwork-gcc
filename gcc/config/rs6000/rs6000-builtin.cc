@@ -3326,8 +3326,8 @@ rs6000_expand_builtin (tree exp, rtx target, rtx /* subtarget */,
       case CODE_FOR_fmakf4_odd:
 	icode = CODE_FOR_fmatf4_odd;
 	break;
-      case CODE_FOR_xsxexpqp_kf:
-	icode = CODE_FOR_xsxexpqp_tf;
+      case CODE_FOR_xsxexpqp_kf_di:
+	icode = CODE_FOR_xsxexpqp_tf_di;
 	break;
       case CODE_FOR_xsxsigqp_kf:
 	icode = CODE_FOR_xsxsigqp_tf;

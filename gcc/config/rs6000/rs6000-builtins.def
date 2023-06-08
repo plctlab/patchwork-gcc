@@ -2900,8 +2900,14 @@
   fpmath double __builtin_truncf128_round_to_odd (_Float128);
     TRUNCF128_ODD trunckfdf2_odd {}
 
+  vull __builtin_scalar_extract_exp_to_vec (_Float128);
+    EEXPKF xsxexpqp_kf_v2di {}
+
+  vuq __builtin_scalar_extract_sig_to_vec (_Float128);
+    ESIGKF xsxsigqp_f128_kf {}
+
   const signed long long __builtin_vsx_scalar_extract_expq (_Float128);
-    VSEEQP xsxexpqp_kf {}
+    VSEEQP xsxexpqp_kf_di {}
 
   const signed __int128 __builtin_vsx_scalar_extract_sigq (_Float128);
     VSESQP xsxsigqp_kf {}
@@ -2913,6 +2919,9 @@
   const _Float128 __builtin_vsx_scalar_insert_exp_qp (_Float128, \
                                                       unsigned long long);
     VSIEQPF xsiexpqpf_kf {}
+
+  const _Float128 __builtin_vsx_scalar_insert_exp_vqp (vuq, vull);
+    VSIEQPV xsiexpqpf_f128_kf {}
 
   const signed int __builtin_vsx_scalar_test_data_class_qp (_Float128, \
                                                             const int<7>);
