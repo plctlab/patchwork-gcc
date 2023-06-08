@@ -21024,11 +21024,13 @@ cp_parser_enum_specifier (cp_parser* parser)
 
   /* Check for the `:' that denotes a specified underlying type in C++0x.
      Note that a ':' could also indicate a bitfield width, however.  */
+  location_t colon_loc = UNKNOWN_LOCATION;
   if (cp_lexer_next_token_is (parser->lexer, CPP_COLON))
     {
       cp_decl_specifier_seq type_specifiers;
 
       /* Consume the `:'.  */
+      colon_loc = cp_lexer_peek_token (parser->lexer)->location;
       cp_lexer_consume_token (parser->lexer);
 
       auto tdf
@@ -21073,12 +21075,20 @@ cp_parser_enum_specifier (cp_parser* parser)
 	    return error_mark_node;
 	}
       /* An opaque-enum-specifier must have a ';' here.  */
-      if ((scoped_enum_p || underlying_type)
+      if ((scoped_enum_p
+	   || (underlying_type && !in_system_header_at (colon_loc)))
 	  && cp_lexer_next_token_is_not (parser->lexer, CPP_SEMICOLON))
 	{
 	  if (has_underlying_type)
-	    cp_parser_commit_to_tentative_parse (parser);
-	  cp_parser_error (parser, "expected %<;%> or %<{%>");
+	    {
+	      cp_parser_commit_to_tentative_parse (parser);
+	      error_at (colon_loc,
+			"declaration of enumeration with "
+			"fixed underlying type and no enumerator list is "
+			"only permitted as a standalone declaration");
+	    }
+	  else
+	    cp_parser_error (parser, "expected %<;%> or %<{%>");
 	  if (has_underlying_type)
 	    return error_mark_node;
 	}
