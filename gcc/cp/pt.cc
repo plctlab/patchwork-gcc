@@ -6155,12 +6155,25 @@ push_template_decl (tree decl, bool is_friend)
 	      decl_parms = TREE_CHAIN (decl_parms);
 	      scope_parms = TREE_CHAIN (scope_parms);
 	    }
-	  while (decl_parms)
+	  while (decl_parms && decl_parms != scope_parms)
 	    {
 	      if (!template_requirements_equivalent_p (decl_parms, scope_parms))
 		{
-		  error ("redeclaration of %qD with different constraints",
-			 TPARMS_PRIMARY_TEMPLATE (TREE_VALUE (decl_parms)));
+		  tree td = TPARMS_PRIMARY_TEMPLATE (TREE_VALUE (decl_parms));
+		  if (!td)
+		    {
+		      /* FIXME: TPARMS_PRIMARY_TEMPLATE doesn't always get
+			 set for enclosing template scopes.  Work around
+			 this by walking the context to obtain the relevant
+			 (primary) template whose constraints we mismatch.  */
+		      int level = TMPL_PARMS_DEPTH (decl_parms);
+		      td = TYPE_TI_TEMPLATE (ctx);
+		      while (!PRIMARY_TEMPLATE_P (td)
+			     || (TMPL_PARMS_DEPTH (DECL_TEMPLATE_PARMS (td))
+				 != level))
+			td = TYPE_TI_TEMPLATE (DECL_CONTEXT (td));
+		    }
+		  error ("redeclaration of %qD with different constraints", td);
 		  break;
 		}
 	      decl_parms = TREE_CHAIN (decl_parms);
