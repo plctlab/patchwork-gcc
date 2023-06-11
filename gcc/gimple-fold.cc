@@ -5370,8 +5370,8 @@ arith_overflowed_p (enum tree_code code, const_tree type,
   return wi::min_precision (wres, sign) > TYPE_PRECISION (type);
 }
 
-/* If IFN_{MASK,LEN}_LOAD/STORE call CALL is unconditional, return a MEM_REF
-   for the memory it references, otherwise return null.  VECTYPE is the
+/* If IFN_{MASK,LEN,LEN_MASK}_LOAD/STORE call CALL is unconditional, return a
+   MEM_REF for the memory it references, otherwise return null.  VECTYPE is the
    type of the memory vector.  MASK_P indicates it's for MASK if true,
    otherwise it's for LEN.  */
 
@@ -5383,7 +5383,20 @@ gimple_fold_partial_load_store_mem_ref (gcall *call, tree vectype, bool mask_p)
   if (!tree_fits_uhwi_p (alias_align))
     return NULL_TREE;
 
-  if (mask_p)
+  if (gimple_call_internal_fn (call) == IFN_LEN_MASK_LOAD
+      || gimple_call_internal_fn (call) == IFN_LEN_MASK_STORE)
+    {
+      tree basic_len = gimple_call_arg (call, 2);
+      if (!poly_int_tree_p (basic_len))
+	return NULL_TREE;
+      if (maybe_ne (tree_to_poly_uint64 (basic_len),
+		    TYPE_VECTOR_SUBPARTS (vectype)))
+	return NULL_TREE;
+      tree mask = gimple_call_arg (call, 3);
+      if (!integer_all_onesp (mask))
+	return NULL_TREE;
+    }
+  else if (mask_p)
     {
       tree mask = gimple_call_arg (call, 2);
       if (!integer_all_onesp (mask))
@@ -5409,7 +5422,7 @@ gimple_fold_partial_load_store_mem_ref (gcall *call, tree vectype, bool mask_p)
   return fold_build2 (MEM_REF, vectype, ptr, offset);
 }
 
-/* Try to fold IFN_{MASK,LEN}_LOAD call CALL.  Return true on success.
+/* Try to fold IFN_{MASK,LEN,LEN_MASK}_LOAD call CALL.  Return true on success.
    MASK_P indicates it's for MASK if true, otherwise it's for LEN.  */
 
 static bool
@@ -5431,14 +5444,15 @@ gimple_fold_partial_load (gimple_stmt_iterator *gsi, gcall *call, bool mask_p)
   return false;
 }
 
-/* Try to fold IFN_{MASK,LEN}_STORE call CALL.  Return true on success.
+/* Try to fold IFN_{MASK,LEN,LEN_MASK}_STORE call CALL.  Return true on success.
    MASK_P indicates it's for MASK if true, otherwise it's for LEN.  */
 
 static bool
 gimple_fold_partial_store (gimple_stmt_iterator *gsi, gcall *call,
 			   bool mask_p)
 {
-  tree rhs = gimple_call_arg (call, 3);
+  tree rhs = gimple_call_arg (
+    call, gimple_call_internal_fn (call) == IFN_LEN_MASK_STORE ? 4 : 3);
   if (tree lhs
       = gimple_fold_partial_load_store_mem_ref (call, TREE_TYPE (rhs), mask_p))
     {
@@ -5659,9 +5673,11 @@ gimple_fold_call (gimple_stmt_iterator *gsi, bool inplace)
 	  cplx_result = true;
 	  break;
 	case IFN_MASK_LOAD:
+	case IFN_LEN_MASK_LOAD:
 	  changed |= gimple_fold_partial_load (gsi, stmt, true);
 	  break;
 	case IFN_MASK_STORE:
+	case IFN_LEN_MASK_STORE:
 	  changed |= gimple_fold_partial_store (gsi, stmt, true);
 	  break;
 	case IFN_LEN_LOAD:

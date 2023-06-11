@@ -960,6 +960,9 @@ ifcvt_can_use_mask_load_store (gimple *stmt)
   if (can_vec_mask_load_store_p (mode, VOIDmode, is_load))
     return true;
 
+  if (can_vec_len_mask_load_store_p (mode, is_load))
+    return true;
+
   return false;
 }
 

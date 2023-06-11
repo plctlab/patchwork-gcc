@@ -489,6 +489,7 @@ static const int cond_expr_maps[3][5] = {
 };
 static const int arg1_map[] = { 1, 1 };
 static const int arg2_map[] = { 1, 2 };
+static const int arg3_map[] = { 1, 3 };
 static const int arg1_arg4_map[] = { 2, 1, 4 };
 static const int op1_op0_map[] = { 2, 1, 0 };
 
@@ -523,6 +524,9 @@ vect_get_operand_map (const gimple *stmt, unsigned char swap = 0)
 	  {
 	  case IFN_MASK_LOAD:
 	    return arg2_map;
+
+	  case IFN_LEN_MASK_LOAD:
+	    return arg3_map;
 
 	  case IFN_GATHER_LOAD:
 	    return arg1_map;
@@ -1779,6 +1783,7 @@ vect_build_slp_tree_2 (vec_info *vinfo, slp_tree node,
     {
       if (gcall *stmt = dyn_cast <gcall *> (stmt_info->stmt))
 	gcc_assert (gimple_call_internal_p (stmt, IFN_MASK_LOAD)
+		    || gimple_call_internal_p (stmt, IFN_LEN_MASK_LOAD)
 		    || gimple_call_internal_p (stmt, IFN_GATHER_LOAD)
 		    || gimple_call_internal_p (stmt, IFN_MASK_GATHER_LOAD));
       else

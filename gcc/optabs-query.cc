@@ -624,6 +624,45 @@ get_len_load_store_mode (machine_mode mode, bool is_load)
   return opt_machine_mode ();
 }
 
+/* Return true if target supports vector length && masked load/store for mode.
+   Length is used on loop control and mask is used on flow control.  */
+
+bool
+can_vec_len_mask_load_store_p (machine_mode mode, bool is_load)
+{
+  optab op = is_load ? len_maskload_optab : len_maskstore_optab;
+  machine_mode vmode;
+  machine_mode mask_mode;
+
+  /* If mode is vector mode, check it directly.  */
+  if (VECTOR_MODE_P (mode))
+    return targetm.vectorize.get_mask_mode (mode).exists (&mask_mode)
+	   && convert_optab_handler (op, mode, mask_mode) != CODE_FOR_nothing;
+
+  scalar_mode smode;
+  if (is_a<scalar_mode> (mode, &smode))
+    /* See if there is any chance the mask load or store might be
+       vectorized.  If not, punt.  */
+    vmode = targetm.vectorize.preferred_simd_mode (smode);
+  else
+    vmode = mode;
+
+  if (VECTOR_MODE_P (vmode)
+      && targetm.vectorize.get_mask_mode (vmode).exists (&mask_mode)
+      && convert_optab_handler (op, vmode, mask_mode) != CODE_FOR_nothing)
+    return true;
+
+  auto_vector_modes vector_modes;
+  targetm.vectorize.autovectorize_vector_modes (&vector_modes, true);
+  for (machine_mode base_mode : vector_modes)
+    if (related_vector_mode (base_mode, smode).exists (&vmode)
+	&& targetm.vectorize.get_mask_mode (vmode).exists (&mask_mode)
+	&& convert_optab_handler (op, vmode, mask_mode) != CODE_FOR_nothing)
+      return true;
+
+  return false;
+}
+
 /* Return true if there is a compare_and_swap pattern.  */
 
 bool

@@ -3304,6 +3304,12 @@ vn_reference_lookup_3 (ao_ref *ref, tree vuse, void *data_,
 	  if (!tree_fits_uhwi_p (len) || !tree_fits_shwi_p (bias))
 	    return (void *)-1;
 	  break;
+	case IFN_LEN_MASK_STORE:
+	  len = gimple_call_arg (call, 2);
+	  mask = gimple_call_arg (call, internal_fn_mask_index (fn));
+	  if (!tree_fits_uhwi_p (len) || TREE_CODE (mask) != VECTOR_CST)
+	    return (void *)-1;
+	  break;
 	default:
 	  return (void *)-1;
 	}
