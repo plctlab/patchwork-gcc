@@ -594,6 +594,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     { };
 
   /// is_function
+#if __has_builtin(__is_function)
+  template<typename _Tp>
+    struct is_function
+    : public __bool_constant<__is_function(_Tp)>
+    { };
+#else
   template<typename _Tp>
     struct is_function
     : public __bool_constant<!is_const<const _Tp>::value> { };
@@ -605,6 +611,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   template<typename _Tp>
     struct is_function<_Tp&&>
     : public false_type { };
+#endif
 
 #define __cpp_lib_is_null_pointer 201309L
 
@@ -3198,7 +3205,7 @@ template <typename _Tp>
 template <typename _Tp>
   inline constexpr bool is_class_v = __is_class(_Tp);
 template <typename _Tp>
-  inline constexpr bool is_function_v = is_function<_Tp>::value;
+  inline constexpr bool is_function_v = __is_function(_Tp);
 template <typename _Tp>
   inline constexpr bool is_reference_v = __is_reference(_Tp);
 template <typename _Tp>
