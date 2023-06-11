@@ -682,11 +682,20 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     { };
 
   /// is_object
+#if __has_builtin(__is_function) && __has_builtin(__is_reference) \
+    && __has_builtin(__is_void)
+  template<typename _Tp>
+    struct is_object
+    : public __bool_constant<!(__is_function(_Tp) || __is_reference(_Tp) ||
+                               __is_void(_Tp))>
+    { };
+#else
   template<typename _Tp>
     struct is_object
     : public __not_<__or_<is_function<_Tp>, is_reference<_Tp>,
                           is_void<_Tp>>>::type
     { };
+#endif
 
   template<typename>
     struct is_member_pointer;
