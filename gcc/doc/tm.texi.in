@@ -4527,6 +4527,8 @@ If you don't define this, a reasonable default is used.
 
 @hook TARGET_COMPARE_BY_PIECES_BRANCH_RATIO
 
+@hook TARGET_FINISH_COMPARE_BY_PIECES
+
 @defmac MOVE_MAX_PIECES
 A C expression used by @code{move_by_pieces} to determine the largest unit
 a load or store used to copy memory is.  Defaults to @code{MOVE_MAX}.

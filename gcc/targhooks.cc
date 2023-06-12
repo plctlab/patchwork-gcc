@@ -2094,6 +2094,24 @@ default_compare_by_pieces_branch_ratio (machine_mode)
   return 1;
 }
 
+/* This hook allows the backend to modify/override code generation for
+   compare_by_pieces.  Targets with a zero flag and a suitable setcc
+   function can use them instead of the default "compare ? 0 : 1"
+   implementation below.  TARGET is the integral mode result and
+   FAIL_LABEL is the destination for comparison mismatches.  */
+
+void
+default_finish_compare_by_pieces (rtx target, rtx_code_label *fail_label)
+{
+  rtx_code_label *end_label = gen_label_rtx ();
+  emit_move_insn (target, const0_rtx);
+  emit_jump (end_label);
+  emit_barrier ();
+  emit_label (fail_label);
+  emit_move_insn (target, const1_rtx);
+  emit_label (end_label);
+}
+
 /* Write PATCH_AREA_SIZE NOPs into the asm outfile FILE around a function
    entry.  If RECORD_P is true and the target supports named sections,
    the location of the NOPs will be recorded in a special object section

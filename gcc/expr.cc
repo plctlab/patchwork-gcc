@@ -1923,7 +1923,6 @@ compare_by_pieces (rtx arg0, rtx arg1, unsigned HOST_WIDE_INT len,
 		   by_pieces_constfn a1_cfn, void *a1_cfn_data)
 {
   rtx_code_label *fail_label = gen_label_rtx ();
-  rtx_code_label *end_label = gen_label_rtx ();
 
   if (target == NULL_RTX
       || !REG_P (target) || REGNO (target) < FIRST_PSEUDO_REGISTER)
@@ -1934,12 +1933,8 @@ compare_by_pieces (rtx arg0, rtx arg1, unsigned HOST_WIDE_INT len,
 
   data.run ();
 
-  emit_move_insn (target, const0_rtx);
-  emit_jump (end_label);
-  emit_barrier ();
-  emit_label (fail_label);
-  emit_move_insn (target, const1_rtx);
-  emit_label (end_label);
+  /* Allow the backend to override the default implementation.  */
+  targetm.finish_compare_by_pieces (target, fail_label);
 
   return target;
 }

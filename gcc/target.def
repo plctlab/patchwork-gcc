@@ -3735,6 +3735,20 @@ negative number from this hook.",
  default_compare_by_pieces_branch_ratio)
 
 DEFHOOK
+(finish_compare_by_pieces,
+ "Allow targets with a zero flag and suitable setcc instruction to provide\n\
+an alternate implementation for @code{compare_by_pieces}.  The function\n\
+@code{compare_by_pieces} generates a sequence of equality tests that\n\
+branch to @var{failure_label} on mismatches, and fall through on success.\n\
+By default, this hook assigns @code{const1_rtx} to @var{target} in the\n\
+current basic block and @code{const0_rtx} to @var{target} in a new\n\
+@var{fail_label} basic block.  Targets like x86 can take advantage\n\
+of the property that the condition codes/zero flag are appropriately\n\
+set to avoid introducing a new basic block.",
+  void, (rtx target, rtx_code_label *fail_label),
+  default_finish_compare_by_pieces)
+
+DEFHOOK
 (slow_unaligned_access,
  "This hook returns true if memory accesses described by the\n\
 @var{mode} and @var{alignment} parameters have a cost many times greater\n\

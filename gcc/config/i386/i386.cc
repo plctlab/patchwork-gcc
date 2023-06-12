@@ -16112,6 +16112,20 @@ ix86_fp_compare_code_to_integer (enum rtx_code code)
     }
 }
 
+/* Override compare_by_pieces' default implementation using the state
+   of the CCZmode FLAGS_REG and sete instruction.  TARGET is the integral
+   mode result, and FAIL_LABEL is the branch target of mismatched
+   comparisons.  */
+
+void
+ix86_finish_compare_by_pieces (rtx target, rtx_code_label *fail_label)
+{
+  rtx tmp = gen_reg_rtx (QImode);
+  emit_label (fail_label);
+  ix86_expand_setcc (tmp, NE, gen_rtx_REG (CCZmode, FLAGS_REG), const0_rtx);
+  convert_move (target, tmp, 1);
+}
+
 /* Zero extend possibly SImode EXP to Pmode register.  */
 rtx
 ix86_zero_extend_to_Pmode (rtx exp)
@@ -24868,6 +24882,8 @@ ix86_run_selftests (void)
 
 #undef TARGET_OVERLAP_OP_BY_PIECES_P
 #define TARGET_OVERLAP_OP_BY_PIECES_P hook_bool_void_true
+#undef TARGET_FINISH_COMPARE_BY_PIECES
+#define TARGET_FINISH_COMPARE_BY_PIECES ix86_finish_compare_by_pieces
 
 #undef TARGET_FLAGS_REGNUM
 #define TARGET_FLAGS_REGNUM FLAGS_REG

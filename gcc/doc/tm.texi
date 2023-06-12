@@ -6910,6 +6910,18 @@ particular mode from being used for block comparisons by returning a
 negative number from this hook.
 @end deftypefn
 
+@deftypefn {Target Hook} void TARGET_FINISH_COMPARE_BY_PIECES (rtx @var{target}, rtx_code_label *@var{fail_label})
+Allow targets with a zero flag and suitable setcc instruction to provide
+an alternate implementation for @code{compare_by_pieces}.  The function
+@code{compare_by_pieces} generates a sequence of equality tests that
+branch to @var{failure_label} on mismatches, and fall through on success.
+By default, this hook assigns @code{const1_rtx} to @var{target} in the
+current basic block and @code{const0_rtx} to @var{target} in a new
+@var{fail_label} basic block.  Targets like x86 can take advantage
+of the property that the condition codes/zero flag are appropriately
+set to avoid introducing a new basic block.
+@end deftypefn
+
 @defmac MOVE_MAX_PIECES
 A C expression used by @code{move_by_pieces} to determine the largest unit
 a load or store used to copy memory is.  Defaults to @code{MOVE_MAX}.
