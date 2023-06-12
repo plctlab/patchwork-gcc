@@ -3041,17 +3041,21 @@ can_group_stmts_p (stmt_vec_info stmt1_info, stmt_vec_info stmt2_info,
       if (!call2 || !gimple_call_internal_p (call2))
 	return false;
       internal_fn ifn = gimple_call_internal_fn (call1);
-      if (ifn != IFN_MASK_LOAD && ifn != IFN_MASK_STORE)
+      if (ifn != IFN_MASK_LOAD && ifn != IFN_MASK_STORE
+	  && ifn != IFN_LEN_MASK_LOAD && ifn != IFN_LEN_MASK_STORE)
 	return false;
       if (ifn != gimple_call_internal_fn (call2))
 	return false;
 
       /* Check that the masks are the same.  Cope with casts of masks,
 	 like those created by build_mask_conversion.  */
-      tree mask1 = gimple_call_arg (call1, 2);
-      tree mask2 = gimple_call_arg (call2, 2);
+      unsigned int mask_argno
+	= ifn == IFN_LEN_MASK_LOAD || ifn == IFN_LEN_MASK_STORE ? 3 : 2;
+      tree mask1 = gimple_call_arg (call1, mask_argno);
+      tree mask2 = gimple_call_arg (call2, mask_argno);
       if (!operand_equal_p (mask1, mask2, 0)
-          && (ifn == IFN_MASK_STORE || !allow_slp_p))
+	  && (ifn == IFN_MASK_STORE || ifn == IFN_LEN_MASK_STORE
+	      || !allow_slp_p))
 	{
 	  mask1 = strip_conversion (mask1);
 	  if (!mask1)
@@ -4294,7 +4298,9 @@ vect_find_stmt_data_reference (loop_p loop, gimple *stmt,
   if (gcall *call = dyn_cast <gcall *> (stmt))
     if (!gimple_call_internal_p (call)
 	|| (gimple_call_internal_fn (call) != IFN_MASK_LOAD
-	    && gimple_call_internal_fn (call) != IFN_MASK_STORE))
+	    && gimple_call_internal_fn (call) != IFN_MASK_STORE
+	    && gimple_call_internal_fn (call) != IFN_LEN_MASK_LOAD
+	    && gimple_call_internal_fn (call) != IFN_LEN_MASK_STORE))
       {
 	free_data_ref (dr);
 	return opt_result::failure_at (stmt,
@@ -6733,7 +6739,9 @@ vect_supportable_dr_alignment (vec_info *vinfo, dr_vec_info *dr_info,
   if (gcall *stmt = dyn_cast <gcall *> (stmt_info->stmt))
     if (gimple_call_internal_p (stmt)
 	&& (gimple_call_internal_fn (stmt) == IFN_MASK_LOAD
-	    || gimple_call_internal_fn (stmt) == IFN_MASK_STORE))
+	    || gimple_call_internal_fn (stmt) == IFN_MASK_STORE
+	    || gimple_call_internal_fn (stmt) == IFN_LEN_MASK_LOAD
+	    || gimple_call_internal_fn (stmt) == IFN_LEN_MASK_STORE))
       return dr_unaligned_supported;
 
   if (loop_vinfo)

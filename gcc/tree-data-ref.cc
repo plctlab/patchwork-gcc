@@ -5816,6 +5816,8 @@ get_references_in_stmt (gimple *stmt, vec<data_ref_loc, va_heap> *references)
 	    }
 	  case IFN_MASK_LOAD:
 	  case IFN_MASK_STORE:
+	  case IFN_LEN_MASK_LOAD:
+	  case IFN_LEN_MASK_STORE:
 	    break;
 	  default:
 	    clobbers_memory = true;
@@ -5861,11 +5863,13 @@ get_references_in_stmt (gimple *stmt, vec<data_ref_loc, va_heap> *references)
 	switch (gimple_call_internal_fn (stmt))
 	  {
 	  case IFN_MASK_LOAD:
+	  case IFN_LEN_MASK_LOAD:
 	    if (gimple_call_lhs (stmt) == NULL_TREE)
 	      break;
 	    ref.is_read = true;
 	    /* FALLTHRU */
 	  case IFN_MASK_STORE:
+	  case IFN_LEN_MASK_STORE:
 	    ptr = build_int_cst (TREE_TYPE (gimple_call_arg (stmt, 1)), 0);
 	    align = tree_to_shwi (gimple_call_arg (stmt, 1));
 	    if (ref.is_read)

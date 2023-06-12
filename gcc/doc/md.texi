@@ -5114,6 +5114,38 @@ of @code{QI} elements.
 
 This pattern is not allowed to @code{FAIL}.
 
+@cindex @code{len_maskload@var{m}@var{n}} instruction pattern
+@item @samp{len_maskload@var{m}@var{n}}
+Perform a load of vector which is predicated by length and mask
+from memory operand 1 of mode @var{m} into register operand 0.
+Length is provided in operand 2 which has whichever
+integer mode the target prefers.
+Mask is provided in register operand 3 of mode @var{n}.
+
+operand 2 can be a variable or a constant amount. It can be vectorization
+factor which is the special constant value represents the maximum length.
+
+operand 3 can be a variable or a constant amount. It can be all 1
+which is the special constant value represents the full mask.
+
+This pattern is not allowed to @code{FAIL}.
+
+@cindex @code{len_maskstore@var{m}@var{n}} instruction pattern
+@item @samp{len_maskstore@var{m}@var{n}}
+Perform a store of vector which is predicated by length and mask
+from register operand 1 of mode @var{m} into memory operand 0.
+Length is provided in operand 2 which has whichever
+integer mode the target prefers.
+Mask is provided in register operand 3 of mode @var{n}.
+
+operand 2 can be a variable or a constant amount. It can be vectorization
+factor which is the special constant value represents the maximum length.
+
+operand 3 can be a variable or a constant amount. It can be all 1
+which is the special constant value represents the full mask.
+
+This pattern is not allowed to @code{FAIL}.
+
 @cindex @code{vec_perm@var{m}} instruction pattern
 @item @samp{vec_perm@var{m}}
 Output a (variable) vector permutation.  Operand 0 is the destination

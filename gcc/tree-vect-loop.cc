@@ -1294,30 +1294,33 @@ vect_verify_loop_lens (loop_vec_info loop_vinfo)
   if (LOOP_VINFO_LENS (loop_vinfo).is_empty ())
     return false;
 
-  machine_mode len_load_mode = get_len_load_store_mode
-    (loop_vinfo->vector_mode, true).require ();
-  machine_mode len_store_mode = get_len_load_store_mode
-    (loop_vinfo->vector_mode, false).require ();
+  if (!can_vec_len_mask_load_store_p (loop_vinfo->vector_mode, true)
+      && !can_vec_len_mask_load_store_p (loop_vinfo->vector_mode, false))
+    {
+      machine_mode len_load_mode
+	= get_len_load_store_mode (loop_vinfo->vector_mode, true).require ();
+      machine_mode len_store_mode
+	= get_len_load_store_mode (loop_vinfo->vector_mode, false).require ();
 
-  signed char partial_load_bias = internal_len_load_store_bias
-    (IFN_LEN_LOAD, len_load_mode);
+      signed char partial_load_bias
+	= internal_len_load_store_bias (IFN_LEN_LOAD, len_load_mode);
 
-  signed char partial_store_bias = internal_len_load_store_bias
-    (IFN_LEN_STORE, len_store_mode);
+      signed char partial_store_bias
+	= internal_len_load_store_bias (IFN_LEN_STORE, len_store_mode);
 
-  gcc_assert (partial_load_bias == partial_store_bias);
+      gcc_assert (partial_load_bias == partial_store_bias);
 
-  if (partial_load_bias == VECT_PARTIAL_BIAS_UNSUPPORTED)
-    return false;
+      if (partial_load_bias == VECT_PARTIAL_BIAS_UNSUPPORTED)
+	return false;
 
-  /* If the backend requires a bias of -1 for LEN_LOAD, we must not emit
-     len_loads with a length of zero.  In order to avoid that we prohibit
-     more than one loop length here.  */
-  if (partial_load_bias == -1
-      && LOOP_VINFO_LENS (loop_vinfo).length () > 1)
-    return false;
+      /* If the backend requires a bias of -1 for LEN_LOAD, we must not emit
+	 len_loads with a length of zero.  In order to avoid that we prohibit
+	 more than one loop length here.  */
+      if (partial_load_bias == -1 && LOOP_VINFO_LENS (loop_vinfo).length () > 1)
+	return false;
 
-  LOOP_VINFO_PARTIAL_LOAD_STORE_BIAS (loop_vinfo) = partial_load_bias;
+      LOOP_VINFO_PARTIAL_LOAD_STORE_BIAS (loop_vinfo) = partial_load_bias;
+    }
 
   unsigned int max_nitems_per_iter = 1;
   unsigned int i;
@@ -11209,7 +11212,8 @@ optimize_mask_stores (class loop *loop)
 	   gsi_next (&gsi))
 	{
 	  stmt = gsi_stmt (gsi);
-	  if (gimple_call_internal_p (stmt, IFN_MASK_STORE))
+	  if (gimple_call_internal_p (stmt, IFN_MASK_STORE)
+	      || gimple_call_internal_p (stmt, IFN_LEN_MASK_STORE))
 	    worklist.safe_push (stmt);
 	}
     }
@@ -11232,7 +11236,8 @@ optimize_mask_stores (class loop *loop)
       tree zero;
 
       last = worklist.pop ();
-      mask = gimple_call_arg (last, 2);
+      mask = gimple_call_arg (
+	last, gimple_call_internal_p (stmt, IFN_LEN_MASK_STORE) ? 3 : 2);
       bb = gimple_bb (last);
       /* Create then_bb and if-then structure in CFG, then_bb belongs to
 	 the same loop as if_bb.  It could be different to LOOP when two
@@ -11365,7 +11370,12 @@ optimize_mask_stores (class loop *loop)
 	    }
 	  /* Put other masked stores with the same mask to STORE_BB.  */
 	  if (worklist.is_empty ()
-	      || gimple_call_arg (worklist.last (), 2) != mask
+	      || gimple_call_arg (worklist.last (),
+				  gimple_call_internal_p (worklist.last (),
+							  IFN_LEN_MASK_STORE)
+				    ? 3
+				    : 2)
+		   != mask
 	      || worklist.last () != stmt1)
 	    break;
 	  last = worklist.pop ();

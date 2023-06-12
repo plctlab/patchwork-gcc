@@ -1836,6 +1836,15 @@ check_load_store_for_partial_vectors (loop_vec_info loop_vinfo, tree vectype,
       using_partial_vectors_p = true;
     }
 
+  if (can_vec_len_mask_load_store_p (vecmode, is_load))
+    {
+      nvectors = group_memory_nvectors (group_size * vf, nunits);
+      /* Length is used on loop control and mask for flow control.*/
+      vec_loop_lens *lens = &LOOP_VINFO_LENS (loop_vinfo);
+      vect_record_loop_len (loop_vinfo, lens, nvectors, vectype, 1);
+      using_partial_vectors_p = true;
+    }
+
   if (!using_partial_vectors_p)
     {
       if (dump_enabled_p ())
@@ -7818,8 +7827,9 @@ vectorizable_store (vec_info *vinfo,
       if (memory_access_type == VMAT_CONTIGUOUS)
 	{
 	  if (!VECTOR_MODE_P (vec_mode)
-	      || !can_vec_mask_load_store_p (vec_mode,
-					     TYPE_MODE (mask_vectype), false))
+	      || (!can_vec_mask_load_store_p (vec_mode,
+					      TYPE_MODE (mask_vectype), false)
+		  && !can_vec_len_mask_load_store_p (vec_mode, false)))
 	    return false;
 	}
       else if (memory_access_type != VMAT_LOAD_STORE_LANES
@@ -8781,7 +8791,38 @@ vectorizable_store (vec_info *vinfo,
 		}
 
 	      /* Arguments are ready.  Create the new vector stmt.  */
-	      if (final_mask)
+	      if (can_vec_len_mask_load_store_p (TYPE_MODE (vectype), false)
+		  && (final_mask || loop_lens))
+		{
+		  tree ptr = build_int_cst (ref_type, align * BITS_PER_UNIT);
+		  poly_uint64 nunits = TYPE_VECTOR_SUBPARTS (vectype);
+		  if (!final_mask)
+		    {
+		      machine_mode mask_mode
+			= targetm.vectorize.get_mask_mode (TYPE_MODE (vectype))
+			    .require ();
+		      mask_vectype
+			= build_truth_vector_type_for_mode (nunits, mask_mode);
+		      tree mask = build_int_cst (TREE_TYPE (mask_vectype), -1);
+		      final_mask = build_vector_from_val (mask_vectype, mask);
+		    }
+		  tree iv_type = LOOP_VINFO_RGROUP_IV_TYPE (loop_vinfo);
+		  tree final_len;
+		  if (loop_lens)
+		    final_len = vect_get_loop_len (loop_vinfo, gsi, loop_lens,
+						   vec_num * ncopies, vectype,
+						   vec_num * j + i, 1);
+		  else
+		    final_len = build_int_cst (iv_type, nunits);
+		  gcall *call
+		    = gimple_build_call_internal (IFN_LEN_MASK_STORE, 5,
+						  dataref_ptr, ptr, final_len,
+						  final_mask, vec_oprnd);
+		  gimple_call_set_nothrow (call, true);
+		  vect_finish_stmt_generation (vinfo, stmt_info, call, gsi);
+		  new_stmt = call;
+		}
+	      else if (final_mask)
 		{
 		  tree ptr = build_int_cst (ref_type, align * BITS_PER_UNIT);
 		  gcall *call
@@ -9243,8 +9284,9 @@ vectorizable_load (vec_info *vinfo,
 	{
 	  machine_mode vec_mode = TYPE_MODE (vectype);
 	  if (!VECTOR_MODE_P (vec_mode)
-	      || !can_vec_mask_load_store_p (vec_mode,
-					     TYPE_MODE (mask_vectype), true))
+	      || (!can_vec_mask_load_store_p (vec_mode,
+					      TYPE_MODE (mask_vectype), true)
+		  && !can_vec_len_mask_load_store_p (vec_mode, false)))
 	    return false;
 	}
       else if (memory_access_type != VMAT_LOAD_STORE_LANES
@@ -10136,7 +10178,47 @@ vectorizable_load (vec_info *vinfo,
 					      align, misalign);
 		    align = least_bit_hwi (misalign | align);
 
-		    if (final_mask)
+		    if (can_vec_len_mask_load_store_p (TYPE_MODE (vectype),
+						       true)
+			&& (final_mask || loop_lens)
+			&& memory_access_type != VMAT_INVARIANT)
+		      {
+			tree ptr
+			  = build_int_cst (ref_type, align * BITS_PER_UNIT);
+			poly_uint64 nunits = TYPE_VECTOR_SUBPARTS (vectype);
+			if (!final_mask)
+			  {
+			    machine_mode mask_mode
+			      = targetm.vectorize
+				  .get_mask_mode (TYPE_MODE (vectype))
+				  .require ();
+			    mask_vectype
+			      = build_truth_vector_type_for_mode (nunits,
+								  mask_mode);
+			    tree mask
+			      = build_int_cst (TREE_TYPE (mask_vectype), -1);
+			    final_mask
+			      = build_vector_from_val (mask_vectype, mask);
+			  }
+			tree iv_type = LOOP_VINFO_RGROUP_IV_TYPE (loop_vinfo);
+			tree final_len;
+			if (loop_lens)
+			  final_len
+			    = vect_get_loop_len (loop_vinfo, gsi, loop_lens,
+						 vec_num * ncopies, vectype,
+						 vec_num * j + i, 1);
+			else
+			  final_len = build_int_cst (iv_type, nunits);
+
+			gcall *call
+			  = gimple_build_call_internal (IFN_LEN_MASK_LOAD, 4,
+							dataref_ptr, ptr,
+							final_len, final_mask);
+			gimple_call_set_nothrow (call, true);
+			new_stmt = call;
+			data_ref = NULL_TREE;
+		      }
+		    else if (final_mask)
 		      {
 			tree ptr = build_int_cst (ref_type,
 						  align * BITS_PER_UNIT);
@@ -12807,7 +12889,8 @@ vect_get_vector_types_for_stmt (vec_info *vinfo, stmt_vec_info stmt_info,
 
   if (gimple_get_lhs (stmt) == NULL_TREE
       /* MASK_STORE has no lhs, but is ok.  */
-      && !gimple_call_internal_p (stmt, IFN_MASK_STORE))
+      && !gimple_call_internal_p (stmt, IFN_MASK_STORE)
+      && !gimple_call_internal_p (stmt, IFN_LEN_MASK_STORE))
     {
       if (is_a <gcall *> (stmt))
 	{
@@ -12851,6 +12934,8 @@ vect_get_vector_types_for_stmt (vec_info *vinfo, stmt_vec_info stmt_info,
 	scalar_type = TREE_TYPE (DR_REF (dr));
       else if (gimple_call_internal_p (stmt, IFN_MASK_STORE))
 	scalar_type = TREE_TYPE (gimple_call_arg (stmt, 3));
+      else if (gimple_call_internal_p (stmt, IFN_LEN_MASK_STORE))
+	scalar_type = TREE_TYPE (gimple_call_arg (stmt, 4));
       else
 	scalar_type = TREE_TYPE (gimple_get_lhs (stmt));
 

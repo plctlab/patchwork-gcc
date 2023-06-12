@@ -1101,6 +1101,8 @@ try_vectorize_loop_1 (hash_table<simduid_to_vf> *&simduid_to_vf_htab,
 		{
 		  internal_fn ifn = gimple_call_internal_fn (call);
 		  if (ifn == IFN_MASK_LOAD || ifn == IFN_MASK_STORE
+		      || ifn == IFN_LEN_MASK_LOAD
+		      || ifn == IFN_LEN_MASK_STORE
 		      /* Don't keep the if-converted parts when the ifn with
 			 specifc type is not supported by the backend.  */
 		      || (direct_internal_fn_p (ifn)
