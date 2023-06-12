@@ -1463,7 +1463,9 @@ rs6000_emit_stack_tie (rtx fp, bool hard_frame_needed)
   while (--i >= 0)
     {
       rtx mem = gen_frame_mem (BLKmode, regs[i]);
-      RTVEC_ELT (p, i) = gen_rtx_SET (mem, const0_rtx);
+      RTVEC_ELT (p, i)
+	= gen_rtx_SET (mem, gen_rtx_UNSPEC (BLKmode, gen_rtvec (1, const0_rtx),
+					    UNSPEC_TIE));
     }
 
   emit_insn (gen_stack_tie (gen_rtx_PARALLEL (VOIDmode, p)));
