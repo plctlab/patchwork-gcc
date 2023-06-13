@@ -1529,6 +1529,7 @@ typedef struct gfc_omp_clauses
 {
   gfc_omp_namelist *lists[OMP_LIST_NUM];
   struct gfc_expr *if_expr;
+  struct gfc_expr *self_expr;
   struct gfc_expr *final_expr;
   struct gfc_expr *num_threads;
   struct gfc_expr *chunk_size;
