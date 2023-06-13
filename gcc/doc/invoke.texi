@@ -622,6 +622,7 @@ Objective-C and Objective-C++ Dialects}.
 @item Program Instrumentation Options
 @xref{Instrumentation Options,,Program Instrumentation Options}.
 @gccoptlist{-p  -pg  -fprofile-arcs  --coverage  -ftest-coverage
+-fprofile-conditions
 -fprofile-abs-path
 -fprofile-dir=@var{path}  -fprofile-generate  -fprofile-generate=@var{path}
 -fprofile-info-section  -fprofile-info-section=@var{name}
@@ -6348,6 +6349,13 @@ disable the error.  Disabling the error for this warning can result in
 poorly optimized code and is useful only in the
 case of very minor changes such as bug fixes to an existing code-base.
 Completely disabling the warning is not recommended.
+
+@opindex Wno-coverage-too-many-conditions
+@opindex Wcoverage-too-many-conditions
+@item -Wno-coverage-too-many-conditions
+Warn in case a condition have too many terms and GCC gives up coverage.
+Coverage is given up when there are more terms in the conditional than there
+are bits in a @code{gcov_type_unsigned}.  This warning is enabled by default.
 
 @opindex Wno-coverage-invalid-line-number
 @opindex Wcoverage-invalid-line-number
@@ -16346,6 +16354,13 @@ Note that if a command line directly links source files, the corresponding
 E.g. @code{gcc a.c b.c -o binary} would generate @file{binary-a.gcda} and
 @file{binary-b.gcda} files.
 
+@item -fprofile-conditions
+@opindex fprofile-conditions
+Add code so that program conditions are instrumented.  During execution the
+program records what terms in a conditional contributes to a decision.  The
+data may be used to verify that all terms in a booleans are tested and have an
+effect on the outcome of a condition.
+
 @xref{Cross-profiling}.
 
 @cindex @command{gcov}
@@ -16407,6 +16422,10 @@ compiler adds code to count the number of times that these arcs are
 executed.  When an arc is the only exit or only entrance to a block, the
 instrumentation code can be added to the block; otherwise, a new basic
 block must be created to hold the instrumentation code.
+
+With @option{-fprofile-conditions}, for each conditional in your program GCC
+creates a bitset and records the exercised boolean values that have an
+independent effect on the outcome of that expression.
 
 @need 2000
 @opindex ftest-coverage
