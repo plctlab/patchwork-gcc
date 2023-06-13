@@ -78,6 +78,7 @@ note_defect3 (int val, double d2, double y2d, double x)
       min_defect3_x = x;
       min_defect3_val = val;
     }
+  return defect;
 }
 
 /* This function assumes 32-bit integers.  */
