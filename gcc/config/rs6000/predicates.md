@@ -1854,10 +1854,13 @@
 (define_predicate "tie_operand"
   (match_code "parallel")
 {
-  return (GET_CODE (XVECEXP (op, 0, 0)) == SET
-	  && MEM_P (XEXP (XVECEXP (op, 0, 0), 0))
-	  && GET_MODE (XEXP (XVECEXP (op, 0, 0), 0)) == BLKmode
-	  && XEXP (XVECEXP (op, 0, 0), 1) == const0_rtx);
+  rtx set = XVECEXP (op, 0, 0);
+  return (GET_CODE (set) == SET
+	  && MEM_P (SET_DEST (set))
+	  && GET_MODE (SET_DEST (set)) == BLKmode
+	  && GET_CODE (SET_SRC (set)) == UNSPEC
+	  && XINT (SET_SRC (set), 1) == UNSPEC_TIE
+	  && XVECEXP (SET_SRC (set), 0, 0) == const0_rtx);
 })
 
 ;; Match a small code model toc reference (or medium and large
