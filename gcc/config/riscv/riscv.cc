@@ -5001,7 +5001,8 @@ riscv_compute_frame_info (void)
   if (cfun->machine->interrupt_handler_p)
     {
       HOST_WIDE_INT step1 = riscv_first_stack_step (frame, frame->total_size);
-      if (! POLY_SMALL_OPERAND_P ((frame->total_size - step1)))
+      if (! POLY_SMALL_OPERAND_P ((frame->total_size - step1))
+	  || TARGET_HARD_FLOAT)
 	interrupt_save_prologue_temp = true;
     }
 
@@ -5046,6 +5047,13 @@ riscv_compute_frame_info (void)
 
 	  frame->save_libcall_adjustment = x_save_size;
 	}
+
+      if (TARGET_HARD_FLOAT
+	  && cfun->machine->interrupt_handler_p
+	  && frame->fmask)
+	/* In an interrupt function, we need extra space
+	   for the initial saves of FCSR.  */
+	x_save_size += riscv_stack_align (1 * UNITS_PER_WORD);
     }
 
   /* At the bottom of the frame are any outgoing stack arguments. */
@@ -5291,6 +5299,29 @@ riscv_for_each_saved_reg (poly_int64 sp_offset, riscv_save_restore_fn fn,
 		  continue;
 		}
 	    }
+	}
+
+      if (regno == RISCV_PROLOGUE_TEMP_REGNUM
+	  && TARGET_HARD_FLOAT
+	  && cfun->machine->interrupt_handler_p
+	  && cfun->machine->frame.fmask)
+	{
+	  unsigned int fcsr_size = GET_MODE_SIZE (SImode);
+	  if (!epilogue)
+	    {
+	      riscv_save_restore_reg (word_mode, regno, offset, fn);
+	      offset -= fcsr_size;
+	      emit_insn (gen_riscv_frcsr (gen_rtx_REG (SImode, RISCV_PROLOGUE_TEMP_REGNUM)));
+	      riscv_save_restore_reg (SImode, RISCV_PROLOGUE_TEMP_REGNUM, offset, riscv_save_reg);
+	    }
+	  else
+	    {
+	      riscv_save_restore_reg (SImode, RISCV_PROLOGUE_TEMP_REGNUM, offset - fcsr_size, riscv_restore_reg);
+	      emit_insn (gen_riscv_fscsr (gen_rtx_REG (SImode, RISCV_PROLOGUE_TEMP_REGNUM)));
+	      riscv_save_restore_reg (word_mode, regno, offset, fn);
+	      offset -= fcsr_size;
+	    }
+	  continue;
 	}
 
       riscv_save_restore_reg (word_mode, regno, offset, fn);
