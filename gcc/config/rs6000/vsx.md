@@ -396,6 +396,10 @@
 			   V4SF
 			   V2DF
 			   V2DI])
+(define_mode_iterator VSEEQP_DI  [V2DI DI])
+(define_mode_iterator VSESQP_TI  [V1TI TI])
+(define_mode_attr VSEEQP_DI_base [(V2DI "V1TI")
+				  (DI   "TI")])
 
 (define_mode_attr VM3_char [(V2DI "d")
 			   (V4SI "w")
@@ -5008,9 +5012,10 @@
 ;; ISA 3.0 Binary Floating-Point Support
 
 ;; VSX Scalar Extract Exponent Quad-Precision
-(define_insn "xsxexpqp_<mode>"
-  [(set (match_operand:DI 0 "altivec_register_operand" "=v")
-	(unspec:DI [(match_operand:IEEE128 1 "altivec_register_operand" "v")]
+(define_insn "xsxexpqp_<IEEE128:mode>_<VSEEQP_DI:mode>"
+  [(set (match_operand:VSEEQP_DI 0 "altivec_register_operand" "=v")
+	(unspec:VSEEQP_DI
+	  [(match_operand:IEEE128 1 "altivec_register_operand" "v")]
 	 UNSPEC_VSX_SXEXPDP))]
   "TARGET_P9_VECTOR"
   "xsxexpqp %0,%1"
@@ -5026,9 +5031,10 @@
   [(set_attr "type" "integer")])
 
 ;; VSX Scalar Extract Significand Quad-Precision
-(define_insn "xsxsigqp_<mode>"
-  [(set (match_operand:TI 0 "altivec_register_operand" "=v")
-	(unspec:TI [(match_operand:IEEE128 1 "altivec_register_operand" "v")]
+(define_insn "xsxsigqp_<IEEE128:mode>_<VSESQP_TI:mode>"
+  [(set (match_operand:VSESQP_TI 0 "altivec_register_operand" "=v")
+	(unspec:VSESQP_TI [(match_operand:IEEE128 1
+			    "altivec_register_operand" "v")]
 	 UNSPEC_VSX_SXSIG))]
   "TARGET_P9_VECTOR"
   "xsxsigqp %0,%1"
@@ -5055,10 +5061,12 @@
   [(set_attr "type" "vecmove")])
 
 ;; VSX Scalar Insert Exponent Quad-Precision
-(define_insn "xsiexpqp_<mode>"
+(define_insn "xsiexpqp_<IEEE128:mode>_<VSEEQP_DI:mode>"
   [(set (match_operand:IEEE128 0 "altivec_register_operand" "=v")
-	(unspec:IEEE128 [(match_operand:TI 1 "altivec_register_operand" "v")
-			 (match_operand:DI 2 "altivec_register_operand" "v")]
+	(unspec:IEEE128 [(match_operand:<VSEEQP_DI_base> 1
+			  "altivec_register_operand" "v")
+			 (match_operand:VSEEQP_DI 2
+			  "altivec_register_operand" "v")]
 	 UNSPEC_VSX_SIEXPQP))]
   "TARGET_P9_VECTOR"
   "xsiexpqp %0,%1,%2"
