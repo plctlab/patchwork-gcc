@@ -1,4 +1,5 @@
 // PR tree-optimization/51719
+// { dg-require-effective-target exceptions_enabled }
 // { dg-options "-O -fpartial-inlining" }
 
 int

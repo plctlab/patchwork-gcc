@@ -1,3 +1,4 @@
+/* { dg-require-effective-target exceptions_enabled } */
 /* { dg-options "-O" } */
 
 int foo1(void) { return 0; }

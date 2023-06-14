@@ -1,4 +1,5 @@
 // PR c++/59255
+// { dg-require-effective-target exceptions_enabled }
 // { dg-options "-std=c++11 -O2" }
 
 struct S
