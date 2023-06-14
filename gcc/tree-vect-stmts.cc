@@ -3638,7 +3638,8 @@ vectorizable_call (vec_info *vinfo,
 		      unsigned int vec_num = vec_oprnds0.length ();
 		      /* Always true for SLP.  */
 		      gcc_assert (ncopies == 1);
-		      vargs[varg++] = vect_get_loop_mask (gsi, masks, vec_num,
+		      vargs[varg++] = vect_get_loop_mask (loop_vinfo,
+							  gsi, masks, vec_num,
 							  vectype_out, i);
 		    }
 		  size_t k;
@@ -3679,7 +3680,8 @@ vectorizable_call (vec_info *vinfo,
 			  unsigned int vec_num = vec_oprnds0.length ();
 			  /* Always true for SLP.  */
 			  gcc_assert (ncopies == 1);
-			  tree mask = vect_get_loop_mask (gsi, masks, vec_num,
+			  tree mask = vect_get_loop_mask (loop_vinfo,
+							  gsi, masks, vec_num,
 							  vectype_out, i);
 			  vargs[mask_opno] = prepare_vec_mask
 			    (loop_vinfo, TREE_TYPE (mask), mask,
@@ -3704,7 +3706,7 @@ vectorizable_call (vec_info *vinfo,
 
 	  int varg = 0;
 	  if (masked_loop_p && reduc_idx >= 0)
-	    vargs[varg++] = vect_get_loop_mask (gsi, masks, ncopies,
+	    vargs[varg++] = vect_get_loop_mask (loop_vinfo, gsi, masks, ncopies,
 						vectype_out, j);
 	  for (i = 0; i < nargs; i++)
 	    {
@@ -3723,7 +3725,7 @@ vectorizable_call (vec_info *vinfo,
 
 	  if (mask_opno >= 0 && masked_loop_p)
 	    {
-	      tree mask = vect_get_loop_mask (gsi, masks, ncopies,
+	      tree mask = vect_get_loop_mask (loop_vinfo, gsi, masks, ncopies,
 					      vectype_out, j);
 	      vargs[mask_opno]
 		= prepare_vec_mask (loop_vinfo, TREE_TYPE (mask), mask,
@@ -6663,8 +6665,8 @@ vectorizable_operation (vec_info *vinfo,
 	}
       else if (masked_loop_p && mask_out_inactive)
 	{
-	  tree mask = vect_get_loop_mask (gsi, masks, vec_num * ncopies,
-					  vectype, i);
+	  tree mask = vect_get_loop_mask (loop_vinfo, gsi, masks,
+					  vec_num * ncopies, vectype, i);
 	  auto_vec<tree> vops (5);
 	  vops.quick_push (mask);
 	  vops.quick_push (vop0);
@@ -6705,8 +6707,8 @@ vectorizable_operation (vec_info *vinfo,
 	      if (loop_vinfo->scalar_cond_masked_set.contains ({ op0,
 								 ncopies}))
 		{
-		  mask = vect_get_loop_mask (gsi, masks, vec_num * ncopies,
-					     vectype, i);
+		  mask = vect_get_loop_mask (loop_vinfo, gsi, masks,
+					     vec_num * ncopies, vectype, i);
 
 		  vop0 = prepare_vec_mask (loop_vinfo, TREE_TYPE (mask), mask,
 					   vop0, gsi);
@@ -6715,8 +6717,8 @@ vectorizable_operation (vec_info *vinfo,
 	      if (loop_vinfo->scalar_cond_masked_set.contains ({ op1,
 								 ncopies }))
 		{
-		  mask = vect_get_loop_mask (gsi, masks, vec_num * ncopies,
-					     vectype, i);
+		  mask = vect_get_loop_mask (loop_vinfo, gsi, masks,
+					     vec_num * ncopies, vectype, i);
 
 		  vop1 = prepare_vec_mask (loop_vinfo, TREE_TYPE (mask), mask,
 					   vop1, gsi);
@@ -8599,8 +8601,8 @@ vectorizable_store (vec_info *vinfo,
 
 	  tree final_mask = NULL;
 	  if (loop_masks)
-	    final_mask = vect_get_loop_mask (gsi, loop_masks, ncopies,
-					     vectype, j);
+	    final_mask = vect_get_loop_mask (loop_vinfo, gsi, loop_masks,
+					     ncopies, vectype, j);
 	  if (vec_mask)
 	    final_mask = prepare_vec_mask (loop_vinfo, mask_vectype,
 					   final_mask, vec_mask, gsi);
@@ -8653,7 +8655,7 @@ vectorizable_store (vec_info *vinfo,
 
 	      tree final_mask = NULL_TREE;
 	      if (loop_masks)
-		final_mask = vect_get_loop_mask (gsi, loop_masks,
+		final_mask = vect_get_loop_mask (loop_vinfo, gsi, loop_masks,
 						 vec_num * ncopies,
 						 vectype, vec_num * j + i);
 	      if (vec_mask)
@@ -9968,8 +9970,8 @@ vectorizable_load (vec_info *vinfo,
 
 	  tree final_mask = NULL_TREE;
 	  if (loop_masks)
-	    final_mask = vect_get_loop_mask (gsi, loop_masks, ncopies,
-					     vectype, j);
+	    final_mask = vect_get_loop_mask (loop_vinfo, gsi, loop_masks,
+					     ncopies, vectype, j);
 	  if (vec_mask)
 	    final_mask = prepare_vec_mask (loop_vinfo, mask_vectype,
 					   final_mask, vec_mask, gsi);
@@ -10019,7 +10021,7 @@ vectorizable_load (vec_info *vinfo,
 	      tree final_mask = NULL_TREE;
 	      if (loop_masks
 		  && memory_access_type != VMAT_INVARIANT)
-		final_mask = vect_get_loop_mask (gsi, loop_masks,
+		final_mask = vect_get_loop_mask (loop_vinfo, gsi, loop_masks,
 						 vec_num * ncopies,
 						 vectype, vec_num * j + i);
 	      if (vec_mask)
@@ -11035,7 +11037,7 @@ vectorizable_condition (vec_info *vinfo,
 	  if (masks)
 	    {
 	      tree loop_mask
-		= vect_get_loop_mask (gsi, masks, vec_num * ncopies,
+		= vect_get_loop_mask (loop_vinfo, gsi, masks, vec_num * ncopies,
 				      vectype, i);
 	      tree tmp2 = make_ssa_name (vec_cmp_type);
 	      gassign *g
