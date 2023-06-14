@@ -2305,7 +2305,15 @@ vect_determine_partial_vectors_and_peeling (loop_vec_info loop_vinfo,
 	  && !LOOP_VINFO_EPILOGUE_P (loop_vinfo)
 	  && !vect_known_niters_smaller_than_vf (loop_vinfo))
 	LOOP_VINFO_EPIL_USING_PARTIAL_VECTORS_P (loop_vinfo) = true;
-      else
+      /* Avoid using a large fixed size vectorization mode with masking
+	 for the main loop when we were asked to only use masking for
+	 the epilog.
+	 ???  Ideally we'd start analysis with a better sized mode,
+	 the param_vect_partial_vector_usage == 2 case suffers from
+	 this as well.  But there's a catch-22.  */
+      else if (!(!LOOP_VINFO_EPILOGUE_P (loop_vinfo)
+		 && param_vect_partial_vector_usage == 1
+		 && LOOP_VINFO_VECT_FACTOR (loop_vinfo).is_constant ()))
 	LOOP_VINFO_USING_PARTIAL_VECTORS_P (loop_vinfo) = true;
     }
 
