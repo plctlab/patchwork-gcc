@@ -1115,20 +1115,6 @@ can_produce_all_loop_masks_p (loop_vec_info loop_vinfo, tree cmp_type)
   return true;
 }
 
-/* Calculate the maximum number of scalars per iteration for every
-   rgroup in LOOP_VINFO.  */
-
-static unsigned int
-vect_get_max_nscalars_per_iter (loop_vec_info loop_vinfo)
-{
-  unsigned int res = 1;
-  unsigned int i;
-  rgroup_controls *rgm;
-  FOR_EACH_VEC_ELT (LOOP_VINFO_MASKS (loop_vinfo), i, rgm)
-    res = MAX (res, rgm->max_nscalars_per_iter);
-  return res;
-}
-
 /* Calculate the minimum precision necessary to represent:
 
       MAX_NITERS * FACTOR
@@ -1208,14 +1194,18 @@ static bool
 vect_verify_full_masking (loop_vec_info loop_vinfo)
 {
   unsigned int min_ni_width;
-  unsigned int max_nscalars_per_iter
-    = vect_get_max_nscalars_per_iter (loop_vinfo);
 
   /* Use a normal loop if there are no statements that need masking.
      This only happens in rare degenerate cases: it means that the loop
      has no loads, no stores, and no live-out values.  */
   if (LOOP_VINFO_MASKS (loop_vinfo).is_empty ())
     return false;
+
+  /* Calculate the maximum number of scalars per iteration for every rgroup.  */
+  unsigned int max_nscalars_per_iter = 1;
+  for (auto rgm : LOOP_VINFO_MASKS (loop_vinfo))
+    max_nscalars_per_iter
+      = MAX (max_nscalars_per_iter, rgm.max_nscalars_per_iter);
 
   /* Work out how many bits we need to represent the limit.  */
   min_ni_width
