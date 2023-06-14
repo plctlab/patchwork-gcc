@@ -25795,38 +25795,42 @@
 	(const_int 1)))])
 
 (define_insn "vec_dupv4sf"
-  [(set (match_operand:V4SF 0 "register_operand" "=v,v,x")
+  [(set (match_operand:V4SF 0 "register_operand" "=Yv,v,v,v,x")
 	(vec_duplicate:V4SF
-	  (match_operand:SF 1 "nonimmediate_operand" "Yv,m,0")))]
+	  (match_operand:SF 1 "nonimmediate_operand" "v,vm,Yv,m,0")))]
   "TARGET_SSE"
   "@
+   vbroadcastss\t{%1, %0|%0, %1}
+   vbroadcastss\t{%1, %g0|%g0, %1}
    vshufps\t{$0, %1, %1, %0|%0, %1, %1, 0}
    vbroadcastss\t{%1, %0|%0, %1}
    shufps\t{$0, %0, %0|%0, %0, 0}"
-  [(set_attr "isa" "avx,avx,noavx")
-   (set_attr "type" "sseshuf1,ssemov,sseshuf1")
-   (set_attr "length_immediate" "1,0,1")
-   (set_attr "prefix_extra" "0,1,*")
-   (set_attr "prefix" "maybe_evex,maybe_evex,orig")
-   (set_attr "mode" "V4SF")])
+  [(set_attr "isa" "avx2,avx512f,avx,avx,noavx")
+   (set_attr "type" "ssemov,ssemov,sseshuf1,ssemov,sseshuf1")
+   (set_attr "length_immediate" "0,0,1,0,1")
+   (set_attr "prefix_extra" "*,*,0,1,*")
+   (set_attr "prefix" "maybe_evex,evex,maybe_evex,maybe_evex,orig")
+   (set_attr "mode" "V4SF,V16SF,V4SF,V4SF,V4SF")])
 
 (define_insn "*vec_dupv4si"
-  [(set (match_operand:V4SI 0 "register_operand"     "=v,v,x")
+  [(set (match_operand:V4SI 0 "register_operand"     "=Yv,v,v,v,x")
 	(vec_duplicate:V4SI
-	  (match_operand:SI 1 "nonimmediate_operand" "Yv,m,0")))]
+	  (match_operand:SI 1 "nonimmediate_operand" "vm,vm,Yv,m,0")))]
   "TARGET_SSE"
   "@
+   vpbroadcastd\t{%1, %0|%0, %1}
+   vpbroadcastd\t{%1, %g0|%g0, %1}
    %vpshufd\t{$0, %1, %0|%0, %1, 0}
    vbroadcastss\t{%1, %0|%0, %1}
    shufps\t{$0, %0, %0|%0, %0, 0}"
-  [(set_attr "isa" "sse2,avx,noavx")
-   (set_attr "type" "sselog1,ssemov,sselog1")
-   (set_attr "length_immediate" "1,0,1")
-   (set_attr "prefix_extra" "0,1,*")
-   (set_attr "prefix" "maybe_vex,maybe_evex,orig")
-   (set_attr "mode" "TI,V4SF,V4SF")
+  [(set_attr "isa" "avx2,avx512f,sse2,avx,noavx")
+   (set_attr "type" "ssemov,ssemov,sselog1,ssemov,sselog1")
+   (set_attr "length_immediate" "0,0,1,0,1")
+   (set_attr "prefix_extra" "*,*,0,1,*")
+   (set_attr "prefix" "maybe_evex,evex,maybe_vex,maybe_evex,orig")
+   (set_attr "mode" "TI,XI,TI,V4SF,V4SF")
    (set (attr "preferred_for_speed")
-     (cond [(eq_attr "alternative" "1")
+     (cond [(eq_attr "alternative" "3")
 	      (symbol_ref "!TARGET_INTER_UNIT_MOVES_TO_VEC")
 	   ]
 	   (symbol_ref "true")))])
