@@ -13,7 +13,13 @@ test01()
       VERIFY( std::random_device(token).entropy() == 0.0 );
 
   using result_type = std::random_device::result_type;
+#ifdef _GLIBCXX_USE_DEV_RANDOM
   const double max = std::numeric_limits<result_type>::digits;
+#else
+  // random_device::entropy() always returns 0.0 when
+  // _GLIBCXX_USE_DEV_RANDOM is not defined.
+  const double max = 0.0;
+#endif
 
   for (auto token : { "/dev/random", "/dev/urandom" })
     if (__gnu_test::random_device_available(token))
@@ -30,7 +36,7 @@ test01()
       VERIFY( entropy == max );
     }
 
-    for (auto token : { "getentropy", "arc4random" })
+  for (auto token : { "getentropy", "arc4random" })
     if (__gnu_test::random_device_available(token))
     {
       const double entropy = std::random_device(token).entropy();
