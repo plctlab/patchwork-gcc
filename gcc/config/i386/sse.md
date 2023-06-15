@@ -25832,19 +25832,39 @@
 	   (symbol_ref "true")))])
 
 (define_insn "*vec_dupv2di"
-  [(set (match_operand:V2DI 0 "register_operand"     "=x,v,v,x")
+  [(set (match_operand:V2DI 0 "register_operand"     "=x,v,v,v,x")
 	(vec_duplicate:V2DI
-	  (match_operand:DI 1 "nonimmediate_operand" " 0,Yv,vm,0")))]
+	  (match_operand:DI 1 "nonimmediate_operand" " 0,Yv,vm,Yvm,0")))]
   "TARGET_SSE"
-  "@
-   punpcklqdq\t%0, %0
-   vpunpcklqdq\t{%d1, %0|%0, %d1}
-   %vmovddup\t{%1, %0|%0, %1}
-   movlhps\t%0, %0"
-  [(set_attr "isa" "sse2_noavx,avx,sse3,noavx")
-   (set_attr "type" "sselog1,sselog1,sselog1,ssemov")
-   (set_attr "prefix" "orig,maybe_evex,maybe_vex,orig")
-   (set_attr "mode" "TI,TI,DF,V4SF")])
+{
+  switch (which_alternative)
+    {
+    case 0:
+      return "punpcklqdq\t%0, %0";
+    case 1:
+      return "vpunpcklqdq\t{%d1, %0|%0, %d1}";
+    case 2:
+      if (TARGET_AVX512VL)
+	return "vpbroadcastq\t{%1, %0|%0, %1}";
+      return "vpbroadcastq\t{%1, %g0|%g0, %1}";
+    case 3:
+      return "%vmovddup\t{%1, %0|%0, %1}";
+    case 4:
+      return "movlhps\t%0, %0";
+    default:
+      gcc_unreachable ();
+    }
+}
+  [(set_attr "isa" "sse2_noavx,avx,avx512f,sse3,noavx")
+   (set_attr "type" "sselog1,sselog1,ssemov,sselog1,ssemov")
+   (set_attr "prefix" "orig,maybe_evex,evex,maybe_vex,orig")
+   (set_attr "mode" "TI,TI,TI,DF,V4SF")
+   (set (attr "enabled")
+	(if_then_else
+	  (eq_attr "alternative" "2")
+	  (symbol_ref "TARGET_AVX512VL
+		       || (TARGET_AVX512F && !TARGET_PREFER_AVX256)")
+	  (const_string "*")))])
 
 (define_insn "avx2_vbroadcasti128_<mode>"
   [(set (match_operand:VI_256 0 "register_operand" "=x,v,v")
