@@ -180,14 +180,13 @@ package body Exp_Ch5 is
 
    procedure Expand_Iterator_Loop_Over_Container
      (N             : Node_Id;
-      Isc           : Node_Id;
       I_Spec        : Node_Id;
       Container     : Node_Id;
       Container_Typ : Entity_Id);
    --  Expand loop over containers that uses the form "for X of C" with an
-   --  optional subtype mark, or "for Y in C". Isc is the iteration scheme.
-   --  I_Spec is the iterator specification and Container is either the
-   --  Container (for OF) or the iterator (for IN).
+   --  optional subtype mark, or "for Y in C". I_Spec is the iterator
+   --  specification and Container is either the Container (for OF) or the
+   --  iterator (for IN).
 
    procedure Expand_Predicated_Loop (N : Node_Id);
    --  Expand for loop over predicated subtype
@@ -4765,7 +4764,7 @@ package body Exp_Ch5 is
 
       else
          Expand_Iterator_Loop_Over_Container
-           (N, Isc, I_Spec, Container, Container_Typ);
+           (N, I_Spec, Container, Container_Typ);
       end if;
    end Expand_Iterator_Loop;
 
@@ -5062,7 +5061,6 @@ package body Exp_Ch5 is
 
    procedure Expand_Iterator_Loop_Over_Container
      (N             : Node_Id;
-      Isc           : Node_Id;
       I_Spec        : Node_Id;
       Container     : Node_Id;
       Container_Typ : Entity_Id)
@@ -5528,13 +5526,6 @@ package body Exp_Ch5 is
          Insert_Action (N, Cursor_Decl);
          Mutate_Ekind (Cursor, Id_Kind);
       end;
-
-      --  If the range of iteration is given by a function call that returns
-      --  a container, the finalization actions have been saved in the
-      --  Condition_Actions of the iterator. Insert them now at the head of
-      --  the loop.
-
-      Insert_List_Before (N, Condition_Actions (Isc));
 
       Rewrite (N, New_Loop);
       Analyze (N);
