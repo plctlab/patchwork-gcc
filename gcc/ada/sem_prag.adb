@@ -11036,6 +11036,17 @@ package body Sem_Prag is
                return;
             end if;
 
+            --  Pragma Always_Terminates applied to packages doesn't allow any
+            --  expression.
+
+            if Is_Package_Or_Generic_Package (Spec_Id)
+              and then Arg_Count /= 0
+            then
+               Error_Msg_N (Fix_Error
+                 ("pragma % applied to package cannot have arguments"), N);
+               return;
+            end if;
+
             --  A pragma that applies to a Ghost entity becomes Ghost for the
             --  purposes of legality checks and removal of ignored Ghost code.
 
@@ -24317,9 +24328,14 @@ package body Sem_Prag is
             Subp_Decl :=
               Find_Related_Declaration_Or_Body (N, Do_Checks => True);
 
-            --  Generic subprogram
+            --  Generic subprogram and package declaration
 
-            if Nkind (Subp_Decl) = N_Generic_Subprogram_Declaration then
+            if Nkind (Subp_Decl) in N_Generic_Declaration then
+               null;
+
+            --  Package declaration
+
+            elsif Nkind (Subp_Decl) = N_Package_Declaration then
                null;
 
             --  Body acts as spec
