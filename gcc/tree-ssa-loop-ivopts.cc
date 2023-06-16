@@ -2772,183 +2772,21 @@ find_interesting_uses (struct ivopts_data *data, basic_block *body)
     }
 }
 
-/* Strips constant offsets from EXPR and stores them to OFFSET.  If INSIDE_ADDR
-   is true, assume we are inside an address.  If TOP_COMPREF is true, assume
-   we are at the top-level of the processed address.  */
-
-static tree
-strip_offset_1 (tree expr, bool inside_addr, bool top_compref,
-		poly_int64 *offset)
-{
-  tree op0 = NULL_TREE, op1 = NULL_TREE, tmp, step;
-  enum tree_code code;
-  tree type, orig_type = TREE_TYPE (expr);
-  poly_int64 off0, off1;
-  HOST_WIDE_INT st;
-  tree orig_expr = expr;
-
-  STRIP_NOPS (expr);
-
-  type = TREE_TYPE (expr);
-  code = TREE_CODE (expr);
-  *offset = 0;
-
-  switch (code)
-    {
-    case POINTER_PLUS_EXPR:
-    case PLUS_EXPR:
-    case MINUS_EXPR:
-      op0 = TREE_OPERAND (expr, 0);
-      op1 = TREE_OPERAND (expr, 1);
-
-      op0 = strip_offset_1 (op0, false, false, &off0);
-      op1 = strip_offset_1 (op1, false, false, &off1);
-
-      *offset = (code == MINUS_EXPR ? off0 - off1 : off0 + off1);
-      if (op0 == TREE_OPERAND (expr, 0)
-	  && op1 == TREE_OPERAND (expr, 1))
-	return orig_expr;
-
-      if (integer_zerop (op1))
-	expr = op0;
-      else if (integer_zerop (op0))
-	{
-	  if (code == MINUS_EXPR)
-	    expr = fold_build1 (NEGATE_EXPR, type, op1);
-	  else
-	    expr = op1;
-	}
-      else
-	expr = fold_build2 (code, type, op0, op1);
-
-      return fold_convert (orig_type, expr);
-
-    case MULT_EXPR:
-      op1 = TREE_OPERAND (expr, 1);
-      if (!cst_and_fits_in_hwi (op1))
-	return orig_expr;
-
-      op0 = TREE_OPERAND (expr, 0);
-      op0 = strip_offset_1 (op0, false, false, &off0);
-      if (op0 == TREE_OPERAND (expr, 0))
-	return orig_expr;
-
-      *offset = off0 * int_cst_value (op1);
-      if (integer_zerop (op0))
-	expr = op0;
-      else
-	expr = fold_build2 (MULT_EXPR, type, op0, op1);
-
-      return fold_convert (orig_type, expr);
-
-    case ARRAY_REF:
-    case ARRAY_RANGE_REF:
-      if (!inside_addr)
-	return orig_expr;
-
-      step = array_ref_element_size (expr);
-      if (!cst_and_fits_in_hwi (step))
-	break;
-
-      st = int_cst_value (step);
-      op1 = TREE_OPERAND (expr, 1);
-      op1 = strip_offset_1 (op1, false, false, &off1);
-      *offset = off1 * st;
-
-      if (top_compref
-	  && integer_zerop (op1))
-	{
-	  /* Strip the component reference completely.  */
-	  op0 = TREE_OPERAND (expr, 0);
-	  op0 = strip_offset_1 (op0, inside_addr, top_compref, &off0);
-	  *offset += off0;
-	  return op0;
-	}
-      break;
-
-    case COMPONENT_REF:
-      {
-	tree field;
-
-	if (!inside_addr)
-	  return orig_expr;
-
-	tmp = component_ref_field_offset (expr);
-	field = TREE_OPERAND (expr, 1);
-	if (top_compref
-	    && cst_and_fits_in_hwi (tmp)
-	    && cst_and_fits_in_hwi (DECL_FIELD_BIT_OFFSET (field)))
-	  {
-	    HOST_WIDE_INT boffset, abs_off;
-
-	    /* Strip the component reference completely.  */
-	    op0 = TREE_OPERAND (expr, 0);
-	    op0 = strip_offset_1 (op0, inside_addr, top_compref, &off0);
-	    boffset = int_cst_value (DECL_FIELD_BIT_OFFSET (field));
-	    abs_off = abs_hwi (boffset) / BITS_PER_UNIT;
-	    if (boffset < 0)
-	      abs_off = -abs_off;
-
-	    *offset = off0 + int_cst_value (tmp) + abs_off;
-	    return op0;
-	  }
-      }
-      break;
-
-    case ADDR_EXPR:
-      op0 = TREE_OPERAND (expr, 0);
-      op0 = strip_offset_1 (op0, true, true, &off0);
-      *offset += off0;
-
-      if (op0 == TREE_OPERAND (expr, 0))
-	return orig_expr;
-
-      expr = build_fold_addr_expr (op0);
-      return fold_convert (orig_type, expr);
-
-    case MEM_REF:
-      /* ???  Offset operand?  */
-      inside_addr = false;
-      break;
-
-    default:
-      if (ptrdiff_tree_p (expr, offset) && maybe_ne (*offset, 0))
-	return build_int_cst (orig_type, 0);
-      return orig_expr;
-    }
-
-  /* Default handling of expressions for that we want to recurse into
-     the first operand.  */
-  op0 = TREE_OPERAND (expr, 0);
-  op0 = strip_offset_1 (op0, inside_addr, false, &off0);
-  *offset += off0;
-
-  if (op0 == TREE_OPERAND (expr, 0)
-      && (!op1 || op1 == TREE_OPERAND (expr, 1)))
-    return orig_expr;
-
-  expr = copy_node (expr);
-  TREE_OPERAND (expr, 0) = op0;
-  if (op1)
-    TREE_OPERAND (expr, 1) = op1;
-
-  /* Inside address, we might strip the top level component references,
-     thus changing type of the expression.  Handling of ADDR_EXPR
-     will fix that.  */
-  expr = fold_convert (orig_type, expr);
-
-  return expr;
-}
-
 /* Strips constant offsets from EXPR and stores them to OFFSET.  */
 
 tree
 strip_offset (tree expr, poly_uint64_pod *offset)
 {
-  poly_int64 off;
-  tree core = strip_offset_1 (expr, false, false, &off);
-  *offset = off;
-  return core;
+  tree core, toff;
+  split_constant_offset (expr, &core, &toff);
+  gcc_assert (!TYPE_UNSIGNED (TREE_TYPE (toff)));
+  if (tree_fits_poly_int64_p (toff))
+    {
+      *offset = tree_to_poly_int64 (toff);
+      return core;
+    }
+  *offset = 0;
+  return expr;
 }
 
 /* Returns variant of TYPE that can be used as base for different uses.
