@@ -17608,13 +17608,14 @@
    (set_attr "prefix" "orig,<mask_prefix>")
    (set_attr "mode" "<sseinsnmode>")])
 
+;; This is different from rtl unsigned saturation, the instruction does
+;; unsigned saturation for signed value.
 (define_insn "<sse2_avx2>_packuswb<mask_name>"
   [(set (match_operand:VI1_AVX512 0 "register_operand" "=x,<v_Yw>")
-	(vec_concat:VI1_AVX512
-	  (us_truncate:<ssehalfvecmode>
-	    (match_operand:<sseunpackmode> 1 "register_operand" "0,<v_Yw>"))
-	  (us_truncate:<ssehalfvecmode>
-	    (match_operand:<sseunpackmode> 2 "vector_operand" "xBm,<v_Yw>m"))))]
+	(unspec:VI1_AVX512
+	  [(match_operand:<sseunpackmode> 1 "register_operand" "0,<v_Yw>")
+	   (match_operand:<sseunpackmode> 2 "vector_operand" "xBm,<v_Yw>m")]
+	  UNSPEC_US_TRUNCATE))]
   "TARGET_SSE2 && <mask_mode512bit_condition> && <mask_avx512bw_condition>"
   "@
    packuswb\t{%2, %0|%0, %2}
@@ -21701,11 +21702,10 @@
 
 (define_insn "<sse4_1_avx2>_packusdw<mask_name>"
   [(set (match_operand:VI2_AVX2 0 "register_operand" "=Yr,*x,<v_Yw>")
-	(vec_concat:VI2_AVX2
-	  (us_truncate:<ssehalfvecmode>
-	    (match_operand:<sseunpackmode> 1 "register_operand" "0,0,<v_Yw>"))
-	  (us_truncate:<ssehalfvecmode>
-	    (match_operand:<sseunpackmode> 2 "vector_operand" "YrBm,*xBm,<v_Yw>m"))))]
+	(unspec:VI2_AVX2
+	  [(match_operand:<sseunpackmode> 1 "register_operand" "0,0,<v_Yw>")
+	   (match_operand:<sseunpackmode> 2 "vector_operand" "YrBm,*xBm,<v_Yw>m")]
+	   UNSPEC_US_TRUNCATE))]
   "TARGET_SSE4_1 && <mask_mode512bit_condition> && <mask_avx512bw_condition>"
   "@
    packusdw\t{%2, %0|%0, %2}
