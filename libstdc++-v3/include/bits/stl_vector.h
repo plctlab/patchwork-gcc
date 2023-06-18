@@ -1892,11 +1892,22 @@ _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
       size_type
       _M_check_len(size_type __n, const char* __s) const
       {
-	if (max_size() - size() < __n)
-	  __throw_length_error(__N(__s));
+	// On 64bit systems vectors of small sizes can not
+	// reach overflow by growing by small sizes; before
+	// this happens, we will run out of memory.
+	if (__builtin_constant_p (sizeof (_Tp))
+	    && __builtin_constant_p (__n)
+	    && sizeof (ptrdiff_t) >= 8
+	    && __n < max_size () / 2)
+	  return size() + (std::max)(size(), __n);
+	else
+	  {
+	    if (max_size() - size() < __n)
+	      __throw_length_error(__N(__s));
 
-	const size_type __len = size() + (std::max)(size(), __n);
-	return (__len < size() || __len > max_size()) ? max_size() : __len;
+	    const size_type __len = size() + (std::max)(size(), __n);
+	    return (__len < size() || __len > max_size()) ? max_size() : __len;
+	  }
       }
 
       // Called by constructors to check initial size.
