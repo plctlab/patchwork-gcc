@@ -19872,7 +19872,7 @@
 	  "  0, 0,x ,Yv,0,Yv,0,0,v")
 	  (match_operand:DI 2 "nonimmediate_operand"
 	  " rm,rm,rm,rm,x,Yv,x,m,m")))]
-  "TARGET_SSE"
+  "TARGET_SSE && REG_P (operands[0])"
   "@
    pinsrq\t{$1, %2, %0|%0, %2, 1}
    pinsrq\t{$1, %2, %0|%0, %2, 1}
