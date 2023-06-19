@@ -1985,7 +1985,8 @@ lto_input_mode_table (struct lto_file_decl_data *file_data)
     internal_error ("cannot read LTO mode table from %s",
 		    file_data->file_name);
 
-  unsigned char *table = ggc_cleared_vec_alloc<unsigned char> (1 << 8);
+  unsigned char *table = ggc_cleared_vec_alloc<unsigned char> (
+    MAX_MACHINE_MODE);
   file_data->mode_table = table;
   const struct lto_simple_header_with_strings *header
     = (const struct lto_simple_header_with_strings *) data;

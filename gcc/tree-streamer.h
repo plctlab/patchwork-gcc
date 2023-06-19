@@ -75,7 +75,7 @@ void streamer_write_tree_body (struct output_block *, tree);
 void streamer_write_integer_cst (struct output_block *, tree);
 
 /* In tree-streamer.cc.  */
-extern unsigned char streamer_mode_table[1 << 8];
+extern unsigned char streamer_mode_table[MAX_MACHINE_MODE];
 void streamer_check_handled_ts_structures (void);
 bool streamer_tree_cache_insert (struct streamer_tree_cache_d *, tree,
 				 hashval_t, unsigned *);
@@ -108,7 +108,7 @@ inline void
 bp_pack_machine_mode (struct bitpack_d *bp, machine_mode mode)
 {
   streamer_mode_table[mode] = 1;
-  bp_pack_enum (bp, machine_mode, 1 << 8, mode);
+  bp_pack_enum (bp, machine_mode, MAX_MACHINE_MODE, mode);
 }
 
 inline machine_mode
@@ -116,7 +116,8 @@ bp_unpack_machine_mode (struct bitpack_d *bp)
 {
   return (machine_mode)
 	   ((class lto_input_block *)
-	    bp->stream)->mode_table[bp_unpack_enum (bp, machine_mode, 1 << 8)];
+	    bp->stream)->mode_table[bp_unpack_enum (bp, machine_mode,
+						    MAX_MACHINE_MODE)];
 }
 
 #endif  /* GCC_TREE_STREAMER_H  */
