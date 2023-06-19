@@ -2587,6 +2587,54 @@ points_to_local_or_readonly_memory_p (tree t)
 }
 
 
+/* Return true if BB is builtin_unreachable.
+   We skip empty basic blocks, debug statements, clobbers and predicts.
+   CACHE is used to memoize already analyzed blocks.  */
+
+static bool
+builtin_unreachable_bb_p (basic_block bb, vec<unsigned char> &cache)
+{
+  if (cache[bb->index])
+    return cache[bb->index] - 1;
+  gimple_stmt_iterator si;
+  auto_vec <basic_block, 4> visited_bbs;
+  bool ret = false;
+  while (true)
+    {
+      bool empty_bb = true;
+      visited_bbs.safe_push (bb);
+      cache[bb->index] = 3;
+      for (si = gsi_start_nondebug_bb (bb);
+	   !gsi_end_p (si) && empty_bb;
+	   gsi_next_nondebug (&si))
+	{
+	  if (gimple_code (gsi_stmt (si)) != GIMPLE_PREDICT
+	      && !gimple_clobber_p (gsi_stmt (si))
+	      && !gimple_nop_p (gsi_stmt (si)))
+	    {
+	      empty_bb = false;
+	      break;
+	    }
+	}
+      if (!empty_bb)
+	break;
+      else
+	bb = single_succ_edge (bb)->dest;
+      if (cache[bb->index])
+	{
+	  ret = cache[bb->index] == 3 ? false : cache[bb->index] - 1;
+	  goto done;
+	}
+    }
+  if (gimple_call_builtin_p (gsi_stmt (si), BUILT_IN_UNREACHABLE)
+      || gimple_call_builtin_p (gsi_stmt (si), BUILT_IN_UNREACHABLE_TRAP))
+    ret = true;
+done:
+  for (basic_block vbb:visited_bbs)
+    cache[vbb->index] = (unsigned char)ret + 1;
+  return ret;
+}
+
 /* Analyze function body for NODE.
    EARLY indicates run from early optimization pipeline.  */
 
@@ -2681,6 +2729,8 @@ analyze_function_body (struct cgraph_node *node, bool early)
   const profile_count entry_count = ENTRY_BLOCK_PTR_FOR_FN (cfun)->count;
   order = XNEWVEC (int, n_basic_blocks_for_fn (cfun));
   nblocks = pre_and_rev_post_order_compute (NULL, order, false);
+  auto_vec<unsigned char, 10> cache;
+  cache.safe_grow_cleared (last_basic_block_for_fn (cfun));
   for (n = 0; n < nblocks; n++)
     {
       bb = BASIC_BLOCK_FOR_FN (cfun, order[n]);
@@ -2834,6 +2884,24 @@ analyze_function_body (struct cgraph_node *node, bool early)
 						     es, es3);
 		    }
 		}
+	    }
+
+	  /* Conditionals guarding __builtin_unreachable will be
+	     optimized out.  */
+	  if (gimple_code (stmt) == GIMPLE_COND)
+	    {
+	      edge_iterator ei;
+	      edge e;
+	      FOR_EACH_EDGE (e, ei, bb->succs)
+		if (builtin_unreachable_bb_p (e->dest, cache))
+		  {
+		    if (dump_file)
+		      fprintf (dump_file,
+			       "\t\tConditional guarding __builtin_unreachable; ignored\n");
+		    this_time = 0;
+		    this_size = 0;
+		    break;
+		  }
 	    }
 
 	  /* TODO: When conditional jump or switch is known to be constant, but
