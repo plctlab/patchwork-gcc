@@ -260,7 +260,7 @@ chk_uses (tree, tree *idx, void *data)
 
 static bool
 propagate_with_phi (basic_block bb, gphi *phi, struct phiprop_d *phivn,
-		    size_t n)
+		    size_t n, bool *post_dominators_computed)
 {
   tree ptr = PHI_RESULT (phi);
   gimple *use_stmt;
@@ -323,6 +323,12 @@ propagate_with_phi (basic_block bb, gphi *phi, struct phiprop_d *phivn,
     {
       gimple *def_stmt;
       tree vuse;
+
+      if (!*post_dominators_computed)
+        {
+	  calculate_dominance_info (CDI_POST_DOMINATORS);
+	  *post_dominators_computed = true;
+	}
 
       /* Only replace loads in blocks that post-dominate the PHI node.  That
          makes sure we don't end up speculating loads.  */
@@ -465,7 +471,7 @@ const pass_data pass_data_phiprop =
   0, /* properties_provided */
   0, /* properties_destroyed */
   0, /* todo_flags_start */
-  TODO_update_ssa, /* todo_flags_finish */
+  0, /* todo_flags_finish */
 };
 
 class pass_phiprop : public gimple_opt_pass
@@ -490,9 +496,9 @@ pass_phiprop::execute (function *fun)
   gphi_iterator gsi;
   unsigned i;
   size_t n;
+  bool post_dominators_computed = false;
 
   calculate_dominance_info (CDI_DOMINATORS);
-  calculate_dominance_info (CDI_POST_DOMINATORS);
 
   n = num_ssa_names;
   phivn = XCNEWVEC (struct phiprop_d, n);
@@ -508,7 +514,8 @@ pass_phiprop::execute (function *fun)
       if (bb_has_abnormal_pred (bb))
 	continue;
       for (gsi = gsi_start_phis (bb); !gsi_end_p (gsi); gsi_next (&gsi))
-	did_something |= propagate_with_phi (bb, gsi.phi (), phivn, n);
+	did_something |= propagate_with_phi (bb, gsi.phi (), phivn, n,
+					     &post_dominators_computed);
     }
 
   if (did_something)
@@ -516,9 +523,10 @@ pass_phiprop::execute (function *fun)
 
   free (phivn);
 
-  free_dominance_info (CDI_POST_DOMINATORS);
+  if (post_dominators_computed)
+    free_dominance_info (CDI_POST_DOMINATORS);
 
-  return 0;
+  return did_something ? TODO_update_ssa : 0;
 }
 
 } // anon namespace
