@@ -148,7 +148,7 @@
   [(set (match_operand:SI 0 "register_operand" "=r")
         (unspec:SI [(match_operand:SI 1 "register_operand" "r")
                    (match_operand:SI 2 "register_operand" "r")
-                   (match_operand:SI 3 "register_operand" "D03")]
+                   (match_operand:SI 3 "const_0_3_operand" "D03")]
                    UNSPEC_AES_DSI))]
   "TARGET_ZKND && !TARGET_64BIT"
   "aes32dsi\t%0,%1,%2,%3"
@@ -158,7 +158,7 @@
   [(set (match_operand:SI 0 "register_operand" "=r")
         (unspec:SI [(match_operand:SI 1 "register_operand" "r")
                    (match_operand:SI 2 "register_operand" "r")
-                   (match_operand:SI 3 "register_operand" "D03")]
+                   (match_operand:SI 3 "const_0_3_operand" "D03")]
                    UNSPEC_AES_DSMI))]
   "TARGET_ZKND && !TARGET_64BIT"
   "aes32dsmi\t%0,%1,%2,%3"
@@ -214,7 +214,7 @@
   [(set (match_operand:SI 0 "register_operand" "=r")
         (unspec:SI [(match_operand:SI 1 "register_operand" "r")
                    (match_operand:SI 2 "register_operand" "r")
-                   (match_operand:SI 3 "register_operand" "D03")]
+                   (match_operand:SI 3 "const_0_3_operand" "D03")]
                    UNSPEC_AES_ESI))]
   "TARGET_ZKNE && !TARGET_64BIT"
   "aes32esi\t%0,%1,%2,%3"
@@ -224,7 +224,7 @@
   [(set (match_operand:SI 0 "register_operand" "=r")
         (unspec:SI [(match_operand:SI 1 "register_operand" "r")
                    (match_operand:SI 2 "register_operand" "r")
-                   (match_operand:SI 3 "register_operand" "D03")]
+                   (match_operand:SI 3 "const_0_3_operand" "D03")]
                    UNSPEC_AES_ESMI))]
   "TARGET_ZKNE && !TARGET_64BIT"
   "aes32esmi\t%0,%1,%2,%3"
@@ -394,7 +394,7 @@
   [(set (match_operand:X 0 "register_operand" "=r")
         (unspec:X [(match_operand:X 1 "register_operand" "r")
                   (match_operand:X 2 "register_operand" "r")
-                  (match_operand:SI 3 "register_operand" "D03")]
+                  (match_operand:SI 3 "const_0_3_operand" "D03")]
                   UNSPEC_SM4_ED))]
   "TARGET_ZKSED"
   "sm4ed\t%0,%1,%2,%3"
@@ -404,7 +404,7 @@
   [(set (match_operand:X 0 "register_operand" "=r")
         (unspec:X [(match_operand:X 1 "register_operand" "r")
                   (match_operand:X 2 "register_operand" "r")
-                  (match_operand:SI 3 "register_operand" "D03")]
+                  (match_operand:SI 3 "const_0_3_operand" "D03")]
                   UNSPEC_SM4_KS))]
   "TARGET_ZKSED"
   "sm4ks\t%0,%1,%2,%3"
