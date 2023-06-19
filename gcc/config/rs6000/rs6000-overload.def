@@ -195,6 +195,12 @@
   unsigned long long __builtin_cmpb (unsigned long long, unsigned long long);
     CMPB
 
+[SET_FPSCR_RN, set_fpscr_rn, __builtin_set_fpscr_rn]
+  double __builtin_set_fpscr_rn (int);
+    SET_FPSCR_RN_I
+  double __builtin_set_fpscr_rn (double);
+    SET_FPSCR_RN_D
+
 [VEC_ABS, vec_abs, __builtin_vec_abs]
   vsc __builtin_vec_abs (vsc);
     ABS_V16QI

@@ -237,8 +237,11 @@
   const __ibm128 __builtin_pack_ibm128 (double, double);
     PACK_IF packif {ibm128}
 
-  void __builtin_set_fpscr_rn (const int[0,3]);
-    SET_FPSCR_RN rs6000_set_fpscr_rn {nosoft}
+  double __builtin_set_fpscr_rn_i (const int[0,3]);
+    SET_FPSCR_RN_I rs6000_set_fpscr_rn_i {nosoft}
+
+  double __builtin_set_fpscr_rn_d (double);
+    SET_FPSCR_RN_D rs6000_set_fpscr_rn_d {nosoft}
 
   const double __builtin_unpack_ibm128 (__ibm128, const int<1>);
     UNPACK_IF unpackif {ibm128}

@@ -6,11 +6,70 @@
 #endif
 
 #define RN_MASK  0x3LL             /* RN field mask */
+#define FIELD_MASK 0x00000007000000FFULL
+
+union blah {
+  double d;
+  unsigned long long ll;
+} conv_val;
 
 void abort (void);
-void __attribute__ ((noipa)) wrap_set_fpscr_rn (int val)
+double __attribute__ ((noipa)) wrap_set_fpscr_rn (int val)
 {
-  __builtin_set_fpscr_rn (val);
+  return __builtin_set_fpscr_rn (val);
+}
+
+double __attribute__ ((noipa)) wrap_set_fpscr_rn_d (double val)
+{
+  return __builtin_set_fpscr_rn (val);
+}
+
+double __attribute__ ((noipa)) wrap_const_fpscr_rn (int val)
+{
+  switch (val)
+    {
+    case 0: return __builtin_set_fpscr_rn (0x0);
+    case 1: return __builtin_set_fpscr_rn (0x1);
+    case 2: return __builtin_set_fpscr_rn (0x2);
+    case 3: return __builtin_set_fpscr_rn (0x3);
+    }
+}
+
+void check_builtin_set_fpscr_rn (unsigned long long initial_fpscr,
+				 int new_RN, double result)
+{
+  register double  f14;
+  unsigned long long masked_fpscr = initial_fpscr & FIELD_MASK;
+  
+  conv_val.d = result;
+
+  /* Check the result.  */
+  if (conv_val.ll != masked_fpscr)
+    {
+#ifdef DEBUG
+       printf("ERROR, __builtin_set_fpscr_rn(%d) did not return expected value %llx.\n",
+	      new_RN, masked_fpscr);
+       printf("fpscr_val_initial = 0x%llx\n", initial_fpscr);       
+       printf("result = 0x%llx\n", conv_val.ll);
+#else
+       abort();
+#endif
+    }
+
+  /* Check to see if the RN field was updated.  */
+    __asm __volatile ("mffs %0" : "=f"(f14));
+  conv_val.d = f14;
+
+  if ((conv_val.ll & RN_MASK) != new_RN)
+#ifdef DEBUG
+    {
+      printf("ERROR,  __builtin_set_fpscr_rn(%d) did not update RN to %llx.\n",
+	     new_RN, new_RN);
+      printf("  conv_val.ll = 0x%llx\n", conv_val.ll);
+    }
+#else
+    abort();
+#endif
 }
 
 int main ()
@@ -18,12 +77,10 @@ int main ()
   int i;
   int val, bit;
   double fpscr_val;
-  union blah {
-    double d;
-    unsigned long long ll;
-  } conv_val;
+  unsigned long long fpscr_val_initial;
   
   unsigned long long ll_value;
+  union blah src_double;
   register double  f14;
 
   /* __builtin_set_fpscr_rn() builtin can take a const or a variable
@@ -190,4 +247,76 @@ int main ()
        abort();
 #endif
     }		  
-}
+
+
+  /* Test return value from __builtin_set_fpscr_rn. The fields (DRN, VE, OE,
+     UE, ZE, XE, NI, RN) are returned and  the RN field of FPSCR is updated
+     with the specified argument for the builtin.  */
+
+  /* Check immediate argument cases */
+  __asm __volatile ("mffs %0" : "=f"(f14));
+  conv_val.d = f14;
+  fpscr_val_initial = conv_val.ll;
+
+  val = 0x0;
+  fpscr_val = wrap_const_fpscr_rn (val);
+  check_builtin_set_fpscr_rn (fpscr_val_initial, val, fpscr_val);
+
+  __asm __volatile ("mffs %0" : "=f"(f14));
+  conv_val.d = f14;
+  fpscr_val_initial = conv_val.ll;
+
+  val = 0x3;
+  fpscr_val = wrap_const_fpscr_rn (val);
+  check_builtin_set_fpscr_rn (fpscr_val_initial, val, fpscr_val);
+  
+  /* Check int argument cases */
+  __asm __volatile ("mffs %0" : "=f"(f14));
+  conv_val.d = f14;
+  fpscr_val_initial = conv_val.ll;
+
+  val = 0x1;
+  fpscr_val = wrap_set_fpscr_rn (val);
+  check_builtin_set_fpscr_rn (fpscr_val_initial, val, fpscr_val);
+
+  __asm __volatile ("mffs %0" : "=f"(f14));
+  conv_val.d = f14;
+  fpscr_val_initial = conv_val.ll;
+
+  val = 0x2;
+  fpscr_val = wrap_set_fpscr_rn (val);
+  check_builtin_set_fpscr_rn (fpscr_val_initial, val, fpscr_val);
+
+  /* Check double  argument cases */
+  __asm __volatile ("mffs %0" : "=f"(f14));
+  conv_val.d = f14;
+  fpscr_val_initial = conv_val.ll;
+
+  conv_val.ll = 0x3;
+  fpscr_val = wrap_set_fpscr_rn_d (conv_val.d);
+  check_builtin_set_fpscr_rn (fpscr_val_initial, conv_val.ll, fpscr_val);
+
+  __asm __volatile ("mffs %0" : "=f"(f14));
+  conv_val.d = f14;
+  fpscr_val_initial = conv_val.ll;
+
+  conv_val.ll = 0x0;
+  fpscr_val = wrap_set_fpscr_rn_d (conv_val.d);
+  check_builtin_set_fpscr_rn (fpscr_val_initial, conv_val.ll, fpscr_val);
+  
+  __asm __volatile ("mffs %0" : "=f"(f14));
+  conv_val.d = f14;
+  fpscr_val_initial = conv_val.ll;
+
+  conv_val.ll = 0x1;
+  fpscr_val = wrap_set_fpscr_rn_d (conv_val.d);
+  check_builtin_set_fpscr_rn (fpscr_val_initial, conv_val.ll, fpscr_val);
+
+  __asm __volatile ("mffs %0" : "=f"(f14));
+  conv_val.d = f14;
+  fpscr_val_initial = conv_val.ll;
+
+  conv_val.ll = 0x2;
+  fpscr_val = wrap_set_fpscr_rn_d (conv_val.d);
+  check_builtin_set_fpscr_rn (fpscr_val_initial, conv_val.ll, fpscr_val);
+}		  
