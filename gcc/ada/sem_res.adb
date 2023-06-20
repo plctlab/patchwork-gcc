@@ -3901,9 +3901,10 @@ package body Sem_Res is
                                                   Obj_Ref       => N,
                                                   Check_Actuals => True)
                   then
+                     Error_Msg_Code := GEC_Volatile_Non_Interfering_Context;
                      Error_Msg_N
-                       ("volatile object cannot appear in this context"
-                        & " (SPARK RM 7.1.3(10))", N);
+                       ("volatile object cannot appear in this context '[[]']",
+                        N);
                   end if;
 
                   return Skip;
@@ -8036,9 +8037,9 @@ package body Sem_Res is
               and then
                 not Is_OK_Volatile_Context (Par, N, Check_Actuals => False)
             then
+               Error_Msg_Code := GEC_Volatile_Non_Interfering_Context;
                SPARK_Msg_N
-                 ("volatile object cannot appear in this context "
-                  & "(SPARK RM 7.1.3(10))", N);
+                 ("volatile object cannot appear in this context '[[]']", N);
             end if;
 
             --  Check for possible elaboration issues with respect to reads of
