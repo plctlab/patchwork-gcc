@@ -7351,6 +7351,8 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
 	 need the length.  */
       if (parmse.string_length != NULL_TREE
 	  && !sym->attr.is_bind_c
+	  && !(fsym && fsym->ts.type == BT_DERIVED
+	       && !strcmp (fsym->ts.u.derived->name, "c_ptr"))
 	  && !(fsym && UNLIMITED_POLY (fsym)))
 	vec_safe_push (stringargs, parmse.string_length);
 
