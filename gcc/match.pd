@@ -8560,10 +8560,11 @@ and,
  @0
  (if (uniform_vector_p (@0))))
 
-
 (simplify
  (vec_perm vec_same_elem_p@0 @0 @1)
- @0)
+ (if (known_eq (TYPE_VECTOR_SUBPARTS (TREE_TYPE (@0)),
+		TYPE_VECTOR_SUBPARTS (TREE_TYPE (@1))))
+  @0))
 
 /* Push VEC_PERM earlier if that may help FMA perception (PR101895).  */
 (simplify
