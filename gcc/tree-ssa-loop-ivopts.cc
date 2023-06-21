@@ -1175,6 +1175,9 @@ contain_complex_addr_expr (tree expr)
   return res;
 }
 
+static tree
+strip_offset (tree expr, poly_uint64_pod *offset = nullptr);
+
 /* Allocates an induction variable with given initial value BASE and step STEP
    for loop LOOP.  NO_OVERFLOW implies the iv doesn't overflow.  */
 
@@ -2942,12 +2945,16 @@ strip_offset_1 (tree expr, bool inside_addr, bool top_compref,
 
 /* Strips constant offsets from EXPR and stores them to OFFSET.  */
 
-tree
+static tree
 strip_offset (tree expr, poly_uint64_pod *offset)
 {
   poly_int64 off;
   tree core = strip_offset_1 (expr, false, false, &off);
-  *offset = off;
+  if (offset)
+    {
+      gcc_assert (POINTER_TYPE_P (expr));
+      *offset = off;
+    }
   return core;
 }
 
@@ -3512,7 +3519,6 @@ add_iv_candidate_derived_from_uses (struct ivopts_data *data)
 static void
 add_iv_candidate_for_use (struct ivopts_data *data, struct iv_use *use)
 {
-  poly_uint64 offset;
   tree base;
   struct iv *iv = use->iv;
   tree basetype = TREE_TYPE (iv->base);
@@ -3563,8 +3569,8 @@ add_iv_candidate_for_use (struct ivopts_data *data, struct iv_use *use)
 
   /* Record common candidate with constant offset stripped in base.
      Like the use itself, we also add candidate directly for it.  */
-  base = strip_offset (iv->base, &offset);
-  if (maybe_ne (offset, 0U) || base != iv->base)
+  base = strip_offset (iv->base);
+  if (base != iv->base)
     {
       record_common_cand (data, base, iv->step, use);
       add_candidate (data, base, iv->step, false, use);
@@ -3582,9 +3588,9 @@ add_iv_candidate_for_use (struct ivopts_data *data, struct iv_use *use)
       step = fold_convert (sizetype, step);
       record_common_cand (data, base, step, use);
       /* Also record common candidate with offset stripped.  */
-      base = strip_offset (base, &offset);
-      if (maybe_ne (offset, 0U))
-	record_common_cand (data, base, step, use);
+      tree alt_base = strip_offset (base);
+      if (alt_base != base)
+	record_common_cand (data, alt_base, step, use);
     }
 
   /* At last, add auto-incremental candidates.  Make such variables
