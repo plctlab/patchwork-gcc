@@ -15237,10 +15237,17 @@ tsubst_decl (tree t, tree args, tsubst_flags_t complain)
 		argvec = tsubst (DECL_TI_ARGS (t), args, complain, in_decl);
 		if (argvec != error_mark_node
 		    && PRIMARY_TEMPLATE_P (gen_tmpl)
-		    && TMPL_ARGS_DEPTH (args) >= TMPL_ARGS_DEPTH (argvec))
-		  /* We're fully specializing a template declaration, so
-		     we need to coerce the innermost arguments corresponding to
-		     the template.  */
+		    && TMPL_ARGS_DEPTH (args) >= TMPL_ARGS_DEPTH (argvec)
+		    && DECL_TEMPLATE_SPECIALIZATION (t))
+		  /* We're fully specializing an alias or variable template, so
+		     coerce the innermost arguments if necessary.  We expect
+		     instantiate_alias_template and finish_template_variable to
+		     already have done this relative to the primary template, in
+		     which case this coercion is unnecessary, but we can also
+		     get here when substituting a partial variable template
+		     specialization (directly from instantiate_template), in
+		     which case DECL_TEMPLATE_SPECIALIZATION is set and coercion
+		     is necessary.  */
 		  argvec = (coerce_template_parms
 			    (DECL_TEMPLATE_PARMS (gen_tmpl),
 			     argvec, tmpl, complain));
