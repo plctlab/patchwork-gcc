@@ -20950,6 +20950,32 @@ ix86_rtx_costs (rtx x, machine_mode mode, int outer_code_i, int opno,
       return false;
 
     case IOR:
+      if (GET_MODE_CLASS (mode) == MODE_VECTOR_INT)
+	{
+	  /* (ior (not ...) ...) can be a single insn in AVX512.  */
+	  if (GET_CODE (XEXP (x, 0)) == NOT && TARGET_AVX512F
+	      && (GET_MODE_SIZE (mode) == 64
+		  || (TARGET_AVX512VL
+		      && (GET_MODE_SIZE (mode) == 32
+			  || GET_MODE_SIZE (mode) == 16))))
+	    {
+	      rtx right = GET_CODE (XEXP (x, 1)) != NOT
+			  ? XEXP (x, 1) : XEXP (XEXP (x, 1), 0);
+
+	      *total = ix86_vec_cost (mode, cost->sse_op)
+		       + rtx_cost (XEXP (XEXP (x, 0), 0), mode,
+				   outer_code, opno, speed)
+		       + rtx_cost (right, mode, outer_code, opno, speed);
+	      return true;
+	    }
+	  *total = ix86_vec_cost (mode, cost->sse_op);
+	}
+      else if (GET_MODE_SIZE (mode) > UNITS_PER_WORD)
+	*total = cost->add * 2;
+      else
+	*total = cost->add;
+      return false;
+
     case XOR:
       if (GET_MODE_CLASS (mode) == MODE_VECTOR_INT)
 	*total = ix86_vec_cost (mode, cost->sse_op);
@@ -20970,11 +20996,20 @@ ix86_rtx_costs (rtx x, machine_mode mode, int outer_code_i, int opno,
 	  /* pandn is a single instruction.  */
 	  if (GET_CODE (XEXP (x, 0)) == NOT)
 	    {
+	      rtx right = XEXP (x, 1);
+
+	      /* (and (not ...) (not ...)) can be a single insn in AVX512.  */
+	      if (GET_CODE (right) == NOT && TARGET_AVX512F
+		  && (GET_MODE_SIZE (mode) == 64
+		      || (TARGET_AVX512VL
+			  && (GET_MODE_SIZE (mode) == 32
+			      || GET_MODE_SIZE (mode) == 16))))
+		right = XEXP (right, 0);
+
 	      *total = ix86_vec_cost (mode, cost->sse_op)
 		       + rtx_cost (XEXP (XEXP (x, 0), 0), mode,
 				   outer_code, opno, speed)
-		       + rtx_cost (XEXP (x, 1), mode,
-				   outer_code, opno, speed);
+		       + rtx_cost (right, mode, outer_code, opno, speed);
 	      return true;
 	    }
 	  else if (GET_CODE (XEXP (x, 1)) == NOT)
@@ -21032,8 +21067,25 @@ ix86_rtx_costs (rtx x, machine_mode mode, int outer_code_i, int opno,
 
     case NOT:
       if (GET_MODE_CLASS (mode) == MODE_VECTOR_INT)
-	// vnot is pxor -1.
-	*total = ix86_vec_cost (mode, cost->sse_op) + 1;
+	{
+	  /* (not (xor ...)) can be a single insn in AVX512.  */
+	  if (GET_CODE (XEXP (x, 0)) == XOR && TARGET_AVX512F
+	      && (GET_MODE_SIZE (mode) == 64
+		  || (TARGET_AVX512VL
+		      && (GET_MODE_SIZE (mode) == 32
+			  || GET_MODE_SIZE (mode) == 16))))
+	    {
+	      *total = ix86_vec_cost (mode, cost->sse_op)
+		       + rtx_cost (XEXP (XEXP (x, 0), 0), mode,
+				   outer_code, opno, speed)
+		       + rtx_cost (XEXP (XEXP (x, 0), 1), mode,
+				   outer_code, opno, speed);
+	      return true;
+	    }
+
+	  // vnot is pxor -1.
+	  *total = ix86_vec_cost (mode, cost->sse_op) + 1;
+	}
       else if (GET_MODE_SIZE (mode) > UNITS_PER_WORD)
 	*total = cost->add * 2;
       else
