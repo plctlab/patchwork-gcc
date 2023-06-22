@@ -411,7 +411,8 @@ acc_map_data (void *h, void *d, size_t s)
       assert (n->refcount == 1);
       assert (n->dynamic_refcount == 0);
       /* Special reference counting behavior.  */
-      n->refcount = REFCOUNT_INFINITY;
+      n->refcount = REFCOUNT_ACC_MAP_DATA;
+      n->dynamic_refcount = 1;
 
       if (profiling_p)
 	{
@@ -460,7 +461,7 @@ acc_unmap_data (void *h)
      the different 'REFCOUNT_INFINITY' cases, or simply separate
      'REFCOUNT_INFINITY' values per different usage ('REFCOUNT_ACC_MAP_DATA'
      etc.)?  */
-  else if (n->refcount != REFCOUNT_INFINITY)
+  else if (n->refcount != REFCOUNT_ACC_MAP_DATA)
     {
       gomp_mutex_unlock (&acc_dev->lock);
       gomp_fatal ("refusing to unmap block [%p,+%d] that has not been mapped"
@@ -519,7 +520,8 @@ goacc_map_var_existing (struct gomp_device_descr *acc_dev, void *hostaddr,
     }
 
   assert (n->refcount != REFCOUNT_LINK);
-  if (n->refcount != REFCOUNT_INFINITY)
+  if (n->refcount != REFCOUNT_INFINITY
+      && n->refcount != REFCOUNT_ACC_MAP_DATA)
     n->refcount++;
   n->dynamic_refcount++;
 
@@ -683,6 +685,7 @@ goacc_exit_datum_1 (struct gomp_device_descr *acc_dev, void *h, size_t s,
 
   assert (n->refcount != REFCOUNT_LINK);
   if (n->refcount != REFCOUNT_INFINITY
+      && n->refcount != REFCOUNT_ACC_MAP_DATA
       && n->refcount < n->dynamic_refcount)
     {
       gomp_mutex_unlock (&acc_dev->lock);
@@ -691,15 +694,27 @@ goacc_exit_datum_1 (struct gomp_device_descr *acc_dev, void *h, size_t s,
 
   if (finalize)
     {
-      if (n->refcount != REFCOUNT_INFINITY)
+      if (n->refcount != REFCOUNT_INFINITY
+	  && n->refcount != REFCOUNT_ACC_MAP_DATA)
 	n->refcount -= n->dynamic_refcount;
-      n->dynamic_refcount = 0;
+
+      if (n->refcount == REFCOUNT_ACC_MAP_DATA)
+	/* Mappings created by acc_map_data are returned to initial
+	   dynamic_refcount of 1. Can only be deleted by acc_unmap_data.  */
+	n->dynamic_refcount = 1;
+      else
+	n->dynamic_refcount = 0;
     }
   else if (n->dynamic_refcount)
     {
-      if (n->refcount != REFCOUNT_INFINITY)
+      if (n->refcount != REFCOUNT_INFINITY
+	  && n->refcount != REFCOUNT_ACC_MAP_DATA)
 	n->refcount--;
-      n->dynamic_refcount--;
+
+      /* When mapping is created by acc_map_data, dynamic_refcount must be
+	 maintained at >= 1.  */
+      if (n->refcount != REFCOUNT_ACC_MAP_DATA || n->dynamic_refcount > 1)
+	n->dynamic_refcount--;
     }
 
   if (n->refcount == 0)
