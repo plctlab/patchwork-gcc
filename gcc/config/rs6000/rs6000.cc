@@ -10164,6 +10164,35 @@ rs6000_conditional_register_usage (void)
   if (DEFAULT_ABI == ABI_AIX || DEFAULT_ABI == ABI_ELFv2)
     call_used_regs[2] = 0;
 
+  /* The TOC register is not needed for functions using the PC-relative ABI
+     extension, so make it available for register allocation as a volatile
+     register.  */
+  if (FIXED_R2 && rs6000_pcrel_p ())
+    {
+      bool cli_fixedr2 = false;
+
+      /* Verify the user has not explicitly asked for GPR2 to be fixed.  */
+      if (common_deferred_options)
+	{
+	  unsigned int idx;
+	  cl_deferred_option *opt;
+	  vec<cl_deferred_option> v;
+	  v = *((vec<cl_deferred_option> *) common_deferred_options);
+	  FOR_EACH_VEC_ELT (v, idx, opt)
+	    if (opt->opt_index == OPT_ffixed_ && strcmp (opt->arg,"r2") == 0)
+	      {
+		cli_fixedr2 = true;
+		break;
+	      }
+	}
+
+      /* If GPR2 is not FIXED (eg, not a TOC register), then it is volatile.  */
+      if (!cli_fixedr2)
+	{
+	  fixed_regs[2] = 0;
+	  call_used_regs[2] = 1;
+	}
+    }
   if (DEFAULT_ABI == ABI_V4 && flag_pic == 2)
     fixed_regs[RS6000_PIC_OFFSET_TABLE_REGNUM] = 1;
 
