@@ -323,7 +323,7 @@ handle_ptx_version_option (void)
 
   if (ptx_version_option < first)
     error ("PTX version (%<-mptx%>) needs to be at least %s to support selected"
-	   " %<-misa%> (sm_%s)", ptx_version_to_string (first),
+	   " %<-misa sm_%s%>", ptx_version_to_string (first),
 	   sm_version_to_string ((enum ptx_isa)ptx_isa_option));
 }
 
