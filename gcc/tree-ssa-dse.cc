@@ -174,6 +174,23 @@ initialize_ao_ref_for_dse (gimple *stmt, ao_ref *write, bool may_def_ok = false)
 	      return true;
 	    }
 	  break;
+	  case IFN_LEN_MASK_STORE: {
+	    /* We cannot initialize a must-def ao_ref (in all cases) but we
+	       can provide a may-def variant.  */
+	    if (may_def_ok)
+	      {
+		tree len_size
+		  = int_const_binop (MINUS_EXPR, gimple_call_arg (stmt, 2),
+				     gimple_call_arg (stmt, 5));
+		tree mask_size
+		  = TYPE_SIZE_UNIT (TREE_TYPE (gimple_call_arg (stmt, 4)));
+		tree size = int_const_binop (MAX_EXPR, len_size, mask_size);
+		ao_ref_init_from_ptr_and_size (write, gimple_call_arg (stmt, 0),
+					       size);
+		return true;
+	      }
+	    break;
+	  }
 	default:;
 	}
     }
@@ -1483,6 +1500,7 @@ dse_optimize_stmt (function *fun, gimple_stmt_iterator *gsi, sbitmap live_bytes)
 	{
 	case IFN_LEN_STORE:
 	case IFN_MASK_STORE:
+	case IFN_LEN_MASK_STORE:
 	  {
 	    enum dse_store_status store_status;
 	    store_status = dse_classify_store (&ref, stmt, false, live_bytes);
