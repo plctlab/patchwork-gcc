@@ -605,11 +605,12 @@ ix86_can_inline_p (tree caller, tree callee)
 	       != (callee_opts->x_target_flags & ~always_inline_safe_mask))
     ret = false;
 
-  /* See if arch, tune, etc. are the same.  */
-  else if (caller_opts->arch != callee_opts->arch)
-    ret = false;
-
-  else if (!always_inline && caller_opts->tune != callee_opts->tune)
+  /* Do not inline when specified perfer-vector-width mismatched between
+     callee and caller.  */
+  else if ((callee_opts->x_prefer_vector_width_type != PVW_NONE
+	   && caller_opts->x_prefer_vector_width_type != PVW_NONE)
+	   && callee_opts->x_prefer_vector_width_type
+	      != caller_opts->x_prefer_vector_width_type)
     ret = false;
 
   else if (caller_opts->x_ix86_fpmath != callee_opts->x_ix86_fpmath
