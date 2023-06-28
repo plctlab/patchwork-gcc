@@ -1121,6 +1121,15 @@ extern bool c_cpp_diagnostic (cpp_reader *, enum cpp_diagnostic_level,
      ATTRIBUTE_GCC_DIAG(5,0);
 extern int c_common_has_attribute (cpp_reader *, bool);
 extern int c_common_has_builtin (cpp_reader *);
+extern int c_common_has_feature (cpp_reader *, bool);
+extern bool has_feature_p (const char *, bool);
+
+typedef bool (*hf_predicate) (bool, const void *);
+extern void c_common_register_feature (const char *,
+				       hf_predicate,
+				       const void *);
+extern void c_register_features ();
+extern void cp_register_features ();
 
 extern bool parse_optimize_options (tree, bool);
 

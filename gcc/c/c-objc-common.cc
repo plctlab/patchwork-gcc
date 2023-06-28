@@ -34,6 +34,49 @@ along with GCC; see the file COPYING3.  If not see
 static bool c_tree_printer (pretty_printer *, text_info *, const char *,
 			    int, bool, bool, bool, bool *, const char **);
 
+struct c_feature_info
+{
+  const char *ident;
+  const int *enable_flag;
+};
+
+static const c_feature_info c_feature_table[] =
+{
+  { "c_alignas", &flag_isoc11 },
+  { "c_alignof", &flag_isoc11 },
+  { "c_atomic", &flag_isoc11 },
+  { "c_generic_selections", &flag_isoc11 },
+  { "c_static_assert", &flag_isoc11 },
+  { "c_thread_local", &flag_isoc11 },
+
+  /* XXX: Binary literals are available as a standard feature in
+     C2x.  They are standardised in C++14 and available as an extension
+     in all C versions.  Would it make more sense to have
+     cxx_binary_literals always report as an extension (in C) and add a
+     new c_binary_literals that reports as a feature for -std=c2x and an
+     extension below that?  */
+  { "cxx_binary_literals", &flag_isoc2x }
+};
+
+static bool
+c_has_feature (bool strict_p, const void *arg)
+{
+  auto info = static_cast <const c_feature_info *>(arg);
+  return !info->enable_flag || !strict_p || *info->enable_flag;
+}
+
+void
+c_register_features ()
+{
+  for (unsigned i = 0; i < ARRAY_SIZE (c_feature_table); i++)
+    {
+      const c_feature_info *info = c_feature_table + i;
+      c_common_register_feature (info->ident,
+				 c_has_feature,
+				 static_cast <const void *>(info));
+    }
+}
+
 bool
 c_missing_noreturn_ok_p (tree decl)
 {

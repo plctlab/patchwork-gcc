@@ -311,6 +311,34 @@ const struct fname_var_t fname_vars[] =
   {NULL, 0, 0},
 };
 
+enum
+{
+  HF_FLAG_EXT = 1,	/* Available only as an extension.  */
+  HF_FLAG_SANITIZE = 2, /* Availability depends on sanitizer flags.  */
+};
+
+struct hf_feature_info
+{
+  const char *ident;
+  unsigned flags;
+  unsigned mask;
+};
+
+static const hf_feature_info has_feature_table[] =
+{
+  { "address_sanitizer",	    HF_FLAG_SANITIZE, SANITIZE_ADDRESS },
+  { "thread_sanitizer",		    HF_FLAG_SANITIZE, SANITIZE_THREAD },
+  { "leak_sanitizer",		    HF_FLAG_SANITIZE, SANITIZE_LEAK },
+  { "hwaddress_sanitizer",	    HF_FLAG_SANITIZE, SANITIZE_HWADDRESS },
+  { "undefined_behavior_sanitizer", HF_FLAG_SANITIZE, SANITIZE_UNDEFINED },
+  { "attribute_deprecated_with_message",  0, 0 },
+  { "attribute_unavailable_with_message", 0, 0 },
+  { "enumerator_attributes",		  0, 0 },
+  { "tls", 0, 0 },
+  { "gnu_asm_goto_with_outputs",	  HF_FLAG_EXT, 0 },
+  { "gnu_asm_goto_with_outputs_full",	  HF_FLAG_EXT, 0 }
+};
+
 /* Global visibility options.  */
 struct visibility_flags visibility_options;
 
@@ -9543,6 +9571,68 @@ c_strict_flex_array_level_of (tree array_field)
       strict_flex_array_level = attr_strict_flex_array_level;
     }
   return strict_flex_array_level;
+}
+
+struct hf_table_entry
+{
+  hf_predicate predicate;
+  const void *info;
+};
+
+static bool hf_generic_predicate (bool strict_p, const void *param)
+{
+  auto info = static_cast <const hf_feature_info *>(param);
+  if ((info->flags & HF_FLAG_EXT) && strict_p)
+    return false;
+
+  if (info->flags & HF_FLAG_SANITIZE)
+    return flag_sanitize & info->mask;
+
+  return true;
+}
+
+typedef hash_map <tree, hf_table_entry> feature_map_t;
+feature_map_t *feature_map;
+
+void
+c_common_register_feature (const char *name,
+			   hf_predicate pred,
+			   const void *info)
+{
+  hf_table_entry e { pred, info };
+  bool dup = feature_map->put (get_identifier (name), e);
+  gcc_checking_assert (!dup);
+}
+
+static void
+init_has_feature ()
+{
+  feature_map = new feature_map_t;
+  gcc_assert (feature_map);
+
+  for (unsigned i = 0; i < ARRAY_SIZE (has_feature_table); i++)
+    {
+      const hf_feature_info *info = has_feature_table + i;
+      c_common_register_feature (info->ident,
+				 hf_generic_predicate,
+				 static_cast <const void *>(info));
+    }
+
+  /* Register language-specific features.  */
+  lang_hooks.register_features ();
+}
+
+bool
+has_feature_p (const char *feat, bool strict_p)
+{
+  if (!feature_map)
+    init_has_feature ();
+
+  const hf_table_entry *e = feature_map->get (get_identifier (feat));
+  if (!e)
+    return false;
+
+  return e->predicate (strict_p, e->info);
 }
 
 #include "gt-c-family-c-common.h"

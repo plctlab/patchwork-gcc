@@ -49,6 +49,9 @@ enum c_language_kind c_language = clk_c;
 #undef LANG_HOOKS_GET_SARIF_SOURCE_LANGUAGE
 #define LANG_HOOKS_GET_SARIF_SOURCE_LANGUAGE c_get_sarif_source_language
 
+#undef LANG_HOOKS_REGISTER_FEATURES
+#define LANG_HOOKS_REGISTER_FEATURES c_register_features
+
 /* Each front end provides its own lang hook initializer.  */
 struct lang_hooks lang_hooks = LANG_HOOKS_INITIALIZER;
 

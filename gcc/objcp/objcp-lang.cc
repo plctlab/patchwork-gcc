@@ -30,6 +30,7 @@ along with GCC; see the file COPYING3.  If not see
 
 enum c_language_kind c_language = clk_objcxx;
 static void objcxx_init_ts (void);
+static void objcxx_register_features ();
 
 /* Lang hooks common to C++ and ObjC++ are declared in cp/cp-objcp-common.h;
    consequently, there should be very few hooks below.  */
@@ -42,6 +43,8 @@ static void objcxx_init_ts (void);
 #define LANG_HOOKS_GIMPLIFY_EXPR objc_gimplify_expr
 #undef LANG_HOOKS_INIT_TS
 #define LANG_HOOKS_INIT_TS objcxx_init_ts
+#undef LANG_HOOKS_REGISTER_FEATURES
+#define LANG_HOOKS_REGISTER_FEATURES objcxx_register_features
 
 /* Each front end provides its own lang hook initializer.  */
 struct lang_hooks lang_hooks = LANG_HOOKS_INITIALIZER;
@@ -85,6 +88,13 @@ objcxx_init_ts (void)
 {
   objc_common_init_ts ();
   cp_common_init_ts ();
+}
+
+static void
+objcxx_register_features ()
+{
+  objc_common_register_features ();
+  cp_register_features ();
 }
 
 #include "gtype-objcp.h"

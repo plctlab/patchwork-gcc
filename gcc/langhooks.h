@@ -643,6 +643,8 @@ struct lang_hooks
      languages.  */
   const char *(*get_sarif_source_language) (const char *filename);
 
+  void (*register_features) ();
+
   /* Whenever you add entries here, make sure you adjust langhooks-def.h
      and langhooks.cc accordingly.  */
 };

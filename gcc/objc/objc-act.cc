@@ -10359,5 +10359,51 @@ objc_common_tree_size (enum tree_code code)
     }
 }
 
+typedef bool (*objc_feature_p)();
+
+struct objc_feature_info
+{
+  const char *ident;
+  objc_feature_p predicate;
+
+  objc_feature_info (const char *name) : ident (name) {}
+  objc_feature_info (const char *name, objc_feature_p p)
+    : ident (name), predicate (p) {}
+
+  bool has_feature (bool) const
+    {
+      return predicate ? predicate () : true;
+    }
+};
+
+static bool objc_nonfragile_abi_p ()
+{
+  return flag_next_runtime && flag_objc_abi >= 2;
+}
+
+static bool objc_has_feature (bool strict_p, const void *arg)
+{
+  auto info = static_cast <const objc_feature_info *>(arg);
+  return info->has_feature (strict_p);
+}
+
+static const objc_feature_info objc_features[] =
+{
+  { "objc_default_synthesize_properties" },
+  { "objc_instancetype" },
+  { "objc_nonfragile_abi", objc_nonfragile_abi_p }
+};
+
+void
+objc_common_register_features ()
+{
+  for (unsigned i = 0; i < ARRAY_SIZE (objc_features); i++)
+    {
+      const objc_feature_info *info = objc_features + i;
+      c_common_register_feature (info->ident,
+				 objc_has_feature,
+				 static_cast <const void *>(info));
+    }
+}
 
 #include "gt-objc-objc-act.h"
