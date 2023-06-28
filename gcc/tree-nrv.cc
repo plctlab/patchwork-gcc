@@ -256,6 +256,14 @@ pass_nrv::execute (function *fun)
 	      gsi_remove (&gsi, true);
 	      release_defs (stmt);
 	    }
+	  /* If this is a CLOBBER of VAR, remove it.  */
+	  else if (gimple_clobber_p (stmt)
+		   && gimple_assign_lhs (stmt) == found)
+	    {
+	      unlink_stmt_vdef (stmt);
+	      gsi_remove (&gsi, true);
+	      release_defs (stmt);
+	    }
 	  else
 	    {
 	      struct walk_stmt_info wi;
