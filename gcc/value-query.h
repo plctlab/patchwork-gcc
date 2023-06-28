@@ -137,6 +137,16 @@ get_range_query (const struct function *fun)
   return (fun && fun->x_range_query) ? fun->x_range_query : &global_ranges;
 }
 
+/* Return true if there is range for "X" expression at "S" statement,
+   and the range is not varying and not undefined.   */
+
+inline bool
+get_range (vrange &r, tree x, gimple *s = NULL)
+{
+  return get_range_query (cfun)->range_of_expr (r, x, s) && !r.varying_p ()
+	 && !r.undefined_p ();
+}
+
 // Query the global range of NAME in function F.  Default to cfun.
 extern void gimple_range_global (vrange &v, tree name,
 				 struct function *f = cfun);

@@ -9349,3 +9349,135 @@ gimple_stmt_integer_valued_real_p (gimple *stmt, int depth)
       return false;
     }
 }
+
+/* Return true if "X * Y" may be overflow on integer TYPE.  */
+
+bool
+mult_without_overflow_p (tree x, tree y, tree type)
+{
+  gcc_assert (INTEGRAL_TYPE_P (type));
+
+  if (TYPE_OVERFLOW_UNDEFINED (type))
+    return true;
+
+  value_range vr0;
+  value_range vr1;
+  if (!(get_range (vr0, x) && get_range (vr1, y)))
+    return false;
+
+  wi::overflow_type ovf;
+  signop sgn = TYPE_SIGN (type);
+  wide_int wmax0 = vr0.upper_bound ();
+  wide_int wmax1 = vr1.upper_bound ();
+  wi::mul (wmax0, wmax1, sgn, &ovf);
+  if (ovf != wi::OVF_NONE)
+    return false;
+
+  if (TYPE_UNSIGNED (type))
+    return true;
+
+  wide_int wmin0 = vr0.lower_bound ();
+  wide_int wmin1 = vr1.lower_bound ();
+  wi::mul (wmin0, wmin1, sgn, &ovf);
+  if (ovf != wi::OVF_NONE)
+    return false;
+
+  wi::mul (wmin0, wmax1, sgn, &ovf);
+  if (ovf != wi::OVF_NONE)
+    return false;
+
+  wi::mul (wmax0, wmin1, sgn, &ovf);
+  if (ovf != wi::OVF_NONE)
+    return false;
+
+  return true;
+}
+
+/* Return true if "X + Y" may be overflow on integer TYPE.  */
+
+bool
+plus_without_overflow_p (tree x, tree y, tree type)
+{
+  gcc_assert (INTEGRAL_TYPE_P (type));
+
+  if (TYPE_OVERFLOW_UNDEFINED (type))
+    return true;
+
+  value_range vr0;
+  value_range vr1;
+  if (!(get_range (vr0, x) && get_range (vr1, y)))
+    return false;
+
+  wi::overflow_type ovf;
+  signop sgn = TYPE_SIGN (type);
+  wide_int wmax0 = vr0.upper_bound ();
+  wide_int wmax1 = vr1.upper_bound ();
+  wi::add (wmax0, wmax1, sgn, &ovf);
+  if (ovf != wi::OVF_NONE)
+    return false;
+
+  if (TYPE_UNSIGNED (type))
+    return true;
+
+  wide_int wmin0 = vr0.lower_bound ();
+  wide_int wmin1 = vr1.lower_bound ();
+  wi::add (wmin0, wmin1, sgn, &ovf);
+  if (ovf != wi::OVF_NONE)
+    return false;
+
+  return true;
+}
+
+/* Return true if "X - Y" may be overflow on integer TYPE.  */
+
+bool
+minus_without_overflow_p (tree x, tree y, tree type)
+{
+  gcc_assert (INTEGRAL_TYPE_P (type));
+
+  if (TYPE_OVERFLOW_UNDEFINED (type))
+    return true;
+
+  value_range vr0;
+  value_range vr1;
+  if (!(get_range (vr0, x) && get_range (vr1, y)))
+    return false;
+
+  wi::overflow_type ovf;
+  signop sgn = TYPE_SIGN (type);
+  wide_int wmin0 = vr0.lower_bound ();
+  wide_int wmax1 = vr1.upper_bound ();
+  wi::sub (wmin0, wmax1, sgn, &ovf);
+  if (ovf != wi::OVF_NONE)
+    return false;
+
+  if (TYPE_UNSIGNED (type))
+    return true;
+
+  wide_int wmax0 = vr0.upper_bound ();
+  wide_int wmin1 = vr1.lower_bound ();
+  wi::sub (wmax0, wmin1, sgn, &ovf);
+  if (ovf != wi::OVF_NONE)
+    return false;
+
+  return true;
+}
+
+/* Return true if "X" and "Y" have the same sign or zero.  */
+
+bool
+same_sign_p (tree x, tree y, tree type)
+{
+  gcc_assert (INTEGRAL_TYPE_P (type));
+
+  if (TYPE_UNSIGNED (type))
+    return true;
+
+  value_range vr0;
+  value_range vr1;
+  if (!(get_range (vr0, x) && get_range (vr1, y)))
+    return false;
+
+  return (vr0.nonnegative_p () && vr1.nonnegative_p ())
+	 || (vr0.nonpositive_p () && vr1.nonpositive_p ());
+}

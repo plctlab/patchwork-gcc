@@ -942,6 +942,60 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
 #endif
    ))))
 
+#if GIMPLE
+(for div (trunc_div exact_div)
+ /* Simplify (t + M*N) / N -> t / N + M.  */
+ (simplify
+  (div (plus:c@4 @0 (mult:c@3 @1 @2)) @2)
+  (if (INTEGRAL_TYPE_P (type)
+       && mult_without_overflow_p (@1, @2, type)
+       && plus_without_overflow_p (@0, @3, type)
+       && same_sign_p (@0, @4, type))
+  (plus (div @0 @2) @1)))
+
+ /* Simplify (t - M*N) / N -> t / N - M.  */
+ (simplify
+  (div (minus@4 @0 (mult:c@3 @1 @2)) @2)
+  (if (INTEGRAL_TYPE_P (type)
+       && mult_without_overflow_p (@1, @2, type)
+       && minus_without_overflow_p (@0, @3, type)
+       && same_sign_p (@0, @4, type))
+  (minus (div @0 @2) @1))))
+
+/* Simplify
+   (t + C) / N -> t / N + C / N where C is multiple of N.
+   (t + C) >> N -> t >> N + C>>N if low N bits of C is 0.  */
+(for op (trunc_div exact_div rshift)
+ (simplify
+  (op (plus@3 @0 INTEGER_CST@1) INTEGER_CST@2)
+   (with
+    {
+      wide_int c = wi::to_wide (@1);
+      wide_int n = wi::to_wide (@2);
+      bool neg_c = TYPE_UNSIGNED (type) && c.sign_mask () < 0;
+      c = neg_c ? -c : c;
+      bool ok = INTEGRAL_TYPE_P (type);
+      if (ok)
+	ok = code == RSHIFT_EXPR ? wi::ctz (c) >= n.to_shwi ()
+				 : wi::multiple_of_p (c, n, TYPE_SIGN (type));
+      if (ok)
+	ok = neg_c
+	       ? minus_without_overflow_p (@0, wide_int_to_tree (type, c), type)
+	       : plus_without_overflow_p (@0, @1, type);
+      if (ok)
+	ok = same_sign_p (@0, @3, type);
+    }
+   (if (ok)
+   (with
+    {
+      wide_int m;
+      m = op == RSHIFT_EXPR ? wi::rshift (c, n, TYPE_SIGN (type))
+			    : wi::div_trunc (c, n, TYPE_SIGN (type));
+      m = neg_c ? -m : m;
+    }
+   (plus (op @0 @2) { wide_int_to_tree(type, m); }))))))
+#endif
+
 (for op (negate abs)
  /* Simplify cos(-x) and cos(|x|) -> cos(x).  Similarly for cosh.  */
  (for coss (COS COSH)
