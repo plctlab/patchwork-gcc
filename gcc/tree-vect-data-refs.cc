@@ -472,6 +472,8 @@ vect_analyze_data_ref_dependence (struct data_dependence_relation *ddr,
 			     "dependence distance == 0 between %T and %T\n",
 			     DR_REF (dra), DR_REF (drb));
 
+	  loop_vinfo->shared->has_zero_dep_dist = true;
+
 	  /* When we perform grouped accesses and perform implicit CSE
 	     by detecting equal accesses and doing disambiguation with
 	     runtime alias tests like for

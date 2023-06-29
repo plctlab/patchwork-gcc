@@ -412,6 +412,9 @@ public:
   /* The number of scalar stmts.  */
   unsigned n_stmts;
 
+  /* Whether there's a dependence with zero distance.  */
+  bool has_zero_dep_dist;
+
   /* All data references.  Freed by free_data_refs, so not an auto_vec.  */
   vec<data_reference_p> datarefs;
   vec<data_reference> datarefs_copy;

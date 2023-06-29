@@ -1836,6 +1836,16 @@ check_load_store_for_partial_vectors (loop_vec_info loop_vinfo, tree vectype,
       using_partial_vectors_p = true;
     }
 
+  if (loop_vinfo->shared->has_zero_dep_dist
+      && TYPE_VECTOR_SUBPARTS (vectype).is_constant ())
+    {
+      if (dump_enabled_p ())
+	dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location,
+			 "disabling partial vectors because of possible "
+			 "STLF issues\n");
+      LOOP_VINFO_CAN_USE_PARTIAL_VECTORS_P (loop_vinfo) = false;
+    }
+
   if (!using_partial_vectors_p)
     {
       if (dump_enabled_p ())
