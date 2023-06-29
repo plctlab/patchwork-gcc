@@ -572,6 +572,10 @@ maybe_instantiate_nsdmi_init (tree member, tsubst_flags_t complain)
   /* tsubst_decl uses void_node to indicate an uninstantiated DMI.  */
   if (init == void_node)
     {
+      /* The result of NSDMI instantiation should be independent of
+	 the tsubst flags we're given.  */
+      complain &= tf_warning_or_error;
+
       init = DECL_INITIAL (DECL_TI_TEMPLATE (member));
       location_t expr_loc
 	= cp_expr_loc_or_loc (init, DECL_SOURCE_LOCATION (member));
