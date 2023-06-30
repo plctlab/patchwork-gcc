@@ -375,6 +375,15 @@ namespace std _GLIBCXX_VISIBILITY(default)
 				      "(const std::string&):"
 				      " unsupported token"));
 
+#if defined ENOSYS
+    const int unsupported = ENOSYS;
+#elif defined ENOTSUP
+    const int unsupported = ENOTSUP;
+#else
+    const int unsupported = 0;
+#endif
+    int err = 0;
+
 #ifdef _GLIBCXX_USE_CRT_RAND_S
     if (which & rand_s)
     {
@@ -409,6 +418,7 @@ namespace std _GLIBCXX_VISIBILITY(default)
 	      return;
 	    }
 	}
+      err = unsupported;
     }
 #endif // USE_RDSEED
 
@@ -429,6 +439,7 @@ namespace std _GLIBCXX_VISIBILITY(default)
 	      return;
 	    }
 	}
+      err = unsupported;
     }
 #endif // USE_RDRAND
 
@@ -440,6 +451,7 @@ namespace std _GLIBCXX_VISIBILITY(default)
 	    _M_func = &__ppc_darn;
 	    return;
 	  }
+	err = unsupported;
       }
 #endif // USE_DARN
 
@@ -460,6 +472,7 @@ namespace std _GLIBCXX_VISIBILITY(default)
 	    _M_func = &__libc_getentropy;
 	    return;
 	  }
+	err = unsupported;
       }
 #endif // _GLIBCXX_HAVE_GETENTROPY
 
@@ -479,6 +492,7 @@ namespace std _GLIBCXX_VISIBILITY(default)
       if (_M_file)
 	return;
 #endif // USE_POSIX_FILE_IO
+      err = errno;
     }
 #endif // _GLIBCXX_USE_DEV_RANDOM
 
@@ -495,9 +509,12 @@ namespace std _GLIBCXX_VISIBILITY(default)
     }
 #endif
 
-    std::__throw_runtime_error(
-	__N("random_device::random_device(const std::string&):"
-	    " device not available"));
+    auto msg = __N("random_device::random_device(const std::string&):"
+		   " device not available");
+    if (err)
+      std::__throw_syserr(err, msg);
+    else
+      std::__throw_runtime_error(msg);
 #endif // USE_MT19937
   }
 
