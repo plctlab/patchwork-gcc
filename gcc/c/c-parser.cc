@@ -13339,6 +13339,11 @@ c_parser_pragma (c_parser *parser, enum pragma_context context, bool *if_p)
 enum cpp_ttype
 pragma_lex (tree *value, location_t *loc)
 {
+  if (flag_preprocess_only)
+    /* Arrange for the preprocessor to see the tokens we're about to read,
+       since it won't see them later.  */
+    cpp_get_callbacks (parse_in)->on_token_lex = c_pp_stream_token;
+
   c_token *tok = c_parser_peek_token (the_parser);
   enum cpp_ttype ret = tok->type;
 
@@ -13357,7 +13362,27 @@ pragma_lex (tree *value, location_t *loc)
       c_parser_consume_token (the_parser);
     }
 
+  cpp_get_callbacks (parse_in)->on_token_lex = nullptr;
   return ret;
+}
+
+void
+pragma_lex_discard_to_eol ()
+{
+  if (flag_preprocess_only)
+    /* Arrange for the preprocessor to see the tokens we're about to read,
+       since it won't see them later.  */
+    cpp_get_callbacks (parse_in)->on_token_lex = c_pp_stream_token;
+
+  cpp_ttype type;
+  do
+    {
+      type = c_parser_peek_token (the_parser)->type;
+      gcc_assert (type != CPP_EOF);
+      c_parser_consume_token (the_parser);
+    } while (type != CPP_PRAGMA_EOL);
+
+  cpp_get_callbacks (parse_in)->on_token_lex = nullptr;
 }
 
 static void
@@ -24652,6 +24677,15 @@ c_parse_file (void)
 
   c_parser_translation_unit (the_parser);
   the_parser = NULL;
+}
+
+void
+c_init_preprocess (void)
+{
+  /* Create a parser for use by pragma_lex during preprocessing.  */
+  the_parser = ggc_alloc<c_parser> ();
+  memset (the_parser, 0, sizeof (c_parser));
+  the_parser->tokens = &the_parser->tokens_buf[0];
 }
 
 /* Parse the body of a function declaration marked with "__RTL".

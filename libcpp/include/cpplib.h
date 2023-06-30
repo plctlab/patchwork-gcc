@@ -784,6 +784,10 @@ struct cpp_callbacks
      cpp_buffer containing the translation if translating.  */
   char *(*translate_include) (cpp_reader *, line_maps *, location_t,
 			      const char *path);
+
+  /* Called when cpp_get_token() / cpp_get_token_with_location()
+     have produced a token.  */
+  void (*on_token_lex) (cpp_reader *, const cpp_token *, location_t);
 };
 
 #ifdef VMS

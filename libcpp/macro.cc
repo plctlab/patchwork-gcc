@@ -3135,6 +3135,9 @@ cpp_get_token_1 (cpp_reader *pfile, location_t *location)
 	}
     }
 
+  if (pfile->cb.on_token_lex)
+    pfile->cb.on_token_lex (pfile, result,
+			    location ? *location : result->src_loc);
   return result;
 }
 
