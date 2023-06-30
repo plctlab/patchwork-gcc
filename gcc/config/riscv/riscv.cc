@@ -643,7 +643,7 @@ riscv_build_integer (struct riscv_integer_op *codes, HOST_WIDE_INT value,
       && (value > INT32_MAX || value < INT32_MIN))
     {
       unsigned HOST_WIDE_INT loval = sext_hwi (value, 32);
-      unsigned HOST_WIDE_INT hival = sext_hwi ((value - loval) >> 32, 32);
+      unsigned HOST_WIDE_INT hival = sext_hwi (value >> 32, 32);
       struct riscv_integer_op alt_codes[RISCV_MAX_INTEGER_OPS];
       struct riscv_integer_op hicode[RISCV_MAX_INTEGER_OPS];
       int hi_cost, lo_cost;
@@ -674,7 +674,7 @@ riscv_split_integer_cost (HOST_WIDE_INT val)
 {
   int cost;
   unsigned HOST_WIDE_INT loval = sext_hwi (val, 32);
-  unsigned HOST_WIDE_INT hival = sext_hwi ((val - loval) >> 32, 32);
+  unsigned HOST_WIDE_INT hival = sext_hwi (val >> 32, 32);
   struct riscv_integer_op codes[RISCV_MAX_INTEGER_OPS];
 
   cost = 2 + riscv_build_integer (codes, loval, VOIDmode);
@@ -700,7 +700,7 @@ static rtx
 riscv_split_integer (HOST_WIDE_INT val, machine_mode mode)
 {
   unsigned HOST_WIDE_INT loval = sext_hwi (val, 32);
-  unsigned HOST_WIDE_INT hival = sext_hwi ((val - loval) >> 32, 32);
+  unsigned HOST_WIDE_INT hival = sext_hwi (val >> 32, 32);
   rtx hi = gen_reg_rtx (mode), lo = gen_reg_rtx (mode);
 
   riscv_move_integer (hi, hi, hival, mode);
