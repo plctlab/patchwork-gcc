@@ -11,3 +11,4 @@ constexpr const int& test() {
   return local.get();
 }
 constexpr int x = test();  // { dg-error "accessing object outside its lifetime" }
+
