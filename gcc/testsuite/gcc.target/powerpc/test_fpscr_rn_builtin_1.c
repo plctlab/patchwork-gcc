@@ -1,6 +1,12 @@
 /* { dg-do run { target { powerpc*-*-* } } } */
 /* { dg-options "-O2 -std=c99" } */
 
+/* Originally the __builtin_set_fpscr_rn builtin was defined to return
+   void.  It was later extended to return a double with the various
+   FPSCR bits.  The extended builtin is inteded to be a drop in replacement
+   for the original version.  This test is for the original version of the
+   builtin and should work exactly as before.  */
+
 #ifdef DEBUG
 #include <stdio.h>
 #endif
