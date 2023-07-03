@@ -294,8 +294,11 @@ is_simple_and_all_uses_invariant (stmt_vec_info stmt_info,
   tree op;
   ssa_op_iter iter;
 
-  gassign *stmt = dyn_cast <gassign *> (stmt_info->stmt);
-  if (!stmt)
+  gimple *stmt = stmt_info->stmt;
+  if (!is_gimple_assign (stmt)
+      && !(is_gimple_call (stmt)
+	   && gimple_call_internal_p (stmt)
+	   && widening_fn_p (gimple_call_combined_fn (stmt))))
     return false;
 
   FOR_EACH_SSA_TREE_OPERAND (op, stmt, iter, SSA_OP_USE)
