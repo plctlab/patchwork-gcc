@@ -80,7 +80,6 @@ static const char *const token_names[] = {
   "...",
   "ptr_alias",
   "nested_ptr",
-  "a param<N>_is option",
   "a number",
   "a scalar type",
   "an identifier",
