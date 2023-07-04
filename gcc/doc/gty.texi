@@ -217,6 +217,10 @@ struct GTY(()) non_terminated_string @{
 @};
 @end smallexample
 
+The @code{string_length} option currently is not supported for (fields
+in) global variables.
+@c <https://inbox.sourceware.org/[TODO]>
+
 @findex skip
 @item skip
 
