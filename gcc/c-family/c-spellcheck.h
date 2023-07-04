@@ -31,7 +31,7 @@ struct edit_distance_traits<cpp_hashnode *>
 {
   static size_t get_length (cpp_hashnode *hashnode)
   {
-    return hashnode->ident.len;
+    return HT_LEN (&hashnode->ident);
   }
 
   static const char *get_string (cpp_hashnode *hashnode)

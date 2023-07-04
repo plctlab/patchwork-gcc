@@ -4513,7 +4513,7 @@ lookup_name_fuzzy (tree name, enum lookup_name_fuzzy_kind kind, location_t loc)
     {
       const char *id = (const char *)best_macro->ident.str;
       tree macro_as_identifier
-	= get_identifier_with_length (id, best_macro->ident.len);
+	= get_identifier_with_length (id, HT_LEN (&best_macro->ident));
       bm.set_best_so_far (macro_as_identifier,
 			  bmm.get_best_distance (),
 			  bmm.get_best_candidate_length ());

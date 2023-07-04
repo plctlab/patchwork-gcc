@@ -1153,7 +1153,7 @@ extern void omp_clause_range_check_failed (const_tree, const char *, int,
 
 /* Unlike STRING_CST, in C terms this is strlen, not sizeof.  */
 #define IDENTIFIER_LENGTH(NODE) \
-  (IDENTIFIER_NODE_CHECK (NODE)->identifier.id.len)
+  (HT_LEN (&IDENTIFIER_NODE_CHECK (NODE)->identifier.id))
 #define IDENTIFIER_POINTER(NODE) \
   ((const char *) IDENTIFIER_NODE_CHECK (NODE)->identifier.id.str)
 #define IDENTIFIER_HASH_VALUE(NODE) \

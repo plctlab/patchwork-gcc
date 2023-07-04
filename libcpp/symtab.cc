@@ -155,7 +155,7 @@ ht_lookup_with_hash (cpp_hash_table *table, const unsigned char *str,
   node = (*table->alloc_node) (table);
   table->entries[index] = node;
 
-  HT_LEN (node) = (unsigned int) len;
+  node->len_ = (unsigned int) len;
   node->hash_value = hash;
 
   if (table->alloc_subobject)

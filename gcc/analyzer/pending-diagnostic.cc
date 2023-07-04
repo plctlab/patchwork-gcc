@@ -128,7 +128,7 @@ pending_diagnostic::same_tree_p (tree t1, tree t2)
 static bool
 ht_ident_eq (ht_identifier ident, const char *str)
 {
-  return (strlen (str) == ident.len
+  return (strlen (str) == HT_LEN (&ident)
 	  && 0 == strcmp (str, (const char *)ident.str));
 }
 

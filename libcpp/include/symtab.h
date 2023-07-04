@@ -33,11 +33,11 @@ struct GTY(()) ht_identifier {
      stream to PCH correctly, if a null byte were to make its way into an
      identifier somehow.  */
   const unsigned char * GTY((string_length ("1 + %h.len"))) str;
-  unsigned int len;
+  unsigned int len_;
   unsigned int hash_value;
 };
 
-#define HT_LEN(NODE) ((NODE)->len)
+#define HT_LEN(NODE) ({ gcc_assert ((NODE)->len_ == strlen ((const char *) HT_STR (NODE))); (NODE)->len_; })
 #define HT_STR(NODE) ((NODE)->str)
 
 typedef struct ht cpp_hash_table;
