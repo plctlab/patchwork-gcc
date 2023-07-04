@@ -5329,6 +5329,13 @@ standard_sse_constant_opcode (rtx_insn *insn, rtx *operands)
 	case MODE_V8DF:
 	case MODE_V16SF:
 	  gcc_assert (TARGET_AVX512F);
+	  if (optimize_insn_for_speed_p ())
+	    {
+	      if (TARGET_AVX512VL)
+		output_asm_insn ("vpxor\t%x0, %x0, %x0", operands);
+	      else
+		output_asm_insn ("vpxor\t%g0, %g0, %g0", operands);
+	    }
 	  return "vpternlogd\t{$0xFF, %g0, %g0, %g0|%g0, %g0, %g0, 0xFF}";
 
 	case MODE_OI:
@@ -5344,10 +5351,20 @@ standard_sse_constant_opcode (rtx_insn *insn, rtx *operands)
 	    return (TARGET_AVX
 		    ? "vpcmpeqd\t%0, %0, %0"
 		    : "pcmpeqd\t%0, %0");
-	  else if (TARGET_AVX512VL)
-	    return "vpternlogd\t{$0xFF, %0, %0, %0|%0, %0, %0, 0xFF}";
 	  else
-	    return "vpternlogd\t{$0xFF, %g0, %g0, %g0|%g0, %g0, %g0, 0xFF}";
+	    { 
+	      if (optimize_insn_for_speed_p ())
+		{
+		  if (TARGET_AVX512VL)
+		    output_asm_insn ("vpxor\t%x0, %x0, %x0", operands);
+		  else
+		    output_asm_insn ("vpxor\t%g0, %g0, %g0", operands);
+		}
+	      if (TARGET_AVX512VL)
+		return "vpternlogd\t{$0xFF, %0, %0, %0|%0, %0, %0, 0xFF}";
+	      else
+		return "vpternlogd\t{$0xFF, %g0, %g0, %g0|%g0, %g0, %g0, 0xFF}";
+	    }
 
 	default:
 	  gcc_unreachable ();
