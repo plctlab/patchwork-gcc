@@ -1373,6 +1373,28 @@
 	      ]
 	      (symbol_ref "true")))])
 
+; False dependency happens on destination register which is not really
+; used when moving all ones to vector register
+(define_split
+  [(set (match_operand:VMOVE 0 "register_operand")
+	(match_operand:VMOVE 1 "int_float_vector_all_ones_operand"))]
+  "TARGET_AVX512F && reload_completed
+  && (<MODE_SIZE> == 64 || EXT_REX_SSE_REG_P (operands[0]))"
+  [(set (match_dup 0) (match_dup 2))
+   (parallel
+     [(set (match_dup 0) (match_dup 1))
+      (unspec [(match_dup 0)] UNSPEC_INSN_FALSE_DEP)])]
+  "operands[2] = CONST0_RTX (<MODE>mode);")
+
+(define_insn "*vmov<mode>_constm1_pternlog"
+  [(set (match_operand:VMOVE 0 "register_operand" "=v")
+	(match_operand:VMOVE 1 "int_float_vector_all_ones_operand" "<sseconstm1>"))
+   (unspec [(match_operand:VMOVE 2 "register_operand" "0")] UNSPEC_INSN_FALSE_DEP)]
+   "TARGET_AVX512VL || <MODE_SIZE> == 64"
+   "vpternlogd\t{$0xFF, %0, %0, %0|%0, %0, %0, 0xFF}"
+  [(set_attr "type" "sselog1")
+   (set_attr "prefix" "evex")])
+
 ;; If mem_addr points to a memory region with less than whole vector size bytes
 ;; of accessible memory and k is a mask that would prevent reading the inaccessible
 ;; bytes from mem_addr, add UNSPEC_MASKLOAD to prevent it to be transformed to vpblendd
@@ -9184,7 +9206,7 @@
     operands[3] = CONST0_RTX (<MODE>mode);
   }")
 
-(define_insn "*<avx512>_cvtmask2<ssemodesuffix><mode>"
+(define_insn_and_split "*<avx512>_cvtmask2<ssemodesuffix><mode>"
   [(set (match_operand:VI48_AVX512VL 0 "register_operand" "=v,v")
 	(vec_merge:VI48_AVX512VL
 	  (match_operand:VI48_AVX512VL 2 "vector_all_ones_operand")
@@ -9193,9 +9215,32 @@
   "TARGET_AVX512F"
   "@
    vpmovm2<ssemodesuffix>\t{%1, %0|%0, %1}
-   vpternlog<ssemodesuffix>\t{$0x81, %0, %0, %0%{%1%}%{z%}|%0%{%1%}%{z%}, %0, %0, 0x81}"
+   #"
+  "&& !TARGET_AVX512DQ && reload_completed"
+  [(set (match_dup 0) (match_dup 4))
+   (parallel
+    [(set (match_dup 0)
+	  (vec_merge:VI48_AVX512VL
+	    (match_dup 2)
+	    (match_dup 3)
+	    (match_dup 1)))
+     (unspec [(match_dup 0)] UNSPEC_INSN_FALSE_DEP)])]
+  "operands[4] = CONST0_RTX (<MODE>mode);"
   [(set_attr "isa" "avx512dq,*")
    (set_attr "length_immediate" "0,1")
+   (set_attr "prefix" "evex")
+   (set_attr "mode" "<sseinsnmode>")])
+
+(define_insn "*<avx512>_cvtmask2<ssemodesuffix><mode>_pternlog"
+  [(set (match_operand:VI48_AVX512VL 0 "register_operand" "=v")
+	(vec_merge:VI48_AVX512VL
+	  (match_operand:VI48_AVX512VL 2 "vector_all_ones_operand")
+	  (match_operand:VI48_AVX512VL 3 "const0_operand")
+	  (match_operand:<avx512fmaskmode> 1 "register_operand" "Yk")))
+   (unspec [(match_operand:VI48_AVX512VL 4 "register_operand" "0")] UNSPEC_INSN_FALSE_DEP)]
+  "TARGET_AVX512F && !TARGET_AVX512DQ"
+  "vpternlog<ssemodesuffix>\t{$0x81, %0, %0, %0%{%1%}%{z%}|%0%{%1%}%{z%}, %0, %0, 0x81}"
+  [(set_attr "length_immediate" "1")
    (set_attr "prefix" "evex")
    (set_attr "mode" "<sseinsnmode>")])
 
@@ -16960,32 +17005,32 @@
 
   if (!TARGET_AVX512F)
     operands[2] = force_reg (<MODE>mode, operands[2]);
+  else
+    operands[1] = force_reg (<MODE>mode, operands[1]);
 })
 
 (define_insn "<mask_codefor>one_cmpl<mode>2<mask_name>"
-  [(set (match_operand:VI 0 "register_operand" "=v,v")
-	(xor:VI (match_operand:VI 1 "nonimmediate_operand" "v,m")
-		(match_operand:VI 2 "vector_all_ones_operand" "BC,BC")))]
+  [(set (match_operand:VI 0 "register_operand" "=v")
+	(xor:VI (match_operand:VI 1 "register_operand" "v")
+		(match_operand:VI 2 "vector_all_ones_operand" "BC")))]
   "TARGET_AVX512F
    && (!<mask_applied>
        || <ssescalarmode>mode == SImode
        || <ssescalarmode>mode == DImode)"
 {
+  /* Use vpternlog 0x55, %1, %1, %0 instead of
+     vpternlog 0x55, %1, %0, %0 to avoid false dependence on %0.  */
   if (TARGET_AVX512VL)
-    return "vpternlog<ternlogsuffix>\t{$0x55, %1, %0, %0<mask_operand3>|%0<mask_operand3>, %0, %1, 0x55}";
+    return "vpternlog<ternlogsuffix>\t{$0x55, %1, %1, %0<mask_operand3>|%0<mask_operand3>, %1, %1, 0x55}";
   else
-    return "vpternlog<ternlogsuffix>\t{$0x55, %g1, %g0, %g0<mask_operand3>|%g0<mask_operand3>, %g0, %g1, 0x55}";
+    return "vpternlog<ternlogsuffix>\t{$0x55, %g1, %g1, %g0<mask_operand3>|%g0<mask_operand3>, %g1, %g1, 0x55}";
 }
   [(set_attr "type" "sselog")
    (set_attr "prefix" "evex")
    (set (attr "mode")
         (if_then_else (match_test "TARGET_AVX512VL")
 		      (const_string "<sseinsnmode>")
-		      (const_string "XI")))
-   (set (attr "enabled")
-	(if_then_else (eq_attr "alternative" "1")
-		      (symbol_ref "<MODE_SIZE> == 64 || TARGET_AVX512VL")
-		      (const_int 1)))])
+		      (const_string "XI")))])
 
 (define_expand "<sse2_avx2>_andnot<mode>3"
   [(set (match_operand:VI_AVX2 0 "register_operand")
