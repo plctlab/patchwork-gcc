@@ -9859,6 +9859,8 @@ rs6000_legitimate_address_p (machine_mode mode, rtx x, bool reg_ok_strict)
 
   /* Handle unaligned altivec lvx/stvx type addresses.  */
   if (VECTOR_MEM_ALTIVEC_OR_VSX_P (mode)
+      && mode !=  OOmode
+      && mode !=  XOmode
       && GET_CODE (x) == AND
       && CONST_INT_P (XEXP (x, 1))
       && INTVAL (XEXP (x, 1)) == -16)
