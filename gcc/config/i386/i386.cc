@@ -8084,6 +8084,72 @@ output_probe_stack_range (rtx reg, rtx end)
   return "";
 }
 
+/* Check if PAT is a SET with register source.  */
+
+static void
+ix86_set_with_register_source (rtx, const_rtx pat, void *data)
+{
+  if (GET_CODE (pat) != SET)
+    return;
+
+  rtx src = SET_SRC (pat);
+  if (MEM_P (src) || CONST_INT_P (src))
+    return;
+
+  bool *may_use_register = (bool *) data;
+  *may_use_register = true;
+}
+
+/* Find all register access registers.  */
+
+static bool
+ix86_find_all_stack_access (HARD_REG_SET &stack_slot_access)
+{
+  bool repeat = false;
+
+  for (int i = 0; i < FIRST_PSEUDO_REGISTER; i++)
+    if (GENERAL_REGNO_P (i)
+	&& !TEST_HARD_REG_BIT (stack_slot_access, i))
+      for (df_ref def = DF_REG_DEF_CHAIN (i);
+	   def != NULL;
+	   def = DF_REF_NEXT_REG (def))
+	{
+	  if (DF_REF_IS_ARTIFICIAL (def))
+	    continue;
+
+	  rtx_insn *insn = DF_REF_INSN (def);
+
+	  bool may_use_register = false;
+	  note_stores (insn, ix86_set_with_register_source,
+		       &may_use_register);
+
+	  if (!may_use_register)
+	    continue;
+
+	  df_ref use;
+	  FOR_EACH_INSN_USE (use, insn)
+	    {
+	      rtx reg = DF_REF_REG (use);
+
+	      if (!REG_P (reg))
+		continue;
+
+	      /* Skip if stack slot access register isn't used.  */
+	      if (!TEST_HARD_REG_BIT (stack_slot_access,
+				      REGNO (reg)))
+		continue;
+
+	      /* Add this register to stack_slot_access.  */
+	      add_to_hard_reg_set (&stack_slot_access, Pmode, i);
+
+	      /* Repeat if a register is added to stack_slot_access.  */
+	      repeat = true;
+	    }
+	}
+
+  return repeat;
+}
+
 /* Set stack_frame_required to false if stack frame isn't required.
    Update STACK_ALIGNMENT to the largest alignment, in bits, of stack
    slot used if stack frame is required and CHECK_STACK_SLOT is true.  */
@@ -8092,15 +8158,23 @@ static void
 ix86_find_max_used_stack_alignment (unsigned int &stack_alignment,
 				    bool check_stack_slot)
 {
-  HARD_REG_SET set_up_by_prologue, prologue_used;
+  HARD_REG_SET set_up_by_prologue, prologue_used, stack_slot_access;
   basic_block bb;
 
   CLEAR_HARD_REG_SET (prologue_used);
   CLEAR_HARD_REG_SET (set_up_by_prologue);
+  CLEAR_HARD_REG_SET (stack_slot_access);
   add_to_hard_reg_set (&set_up_by_prologue, Pmode, STACK_POINTER_REGNUM);
   add_to_hard_reg_set (&set_up_by_prologue, Pmode, ARG_POINTER_REGNUM);
   add_to_hard_reg_set (&set_up_by_prologue, Pmode,
 		       HARD_FRAME_POINTER_REGNUM);
+  /* Stack slot can be accessed by stack pointer, frame pointer or
+     registers defined by stack pointer or frame pointer.  */
+  add_to_hard_reg_set (&stack_slot_access, Pmode,
+		       STACK_POINTER_REGNUM);
+  if (frame_pointer_needed)
+    add_to_hard_reg_set (&stack_slot_access, Pmode,
+			 HARD_FRAME_POINTER_REGNUM);
 
   /* The preferred stack alignment is the minimum stack alignment.  */
   if (stack_alignment > crtl->preferred_stack_boundary)
@@ -8108,32 +8182,65 @@ ix86_find_max_used_stack_alignment (unsigned int &stack_alignment,
 
   bool require_stack_frame = false;
 
+  /* Find all register access registers.  */
+  while (ix86_find_all_stack_access (stack_slot_access))
+    ;
+
   FOR_EACH_BB_FN (bb, cfun)
     {
       rtx_insn *insn;
       FOR_BB_INSNS (bb, insn)
-	if (NONDEBUG_INSN_P (insn)
-	    && requires_stack_frame_p (insn, prologue_used,
-				       set_up_by_prologue))
+	if (NONDEBUG_INSN_P (insn))
 	  {
-	    require_stack_frame = true;
-
-	    if (check_stack_slot)
+	    if (!require_stack_frame)
 	      {
-		/* Find the maximum stack alignment.  */
-		subrtx_iterator::array_type array;
-		FOR_EACH_SUBRTX (iter, array, PATTERN (insn), ALL)
-		  if (MEM_P (*iter)
-		      && (reg_mentioned_p (stack_pointer_rtx,
-					   *iter)
-			  || reg_mentioned_p (frame_pointer_rtx,
-					      *iter)))
-		    {
-		      unsigned int alignment = MEM_ALIGN (*iter);
-		      if (alignment > stack_alignment)
-			stack_alignment = alignment;
-		    }
+		if (requires_stack_frame_p (insn, prologue_used,
+					    set_up_by_prologue))
+		  require_stack_frame = true;
+		else
+		  /* Skip if stack frame isn't required.  */
+		  continue;
 	      }
+
+	    /* Stop if stack frame is required, but we don't need to
+	       check stack slot.  */
+	    if (!check_stack_slot)
+	      break;
+
+	    /* Find stack slot access register use.  */
+	    bool stack_slot_register_p = false;
+	    df_ref use;
+	    FOR_EACH_INSN_USE (use, insn)
+	      {
+		rtx reg = DF_REF_REG (use);
+
+		if (!REG_P (reg))
+		  continue;
+
+		/* Stop if stack slot access register is used.  */
+		if (TEST_HARD_REG_BIT (stack_slot_access,
+				       REGNO (reg)))
+		  {
+		    stack_slot_register_p = true;
+		    break;
+		  }
+	      }
+
+	    /* Skip if stack slot access registers are unused.  */
+	    if (!stack_slot_register_p)
+	      continue;
+
+	    /* This insn may reference stack slot.  Find the maximum
+	       stack slot alignment.  */
+	    subrtx_iterator::array_type array;
+	    FOR_EACH_SUBRTX (iter, array, PATTERN (insn), ALL)
+	      if (MEM_P (*iter))
+		{
+		  unsigned int alignment = MEM_ALIGN (*iter);
+		  if (alignment > stack_alignment)
+		    stack_alignment = alignment;
+		  break;
+		}
 	  }
     }
 
