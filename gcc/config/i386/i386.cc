@@ -8084,6 +8084,63 @@ output_probe_stack_range (rtx reg, rtx end)
   return "";
 }
 
+/* Update the maximum stack slot alignment from memory alignment in
+   PAT.  */
+
+static void
+ix86_update_stack_alignment (rtx, const_rtx pat, void *data)
+{
+  /* This insn may reference stack slot.  Update the maximum stack slot
+     alignment.  */
+  subrtx_iterator::array_type array;
+  FOR_EACH_SUBRTX (iter, array, pat, ALL)
+    if (MEM_P (*iter))
+      {
+	unsigned int alignment = MEM_ALIGN (*iter);
+	unsigned int *stack_alignment
+	  = (unsigned int *) data;
+	if (alignment > *stack_alignment)
+	  *stack_alignment = alignment;
+	break;
+      }
+}
+
+/* Find all registers defined with REG.  */
+
+static void
+ix86_find_all_reg_use (HARD_REG_SET &stack_slot_access, int reg)
+{
+  for (df_ref ref = DF_REG_USE_CHAIN (reg);
+       ref != NULL;
+       ref = DF_REF_NEXT_REG (ref))
+    {
+      if (DF_REF_IS_ARTIFICIAL (ref))
+	continue;
+
+      rtx_insn *insn = DF_REF_INSN (ref);
+      if (!NONDEBUG_INSN_P (insn))
+	continue;
+
+      rtx set = single_set (insn);
+      if (!set)
+	continue;
+
+      rtx src = SET_SRC (set);
+      if (MEM_P (src))
+	continue;
+
+      rtx dest = SET_DEST (set);
+      if (!REG_P (dest))
+	continue;
+
+      if (TEST_HARD_REG_BIT (stack_slot_access, REGNO (dest)))
+	continue;
+
+      /* Add this register to stack_slot_access.  */
+      add_to_hard_reg_set (&stack_slot_access, Pmode, REGNO (dest));
+    }
+}
+
 /* Set stack_frame_required to false if stack frame isn't required.
    Update STACK_ALIGNMENT to the largest alignment, in bits, of stack
    slot used if stack frame is required and CHECK_STACK_SLOT is true.  */
@@ -8102,10 +8159,6 @@ ix86_find_max_used_stack_alignment (unsigned int &stack_alignment,
   add_to_hard_reg_set (&set_up_by_prologue, Pmode,
 		       HARD_FRAME_POINTER_REGNUM);
 
-  /* The preferred stack alignment is the minimum stack alignment.  */
-  if (stack_alignment > crtl->preferred_stack_boundary)
-    stack_alignment = crtl->preferred_stack_boundary;
-
   bool require_stack_frame = false;
 
   FOR_EACH_BB_FN (bb, cfun)
@@ -8117,27 +8170,52 @@ ix86_find_max_used_stack_alignment (unsigned int &stack_alignment,
 				       set_up_by_prologue))
 	  {
 	    require_stack_frame = true;
-
-	    if (check_stack_slot)
-	      {
-		/* Find the maximum stack alignment.  */
-		subrtx_iterator::array_type array;
-		FOR_EACH_SUBRTX (iter, array, PATTERN (insn), ALL)
-		  if (MEM_P (*iter)
-		      && (reg_mentioned_p (stack_pointer_rtx,
-					   *iter)
-			  || reg_mentioned_p (frame_pointer_rtx,
-					      *iter)))
-		    {
-		      unsigned int alignment = MEM_ALIGN (*iter);
-		      if (alignment > stack_alignment)
-			stack_alignment = alignment;
-		    }
-	      }
+	    break;
 	  }
     }
 
   cfun->machine->stack_frame_required = require_stack_frame;
+
+  /* Stop if we don't need to check stack slot.  */
+  if (!check_stack_slot)
+    return;
+
+  /* The preferred stack alignment is the minimum stack alignment.  */
+  if (stack_alignment > crtl->preferred_stack_boundary)
+    stack_alignment = crtl->preferred_stack_boundary;
+
+  HARD_REG_SET stack_slot_access;
+  CLEAR_HARD_REG_SET (stack_slot_access);
+
+  /* Stack slot can be accessed by stack pointer, frame pointer or
+     registers defined by stack pointer or frame pointer.  */
+  add_to_hard_reg_set (&stack_slot_access, Pmode,
+		       STACK_POINTER_REGNUM);
+  ix86_find_all_reg_use (stack_slot_access, STACK_POINTER_REGNUM);
+  if (frame_pointer_needed)
+    {
+      add_to_hard_reg_set (&stack_slot_access, Pmode,
+			   HARD_FRAME_POINTER_REGNUM);
+      ix86_find_all_reg_use (stack_slot_access,
+			     HARD_FRAME_POINTER_REGNUM);
+    }
+
+  for (int i = 0; i < FIRST_PSEUDO_REGISTER; i++)
+    if (GENERAL_REGNO_P (i)
+	&& TEST_HARD_REG_BIT (stack_slot_access, i))
+      for (df_ref ref = DF_REG_USE_CHAIN (i);
+	   ref != NULL;
+	   ref = DF_REF_NEXT_REG (ref))
+	{
+	  if (DF_REF_IS_ARTIFICIAL (ref))
+	    continue;
+
+	  rtx_insn *insn = DF_REF_INSN (ref);
+	  if (!NONDEBUG_INSN_P (insn))
+	    continue;
+	  note_stores (insn, ix86_update_stack_alignment,
+		       &stack_alignment);
+	}
 }
 
 /* Finalize stack_realign_needed and frame_pointer_needed flags, which
