@@ -2190,6 +2190,12 @@ ARM target supports options to generate instructions from ARMv8.1-M with
 the Custom Datapath Extension (CDE) and M-Profile Vector Extension (MVE).
 Some multilibs may be incompatible with these options.
 
+@item arm_v8_1m_main_cde_mve_fp
+ARM target supports options to generate instructions from ARMv8.1-M
+with the Custom Datapath Extension (CDE) and M-Profile Vector
+Extension (MVE) with floating-point support.  Some multilibs may be
+incompatible with these options.
+
 @item arm_pacbti_hw
 Test system supports executing Pointer Authentication and Branch Target
 Identification instructions.
