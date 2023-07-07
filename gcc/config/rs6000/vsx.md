@@ -389,6 +389,13 @@
 (define_mode_attr REPLACE_ELT_max [(V4SI "12") (V4SF "12")
 				   (V2DI  "8") (V2DF "8")])
 
+;; vector replace unaligned modes
+(define_mode_iterator VEC_RU [SI SF DI DF])
+(define_mode_attr VEC_RU_char [(SI "w")
+			       (SF "w")
+			       (DI "d")
+			       (DF "d")])
+
 ;; Like VM2 in altivec.md, just do char, short, int, long, float and double
 (define_mode_iterator VM3 [V4SI
 			   V8HI
@@ -4191,12 +4198,12 @@
 
 (define_insn "vreplace_un_<mode>"
  [(set (match_operand:V16QI 0 "register_operand" "=v")
-  (unspec:V16QI [(match_operand:REPLACE_ELT 1 "register_operand" "0")
-                 (match_operand:<VEC_base> 2 "register_operand" "r")
+  (unspec:V16QI [(match_operand:V16QI 1 "register_operand" "0")
+		 (match_operand:VEC_RU 2 "register_operand" "r")
 		 (match_operand:QI 3 "const_0_to_12_operand" "n")]
 		UNSPEC_REPLACE_UN))]
  "TARGET_POWER10"
- "vins<REPLACE_ELT_char> %0,%2,%3"
+ "vins<VEC_RU_char> %0,%2,%3"
  [(set_attr "type" "vecsimple")])
 
 ;; VSX_EXTRACT optimizations

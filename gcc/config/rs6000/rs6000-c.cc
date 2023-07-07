@@ -1674,13 +1674,18 @@ tree
 find_instance (bool *unsupported_builtin, ovlddata **instance,
 	       rs6000_gen_builtins instance_code,
 	       rs6000_gen_builtins fcode,
-	       tree *types, tree *args)
+	       tree *types, tree *args, int nargs)
 {
   while (*instance && (*instance)->bifid != instance_code)
     *instance = (*instance)->next;
 
   ovlddata *inst = *instance;
   gcc_assert (inst != NULL);
+
+  /* Function only supports nargs equal to 2 or 3.  */
+  if (!(nargs == 2 || nargs == 3))
+    gcc_assert(0);
+
   /* It is possible for an instance to require a data type that isn't
      defined on this target, in which case inst->fntype will be NULL.  */
   if (!inst->fntype)
@@ -1688,15 +1693,25 @@ find_instance (bool *unsupported_builtin, ovlddata **instance,
   tree fntype = rs6000_builtin_info[inst->bifid].fntype;
   tree parmtype0 = TREE_VALUE (TYPE_ARG_TYPES (fntype));
   tree parmtype1 = TREE_VALUE (TREE_CHAIN (TYPE_ARG_TYPES (fntype)));
+  tree parmtype2;
+  int arg2_compatible = true;
+
+  if (nargs == 3)
+    {
+      parmtype2
+       = TREE_VALUE (TREE_CHAIN (TREE_CHAIN (TYPE_ARG_TYPES (fntype))));
+      arg2_compatible = rs6000_builtin_type_compatible (types[2], parmtype2);
+    }
 
   if (rs6000_builtin_type_compatible (types[0], parmtype0)
-      && rs6000_builtin_type_compatible (types[1], parmtype1))
+      && rs6000_builtin_type_compatible (types[1], parmtype1)
+      && arg2_compatible)
     {
       if (rs6000_builtin_decl (inst->bifid, false) != error_mark_node
 	  && rs6000_builtin_is_supported (inst->bifid))
 	{
 	  tree ret_type = TREE_TYPE (inst->fntype);
-	  return altivec_build_resolved_builtin (args, 2, fntype, ret_type,
+	  return altivec_build_resolved_builtin (args, nargs, fntype, ret_type,
 						 inst->bifid, fcode);
 	}
       else
@@ -1916,7 +1931,7 @@ altivec_resolve_overloaded_builtin (location_t loc, tree fndecl,
 	  instance_code = RS6000_BIF_CMPB_32;
 
 	tree call = find_instance (&unsupported_builtin, &instance,
-				   instance_code, fcode, types, args);
+				   instance_code, fcode, types, args, nargs);
 	if (call != error_mark_node)
 	  return call;
 	break;
@@ -1949,7 +1964,44 @@ altivec_resolve_overloaded_builtin (location_t loc, tree fndecl,
 	  }
 
 	tree call = find_instance (&unsupported_builtin, &instance,
-				   instance_code, fcode, types, args);
+				   instance_code, fcode, types, args, nargs);
+	if (call != error_mark_node)
+	  return call;
+	break;
+      }
+
+    case RS6000_OVLD_VEC_REPLACE_UN:
+      {
+	machine_mode arg2_mode = TYPE_MODE (types[1]);
+
+	if (GET_MODE_SIZE(arg2_mode) == 4)
+	  {
+	    if (GET_MODE_CLASS(arg2_mode) == MODE_INT)
+	      /* Signed and unsigned are handled the same.  */
+	      instance_code = RS6000_BIF_VREPLACE_UN_USI;
+	    else if (GET_MODE_CLASS(arg2_mode) == MODE_FLOAT)
+	      instance_code = RS6000_BIF_VREPLACE_UN_SF;
+	    else
+	      /* Only have support for int and float.  */
+		gcc_assert (0);
+	  }
+	else if (GET_MODE_SIZE(arg2_mode) == 8)
+	  {
+	    if (GET_MODE_CLASS(arg2_mode) == MODE_INT)
+	      /* Signed and unsigned are handled the same.  */
+	      instance_code = RS6000_BIF_VREPLACE_UN_UDI;
+	    else if (GET_MODE_CLASS(arg2_mode) == MODE_FLOAT)
+	      instance_code = RS6000_BIF_VREPLACE_UN_DF;
+	    else
+	      /* Only have support for long long int and double.  */
+	      gcc_assert (0);
+	  }
+	else
+	  /* Only have support for word and double.   */
+	  gcc_assert (0);
+
+	tree call = find_instance (&unsupported_builtin, &instance,
+				   instance_code, fcode, types, args, nargs);
 	if (call != error_mark_node)
 	  return call;
 	break;
