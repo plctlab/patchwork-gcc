@@ -7479,6 +7479,7 @@ simplify_context::simplify_subreg (machine_mode outermode, rtx op,
 
       if (VECTOR_MODE_P (outermode)
 	  && GET_MODE_INNER (outermode) == GET_MODE_INNER (innermode)
+	  && !paradoxical_subreg_p (outermode, innermode)
 	  && vec_duplicate_p (op, &elt))
 	return gen_vec_duplicate (outermode, elt);
 
