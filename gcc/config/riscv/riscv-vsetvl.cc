@@ -98,6 +98,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "lcm.h"
 #include "predict.h"
 #include "profile-count.h"
+#include "gcse.h"
 #include "riscv-vsetvl.h"
 
 using namespace rtl_ssa;
@@ -753,53 +754,6 @@ insert_vsetvl (enum emit_type emit_type, rtx_insn *rinsn,
       prev_info.dump (dump_file);
     }
   return VSETVL_DISCARD_RESULT;
-}
-
-/* If X contains any LABEL_REF's, add REG_LABEL_OPERAND notes for them
-   to INSN.  If such notes are added to an insn which references a
-   CODE_LABEL, the LABEL_NUSES count is incremented.  We have to add
-   that note, because the following loop optimization pass requires
-   them.  */
-
-/* ??? If there was a jump optimization pass after gcse and before loop,
-   then we would not need to do this here, because jump would add the
-   necessary REG_LABEL_OPERAND and REG_LABEL_TARGET notes.  */
-
-static void
-add_label_notes (rtx x, rtx_insn *rinsn)
-{
-  enum rtx_code code = GET_CODE (x);
-  int i, j;
-  const char *fmt;
-
-  if (code == LABEL_REF && !LABEL_REF_NONLOCAL_P (x))
-    {
-      /* This code used to ignore labels that referred to dispatch tables to
-	 avoid flow generating (slightly) worse code.
-
-	 We no longer ignore such label references (see LABEL_REF handling in
-	 mark_jump_label for additional information).  */
-
-      /* There's no reason for current users to emit jump-insns with
-	 such a LABEL_REF, so we don't have to handle REG_LABEL_TARGET
-	 notes.  */
-      gcc_assert (!JUMP_P (rinsn));
-      add_reg_note (rinsn, REG_LABEL_OPERAND, label_ref_label (x));
-
-      if (LABEL_P (label_ref_label (x)))
-	LABEL_NUSES (label_ref_label (x))++;
-
-      return;
-    }
-
-  for (i = GET_RTX_LENGTH (code) - 1, fmt = GET_RTX_FORMAT (code); i >= 0; i--)
-    {
-      if (fmt[i] == 'e')
-	add_label_notes (XEXP (x, i), rinsn);
-      else if (fmt[i] == 'E')
-	for (j = XVECLEN (x, i) - 1; j >= 0; j--)
-	  add_label_notes (XVECEXP (x, i, j), rinsn);
-    }
 }
 
 /* Add EXPR to the end of basic block BB.

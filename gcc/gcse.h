@@ -41,5 +41,6 @@ extern struct target_gcse *this_target_gcse;
 
 void gcse_cc_finalize (void);
 extern bool gcse_or_cprop_is_too_expensive (const char *);
+void add_label_notes (rtx, rtx_insn *);
 
 #endif

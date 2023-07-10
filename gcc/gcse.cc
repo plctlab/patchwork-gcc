@@ -483,7 +483,6 @@ static void pre_insert_copies (void);
 static int pre_delete (void);
 static int pre_gcse (struct edge_list *);
 static int one_pre_gcse_pass (void);
-static void add_label_notes (rtx, rtx_insn *);
 static void alloc_code_hoist_mem (int, int);
 static void free_code_hoist_mem (void);
 static void compute_code_hoist_vbeinout (void);
@@ -2639,7 +2638,7 @@ one_pre_gcse_pass (void)
    then we would not need to do this here, because jump would add the
    necessary REG_LABEL_OPERAND and REG_LABEL_TARGET notes.  */
 
-static void
+void
 add_label_notes (rtx x, rtx_insn *insn)
 {
   enum rtx_code code = GET_CODE (x);
