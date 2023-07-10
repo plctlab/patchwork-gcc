@@ -5,8 +5,18 @@
 // Currently the dump doesn't print the allocator template arg in this context.
 // { dg-final { scan-tree-dump-times "struct allocator D" 1 "gimple" } }
 
+// In the pre-C++11 ABI we get two allocator variables.
+#undef _GLIBCXX_USE_CXX11_ABI
+#define _GLIBCXX_USE_CXX11_ABI 1
+
+// When the library is not dual-ABI and defaults to old just compile
+// an empty TU
+#if _GLIBCXX_USE_CXX11_ABI
+
 #include <string>
 void f (const char *p)
 {
   std::string lst[] = { p, p, p, p };
 }
+
+#endif
