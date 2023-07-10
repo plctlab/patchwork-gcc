@@ -4386,6 +4386,17 @@ offloading devices (it's not clear if they should be):
 @node Memory allocation with libmemkind
 @section Memory allocation with libmemkind
 
+For the memory spaces, the following applies:
+@itemize
+@item @code{omp_default_mem_space} is supported
+@item @code{omp_const_mem_space} maps to @code{omp_default_mem_space}
+@item @code{omp_low_lat_mem_space} maps to @code{omp_default_mem_space}
+@item @code{omp_large_cap_mem_space} maps to @code{omp_default_mem_space},
+      unless the memkind library is available
+@item @code{omp_high_bw_mem_space} maps to @code{omp_default_mem_space},
+      unless the memkind library is available
+@end itemize
+
 On Linux systems, where the @uref{https://github.com/memkind/memkind, memkind
 library} (@code{libmemkind.so.0}) is available at runtime, it is used when
 creating memory allocators requesting
@@ -4393,9 +4404,22 @@ creating memory allocators requesting
 @itemize
 @item the memory space @code{omp_high_bw_mem_space}
 @item the memory space @code{omp_large_cap_mem_space}
-@item the partition trait @code{omp_atv_interleaved}
+@item the partition trait @code{omp_atv_interleaved}; note that for
+      @code{omp_large_cap_mem_space} the allocation will not be interleaved
 @end itemize
 
+Additional notes:
+@itemize
+@item The @code{pinned} trait is unsupported.
+@item For the @code{partition} trait, the partition part size will be the same
+      as the requested size (i.e. @code{interleaved} or @code{blocked} has no
+      effect), except for @code{interleaved} when the memkind library is
+      available.  Furthermore, @code{nearest} might not always return memory
+      on the node of the CPU that triggered an allocation.
+@item The @code{access} trait has no effect such that memory is always
+      accessible by all threads.
+@item The @code{sync_hint} trait has no effect.
+@end itemize
 
 @c ---------------------------------------------------------------------
 @c Offload-Target Specifics
