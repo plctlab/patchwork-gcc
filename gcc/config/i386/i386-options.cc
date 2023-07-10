@@ -3238,6 +3238,16 @@ ix86_set_indirect_branch_type (tree fndecl)
     }
 }
 
+unsigned
+ix86_fntype_to_abi_id (const_tree fntype)
+{
+  if (lookup_attribute ("nosseclobber", TYPE_ATTRIBUTES (fntype)))
+    return ABI_LESS_SSE;
+  if (lookup_attribute ("noanysseclobber", TYPE_ATTRIBUTES (fntype)))
+    return ABI_NO_SSE;
+  return ABI_DEFAULT;
+}
+
 /* Establish appropriate back-end context for processing the function
    FNDECL.  The argument might be NULL to indicate processing at top
    level, outside of any function scope.  */
@@ -3305,6 +3315,12 @@ ix86_set_current_function (tree fndecl)
       else
 	TREE_TARGET_GLOBALS (new_tree) = save_target_globals_default_opts ();
     }
+
+  unsigned prev_abi_id = 0;
+  if (ix86_previous_fndecl)
+    prev_abi_id = ix86_fntype_to_abi_id (TREE_TYPE (ix86_previous_fndecl));
+  unsigned this_abi_id = ix86_fntype_to_abi_id (TREE_TYPE (fndecl));
+
   ix86_previous_fndecl = fndecl;
 
   static bool prev_no_caller_saved_registers;
@@ -3320,6 +3336,8 @@ ix86_set_current_function (tree fndecl)
      changed.  */
   else if (prev_no_caller_saved_registers
 	   != cfun->machine->no_caller_saved_registers)
+    reinit_regs ();
+  else if (prev_abi_id != this_abi_id)
     reinit_regs ();
 
   if (cfun->machine->func_type != TYPE_NORMAL
@@ -3934,6 +3952,10 @@ const struct attribute_spec ix86_attribute_table[] =
     ix86_handle_fndecl_attribute, NULL },
   { "nodirect_extern_access", 0, 0, true, false, false, false,
     handle_nodirect_extern_access_attribute, NULL },
+  { "nosseclobber",	      0, 0, false, true, true, true,
+    NULL, NULL },
+  { "noanysseclobber",	      0, 0, false, true, true, true,
+    NULL, NULL },
 
   /* End element.  */
   { NULL, 0, 0, false, false, false, false, NULL, NULL }

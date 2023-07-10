@@ -6594,6 +6594,41 @@ Exception handlers should only be used for exceptions that push an error
 code; you should use an interrupt handler in other cases.  The system
 will crash if the wrong kind of handler is used.
 
+@cindex @code{nosseclobber} function attribute, x86
+@cindex @code{notanysseclobber} function attribute, x86
+@item nosseclobber
+@itemx notanysseclobber
+
+On 32-bit and 64-bit x86 targets, you can use these attributes to indicate that
+a so-marked function doesn't clobber a subset of the SSE2 and AVX registers.
+The @code{nosseclobber} attribute specifies that registers @code{%xmm8} through
+@code{%xmm15} are not clobbered by a function.  This includes the low 16 bytes
+of the corresponding AVX2 and AVX512 registers.  You can't make assumptions
+about the higher parts of these registers, or other registers: those are
+assumed to be clobbered (or not) according to the base ABI.
+
+The @code{notanysseclobber} attribute specifies that the function doesn't
+clobber @emph{any} parts of the SSE2/AVX2/AVX512 registers @code{%zmm8}
+through @code{%zmm15}, not even the high parts.
+
+Functions marked with @code{nosseclobber} can be defined
+without restrictions: they can contain arbitrary floating point or vector
+code, and they can call functions not marked with this attribute (i.e. those
+that must be assumed to clobber parts of these register).
+GCC will insert register saves and restores in the pro- and epilogue in
+those cases (only the low 16 bytes of the used registers will be
+saved/restored, like the attribute implies).
+
+In comparison functions defined with @code{notanysseclobber} are severely
+restricted: they can't call functions not marked with that attribute.
+They also can't write to any of the @code{%xmm8} through @code{%xmm15}
+registers (or their extended variants with other ISAs).  GCC does not
+emit any saves or restores for them.
+
+Calls to such functions (other than above) are unrestricted.  The effect
+is simply that some values can be kept in registers over calls to
+such marked functions.
+
 @cindex @code{target} function attribute
 @item target (@var{options})
 As discussed in @ref{Common Function Attributes}, this attribute 

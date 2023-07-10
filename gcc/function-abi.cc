@@ -42,6 +42,26 @@ void
 predefined_function_abi::initialize (unsigned int id,
 				     const_hard_reg_set full_reg_clobbers)
 {
+  /* Don't reinitialize an ABI struct.  We might be called from reinit_regs
+     from the targets conditional_register_usage hook which might depend
+     on cfun and might have changed the global register sets according
+     to that functions ABI already.  That's not the default ABI anymore.
+
+     XXX only avoid this if we're reinitializing the default ABI, and the
+     current function is _not_ of the default ABI.  That's for
+     backward compatibility where some backends modify the regsets with
+     the exception that those changes are then reflected also in the default
+     ABI (which rather is then the "current" ABI).  E.g. x86_64 with the
+     ms_abi vs sysv attribute.  They aren't reflected by separate ABI
+     structs, but handled different.  The "default" ABI hence changes
+     back and forth (and is expected to!) between a ms_abi and a sysv
+     function.  */
+  if (m_initialized
+      && id == 0
+      && cfun
+      && fndecl_abi (cfun->decl).base_abi ().id() != 0)
+    return;
+
   m_id = id;
   m_initialized = true;
   m_full_reg_clobbers = full_reg_clobbers;
@@ -223,6 +243,13 @@ insn_callee_abi (const rtx_insn *insn)
   if (flag_ipa_ra)
     if (tree fndecl = get_call_fndecl (insn))
       return fndecl_abi (fndecl);
+
+  if (rtx call = get_call_rtx_from (insn))
+    {
+      tree memexp = MEM_EXPR (XEXP (call, 0));
+      if (memexp)
+	return fntype_abi (TREE_TYPE (memexp));
+    }
 
   if (targetm.calls.insn_callee_abi)
     return targetm.calls.insn_callee_abi (insn);

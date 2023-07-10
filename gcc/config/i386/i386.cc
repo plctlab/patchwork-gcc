@@ -487,6 +487,20 @@ ix86_conditional_register_usage (void)
   
   CLEAR_HARD_REG_SET (reg_class_contents[(int)CLOBBERED_REGS]);
 
+  /* If this function is one of the non-SSE-clobber variants, remove
+     those from the call_used_regs.  */
+  if (cfun && ix86_fntype_to_abi_id (TREE_TYPE (cfun->decl)) != ABI_DEFAULT)
+    {
+      for (i = XMM8_REG; i < XMM16_REG; i++)
+	call_used_regs[i] = 0;
+      if (ix86_fntype_to_abi_id (TREE_TYPE (cfun->decl)) == ABI_NO_SSE)
+	{
+	  /* And from any accessible regs if this is ABI_NO_SSE.  */
+	  for (i = XMM8_REG; i < XMM16_REG; i++)
+	    CLEAR_HARD_REG_BIT (accessible_reg_set, i);
+	}
+    }
+
   for (i = 0; i < FIRST_PSEUDO_REGISTER; i++)
     {
       /* Set/reset conditionally defined registers from
@@ -1108,6 +1122,8 @@ ix86_comp_type_attributes (const_tree type1, const_tree type2)
     return 0;
   if (ix86_function_regparm (type1, NULL)
       != ix86_function_regparm (type2, NULL))
+    return 0;
+  if (ix86_fntype_to_abi_id (type1) != ix86_fntype_to_abi_id (type2))
     return 0;
 
   return 1;
@@ -1780,6 +1796,21 @@ init_cumulative_args (CUMULATIVE_ARGS *cum,  /* Argument info to initialize */
   cum->warn_avx = true;
   cum->warn_sse = true;
   cum->warn_mmx = true;
+
+  if (ix86_fntype_to_abi_id (TREE_TYPE (cfun->decl)) == ABI_NO_SSE
+      && (!fntype
+	  || ix86_fntype_to_abi_id (fntype) != ABI_NO_SSE))
+    {
+      if (fndecl)
+	error ("%qD without attribute noanysseclobber cannot be "
+	       "called from functions with that attribute", fndecl);
+      else if (fntype)
+	error ("%qT without attribute noanysseclobber cannot be "
+	       "called from functions with that attribute", fntype);
+      else
+	error ("functions without attribute noanysseclobber cannot be "
+	       "called from functions with that attribute");
+    }
 
   /* Because type might mismatch in between caller and callee, we need to
      use actual type of function for local calls.
@@ -6504,7 +6535,7 @@ ix86_nsaved_sseregs (void)
   int nregs = 0;
   int regno;
 
-  if (!TARGET_64BIT_MS_ABI)
+  if (!TARGET_64BIT_MS_ABI && crtl->abi->id() == ABI_DEFAULT)
     return 0;
   for (regno = 0; regno < FIRST_PSEUDO_REGISTER; regno++)
     if (SSE_REGNO_P (regno) && ix86_save_reg (regno, true, true))
@@ -20191,6 +20222,34 @@ ix86_hard_regno_mode_ok (unsigned int regno, machine_mode mode)
   return false;
 }
 
+/* Return the descriptor of an nosseclobber ABI_ID.  */
+
+static const predefined_function_abi &
+i386_less_sse_abi (unsigned abi_id)
+{
+  predefined_function_abi &myabi = function_abis[abi_id];
+  if (!myabi.initialized_p ())
+    {
+      HARD_REG_SET full_reg_clobbers
+	= default_function_abi.full_reg_clobbers ();
+      for (int regno = XMM8_REG; regno < XMM16_REG; regno++)
+	CLEAR_HARD_REG_BIT (full_reg_clobbers, regno);
+      myabi.initialize (abi_id, full_reg_clobbers);
+    }
+  return myabi;
+}
+
+/* Implement TARGET_FNTYPE_ABI.  */
+
+static const predefined_function_abi &
+i386_fntype_abi (const_tree fntype)
+{
+  unsigned abi_id = ix86_fntype_to_abi_id (fntype);
+  if (abi_id != ABI_DEFAULT)
+    return i386_less_sse_abi (abi_id);
+  return default_function_abi;
+}
+
 /* Implement TARGET_INSN_CALLEE_ABI.  */
 
 const predefined_function_abi &
@@ -20246,6 +20305,9 @@ ix86_hard_regno_call_part_clobbered (unsigned int abi_id, unsigned int regno,
       return (GET_MODE_SIZE (mode) > 16
 	      && ((TARGET_64BIT && REX_SSE_REGNO_P (regno))
 		  || LEGACY_SSE_REGNO_P (regno)));
+
+  if (abi_id == ABI_NO_SSE)
+    return false;
 
   return SSE_REGNO_P (regno) && GET_MODE_SIZE (mode) > 16;
 }
@@ -25203,6 +25265,9 @@ ix86_libgcc_floating_mode_supported_p
 #undef TARGET_HARD_REGNO_CALL_PART_CLOBBERED
 #define TARGET_HARD_REGNO_CALL_PART_CLOBBERED \
   ix86_hard_regno_call_part_clobbered
+
+#undef TARGET_FNTYPE_ABI
+#define TARGET_FNTYPE_ABI i386_fntype_abi
 
 #undef TARGET_INSN_CALLEE_ABI
 #define TARGET_INSN_CALLEE_ABI ix86_insn_callee_abi
