@@ -3221,7 +3221,7 @@ gfc_match_init_expr (gfc_expr **result)
       return m;
     }
 
-  if (gfc_derived_parameter_expr (expr))
+  if (expr->expr_type != EXPR_FUNCTION && gfc_derived_parameter_expr (expr))
     {
       *result = expr;
       gfc_init_expr_flag = false;
