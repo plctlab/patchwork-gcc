@@ -1105,3 +1105,59 @@
   output_asm_insn (buf, operands);
   return "";
 })
+
+(define_peephole2
+  [(set (match_operand:SWI48x 0 "register_operand")
+	(match_operand:SWI48x 1 "x86_64_general_operand"))
+   (parallel [(set (match_dup 0)
+		   (unspec_volatile:SWI48x
+		     [(match_operand:SWI48x 2 "memory_operand")
+		      (match_dup 0)
+		      (match_operand:SWI48x 3 "register_operand")
+		      (match_operand:SI 4 "const_int_operand")]
+		     UNSPECV_CMPCCXADD))
+	      (set (match_dup 2)
+		   (unspec_volatile:SWI48x [(const_int 0)] UNSPECV_CMPCCXADD))
+	      (clobber (reg:CC FLAGS_REG))])
+   (set (reg FLAGS_REG)
+	(compare (match_operand:SWI48x 5 "register_operand")
+		 (match_operand:SWI48x 6 "x86_64_general_operand")))
+   (set (match_operand:QI 7 "nonimmediate_operand")
+	(match_operator:QI 8 "ix86_comparison_int_operator"
+	  [(reg FLAGS_REG) (const_int 0)]))]
+  "TARGET_CMPCCXADD && TARGET_64BIT
+   && ((rtx_equal_p (operands[0], operands[5])
+	&& rtx_equal_p (operands[1], operands[6]))
+       || ((rtx_equal_p (operands[0], operands[6])
+	    && rtx_equal_p (operands[1], operands[5]))
+	   && peep2_regno_dead_p (4, FLAGS_REG)))"
+  [(set (match_dup 0)
+	(match_dup 1))
+   (parallel [(set (match_dup 0)
+		   (unspec_volatile:SWI48x
+		     [(match_dup 2)
+		      (match_dup 0)
+		      (match_dup 3)
+		      (match_dup 4)]
+		     UNSPECV_CMPCCXADD))
+	      (set (match_dup 2)
+		   (unspec_volatile:SWI48x [(const_int 0)] UNSPECV_CMPCCXADD))
+	      (clobber (reg:CC FLAGS_REG))])
+   (set (match_dup 7)
+	(match_op_dup 8
+	  [(match_dup 9) (const_int 0)]))]
+{
+  operands[9] = gen_rtx_REG (GET_MODE (XEXP (operands[8], 0)), FLAGS_REG);
+  if (rtx_equal_p (operands[0], operands[6])
+     && rtx_equal_p (operands[1], operands[5])
+     && swap_condition (GET_CODE (operands[8])) != GET_CODE (operands[8]))
+     {
+       operands[8] = shallow_copy_rtx (operands[8]);
+       enum rtx_code ccode = swap_condition (GET_CODE (operands[8]));
+       PUT_CODE (operands[8], ccode);
+       operands[9] = gen_rtx_REG (SELECT_CC_MODE (ccode,
+						  operands[6],
+						  operands[5]),
+				   FLAGS_REG);
+     }
+})
