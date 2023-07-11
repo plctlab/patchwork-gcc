@@ -165,7 +165,7 @@ static edge gimple_try_redirect_by_replacing_jump (edge, basic_block);
 
 /* Various helpers.  */
 static inline bool stmt_starts_bb_p (gimple *, gimple *);
-static int gimple_verify_flow_info (void);
+static bool gimple_verify_flow_info (void);
 static void gimple_make_forwarder_block (edge);
 static gimple *first_non_label_stmt (basic_block);
 static bool verify_gimple_transaction (gtransaction *);
@@ -5660,10 +5660,10 @@ verify_gimple_in_cfg (struct function *fn, bool verify_nothrow, bool ice)
 
 /* Verifies that the flow information is OK.  */
 
-static int
+static bool
 gimple_verify_flow_info (void)
 {
-  int err = 0;
+  bool err = false;
   basic_block bb;
   gimple_stmt_iterator gsi;
   gimple *stmt;
@@ -5674,21 +5674,21 @@ gimple_verify_flow_info (void)
       || ENTRY_BLOCK_PTR_FOR_FN (cfun)->il.gimple.phi_nodes)
     {
       error ("ENTRY_BLOCK has IL associated with it");
-      err = 1;
+      err = true;
     }
 
   if (EXIT_BLOCK_PTR_FOR_FN (cfun)->il.gimple.seq
       || EXIT_BLOCK_PTR_FOR_FN (cfun)->il.gimple.phi_nodes)
     {
       error ("EXIT_BLOCK has IL associated with it");
-      err = 1;
+      err = true;
     }
 
   FOR_EACH_EDGE (e, ei, EXIT_BLOCK_PTR_FOR_FN (cfun)->preds)
     if (e->flags & EDGE_FALLTHRU)
       {
 	error ("fallthru to exit from bb %d", e->src->index);
-	err = 1;
+	err = true;
       }
 
   FOR_EACH_BB_FN (bb, cfun)
@@ -5713,28 +5713,28 @@ gimple_verify_flow_info (void)
 	    {
 	      error ("nonlocal label %qD is not first in a sequence "
 		     "of labels in bb %d", label, bb->index);
-	      err = 1;
+	      err = true;
 	    }
 
 	  if (prev_stmt && EH_LANDING_PAD_NR (label) != 0)
 	    {
 	      error ("EH landing pad label %qD is not first in a sequence "
 		     "of labels in bb %d", label, bb->index);
-	      err = 1;
+	      err = true;
 	    }
 
 	  if (label_to_block (cfun, label) != bb)
 	    {
 	      error ("label %qD to block does not match in bb %d",
 		     label, bb->index);
-	      err = 1;
+	      err = true;
 	    }
 
 	  if (decl_function_context (label) != current_function_decl)
 	    {
 	      error ("label %qD has incorrect context in bb %d",
 		     label, bb->index);
-	      err = 1;
+	      err = true;
 	    }
 	}
 
@@ -5748,7 +5748,7 @@ gimple_verify_flow_info (void)
 	    {
 	      error ("control flow in the middle of basic block %d",
 		     bb->index);
-	      err = 1;
+	      err = true;
 	    }
 
 	  if (stmt_ends_bb_p (stmt))
@@ -5758,7 +5758,7 @@ gimple_verify_flow_info (void)
 	    {
 	      error ("label %qD in the middle of basic block %d",
 		     gimple_label_label (label_stmt), bb->index);
-	      err = 1;
+	      err = true;
 	    }
 
 	  /* Check that no statements appear between a returns_twice call
@@ -5787,7 +5787,7 @@ gimple_verify_flow_info (void)
 		  error ("returns_twice call is %s in basic block %d",
 			 misplaced, bb->index);
 		  print_gimple_stmt (stderr, stmt, 0, TDF_SLIM);
-		  err = 1;
+		  err = true;
 		}
 	    }
 	  if (!is_gimple_debug (stmt))
@@ -5803,7 +5803,8 @@ gimple_verify_flow_info (void)
       if (gimple_code (stmt) == GIMPLE_LABEL)
 	continue;
 
-      err |= verify_eh_edges (stmt);
+      if (verify_eh_edges (stmt))
+	err = true;
 
       if (is_ctrl_stmt (stmt))
 	{
@@ -5812,7 +5813,7 @@ gimple_verify_flow_info (void)
 	      {
 		error ("fallthru edge after a control statement in bb %d",
 		       bb->index);
-		err = 1;
+		err = true;
 	      }
 	}
 
@@ -5825,7 +5826,7 @@ gimple_verify_flow_info (void)
 	      {
 		error ("true/false edge after a non-GIMPLE_COND in bb %d",
 		       bb->index);
-		err = 1;
+		err = true;
 	      }
 	}
 
@@ -5848,7 +5849,7 @@ gimple_verify_flow_info (void)
 	      {
 		error ("wrong outgoing edge flags at end of bb %d",
 		       bb->index);
-		err = 1;
+		err = true;
 	      }
 	  }
 	  break;
@@ -5857,7 +5858,7 @@ gimple_verify_flow_info (void)
 	  if (simple_goto_p (stmt))
 	    {
 	      error ("explicit goto at end of bb %d", bb->index);
-	      err = 1;
+	      err = true;
 	    }
 	  else
 	    {
@@ -5870,7 +5871,7 @@ gimple_verify_flow_info (void)
 		  {
 		    error ("wrong outgoing edge flags at end of bb %d",
 			   bb->index);
-		    err = 1;
+		    err = true;
 		  }
 	    }
 	  break;
@@ -5886,13 +5887,13 @@ gimple_verify_flow_info (void)
 		     | EDGE_TRUE_VALUE | EDGE_FALSE_VALUE)))
 	    {
 	      error ("wrong outgoing edge flags at end of bb %d", bb->index);
-	      err = 1;
+	      err = true;
 	    }
 	  if (single_succ (bb) != EXIT_BLOCK_PTR_FOR_FN (cfun))
 	    {
 	      error ("return edge does not point to exit in bb %d",
 		     bb->index);
-	      err = 1;
+	      err = true;
 	    }
 	  break;
 
@@ -5922,7 +5923,7 @@ gimple_verify_flow_info (void)
 		  {
 		    error ("found default case not at the start of "
 			   "case vector");
-		    err = 1;
+		    err = true;
 		    continue;
 		  }
 		if (CASE_LOW (prev)
@@ -5933,7 +5934,7 @@ gimple_verify_flow_info (void)
 		    fprintf (stderr," is greater than ");
 		    print_generic_expr (stderr, c);
 		    fprintf (stderr," but comes before it.\n");
-		    err = 1;
+		    err = true;
 		  }
 		prev = c;
 	      }
@@ -5947,7 +5948,7 @@ gimple_verify_flow_info (void)
 		  {
 		    error ("extra outgoing edge %d->%d",
 			   bb->index, e->dest->index);
-		    err = 1;
+		    err = true;
 		  }
 
 		e->dest->aux = (void *)2;
@@ -5956,7 +5957,7 @@ gimple_verify_flow_info (void)
 		  {
 		    error ("wrong outgoing edge flags at end of bb %d",
 			   bb->index);
-		    err = 1;
+		    err = true;
 		  }
 	      }
 
@@ -5969,7 +5970,7 @@ gimple_verify_flow_info (void)
 		if (label_bb->aux != (void *)2)
 		  {
 		    error ("missing edge %i->%i", bb->index, label_bb->index);
-		    err = 1;
+		    err = true;
 		  }
 	      }
 
@@ -5979,7 +5980,8 @@ gimple_verify_flow_info (void)
 	  break;
 
 	case GIMPLE_EH_DISPATCH:
-	  err |= verify_eh_dispatch_edge (as_a <geh_dispatch *> (stmt));
+	  if (verify_eh_dispatch_edge (as_a <geh_dispatch *> (stmt)))
+	    err = true;
 	  break;
 
 	default:
