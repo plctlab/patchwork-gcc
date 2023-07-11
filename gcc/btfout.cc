@@ -1156,7 +1156,7 @@ btf_init_postprocess (void)
 
 	  /* Create the 'const' modifier type for void.  */
 	  if (constvoid_id == CTF_NULL_TYPEID)
-	    constvoid_id = ctf_add_reftype (tu_ctfc, CTF_ADD_ROOT,
+	    constvoid_id = ctf_add_reftype (tu_ctfc, CTF_ADD_ROOT, NULL,
 					    dvd->dvd_type, CTF_K_CONST, NULL);
 	  dvd->dvd_type = constvoid_id;
 	}
