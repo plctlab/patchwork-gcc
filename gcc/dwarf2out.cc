@@ -5457,7 +5457,7 @@ get_AT (dw_die_ref die, enum dwarf_attribute attr_kind)
 
 /* Returns the parent of the declaration of DIE.  */
 
-static dw_die_ref
+dw_die_ref
 get_die_parent (dw_die_ref die)
 {
   dw_die_ref t;
