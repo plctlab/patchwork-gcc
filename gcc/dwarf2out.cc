@@ -13620,6 +13620,35 @@ long_double_as_float128 (tree type)
   return NULL_TREE;
 }
 
+/* Given a tree T, which should be a decl, process any btf_decl_tag attributes
+   on T, provided in ATTR.  Construct DW_TAG_GNU_annotation DIEs appropriately
+   as children of TARGET, usually the DIE for T.  */
+
+static void
+gen_btf_decl_tag_dies (tree t, dw_die_ref target)
+{
+  dw_die_ref die;
+  tree attr;
+
+  if (t == NULL_TREE || !DECL_P (t) || !target)
+    return;
+
+  attr = lookup_attribute ("btf_decl_tag", DECL_ATTRIBUTES (t));
+  while (attr != NULL_TREE)
+    {
+      die = new_die (DW_TAG_GNU_annotation, target, t);
+      add_name_attribute (die, IDENTIFIER_POINTER (get_attribute_name (attr)));
+      add_AT_string (die, DW_AT_const_value,
+		     TREE_STRING_POINTER (TREE_VALUE (TREE_VALUE (attr))));
+      attr = lookup_attribute ("btf_decl_tag", TREE_CHAIN (attr));
+    }
+
+  /* Strip the decl tag attribute to avoid creating multiple copies if we hit
+     this tree node again in some recursive call.  */
+  DECL_ATTRIBUTES (t)
+    = remove_attribute ("btf_decl_tag", DECL_ATTRIBUTES (t));
+}
+
 /* Given a pointer to an arbitrary ..._TYPE tree node, return a debugging
    entry that chains the modifiers specified by CV_QUALS in front of the
    given type.  REVERSE is true if the type is to be interpreted in the
@@ -23014,6 +23043,9 @@ gen_formal_parameter_die (tree node, tree origin, bool emit_name_p,
       gcc_unreachable ();
     }
 
+  /* Handle any attribute btf_decl_tag on the decl.  */
+  gen_btf_decl_tag_dies (node, parm_die);
+
   return parm_die;
 }
 
@@ -27164,6 +27196,9 @@ gen_decl_die (tree decl, tree origin, struct vlr_context *ctx,
       gcc_assert ((int)TREE_CODE (decl) > NUM_TREE_CODES);
       break;
     }
+
+  /* Handle any attribute btf_decl_tag on the decl.  */
+  gen_btf_decl_tag_dies (decl_or_origin, lookup_decl_die (decl_or_origin));
 
   return NULL;
 }
