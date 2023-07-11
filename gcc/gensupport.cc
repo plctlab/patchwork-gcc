@@ -3308,7 +3308,8 @@ find_optab (optab_pattern *p, const char *name)
 	{
 	  p->name = name;
 	  p->op = optabs[pindex].op;
-	  p->sort_num = (p->op << 16) | (p->m2 << 8) | p->m1;
+	  p->sort_num
+	    = ((unsigned long long) p->op << 32) | (p->m2 << 16) | p->m1;
 	  return true;
 	}
     }

@@ -51,7 +51,12 @@ pattern_cmp (const void *va, const void *vb)
 {
   const optab_pattern *a = (const optab_pattern *)va;
   const optab_pattern *b = (const optab_pattern *)vb;
-  return a->sort_num - b->sort_num;
+  if (a->sort_num > b->sort_num)
+    return 1;
+  else if (a->sort_num < b->sort_num)
+    return -1;
+  else
+    return 0;
 }
 
 static int
@@ -305,7 +310,7 @@ main (int argc, const char **argv)
 	   "extern const struct optab_libcall_d normlib_def[NUM_NORMLIB_OPTABS];\n"
 	   "\n"
 	   "/* Returns the active icode for the given (encoded) optab.  */\n"
-	   "extern enum insn_code raw_optab_handler (unsigned);\n"
+	   "extern enum insn_code raw_optab_handler (unsigned long long);\n"
 	   "extern bool swap_optab_enable (optab, machine_mode, bool);\n"
 	   "\n"
 	   "/* Target-dependent globals.  */\n"
@@ -357,14 +362,14 @@ main (int argc, const char **argv)
 	   "#include \"optabs.h\"\n"
 	   "\n"
 	   "struct optab_pat {\n"
-	   "  unsigned scode;\n"
+	   "  unsigned long long scode;\n"
 	   "  enum insn_code icode;\n"
 	   "};\n\n");
 
   fprintf (s_file,
 	   "static const struct optab_pat pats[NUM_OPTAB_PATTERNS] = {\n");
   for (i = 0; patterns.iterate (i, &p); ++i)
-    fprintf (s_file, "  { %#08x, CODE_FOR_%s },\n", p->sort_num, p->name);
+    fprintf (s_file, "  { %#08llx, CODE_FOR_%s },\n", p->sort_num, p->name);
   fprintf (s_file, "};\n\n");
 
   fprintf (s_file, "void\ninit_all_optabs (struct target_optabs *optabs)\n{\n");
@@ -407,7 +412,7 @@ main (int argc, const char **argv)
      the hash entries, which complicates the pat_enable array.  */
   fprintf (s_file,
 	   "static int\n"
-	   "lookup_handler (unsigned scode)\n"
+	   "lookup_handler (unsigned long long scode)\n"
 	   "{\n"
 	   "  int l = 0, h = ARRAY_SIZE (pats), m;\n"
 	   "  while (h > l)\n"
@@ -425,7 +430,7 @@ main (int argc, const char **argv)
 
   fprintf (s_file,
 	   "enum insn_code\n"
-	   "raw_optab_handler (unsigned scode)\n"
+	   "raw_optab_handler (unsigned long long scode)\n"
 	   "{\n"
 	   "  int i = lookup_handler (scode);\n"
 	   "  return (i >= 0 && this_fn_optabs->pat_enable[i]\n"
@@ -436,7 +441,7 @@ main (int argc, const char **argv)
 	   "bool\n"
 	   "swap_optab_enable (optab op, machine_mode m, bool set)\n"
 	   "{\n"
-	   "  unsigned scode = (op << 16) | m;\n"
+	   "  unsigned long long scode = ((unsigned long long)op << 32) | m;\n"
 	   "  int i = lookup_handler (scode);\n"
 	   "  if (i >= 0)\n"
 	   "    {\n"

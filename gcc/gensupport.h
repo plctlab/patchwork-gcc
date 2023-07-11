@@ -122,7 +122,7 @@ struct optab_pattern
 
   /* An index that provides a lexicographical sort of (OP, M2, M1).
      Used by genopinit.cc.  */
-  unsigned int sort_num;
+  unsigned long long sort_num;
 };
 
 extern rtx add_implicit_parallel (rtvec);
