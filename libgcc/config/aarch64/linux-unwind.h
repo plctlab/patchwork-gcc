@@ -77,7 +77,7 @@ aarch64_fallback_frame_state (struct _Unwind_Context *context,
     }
 
   rt_ = context->cfa;
-  sc = &rt_->uc.uc_mcontext;
+  sc = (struct sigcontext *) &rt_->uc.uc_mcontext;
 
 /* This define duplicates the definition in aarch64.md */
 #define SP_REGNUM 31
