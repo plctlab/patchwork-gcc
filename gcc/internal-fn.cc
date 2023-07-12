@@ -4146,6 +4146,54 @@ conditional_internal_fn_code (internal_fn ifn)
     }
 }
 
+/* Invoke T(CODE, IFN) for each conditional len function IFN that maps to a
+   tree code CODE.  */
+#define FOR_EACH_CODE_LEN_MAPPING(T)                                           \
+  T (PLUS_EXPR, IFN_COND_LEN_ADD)                                              \
+  T (MINUS_EXPR, IFN_COND_LEN_SUB)                                             \
+  T (MULT_EXPR, IFN_COND_LEN_MUL)                                              \
+  T (TRUNC_DIV_EXPR, IFN_COND_LEN_DIV)                                         \
+  T (TRUNC_MOD_EXPR, IFN_COND_LEN_MOD)                                         \
+  T (RDIV_EXPR, IFN_COND_LEN_RDIV)                                             \
+  T (MIN_EXPR, IFN_COND_LEN_MIN)                                               \
+  T (MAX_EXPR, IFN_COND_LEN_MAX)                                               \
+  T (BIT_AND_EXPR, IFN_COND_LEN_AND)                                           \
+  T (BIT_IOR_EXPR, IFN_COND_LEN_IOR)                                           \
+  T (BIT_XOR_EXPR, IFN_COND_LEN_XOR)                                           \
+  T (LSHIFT_EXPR, IFN_COND_LEN_SHL)                                            \
+  T (RSHIFT_EXPR, IFN_COND_LEN_SHR)                                            \
+  T (NEGATE_EXPR, IFN_COND_LEN_NEG)
+
+/* Return a function that only performs CODE when a certain condition is met
+   and that uses a given fallback value otherwise.  For example, if CODE is
+   a binary operation associated with conditional function FN:
+
+     LHS = FN (COND, A, B, ELSE, LEN)
+
+   is equivalent to the C expression:
+
+     for (int i = 0; i < LEN; i++)
+       LHS[i] = COND[i] ? A[i] CODE B[i] : ELSE[i];
+
+   operating elementwise if the operands are vectors.
+
+   Return IFN_LAST if no such function exists.  */
+
+internal_fn
+get_conditional_len_internal_fn (tree_code code)
+{
+  switch (code)
+    {
+#define CASE(CODE, IFN)                                                        \
+  case CODE:                                                                   \
+    return IFN;
+      FOR_EACH_CODE_LEN_MAPPING (CASE)
+#undef CASE
+    default:
+      return IFN_LAST;
+    }
+}
+
 /* Invoke T(IFN) for each internal function IFN that also has an
    IFN_COND_* form.  */
 #define FOR_EACH_COND_FN_PAIR(T) \
