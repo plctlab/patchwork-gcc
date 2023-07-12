@@ -474,6 +474,18 @@ subset_cmp (const std::string &a, const std::string &b)
     }
 }
 
+/* Return true if EXT is a standard extension.  */
+
+static bool
+standard_extensions_p (const char *ext)
+{
+  const riscv_ext_version *ext_ver;
+  for (ext_ver = &riscv_ext_version_table[0]; ext_ver->name != NULL; ++ext_ver)
+    if (strcmp (ext, ext_ver->name) == 0)
+      return true;
+  return false;
+}
+
 /* Add new subset to list.  */
 
 void
@@ -500,6 +512,23 @@ riscv_subset_list::add (const char *subset, int major_version,
 	  m_arch,
 	  subset);
 
+      return;
+    }
+  else if (subset[0] == 'z' && !standard_extensions_p (subset))
+    {
+      error_at (m_loc,
+		"%<-march=%s%>: extension %qs starts with `z` but is not a "
+		"standard sub-extension",
+		m_arch, subset);
+      return;
+    }
+  else if (subset[0] == 's' && !standard_extensions_p (subset))
+    {
+      error_at (
+	m_loc,
+	"%<-march=%s%>: extension %qs start with `s` but not a standard "
+	"supervisor extension",
+	m_arch, subset);
       return;
     }
 
