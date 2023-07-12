@@ -849,7 +849,7 @@ store_bit_field_1 (rtx str_rtx, poly_uint64 bitsize, poly_uint64 bitnum,
      if we aren't.  This must come after the entire register case above,
      since that case is valid for any mode.  The following cases are only
      valid for integral modes.  */
-  opt_scalar_int_mode op0_mode = int_mode_for_mode (GET_MODE (op0));
+  opt_scalar_int_mode op0_mode = int_mode_for_mode (GET_MODE (str_rtx));
   scalar_int_mode imode;
   if (!op0_mode.exists (&imode) || imode != GET_MODE (op0))
     {
