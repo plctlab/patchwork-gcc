@@ -3144,11 +3144,15 @@
 {
   switch (INTVAL (operands[1]))
   {
-    case 0: return "prefetch.r\t%a0";
-    case 1: return "prefetch.w\t%a0";
+    case 0: return TARGET_ZIHINTNTL ? "%N2prefetch.r\t%a0" : "prefetch.r\t%a0";
+    case 1: return TARGET_ZIHINTNTL ? "%N2prefetch.w\t%a0" : "prefetch.w\t%a0";
     default: gcc_unreachable ();
   }
-})
+}
+  [(set (attr "length") (if_then_else (and (match_test "TARGET_ZIHINTNTL")
+					   (match_test "INTVAL (operands[2]) != 3"))
+				      (const_string "8")
+				      (const_string "4")))])
 
 (define_insn "riscv_prefetchi_<mode>"
   [(unspec_volatile:X [(match_operand:X 0 "address_operand" "r")
