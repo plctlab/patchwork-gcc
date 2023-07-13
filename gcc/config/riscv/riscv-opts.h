@@ -93,9 +93,11 @@ enum riscv_multilib_select_kind {
 
 #define MASK_ZICSR    (1 << 0)
 #define MASK_ZIFENCEI (1 << 1)
+#define MASK_ZIHINTNTL (1 << 2)
 
 #define TARGET_ZICSR    ((riscv_zi_subext & MASK_ZICSR) != 0)
 #define TARGET_ZIFENCEI ((riscv_zi_subext & MASK_ZIFENCEI) != 0)
+#define TARGET_ZIHINTNTL ((riscv_zi_subext & MASK_ZIHINTNTL) != 0)
 
 #define MASK_ZAWRS   (1 << 0)
 #define TARGET_ZAWRS ((riscv_za_subext & MASK_ZAWRS) != 0)
