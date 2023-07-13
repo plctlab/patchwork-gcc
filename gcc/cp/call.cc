@@ -5206,7 +5206,7 @@ keep_unused_object_arg (tree result, tree obj, tree fn)
   if (TREE_THIS_VOLATILE (a))
     a = build_this (a);
   if (TREE_SIDE_EFFECTS (a))
-    return build2 (COMPOUND_EXPR, TREE_TYPE (result), a, result);
+    return cp_build_compound_expr (a, result, tf_warning_or_error);
   return result;
 }
 
