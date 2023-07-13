@@ -1112,11 +1112,10 @@ get_elem_size (gfc_se *se, gfc_expr *expr)
 
 
 /* Generate the data reference (array) descriptor corresponding to the
-   expression passed as argument in VAR.  Use type in TS to pilot code
-   generation.  */
+   expression passed as argument in VAR.  */
 
 static void
-get_var_descr (gfc_se *se, gfc_typespec *ts, gfc_expr *var)
+get_var_descr (gfc_se *se, gfc_expr *var)
 {
   gfc_se tmp_se;
   symbol_attribute attr;
@@ -1125,7 +1124,7 @@ get_var_descr (gfc_se *se, gfc_typespec *ts, gfc_expr *var)
 
   gfc_init_se (&tmp_se, NULL);
 
-  if (ts->type == BT_DERIVED)
+  if (var->ts.type == BT_DERIVED)
     {
       tmp_se.want_pointer = 1;
       if (var->rank)
@@ -1353,7 +1352,7 @@ gfc_add_finalizer_call (stmtblock_t *block, gfc_expr *expr2)
 
   gfc_se desc_se;
   gfc_init_se (&desc_se, NULL);
-  get_var_descr (&desc_se, &expr->ts, expr);
+  get_var_descr (&desc_se, expr);
   gfc_add_block_to_block (&tmp_block, &desc_se.pre);
 
   tmp = build_call_expr_loc (input_location, final_se.expr, 3,
