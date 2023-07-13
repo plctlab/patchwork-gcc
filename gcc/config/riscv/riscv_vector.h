@@ -42,6 +42,13 @@ enum RVV_CSR {
   RVV_VCSR,
 };
 
+enum __RISCV_VXRM {
+  __RISCV_VXRM_RNU = 0,
+  __RISCV_VXRM_RNE = 1,
+  __RISCV_VXRM_RDN = 2,
+  __RISCV_VXRM_ROD = 3,
+};
+
 __extension__ extern __inline unsigned long
 __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
 vread_csr(enum RVV_CSR csr)
