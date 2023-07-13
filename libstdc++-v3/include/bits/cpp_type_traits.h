@@ -363,6 +363,13 @@ __INT_N(__GLIBCXX_TYPE_INT_N_3)
   //
   // Pointer types
   //
+#if __has_builtin(__is_pointer)
+  template<typename _Tp>
+    struct __is_ptr : __truth_type<__is_pointer(_Tp)>
+    {
+      enum { __value = __is_pointer(_Tp) };
+    };
+#else
   template<typename _Tp>
     struct __is_ptr
     {
@@ -376,6 +383,7 @@ __INT_N(__GLIBCXX_TYPE_INT_N_3)
       enum { __value = 1 };
       typedef __true_type __type;
     };
+#endif
 
   //
   // An arithmetic type is an integer type or a floating point type
