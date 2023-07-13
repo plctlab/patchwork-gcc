@@ -267,6 +267,8 @@ static const char *riscv_tunes[] =
 
 static const char *riscv_supported_std_ext (void);
 
+bool riscv_subset_list::parse_failed = false;
+
 static riscv_subset_list *current_subset_list = NULL;
 
 const riscv_subset_list *riscv_current_subset_list ()
@@ -474,6 +476,18 @@ subset_cmp (const std::string &a, const std::string &b)
     }
 }
 
+/* Return true if EXT is a standard extension.  */
+
+static bool
+standard_extensions_p (const char *ext)
+{
+  const riscv_ext_version *ext_ver;
+  for (ext_ver = &riscv_ext_version_table[0]; ext_ver->name != NULL; ++ext_ver)
+    if (strcmp (ext, ext_ver->name) == 0)
+      return true;
+  return false;
+}
+
 /* Add new subset to list.  */
 
 void
@@ -500,6 +514,38 @@ riscv_subset_list::add (const char *subset, int major_version,
 	  m_arch,
 	  subset);
 
+      return;
+    }
+  else if (strlen (subset) == 1 && !standard_extensions_p (subset))
+    {
+      error_at (m_loc,
+		"%<-march=%s%>: extension %qs is unsupported standard single "
+		"letter extension",
+		m_arch, subset);
+      return;
+    }
+  else if (subset[0] == 'z' && !standard_extensions_p (subset))
+    {
+      error_at (m_loc,
+		"%<-march=%s%>: extension %qs starts with `z` but is "
+		"unsupported standard extension",
+		m_arch, subset);
+      return;
+    }
+  else if (subset[0] == 's' && !standard_extensions_p (subset))
+    {
+      error_at (m_loc,
+		"%<-march=%s%>: extension %qs start with `s` but is "
+		"unsupported standard supervisor extension",
+		m_arch, subset);
+      return;
+    }
+  else if (subset[0] == 'x' && !standard_extensions_p (subset))
+    {
+      error_at (m_loc,
+		"%<-march=%s%>: extension %qs start with `x` but is "
+		"unsupported non-standard extension",
+		m_arch, subset);
       return;
     }
 
@@ -875,22 +921,16 @@ riscv_subset_list::parse_std_ext (const char *p)
       while (*std_exts && std_ext != *std_exts)
 	std_exts++;
 
-      if (std_ext != *std_exts)
-	{
-	  if (strchr (all_std_exts, std_ext) == NULL)
-	    error_at (m_loc, "%<-march=%s%>: unsupported ISA subset %<%c%>",
-		      m_arch, *p);
-	  else
-	    error_at (m_loc,
-		      "%<-march=%s%>: ISA string is not in canonical order. "
-		      "%<%c%>", m_arch, *p);
-	  return NULL;
-	}
+      subset[0] = std_ext;
+      if (std_ext != *std_exts && standard_extensions_p (subset))
+	error_at (m_loc,
+		  "%<-march=%s%>: ISA string is not in canonical order. "
+		  "%<%c%>",
+		  m_arch, *p);
 
       std_exts++;
 
       p++;
-      subset[0] = std_ext;
 
       p = parsing_subset_version (subset, p, &major_version, &minor_version,
 				  /* std_ext_p= */ true, &explicit_version_p);
@@ -1095,6 +1135,9 @@ riscv_subset_list::parse_multiletter_ext (const char *p,
 riscv_subset_list *
 riscv_subset_list::parse (const char *arch, location_t loc)
 {
+  if (riscv_subset_list::parse_failed)
+    return NULL;
+
   riscv_subset_list *subset_list = new riscv_subset_list (arch, loc);
   riscv_subset_t *itr;
   const char *p = arch;
@@ -1161,6 +1204,7 @@ riscv_subset_list::parse (const char *arch, location_t loc)
 
 fail:
   delete subset_list;
+  riscv_subset_list::parse_failed = true;
   return NULL;
 }
 
