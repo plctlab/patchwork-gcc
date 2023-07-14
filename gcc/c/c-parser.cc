@@ -104,6 +104,17 @@ set_c_expr_source_range (c_expr *expr,
 }
 
 
+/* Register keyword attribute AS with reserved identifier code RID.  */
+
+void
+c_register_keyword_attribute (const attribute_spec *as, int rid)
+{
+  tree id = get_identifier (as->name);
+  C_SET_RID_CODE (id, rid);
+  C_IS_RESERVED_WORD (id) = 1;
+  ridpointers [rid] = id;
+}
+
 /* Initialization routine for this file.  */
 
 void
@@ -180,6 +191,16 @@ c_parse_init (void)
       C_IS_RESERVED_WORD (id) = 1;
       ridpointers [RID_OMP_ALL_MEMORY] = id;
     }
+
+  int rid = RID_FIRST_KEYWORD_ATTR;
+  if (const attribute_spec *attrs = targetm.attribute_table)
+    for (const attribute_spec *attr = attrs; attr->name; ++attr)
+      if (attr->is_keyword)
+	{
+	  gcc_assert (rid <= RID_LAST_KEYWORD_ATTR);
+	  c_register_keyword_attribute (attr, rid);
+	  rid += 1;
+	}
 }
 
 /* A parser structure recording information about the state and
@@ -4935,7 +4956,8 @@ c_parser_gnu_attribute_any_word (c_parser *parser)
     {
       /* ??? See comment above about what keywords are accepted here.  */
       bool ok;
-      switch (c_parser_peek_token (parser)->keyword)
+      int rid = c_parser_peek_token (parser)->keyword;
+      switch (rid)
 	{
 	case RID_STATIC:
 	case RID_UNSIGNED:
@@ -4978,7 +5000,9 @@ c_parser_gnu_attribute_any_word (c_parser *parser)
 	  ok = true;
 	  break;
 	default:
-	  ok = false;
+	  /* Accept these now so that we can reject them with a specific
+	     error later.  */
+	  ok = (rid >= RID_FIRST_KEYWORD_ATTR && rid <= RID_LAST_KEYWORD_ATTR);
 	  break;
 	}
       if (!ok)
@@ -5140,6 +5164,10 @@ c_parser_gnu_attribute (c_parser *parser, tree attrs,
     return NULL_TREE;
 
   attr_name = canonicalize_attr_name (attr_name);
+  const attribute_spec *as = lookup_attribute_spec (attr_name);
+  if (as && as->is_keyword)
+    error ("%qE cannot be used in %<__attribute__%> constructs", attr_name);
+
   c_parser_consume_token (parser);
 
   tree attr;
@@ -5314,6 +5342,42 @@ c_parser_balanced_token_sequence (c_parser *parser)
     }
 }
 
+/* Parse a keyword attribute.  This is simply:
+
+     keyword
+
+   if the attribute never takes arguments, otherwise it is:
+
+     keyword ( balanced-token-sequence[opt] )
+*/
+
+static tree
+c_parser_keyword_attribute (c_parser *parser)
+{
+  c_token *token = c_parser_peek_token (parser);
+  gcc_assert (token->type == CPP_KEYWORD);
+  tree name = canonicalize_attr_name (token->value);
+  c_parser_consume_token (parser);
+
+  tree attribute = build_tree_list (name, NULL_TREE);
+  const attribute_spec *as = lookup_attribute_spec (name);
+  gcc_assert (as && as->is_keyword);
+  if (as->max_length > 0)
+    {
+      matching_parens parens;
+      if (!parens.require_open (parser))
+	return error_mark_node;
+      /* Allow zero-length arguments regardless of as->min_length, since
+	 the usual error "parentheses must be omitted if attribute argument
+	 list is empty" suggests an invalid change.  We'll reject incorrect
+	 argument lists later.  */
+      TREE_VALUE (attribute)
+	= c_parser_attribute_arguments (parser, false, false, false, true);
+      parens.require_close (parser);
+    }
+  return attribute;
+}
+
 /* Parse standard (C2X) attributes (including GNU attributes in the
    gnu:: namespace).
 
@@ -5380,8 +5444,11 @@ c_parser_std_attribute (c_parser *parser, bool for_tm)
     ns = NULL_TREE;
   attribute = build_tree_list (build_tree_list (ns, name), NULL_TREE);
 
-  /* Parse the arguments, if any.  */
   const attribute_spec *as = lookup_attribute_spec (TREE_PURPOSE (attribute));
+  if (as && as->is_keyword)
+    error ("%qE cannot be used in %<[[...]]%> constructs", name);
+
+  /* Parse the arguments, if any.  */
   if (c_parser_next_token_is_not (parser, CPP_OPEN_PAREN))
     goto out;
   {
@@ -5440,7 +5507,13 @@ c_parser_std_attribute (c_parser *parser, bool for_tm)
 static tree
 c_parser_std_attribute_specifier (c_parser *parser, bool for_tm)
 {
-  location_t loc = c_parser_peek_token (parser)->location;
+  auto first_token = c_parser_peek_token (parser);
+  location_t loc = first_token->location;
+  if (first_token->type == CPP_KEYWORD
+      && first_token->keyword >= RID_FIRST_KEYWORD_ATTR
+      && first_token->keyword <= RID_LAST_KEYWORD_ATTR)
+    return c_parser_keyword_attribute (parser);
+
   if (!c_parser_require (parser, CPP_OPEN_SQUARE, "expected %<[%>"))
     return NULL_TREE;
   if (!c_parser_require (parser, CPP_OPEN_SQUARE, "expected %<[%>"))
@@ -5555,7 +5628,12 @@ c_parser_check_balanced_raw_token_sequence (c_parser *parser, unsigned int *n)
 static bool
 c_parser_nth_token_starts_std_attributes (c_parser *parser, unsigned int n)
 {
-  if (!(c_parser_peek_nth_token (parser, n)->type == CPP_OPEN_SQUARE
+  auto token_n = c_parser_peek_nth_token (parser, n);
+  if (token_n->type == CPP_KEYWORD
+      && token_n->keyword >= RID_FIRST_KEYWORD_ATTR
+      && token_n->keyword <= RID_LAST_KEYWORD_ATTR)
+    return true;
+  if (!(token_n->type == CPP_OPEN_SQUARE
 	&& c_parser_peek_nth_token (parser, n + 1)->type == CPP_OPEN_SQUARE))
     return false;
   /* In C, '[[' must start attributes.  In Objective-C, we need to

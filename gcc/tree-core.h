@@ -2162,6 +2162,25 @@ struct attribute_spec {
   /* An array of attribute exclusions describing names of other attributes
      that this attribute is mutually exclusive with.  */
   const exclusions *exclude;
+
+  /* Whether the attribute is a C/C++ "regular keyword attribute".
+     When true for an attribute "foo", this means that:
+
+     - The keyword foo can appear exactly where the standard attribute syntax
+       [[...]] can appear, but without the same minimum language requirements.
+       The link is intended to be automatic: there should be no exceptions.
+
+     - The attribute appertains to whatever a standard attribute in the
+       same location would appertain to.  There is no "sliding" from decls
+       to types, as sometimes happens for GNU-style attributes.
+
+     - When MAX_LENGTH > 0, the keyword is followed by an argument list.
+       This argument list is parsed in the same way as arguments to [[...]]
+       attributes, except that the list can be empty if MIN_LENGTH == 0.
+
+     - In C and C++, the attribute cannot appear in __attribute__ or [[...]];
+       it can only appear as a simple keyword.  */
+  bool is_keyword;
 };
 
 /* These functions allow a front-end to perform a manual layout of a

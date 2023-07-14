@@ -2802,6 +2802,7 @@ static const struct attribute_spec aarch64_attribute_table[] =
   { "arm_sve_vector_bits", 1, 1, false, true,  false, true,
 			  aarch64_sve::handle_arm_sve_vector_bits_attribute,
 			  NULL },
+  { "__arm_streaming",    0, 0, false, true,  true,  true,  NULL, NULL, true },
   { "Advanced SIMD type", 1, 1, false, true,  false, true,  NULL, NULL },
   { "SVE type",		  3, 3, false, true,  false, true,  NULL, NULL },
   { "SVE sizeless type",  0, 0, false, true,  false, true,  NULL, NULL },

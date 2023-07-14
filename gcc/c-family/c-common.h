@@ -222,17 +222,9 @@ enum rid
   RID_ADDR_SPACE_5,
   RID_ADDR_SPACE_6,
   RID_ADDR_SPACE_7,
-  RID_ADDR_SPACE_8,
-  RID_ADDR_SPACE_9,
-  RID_ADDR_SPACE_10,
-  RID_ADDR_SPACE_11,
-  RID_ADDR_SPACE_12,
-  RID_ADDR_SPACE_13,
-  RID_ADDR_SPACE_14,
-  RID_ADDR_SPACE_15,
 
   RID_FIRST_ADDR_SPACE = RID_ADDR_SPACE_0,
-  RID_LAST_ADDR_SPACE = RID_ADDR_SPACE_15,
+  RID_LAST_ADDR_SPACE = RID_ADDR_SPACE_7,
 
   /* __intN keywords.  The _N_M here doesn't correspond to the intN
      in the keyword; use the bitsize in int_n_t_data_t[M] for that.
@@ -250,6 +242,9 @@ enum rid
 
   RID_FIRST_INT_N = RID_INT_N_0,
   RID_LAST_INT_N = RID_INT_N_3,
+
+  RID_FIRST_KEYWORD_ATTR,
+  RID_LAST_KEYWORD_ATTR = RID_FIRST_KEYWORD_ATTR + 7,
 
   RID_MAX,
 

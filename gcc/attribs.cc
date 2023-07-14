@@ -752,6 +752,11 @@ decl_attributes (tree *node, tree attributes, int flags,
 
       if (spec->decl_required && !DECL_P (*anode))
 	{
+	  if (spec->is_keyword)
+	    {
+	      error ("%qE does not apply to types", name);
+	      continue;
+	    }
 	  if (flags & ((int) ATTR_FLAG_DECL_NEXT
 		       | (int) ATTR_FLAG_FUNCTION_NEXT
 		       | (int) ATTR_FLAG_ARRAY_NEXT))
@@ -775,6 +780,11 @@ decl_attributes (tree *node, tree attributes, int flags,
 	 the decl's type in place here.  */
       if (spec->type_required && DECL_P (*anode))
 	{
+	  if (spec->is_keyword)
+	    {
+	      error ("%qE only applies to types", name);
+	      continue;
+	    }
 	  anode = &TREE_TYPE (*anode);
 	  flags &= ~(int) ATTR_FLAG_TYPE_IN_PLACE;
 	}
@@ -782,6 +792,11 @@ decl_attributes (tree *node, tree attributes, int flags,
       if (spec->function_type_required && TREE_CODE (*anode) != FUNCTION_TYPE
 	  && TREE_CODE (*anode) != METHOD_TYPE)
 	{
+	  if (spec->is_keyword)
+	    {
+	      error ("%qE only applies to function types", name);
+	      continue;
+	    }
 	  if (TREE_CODE (*anode) == POINTER_TYPE
 	      && (TREE_CODE (TREE_TYPE (*anode)) == FUNCTION_TYPE
 		  || TREE_CODE (TREE_TYPE (*anode)) == METHOD_TYPE))
@@ -822,7 +837,12 @@ decl_attributes (tree *node, tree attributes, int flags,
 	  && (flags & (int) ATTR_FLAG_TYPE_IN_PLACE)
 	  && TYPE_SIZE (*anode) != NULL_TREE)
 	{
-	  warning (OPT_Wattributes, "type attributes ignored after type is already defined");
+	  if (spec->is_keyword)
+	    error ("cannot apply %qE to a type that has already been"
+		   " defined", name);
+	  else
+	    warning (OPT_Wattributes, "type attributes ignored after type"
+		     " is already defined");
 	  continue;
 	}
 
@@ -896,7 +916,13 @@ decl_attributes (tree *node, tree attributes, int flags,
 	  *anode = cur_and_last_decl[0];
 	  if (ret == error_mark_node)
 	    {
-	      warning (OPT_Wattributes, "%qE attribute ignored", name);
+	      if (spec->is_keyword)
+		/* This error is only a last resort, Hopefully the
+		   handler will report a better error in most cases,
+		   return NULL_TREE, and set no_add_attrs.  */
+		error ("invalid %qE attribute", name);
+	      else
+		warning (OPT_Wattributes, "%qE attribute ignored", name);
 	      no_add_attrs = true;
 	    }
 	  else
