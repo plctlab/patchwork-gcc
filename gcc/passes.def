@@ -232,6 +232,10 @@ along with GCC; see the file COPYING3.  If not see
       NEXT_PASS (pass_ch);
       NEXT_PASS (pass_lower_complex);
       NEXT_PASS (pass_sra);
+      /* Lower accesses including bit-field access.  Note this should be after
+         the last SRA as SRA has better information with bit-field accesses
+         not lowered. */
+      NEXT_PASS (pass_lower_accesses);
       /* The dom pass will also resolve all __builtin_constant_p calls
          that are still there to 0.  This has to be done after some
 	 propagations have already run, but before some more dead code

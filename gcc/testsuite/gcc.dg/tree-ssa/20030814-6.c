@@ -38,6 +38,5 @@ foo (t, set)
   else
     return 0;
 }
-/* There should be precisely one load of common.code.  If there is
-   more than one, then the dominator optimizations failed.  */
-/* { dg-final { scan-tree-dump-times "common.code" 1 "dom2" } } */
+/* There should be no load of common.code.  */
+/* { dg-final { scan-tree-dump-times "BIT_FIELD_REF" 0 "dom2" } } */

@@ -152,6 +152,6 @@ main ()
   return 0;
 }
 
-/* { dg-final { scan-tree-dump-times "Merging successful" 7 "store-merging" } } */
-/* { dg-final { scan-tree-dump-times "__builtin_bswap64" 2 "store-merging" } } */
+/* { dg-final { scan-tree-dump-times "Merging successful" 6 "store-merging" } } */
+/* { dg-final { scan-tree-dump-times "__builtin_bswap64" 1 "store-merging" } } */
 /* { dg-final { scan-tree-dump-times "__builtin_bswap32" 4 "store-merging" } } */

@@ -1331,6 +1331,7 @@ OBJS = \
 	$(GIMPLE_MATCH_PD_SEQ_O) \
 	gimple-match-exports.o \
 	$(GENERIC_MATCH_PD_SEQ_O) \
+	gimple-lower-accesses.o \
 	insn-attrtab.o \
 	insn-automata.o \
 	insn-dfatab.o \

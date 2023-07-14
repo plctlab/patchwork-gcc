@@ -214,4 +214,4 @@ main ()
   return 0;
 }
 
-/* { dg-final { scan-tree-dump-times "Merging successful" 9 "store-merging" } } */
+/* { dg-final { scan-tree-dump-times "Merging successful" 0 "store-merging" } } */

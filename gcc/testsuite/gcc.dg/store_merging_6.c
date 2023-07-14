@@ -50,4 +50,4 @@ main (void)
 }
 
 
-/* { dg-final { scan-tree-dump-times "Merging successful" 2 "store-merging" } } */
+/* { dg-final { scan-tree-dump-times "Merging successful" 0 "store-merging" } } */

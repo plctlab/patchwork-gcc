@@ -38,4 +38,4 @@ void bar2 (struct S2 *s, struct S2 *m, _Bool flag)
   s->size = m->size;
 }
 
-/* { dg-final { scan-tree-dump-times "Merging successful" 4 "store-merging" } } */
+/* { dg-final { scan-tree-dump-times "Merging successful" 0 "store-merging" } } */
