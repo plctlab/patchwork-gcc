@@ -254,6 +254,10 @@ ix86_target_macros_internal (HOST_WIDE_INT isa_flag,
       def_or_undef (parse_in, "__sapphirerapids");
       def_or_undef (parse_in, "__sapphirerapids__");
       break;
+    case PROCESSOR_ARROWLAKE:
+      def_or_undef (parse_in, "__arrowlake");
+      def_or_undef (parse_in, "__arrowlake__");
+      break;
     case PROCESSOR_GRANITERAPIDS:
       def_or_undef (parse_in, "__graniterapids");
       def_or_undef (parse_in, "__graniterapids__");
@@ -437,6 +441,9 @@ ix86_target_macros_internal (HOST_WIDE_INT isa_flag,
       break;
     case PROCESSOR_SAPPHIRERAPIDS:
       def_or_undef (parse_in, "__tune_sapphirerapids__");
+      break;
+    case PROCESSOR_ARROWLAKE:
+      def_or_undef (parse_in, "__tune_arrowlake__");
       break;
     case PROCESSOR_ALDERLAKE:
       def_or_undef (parse_in, "__tune_alderlake__");

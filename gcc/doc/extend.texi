@@ -21996,6 +21996,12 @@ Intel Atom Tremont CPU.
 @item sierraforest
 Intel Atom Sierra Forest CPU.
 
+@item arrowlake
+Intel Core i7 Arrow Lake CPU.
+
+@item arrowlake-s
+Intel Core i7 Arrow Lake S CPU.
+
 @item grandridge
 Intel Atom Grand Ridge CPU.
 
