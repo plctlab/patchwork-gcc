@@ -1255,8 +1255,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #ifndef __CORRECT_ISO_CPP11_MATH_H_PROTO_INT
   template<typename _Tp, typename _Up>
     constexpr typename
-    __gnu_cxx::__enable_if<(__is_arithmetic<_Tp>::__value
-			    && __is_arithmetic<_Up>::__value), bool>::__type
+    __gnu_cxx::__enable_if<(____is_arithmetic<_Tp>::__value
+			    && ____is_arithmetic<_Up>::__value), bool>::__type
     isgreater(_Tp __x, _Up __y)
     {
       typedef typename __gnu_cxx::__promote_2<_Tp, _Up>::__type __type;
@@ -1281,8 +1281,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #ifndef __CORRECT_ISO_CPP11_MATH_H_PROTO_INT
   template<typename _Tp, typename _Up>
     constexpr typename
-    __gnu_cxx::__enable_if<(__is_arithmetic<_Tp>::__value
-			    && __is_arithmetic<_Up>::__value), bool>::__type
+    __gnu_cxx::__enable_if<(____is_arithmetic<_Tp>::__value
+			    && ____is_arithmetic<_Up>::__value), bool>::__type
     isgreaterequal(_Tp __x, _Up __y)
     {
       typedef typename __gnu_cxx::__promote_2<_Tp, _Up>::__type __type;
@@ -1307,8 +1307,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #ifndef __CORRECT_ISO_CPP11_MATH_H_PROTO_INT
   template<typename _Tp, typename _Up>
     constexpr typename
-    __gnu_cxx::__enable_if<(__is_arithmetic<_Tp>::__value
-			    && __is_arithmetic<_Up>::__value), bool>::__type
+    __gnu_cxx::__enable_if<(____is_arithmetic<_Tp>::__value
+			    && ____is_arithmetic<_Up>::__value), bool>::__type
     isless(_Tp __x, _Up __y)
     {
       typedef typename __gnu_cxx::__promote_2<_Tp, _Up>::__type __type;
@@ -1333,8 +1333,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #ifndef __CORRECT_ISO_CPP11_MATH_H_PROTO_INT
   template<typename _Tp, typename _Up>
     constexpr typename
-    __gnu_cxx::__enable_if<(__is_arithmetic<_Tp>::__value
-			    && __is_arithmetic<_Up>::__value), bool>::__type
+    __gnu_cxx::__enable_if<(____is_arithmetic<_Tp>::__value
+			    && ____is_arithmetic<_Up>::__value), bool>::__type
     islessequal(_Tp __x, _Up __y)
     {
       typedef typename __gnu_cxx::__promote_2<_Tp, _Up>::__type __type;
@@ -1359,8 +1359,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #ifndef __CORRECT_ISO_CPP11_MATH_H_PROTO_INT
   template<typename _Tp, typename _Up>
     constexpr typename
-    __gnu_cxx::__enable_if<(__is_arithmetic<_Tp>::__value
-			    && __is_arithmetic<_Up>::__value), bool>::__type
+    __gnu_cxx::__enable_if<(____is_arithmetic<_Tp>::__value
+			    && ____is_arithmetic<_Up>::__value), bool>::__type
     islessgreater(_Tp __x, _Up __y)
     {
       typedef typename __gnu_cxx::__promote_2<_Tp, _Up>::__type __type;
@@ -1385,8 +1385,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #ifndef __CORRECT_ISO_CPP11_MATH_H_PROTO_INT
   template<typename _Tp, typename _Up>
     constexpr typename
-    __gnu_cxx::__enable_if<(__is_arithmetic<_Tp>::__value
-			    && __is_arithmetic<_Up>::__value), bool>::__type
+    __gnu_cxx::__enable_if<(____is_arithmetic<_Tp>::__value
+			    && ____is_arithmetic<_Up>::__value), bool>::__type
     isunordered(_Tp __x, _Up __y)
     {
       typedef typename __gnu_cxx::__promote_2<_Tp, _Up>::__type __type;
@@ -1397,7 +1397,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #else
 
   template<typename _Tp>
-    inline typename __gnu_cxx::__enable_if<__is_arithmetic<_Tp>::__value,
+    inline typename __gnu_cxx::__enable_if<____is_arithmetic<_Tp>::__value,
 					   int>::__type
     fpclassify(_Tp __f)
     {
@@ -1407,7 +1407,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp>
-    inline typename __gnu_cxx::__enable_if<__is_arithmetic<_Tp>::__value,
+    inline typename __gnu_cxx::__enable_if<____is_arithmetic<_Tp>::__value,
 					   int>::__type
     isfinite(_Tp __f)
     {
@@ -1416,7 +1416,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp>
-    inline typename __gnu_cxx::__enable_if<__is_arithmetic<_Tp>::__value,
+    inline typename __gnu_cxx::__enable_if<____is_arithmetic<_Tp>::__value,
 					   int>::__type
     isinf(_Tp __f)
     {
@@ -1425,7 +1425,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp>
-    inline typename __gnu_cxx::__enable_if<__is_arithmetic<_Tp>::__value,
+    inline typename __gnu_cxx::__enable_if<____is_arithmetic<_Tp>::__value,
 					   int>::__type
     isnan(_Tp __f)
     {
@@ -1434,7 +1434,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp>
-    inline typename __gnu_cxx::__enable_if<__is_arithmetic<_Tp>::__value,
+    inline typename __gnu_cxx::__enable_if<____is_arithmetic<_Tp>::__value,
 					   int>::__type
     isnormal(_Tp __f)
     {
@@ -1443,7 +1443,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp>
-    inline typename __gnu_cxx::__enable_if<__is_arithmetic<_Tp>::__value,
+    inline typename __gnu_cxx::__enable_if<____is_arithmetic<_Tp>::__value,
 					   int>::__type
     signbit(_Tp __f)
     {
@@ -1452,7 +1452,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp>
-    inline typename __gnu_cxx::__enable_if<__is_arithmetic<_Tp>::__value,
+    inline typename __gnu_cxx::__enable_if<____is_arithmetic<_Tp>::__value,
 					   int>::__type
     isgreater(_Tp __f1, _Tp __f2)
     {
@@ -1461,7 +1461,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp>
-    inline typename __gnu_cxx::__enable_if<__is_arithmetic<_Tp>::__value,
+    inline typename __gnu_cxx::__enable_if<____is_arithmetic<_Tp>::__value,
 					   int>::__type
     isgreaterequal(_Tp __f1, _Tp __f2)
     {
@@ -1470,7 +1470,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp>
-    inline typename __gnu_cxx::__enable_if<__is_arithmetic<_Tp>::__value,
+    inline typename __gnu_cxx::__enable_if<____is_arithmetic<_Tp>::__value,
 					   int>::__type
     isless(_Tp __f1, _Tp __f2)
     {
@@ -1479,7 +1479,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp>
-    inline typename __gnu_cxx::__enable_if<__is_arithmetic<_Tp>::__value,
+    inline typename __gnu_cxx::__enable_if<____is_arithmetic<_Tp>::__value,
 					   int>::__type
     islessequal(_Tp __f1, _Tp __f2)
     {
@@ -1488,7 +1488,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp>
-    inline typename __gnu_cxx::__enable_if<__is_arithmetic<_Tp>::__value,
+    inline typename __gnu_cxx::__enable_if<____is_arithmetic<_Tp>::__value,
 					   int>::__type
     islessgreater(_Tp __f1, _Tp __f2)
     {
@@ -1497,7 +1497,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp>
-    inline typename __gnu_cxx::__enable_if<__is_arithmetic<_Tp>::__value,
+    inline typename __gnu_cxx::__enable_if<____is_arithmetic<_Tp>::__value,
 					   int>::__type
     isunordered(_Tp __f1, _Tp __f2)
     {

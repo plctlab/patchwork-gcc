@@ -217,16 +217,16 @@ namespace std __attribute__ ((__visibility__ ("default"))) {
       typedef __true_type __type;
     };
   template<typename _Tp>
-    struct __is_arithmetic
+    struct ____is_arithmetic
     : public __traitor<__is_integer<_Tp>, __is_floating<_Tp> >
     { };
   template<typename _Tp>
     struct __is_fundamental
-    : public __traitor<__is_void<_Tp>, __is_arithmetic<_Tp> >
+    : public __traitor<__is_void<_Tp>, ____is_arithmetic<_Tp> >
     { };
   template<typename _Tp>
     struct __is_scalar
-    : public __traitor<__is_arithmetic<_Tp>, __is_pointer<_Tp> >
+    : public __traitor<____is_arithmetic<_Tp>, __is_pointer<_Tp> >
     { };
   template<typename _Tp>
     struct __is_char
