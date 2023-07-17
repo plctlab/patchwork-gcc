@@ -1674,7 +1674,7 @@ tree
 find_instance (bool *unsupported_builtin, ovlddata **instance,
 	       rs6000_gen_builtins instance_code,
 	       rs6000_gen_builtins fcode,
-	       tree *types, tree *args)
+	       tree *types, tree *args, int nargs)
 {
   while (*instance && (*instance)->bifid != instance_code)
     *instance = (*instance)->next;
@@ -1686,17 +1686,28 @@ find_instance (bool *unsupported_builtin, ovlddata **instance,
   if (!inst->fntype)
     return error_mark_node;
   tree fntype = rs6000_builtin_info[inst->bifid].fntype;
-  tree parmtype0 = TREE_VALUE (TYPE_ARG_TYPES (fntype));
-  tree parmtype1 = TREE_VALUE (TREE_CHAIN (TYPE_ARG_TYPES (fntype)));
+  tree argtype = TYPE_ARG_TYPES (fntype);
+  tree parmtype;
+  int args_compatible = true;
 
-  if (rs6000_builtin_type_compatible (types[0], parmtype0)
-      && rs6000_builtin_type_compatible (types[1], parmtype1))
+  for (int i = 0; i <nargs; i++)
     {
+      parmtype = TREE_VALUE (argtype);
+      if (! rs6000_builtin_type_compatible (types[i], parmtype))
+	{
+	  args_compatible = false;
+	  break;
+	}
+      argtype = TREE_CHAIN (argtype);
+    }
+
+  if (args_compatible)
+  {
       if (rs6000_builtin_decl (inst->bifid, false) != error_mark_node
 	  && rs6000_builtin_is_supported (inst->bifid))
 	{
 	  tree ret_type = TREE_TYPE (inst->fntype);
-	  return altivec_build_resolved_builtin (args, 2, fntype, ret_type,
+	  return altivec_build_resolved_builtin (args, nargs, fntype, ret_type,
 						 inst->bifid, fcode);
 	}
       else
@@ -1916,7 +1927,7 @@ altivec_resolve_overloaded_builtin (location_t loc, tree fndecl,
 	  instance_code = RS6000_BIF_CMPB_32;
 
 	tree call = find_instance (&unsupported_builtin, &instance,
-				   instance_code, fcode, types, args);
+				   instance_code, fcode, types, args, nargs);
 	if (call != error_mark_node)
 	  return call;
 	break;
@@ -1949,7 +1960,7 @@ altivec_resolve_overloaded_builtin (location_t loc, tree fndecl,
 	  }
 
 	tree call = find_instance (&unsupported_builtin, &instance,
-				   instance_code, fcode, types, args);
+				   instance_code, fcode, types, args, nargs);
 	if (call != error_mark_node)
 	  return call;
 	break;
