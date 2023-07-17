@@ -85,6 +85,10 @@ along with GCC; see the file COPYING3.  If not see
 #include "vec-perm-indices.h"
 #include "asan.h"
 #include "gimple-range.h"
+#include <algorithm>
+#include "tree-pretty-print.h"
+#include "gimple-pretty-print.h"
+#include "print-tree.h"
 
 /* Nonzero if we are folding constants inside an initializer or a C++
    manifestly-constant-evaluated context; zero otherwise.
@@ -10575,15 +10579,9 @@ fold_mult_zconjz (location_t loc, tree type, tree expr)
 static bool
 vec_cst_ctor_to_array (tree arg, unsigned int nelts, tree *elts)
 {
-  unsigned HOST_WIDE_INT i, nunits;
+  unsigned HOST_WIDE_INT i;
 
-  if (TREE_CODE (arg) == VECTOR_CST
-      && VECTOR_CST_NELTS (arg).is_constant (&nunits))
-    {
-      for (i = 0; i < nunits; ++i)
-	elts[i] = VECTOR_CST_ELT (arg, i);
-    }
-  else if (TREE_CODE (arg) == CONSTRUCTOR)
+  if (TREE_CODE (arg) == CONSTRUCTOR)
     {
       constructor_elt *elt;
 
@@ -10601,6 +10599,230 @@ vec_cst_ctor_to_array (tree arg, unsigned int nelts, tree *elts)
   return true;
 }
 
+/* Return a vector with (NPATTERNS, NELTS_PER_PATTERN) encoding.  */
+
+static tree
+vector_cst_reshape (tree vec, unsigned npatterns, unsigned nelts_per_pattern)
+{
+  gcc_assert (pow2p_hwi (npatterns));
+
+  if (VECTOR_CST_NPATTERNS (vec) == npatterns
+      && VECTOR_CST_NELTS_PER_PATTERN (vec) == nelts_per_pattern)
+    return vec;
+
+  tree v = make_vector (exact_log2 (npatterns), nelts_per_pattern);
+  TREE_TYPE (v) = TREE_TYPE (vec);
+
+  unsigned nelts = npatterns * nelts_per_pattern;
+  for (unsigned i = 0; i < nelts; i++)
+    VECTOR_CST_ENCODED_ELT(v, i) = vector_cst_elt (vec, i);
+  return v;
+}
+
+/* Helper routine for fold_vec_perm_vla to check if ARG is a suitable
+   operand for VLA vec_perm folding. If arg is VLS, then set
+   NPATTERNS = nelts and NELTS_PER_PATTERN = 1.  */
+
+static tree
+valid_operand_for_fold_vec_perm_cst_p (tree arg)
+{
+  if (TREE_CODE (arg) != VECTOR_CST)
+    return NULL_TREE;
+
+  unsigned HOST_WIDE_INT nelts;
+  unsigned npatterns, nelts_per_pattern;
+  if (TYPE_VECTOR_SUBPARTS (TREE_TYPE (arg)).is_constant (&nelts))
+    {
+      npatterns = nelts;
+      nelts_per_pattern = 1;
+    }
+  else
+    {
+      npatterns = VECTOR_CST_NPATTERNS (arg);
+      nelts_per_pattern = VECTOR_CST_NELTS_PER_PATTERN (arg);
+    }
+
+  if (!pow2p_hwi (npatterns))
+    return NULL_TREE;
+
+  return vector_cst_reshape (arg, npatterns, nelts_per_pattern);
+}
+
+/* Helper routine for fold_vec_perm_cst to check if SEL is a suitable
+   mask for VLA vec_perm folding. Set SEL_NPATTERNS and SEL_NELTS_PER_PATTERN
+   similarly.  */
+
+static bool
+valid_mask_for_fold_vec_perm_cst_p (tree arg0, tree arg1,
+				    const vec_perm_indices &sel,
+				    unsigned& sel_npatterns,
+				    unsigned& sel_nelts_per_pattern,
+				    char *reason = NULL,
+				    bool verbose = false)
+{
+  unsigned HOST_WIDE_INT nelts;
+  if (sel.length ().is_constant (&nelts))
+    {
+      sel_npatterns = nelts;
+      sel_nelts_per_pattern = 1;
+    }
+  else
+    {
+      sel_npatterns = sel.encoding ().npatterns ();
+      sel_nelts_per_pattern = sel.encoding ().nelts_per_pattern ();
+    }
+
+  if (!pow2p_hwi (sel_npatterns))
+    {
+      if (reason)
+	strcpy (reason, "sel_npatterns is not power of 2");
+      return false;
+    }
+
+  /* We want to avoid cases where sel.length is not a multiple of npatterns.
+     For eg: sel.length = 2 + 2x, and sel npatterns = 4.  */
+  poly_uint64 esel;
+  if (!multiple_p (sel.length (), sel_npatterns, &esel))
+    {
+      if (reason)
+	strcpy (reason, "sel.length is not multiple of sel_npatterns");
+      return false;
+    }
+
+  if (sel_nelts_per_pattern < 3)
+    return true;
+
+  for (unsigned pattern = 0; pattern < sel_npatterns; pattern++)
+    {
+      poly_uint64 a1 = sel[pattern + sel_npatterns];
+      poly_uint64 a2 = sel[pattern + 2 * sel_npatterns];
+
+      poly_uint64 step = a2 - a1;
+      if (!step.is_constant ())
+	{
+	  if (reason)
+	    strcpy (reason, "step is not constant");
+	  return false;
+	}
+      int S = step.to_constant ();
+      if (S == 0)
+	continue;
+
+      // FIXME: Punt on S < 0 for now, revisit later.
+      if (S < 0)
+	return false;
+
+      if (!pow2p_hwi (S))
+	{
+	  if (reason)
+	    strcpy (reason, "step is not power of 2");
+	  return false;
+	}
+
+      poly_uint64 ae = a1 + (esel - 2) * S;
+      poly_uint64 arg_len = TYPE_VECTOR_SUBPARTS (TREE_TYPE (arg0));
+      uint64_t q1, qe;
+      poly_uint64 r1, re;
+
+      /* Ensure that stepped sequence of the pattern selects elements
+	 only from the same input vector.  */
+      if (!(can_div_trunc_p (a1, arg_len, &q1, &r1)
+	    && can_div_trunc_p (ae, arg_len, &qe, &re)
+	    && (q1 == qe)))
+	{
+	  if (reason)
+	    strcpy (reason, "crossed input vectors");
+	  return false;
+	}
+      unsigned arg_npatterns
+	= ((q1 & 0) == 0) ? VECTOR_CST_NPATTERNS (arg0)
+			  : VECTOR_CST_NPATTERNS (arg1);
+
+      gcc_assert (pow2p_hwi (arg_npatterns));
+      if (S < arg_npatterns)
+	{
+	  if (reason)
+	    strcpy (reason, "S is not multiple of npatterns");
+	  return false;
+	}
+    }
+
+  return true;
+}
+
+/* Try to fold permutation of ARG0 and ARG1 with SEL selector when
+   the input vectors are VECTOR_CST. Return NULL_TREE otherwise.  */
+
+static tree
+fold_vec_perm_cst (tree type, tree arg0, tree arg1, const vec_perm_indices &sel,
+		   char *reason = NULL, bool verbose = false)
+{
+  /* Allow cases where:
+     (1) arg0, arg1 and sel are VLS.
+     (2) arg0, arg1, and sel are VLA.
+     Punt if input vectors are VLA but sel is VLS or vice-versa.  */
+  poly_uint64 arg_len = TYPE_VECTOR_SUBPARTS (TREE_TYPE (arg0));
+  if (!((arg_len.is_constant () && sel.length ().is_constant ())
+	 || (!arg_len.is_constant () && !sel.length ().is_constant ())))
+    return NULL_TREE;
+
+  unsigned sel_npatterns, sel_nelts_per_pattern;
+
+  arg0 = valid_operand_for_fold_vec_perm_cst_p (arg0);
+  if (!arg0)
+    return NULL_TREE;
+
+  arg1 = valid_operand_for_fold_vec_perm_cst_p (arg1);
+  if (!arg1)
+    return NULL_TREE;
+
+  if (!valid_mask_for_fold_vec_perm_cst_p (arg0, arg1, sel, sel_npatterns,
+					   sel_nelts_per_pattern, reason, verbose))
+    return NULL_TREE;
+
+  unsigned res_npatterns
+    = std::max (VECTOR_CST_NPATTERNS (arg0),
+		std::max (VECTOR_CST_NPATTERNS (arg1), sel_npatterns));
+
+  unsigned res_nelts_per_pattern
+    = std::max (VECTOR_CST_NELTS_PER_PATTERN (arg0),
+		std::max (VECTOR_CST_NELTS_PER_PATTERN (arg1),
+			  sel_nelts_per_pattern));
+
+
+  tree_vector_builder out_elts (type, res_npatterns, res_nelts_per_pattern);
+  unsigned res_nelts = res_npatterns * res_nelts_per_pattern;
+  for (unsigned i = 0; i < res_nelts; i++)
+    {
+      poly_uint64 len = TYPE_VECTOR_SUBPARTS (TREE_TYPE (arg0));
+      uint64_t q;
+      poly_uint64 r;
+      unsigned HOST_WIDE_INT index;
+
+      /* Punt if sel[i] /trunc_div len cannot be determined,
+	 because the input vector to be chosen will depend on
+	 runtime vector length.
+	 For example if len == 4 + 4x, and sel[i] == 4,
+	 If len at runtime equals 4, we choose arg1[0].
+	 For any other value of len > 4 at runtime, we choose arg0[4].
+	 which makes the element choice dependent on runtime vector length.  */
+      if (!can_div_trunc_p (sel[i], len, &q, &r))
+	return NULL_TREE;
+
+      /* sel[i] % len will give the index of element in the chosen input
+	 vector. For example if sel[i] == 5 + 4x and len == 4 + 4x,
+	 we will choose arg1[1] since (5 + 4x) % (4 + 4x) == 1.  */
+      if (!r.is_constant (&index))
+	return NULL_TREE;
+
+      tree arg = ((q & 1) == 0) ? arg0 : arg1;
+      tree elem = vector_cst_elt (arg, index);
+      out_elts.quick_push (elem);
+    }
+
+  return out_elts.build ();
+}
+
 /* Attempt to fold vector permutation of ARG0 and ARG1 vectors using SEL
    selector.  Return the folded VECTOR_CST or CONSTRUCTOR if successful,
    NULL_TREE otherwise.  */
@@ -10610,15 +10832,22 @@ fold_vec_perm (tree type, tree arg0, tree arg1, const vec_perm_indices &sel)
 {
   unsigned int i;
   unsigned HOST_WIDE_INT nelts;
-  bool need_ctor = false;
 
-  if (!sel.length ().is_constant (&nelts))
-    return NULL_TREE;
-  gcc_assert (known_eq (TYPE_VECTOR_SUBPARTS (type), nelts)
-	      && known_eq (TYPE_VECTOR_SUBPARTS (TREE_TYPE (arg0)), nelts)
-	      && known_eq (TYPE_VECTOR_SUBPARTS (TREE_TYPE (arg1)), nelts));
+  gcc_assert (known_eq (TYPE_VECTOR_SUBPARTS (type), sel.length ())
+	      && known_eq (TYPE_VECTOR_SUBPARTS (TREE_TYPE (arg0)),
+			   TYPE_VECTOR_SUBPARTS (TREE_TYPE (arg1))));
+
   if (TREE_TYPE (TREE_TYPE (arg0)) != TREE_TYPE (type)
       || TREE_TYPE (TREE_TYPE (arg1)) != TREE_TYPE (type))
+    return NULL_TREE;
+
+  if (TREE_CODE (arg0) == VECTOR_CST
+      && TREE_CODE (arg1) == VECTOR_CST)
+    return fold_vec_perm_cst (type, arg0, arg1, sel);
+
+  /* For fall back case, we want to ensure arg and sel have same len.  */
+  if (!(sel.length ().is_constant (&nelts)
+	&& known_eq (sel.length (), TYPE_VECTOR_SUBPARTS (TREE_TYPE (arg0)))))
     return NULL_TREE;
 
   tree *in_elts = XALLOCAVEC (tree, nelts * 2);
@@ -10626,27 +10855,16 @@ fold_vec_perm (tree type, tree arg0, tree arg1, const vec_perm_indices &sel)
       || !vec_cst_ctor_to_array (arg1, nelts, in_elts + nelts))
     return NULL_TREE;
 
-  tree_vector_builder out_elts (type, nelts, 1);
+  vec<constructor_elt, va_gc> *v;
+  vec_alloc (v, nelts);
   for (i = 0; i < nelts; i++)
     {
       HOST_WIDE_INT index;
       if (!sel[i].is_constant (&index))
 	return NULL_TREE;
-      if (!CONSTANT_CLASS_P (in_elts[index]))
-	need_ctor = true;
-      out_elts.quick_push (unshare_expr (in_elts[index]));
+      CONSTRUCTOR_APPEND_ELT (v, NULL_TREE, in_elts[index]);
     }
-
-  if (need_ctor)
-    {
-      vec<constructor_elt, va_gc> *v;
-      vec_alloc (v, nelts);
-      for (i = 0; i < nelts; i++)
-	CONSTRUCTOR_APPEND_ELT (v, NULL_TREE, out_elts[i]);
-      return build_constructor (type, v);
-    }
-  else
-    return out_elts.build ();
+  return build_constructor (type, v);
 }
 
 /* Try to fold a pointer difference of type TYPE two address expressions of
@@ -16981,6 +17199,388 @@ test_arithmetic_folding ()
 				   x);
 }
 
+namespace test_fold_vec_perm_cst {
+
+static tree
+get_preferred_vectype (tree inner_type)
+{
+  scalar_int_mode int_mode = SCALAR_INT_TYPE_MODE (inner_type);
+  machine_mode vmode = targetm.vectorize.preferred_simd_mode (int_mode);
+  poly_uint64 nunits = GET_MODE_NUNITS (vmode);
+  return build_vector_type (inner_type, nunits);
+}
+
+static tree
+build_vec_cst_rand (tree inner_type, unsigned npatterns,
+		    unsigned nelts_per_pattern, int S = 0)
+{
+  tree vectype = get_preferred_vectype (inner_type);
+  tree_vector_builder builder (vectype, npatterns, nelts_per_pattern);
+
+  // Fill a0 for each pattern
+  for (unsigned i = 0; i < npatterns; i++)
+    builder.quick_push (build_int_cst (inner_type, rand () % 100));
+
+  if (nelts_per_pattern == 1)
+    return builder.build ();
+
+  // Fill a1 for each pattern
+  for (unsigned i = 0; i < npatterns; i++)
+    builder.quick_push (build_int_cst (inner_type, rand () % 100));
+
+  if (nelts_per_pattern == 2)
+    return builder.build ();
+
+  for (unsigned i = npatterns * 2; i < npatterns * nelts_per_pattern; i++)
+    {
+      tree prev_elem = builder[i - npatterns];
+      int prev_elem_val = TREE_INT_CST_LOW (prev_elem);
+      int val = prev_elem_val + S;
+      builder.quick_push (build_int_cst (inner_type, val));
+    }
+
+  return builder.build ();
+}
+
+static void
+validate_res (unsigned npatterns, unsigned nelts_per_pattern,
+	      tree res, tree *expected_res)
+{
+  ASSERT_TRUE (VECTOR_CST_NPATTERNS (res) == npatterns);
+  ASSERT_TRUE (VECTOR_CST_NELTS_PER_PATTERN (res) == nelts_per_pattern);
+
+  for (unsigned i = 0; i < vector_cst_encoded_nelts (res); i++)
+    ASSERT_TRUE (operand_equal_p (VECTOR_CST_ELT (res, i), expected_res[i], 0));
+}
+
+/* Verify VLA vec_perm folding.  */
+
+static void
+test_stepped ()
+{
+  /* Case 1: sel = {0, 1, 2, ...}
+     npatterns = 1, nelts_per_pattern = 3  */
+  {
+    tree arg0 = build_vec_cst_rand (char_type_node, 1, 3, 2);
+    tree arg1 = build_vec_cst_rand (char_type_node, 1, 3, 2);
+    poly_uint64 arg0_len = TYPE_VECTOR_SUBPARTS (TREE_TYPE (arg0));
+
+    vec_perm_builder builder (arg0_len, 1, 3);
+    builder.quick_push (0);
+    builder.quick_push (1);
+    builder.quick_push (2);
+
+    vec_perm_indices sel (builder, 2, arg0_len);
+    tree res = fold_vec_perm_cst (TREE_TYPE (arg0), arg0, arg1, sel);
+    tree expected_res[] = { vector_cst_elt (arg0, 0), vector_cst_elt (arg0, 1),
+			    vector_cst_elt (arg0, 2) };
+    validate_res (1, 3, res, expected_res);
+  }
+
+#if 0
+  /* Case 2: sel = {len, len + 1, len + 2, ... }
+     npatterns = 1, nelts_per_pattern = 3
+     FIXME: This should return
+     expected res: { op1[0], op1[1], op1[2], ... }
+     however it returns NULL_TREE.  */
+  {
+    vec_perm_builder builder (arg0_len, 1, 3);
+    builder.quick_push (arg0_len);
+    builder.quick_push (arg0_len + 1);
+    builder.quick_push (arg0_len + 2);
+
+    vec_perm_indices sel (builder, 2, arg0_len);
+    tree res = fold_vec_perm_cst (TREE_TYPE (arg0), arg0, arg1, sel);
+  }
+#endif
+
+  /* Case 3: Leading element of arg1, stepped sequence: pattern 0 of arg0.
+     sel = {len, 0, 0, 0, 2, 0, ...}
+     npatterns = 2, nelts_per_pattern = 3.
+     Use extra pattern {0, ...} to lower number of elements per pattern.  */
+  {
+    tree arg0 = build_vec_cst_rand (char_type_node, 1, 3, 2);
+    tree arg1 = build_vec_cst_rand (char_type_node, 1, 3, 2);
+    poly_uint64 arg0_len = TYPE_VECTOR_SUBPARTS (TREE_TYPE (arg0));
+
+    vec_perm_builder builder (arg0_len, 2, 3);
+    builder.quick_push (arg0_len);
+    int mask_elems[] = { 0, 0, 0, 2, 0 };
+    for (int i = 0; i < 5; i++)
+      builder.quick_push (mask_elems[i]);
+
+    vec_perm_indices sel (builder, 2, arg0_len);
+    tree res = fold_vec_perm_cst (TREE_TYPE (arg0), arg0, arg1, sel);
+    gcc_assert (res);
+  }
+
+  /* Case 4:
+     sel = { len, 0, 2, ... } npatterns = 1, nelts_per_pattern = 3.
+     This should return NULL because we cross the input vectors.
+     Because,
+     arg0_len = 16 + 16x
+     a1 = 0
+     S = 2
+     esel = arg0_len / npatterns_sel = 16+16x/1 = 16 + 16x
+     ae = a1 + (esel - 2) * S
+	= 0 + (16 + 16x - 2) * 2
+	= 28 + 32x
+     a1 / arg0_len = 0 /trunc (16 + 16x) = 0
+     ae / arg0_len = (28 + 32x) /trunc (16 + 16x), which is not defined,
+     since 28/16 != 32/16.
+     So return NULL_TREE.  */
+  {
+    tree arg0 = build_vec_cst_rand (char_type_node, 1, 3, 2);
+    tree arg1 = build_vec_cst_rand (char_type_node, 1, 3, 2);
+    poly_uint64 arg0_len = TYPE_VECTOR_SUBPARTS (TREE_TYPE (arg0));
+
+    poly_uint64 ae = (arg0_len - 2) * 2;
+    uint64_t qe;
+    poly_uint64 re;
+
+    vec_perm_builder builder (arg0_len, 1, 3);
+    builder.quick_push (arg0_len);
+    builder.quick_push (0);
+    builder.quick_push (2);
+
+    vec_perm_indices sel (builder, 2, arg0_len);
+    char reason[100] = "\0";
+    tree res = fold_vec_perm_cst (TREE_TYPE (arg0), arg0, arg1, sel, reason, false);
+    gcc_assert (res == NULL_TREE);
+    gcc_assert (!strcmp (reason, "crossed input vectors"));
+  }
+
+  /* Case 5: Select elements from different patterns.
+     Should return NULL.  */
+  {
+    tree op0 = build_vec_cst_rand (char_type_node, 2, 3, 2);
+    tree op1 = build_vec_cst_rand (char_type_node, 2, 3, 2);
+    poly_uint64 op0_len = TYPE_VECTOR_SUBPARTS (TREE_TYPE (op0));
+
+    vec_perm_builder builder (op0_len, 2, 3);
+    builder.quick_push (op0_len);
+    int mask_elems[] = { 0, 0, 0, 1, 0 };
+    for (int i = 0; i < 5; i++)
+      builder.quick_push (mask_elems[i]);
+
+    vec_perm_indices sel (builder, 2, op0_len);
+    char reason[100] = "\0";
+    tree res = fold_vec_perm_cst (TREE_TYPE (op0), op0, op1, sel, reason, false);
+    gcc_assert (res == NULL_TREE);
+    gcc_assert (!strcmp (reason, "S is not multiple of npatterns"));
+  }
+
+  /* Case 6: Select pattern 0 of op0 and dup of op0[0]
+     op0, op1, sel: npatterns = 2, nelts_per_pattern = 3
+     sel = { 0, 0, 2, 0, 4, 0, ... }.
+
+     For pattern {0, 2, 4, ...}:
+     a1 = 2
+     len = 16 + 16x
+     S = 2
+     esel = len / npatterns_sel = (16 + 16x) / 2 = (8 + 8x)
+     ae = a1 + (esel - 2) * S
+	= 2 + (8 + 8x - 2) * 2
+	= 14 + 16x
+     a1 / arg0_len = 2 / (16 + 16x) = 0
+     ae / arg0_len = (14 + 16x) / (16 + 16x) = 0
+     So a1/arg0_len = ae/arg0_len = 0
+     Hence we select from first vector op0
+     S = 2, npatterns = 2.
+     Since S is multiple of npatterns(op0), we are selecting from
+     same pattern of op0.
+
+     For pattern {0, ...}, we are choosing { op0[0] ... }
+     So res will be combination of above patterns:
+     res: { op0[0], op0[0], op0[2], op0[0], op0[4], op0[0], ... }
+     with npatterns = 2, nelts_per_pattern = 3.  */
+  {
+    tree op0 = build_vec_cst_rand (char_type_node, 2, 3, 2);
+    tree op1 = build_vec_cst_rand (char_type_node, 2, 3, 2);
+    poly_uint64 op0_len = TYPE_VECTOR_SUBPARTS (TREE_TYPE (op0));
+
+    vec_perm_builder builder (op0_len, 2, 3);
+    int mask_elems[] = { 0, 0, 2, 0, 4, 0 };
+    for (int i = 0; i < 6; i++)
+      builder.quick_push (mask_elems[i]);
+
+    vec_perm_indices sel (builder, 2, op0_len);
+    tree res = fold_vec_perm_cst (TREE_TYPE (op0), op0, op1, sel);
+    tree expected_res[] = { vector_cst_elt (op0, 0), vector_cst_elt (op0, 0),
+			    vector_cst_elt (op0, 2), vector_cst_elt (op0, 0),
+			    vector_cst_elt (op0, 4), vector_cst_elt (op0, 0) };
+    validate_res (2, 3, res, expected_res);
+  }
+
+  /* Case 7: sel_npatterns > op_npatterns;
+     op0, op1: npatterns = 2, nelts_per_pattern = 3
+     sel: { 0, 0, 1, len, 2, 0, 3, len, 4, 0, 5, len, ...},
+     with npatterns = 4, nelts_per_pattern = 3.  */
+  {
+    tree op0 = build_vec_cst_rand (char_type_node, 2, 3, 2);
+    tree op1 = build_vec_cst_rand (char_type_node, 2, 3, 2);
+    poly_uint64 op0_len = TYPE_VECTOR_SUBPARTS (TREE_TYPE (op0));
+
+    vec_perm_builder builder(op0_len, 4, 3);
+    // -1 is used as place holder for poly_int_cst
+    int mask_elems[] = { 0, 0, 1, -1, 2, 0, 3, -1, 4, 0, 5, -1 };
+    for (int i = 0; i < 12; i++)
+      builder.quick_push ((mask_elems[i] == -1) ? op0_len : mask_elems[i]);
+
+    vec_perm_indices sel (builder, 2, op0_len);
+    tree res = fold_vec_perm_cst (TREE_TYPE (op0), op0, op1, sel);
+    tree expected_res[] = { vector_cst_elt (op0, 0), vector_cst_elt (op0, 0),
+			    vector_cst_elt (op0, 1), vector_cst_elt (op1, 0),
+			    vector_cst_elt (op0, 2), vector_cst_elt (op0, 0),
+			    vector_cst_elt (op0, 3), vector_cst_elt (op1, 0),
+			    vector_cst_elt (op0, 4), vector_cst_elt (op0, 0),
+			    vector_cst_elt (op0, 5), vector_cst_elt (op1, 0) };
+    validate_res (4, 3, res, expected_res);
+  }
+}
+
+static void
+test_dup ()
+{
+  /* Case 1: mask = {0, ...} */
+  {
+    tree arg0 = build_vec_cst_rand (integer_type_node, 2, 3, 1);
+    tree arg1 = build_vec_cst_rand (integer_type_node, 2, 3, 1);
+    poly_uint64 len = TYPE_VECTOR_SUBPARTS (TREE_TYPE (arg0));
+
+    vec_perm_builder builder (len, 1, 1);
+    builder.quick_push (0);
+    vec_perm_indices sel (builder, 2, len);
+    tree res = fold_vec_perm_cst (TREE_TYPE (arg0), arg0, arg1, sel);
+
+    tree expected_res[] = { vector_cst_elt (res, 0) };
+    validate_res (1, 1, res, expected_res);
+  }
+
+  /* Case 2: mask = {len, ...} */
+  {
+    tree arg0 = build_vec_cst_rand (integer_type_node, 2, 3, 1);
+    tree arg1 = build_vec_cst_rand (integer_type_node, 2, 3, 1);
+    poly_uint64 len = TYPE_VECTOR_SUBPARTS (TREE_TYPE (arg0));
+
+    vec_perm_builder builder (len, 1, 1);
+    builder.quick_push (len);
+    vec_perm_indices sel (builder, 2, len);
+    tree res = fold_vec_perm_cst (TREE_TYPE (arg0), arg0, arg1, sel);
+
+    tree expected_res[] = { vector_cst_elt (arg1, 0) };
+    validate_res (1, 1, res, expected_res);
+  }
+
+  /* Case 3: mask = { 0, len, ... } */
+  {
+    tree arg0 = build_vec_cst_rand (integer_type_node, 2, 3, 1);
+    tree arg1 = build_vec_cst_rand (integer_type_node, 2, 3, 1);
+    poly_uint64 len = TYPE_VECTOR_SUBPARTS (TREE_TYPE (arg0));
+
+    vec_perm_builder builder (len, 2, 1);
+    builder.quick_push (0);
+    builder.quick_push (len);
+    vec_perm_indices sel (builder, 2, len);
+    tree res = fold_vec_perm_cst (TREE_TYPE (arg0), arg0, arg1, sel);
+
+    tree expected_res[] = { vector_cst_elt (arg0, 0), vector_cst_elt (arg1, 0) };
+    validate_res (2, 1, res, expected_res);
+  }
+
+  /* Case 4: mask = { 0, len, 1, len+1, ... } */
+  {
+    tree arg0 = build_vec_cst_rand (integer_type_node, 2, 3, 1);
+    tree arg1 = build_vec_cst_rand (integer_type_node, 2, 3, 1);
+    poly_uint64 len = TYPE_VECTOR_SUBPARTS (TREE_TYPE (arg0));
+
+    vec_perm_builder builder (len, 2, 2);
+    builder.quick_push (0);
+    builder.quick_push (len);
+    builder.quick_push (1);
+    builder.quick_push (len + 1);
+    vec_perm_indices sel (builder, 2, len);
+    tree res = fold_vec_perm_cst (TREE_TYPE (arg0), arg0, arg1, sel);
+
+    tree expected_res[] = { vector_cst_elt (arg0, 0), vector_cst_elt (arg1, 0),
+			    vector_cst_elt (arg0, 1), vector_cst_elt (arg1, 1)
+			  };
+    validate_res (2, 2, res, expected_res);
+  }
+
+  /* Case 5: mask = { 0, len, 1, len+1, .... }
+     npatterns = 4, nelts_per_pattern = 1 */
+  {
+    tree arg0 = build_vec_cst_rand (integer_type_node, 2, 3, 1);
+    tree arg1 = build_vec_cst_rand (integer_type_node, 2, 3, 1);
+    poly_uint64 len = TYPE_VECTOR_SUBPARTS (TREE_TYPE (arg0));
+
+    vec_perm_builder builder (len, 4, 1);
+    builder.quick_push (0);
+    builder.quick_push (len);
+    builder.quick_push (1);
+    builder.quick_push (len + 1);
+    vec_perm_indices sel (builder, 2, len);
+    tree res = fold_vec_perm_cst (TREE_TYPE (arg0), arg0, arg1, sel);
+
+    tree expected_res[] = { vector_cst_elt (arg0, 0), vector_cst_elt (arg1, 0),
+			    vector_cst_elt (arg0, 1), vector_cst_elt (arg1, 1)
+			  };
+    validate_res (4, 1, res, expected_res);
+  }
+
+  /* Case 6: mask = {0, 4, ...}
+     npatterns = 1, nelts_per_pattern = 2.
+     This should return NULL_TREE because the index 4 may choose
+     from either arg0 or arg1 depending on vector length.  */
+  {
+    tree arg0 = build_vec_cst_rand (integer_type_node, 2, 3, 1);
+    tree arg1 = build_vec_cst_rand (integer_type_node, 2, 3, 1);
+    poly_uint64 len = TYPE_VECTOR_SUBPARTS (TREE_TYPE (arg0));
+
+    vec_perm_builder builder (len, 1, 2);
+    builder.quick_push (0);
+    builder.quick_push (4);
+    vec_perm_indices sel (builder, 2, len);
+    tree res = fold_vec_perm_cst (TREE_TYPE (arg0), arg0, arg1, sel);
+    ASSERT_TRUE (res == NULL_TREE);
+  }
+
+  /* Case 7: npatterns(arg0) = 4 > npatterns(sel) = 2
+     mask = {0, len, 1, len + 1, ...}
+     sel_npatterns = 2, sel_nelts_per_pattern = 2.  */
+  {
+    tree arg0 = build_vec_cst_rand (integer_type_node, 2, 3, 1);
+    tree arg1 = build_vec_cst_rand (integer_type_node, 2, 3, 1);
+    poly_uint64 arg0_len = TYPE_VECTOR_SUBPARTS (TREE_TYPE (arg0));
+
+    vec_perm_builder builder (arg0_len, 2, 2);
+    builder.quick_push (0);
+    builder.quick_push (arg0_len);
+    builder.quick_push (1);
+    builder.quick_push (arg0_len + 1);
+    vec_perm_indices sel (builder, 2, arg0_len);
+    tree res = fold_vec_perm_cst (TREE_TYPE (arg0), arg0, arg1, sel);
+
+    tree expected_res[] = { vector_cst_elt (arg0, 0), vector_cst_elt (arg1, 0),
+			    vector_cst_elt (arg0, 1), vector_cst_elt (arg1, 1)
+			  };
+    validate_res (2, 2, res, expected_res);
+  }
+}
+
+static void
+test ()
+{
+  tree vectype = get_preferred_vectype (integer_type_node);
+  if (TYPE_VECTOR_SUBPARTS (vectype).is_constant ())
+    return;
+
+  test_dup ();
+  test_stepped ();
+}
+};
+
 /* Verify that various binary operations on vectors are folded
    correctly.  */
 
@@ -17032,6 +17632,7 @@ fold_const_cc_tests ()
   test_arithmetic_folding ();
   test_vector_folding ();
   test_vec_duplicate_folding ();
+  test_fold_vec_perm_cst::test ();
 }
 
 } // namespace selftest
