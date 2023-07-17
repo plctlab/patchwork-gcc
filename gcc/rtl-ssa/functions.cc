@@ -143,7 +143,19 @@ function_info::simplify_phi_setup (phi_info *phi, set_info **assumed_values,
       // If the input has a known mode (i.e. not BLKmode), make sure
       // that the phi's mode is at least as large.
       if (def)
-	phi_mode = combine_modes (phi_mode, def->mode ());
+	{
+	  /* For target like RISC-V, it applies both variable-length
+	     and fixed-length to the same REG_CLASS.
+
+	     It will cause ICE for these 2 following cases:
+	       1. phi_mode: variable-length.
+		  def->mode (): fixed-length.
+	       2. phi_mode: fixed-length.
+		  def->mode (): variable-length.  */
+	  if (!(GET_MODE_SIZE (phi_mode).is_constant ()
+		^ GET_MODE_SIZE (def->mode ()).is_constant ()))
+	    phi_mode = combine_modes (phi_mode, def->mode ());
+	}
     }
   if (phi->mode () != phi_mode)
     phi->set_mode (phi_mode);
