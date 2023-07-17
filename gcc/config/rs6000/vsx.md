@@ -381,13 +381,20 @@
 (define_mode_iterator VI2 [V4SI V8HI V16QI V2DI])
 
 ;; Vector extract_elt iterator/attr for 32-bit and 64-bit elements
-(define_mode_iterator REPLACE_ELT [V4SI V4SF V2DI V2DF])
-(define_mode_attr REPLACE_ELT_char [(V4SI "w") (V4SF "w")
-				    (V2DI  "d") (V2DF "d")])
-(define_mode_attr REPLACE_ELT_sh [(V4SI "2") (V4SF "2")
-				  (V2DI  "3") (V2DF "3")])
-(define_mode_attr REPLACE_ELT_max [(V4SI "12") (V4SF "12")
-				   (V2DI  "8") (V2DF "8")])
+(define_mode_iterator REPLACE_ELT_V [V4SI V4SF V2DI V2DF])
+(define_mode_attr REPLACE_ELT_V_char [(V4SI "w") (V4SF "w")
+				      (V2DI  "d") (V2DF "d")])
+(define_mode_attr REPLACE_ELT_V_sh [(V4SI "2") (V4SF "2")
+				    (V2DI  "3") (V2DF "3")])
+(define_mode_attr REPLACE_ELT_V_max [(V4SI "12") (V4SF "12")
+				     (V2DI  "8") (V2DF "8")])
+
+;; vector replace unaligned modes
+(define_mode_iterator REPLACE_ELT [SI SF DI DF])
+(define_mode_attr REPLACE_ELT_char [(SI "w")
+				    (SF "w")
+				    (DI "d")
+				    (DF "d")])
 
 ;; Like VM2 in altivec.md, just do char, short, int, long, float and double
 (define_mode_iterator VM3 [V4SI
@@ -4156,21 +4163,22 @@
  [(set_attr "type" "vecsimple")])
 
 (define_expand "vreplace_elt_<mode>"
-  [(set (match_operand:REPLACE_ELT 0 "register_operand")
-  (unspec:REPLACE_ELT [(match_operand:REPLACE_ELT 1 "register_operand")
-		       (match_operand:<VEC_base> 2 "register_operand")
-		       (match_operand:QI 3 "const_0_to_3_operand")]
-		      UNSPEC_REPLACE_ELT))]
+  [(set (match_operand:REPLACE_ELT_V 0 "register_operand")
+  (unspec:REPLACE_ELT_V [(match_operand:REPLACE_ELT_V 1 "register_operand")
+			 (match_operand:<VEC_base> 2 "register_operand")
+			 (match_operand:QI 3 "const_0_to_3_operand")]
+			UNSPEC_REPLACE_ELT))]
  "TARGET_POWER10"
 {
    int index;
    /* Immediate value is the word index, convert to byte index and adjust for
       Endianness if needed.  */
    if (BYTES_BIG_ENDIAN)
-     index = INTVAL (operands[3]) << <REPLACE_ELT_sh>;
+     index = INTVAL (operands[3]) << <REPLACE_ELT_V_sh>;
 
    else
-     index = <REPLACE_ELT_max> - (INTVAL (operands[3]) << <REPLACE_ELT_sh>);
+     index = <REPLACE_ELT_V_max>
+	     - (INTVAL (operands[3]) << <REPLACE_ELT_V_sh>);
 
    emit_insn (gen_vreplace_elt_<mode>_inst (operands[0], operands[1],
 					    operands[2],
@@ -4180,19 +4188,19 @@
 [(set_attr "type" "vecsimple")])
 
 (define_insn "vreplace_elt_<mode>_inst"
- [(set (match_operand:REPLACE_ELT 0 "register_operand" "=v")
-  (unspec:REPLACE_ELT [(match_operand:REPLACE_ELT 1 "register_operand" "0")
-		       (match_operand:<VEC_base> 2 "register_operand" "r")
-		       (match_operand:QI 3 "const_0_to_12_operand" "n")]
-		      UNSPEC_REPLACE_ELT))]
+ [(set (match_operand:REPLACE_ELT_V 0 "register_operand" "=v")
+  (unspec:REPLACE_ELT_V [(match_operand:REPLACE_ELT_V 1 "register_operand" "0")
+			 (match_operand:<VEC_base> 2 "register_operand" "r")
+			 (match_operand:QI 3 "const_0_to_12_operand" "n")]
+			UNSPEC_REPLACE_ELT))]
  "TARGET_POWER10"
- "vins<REPLACE_ELT_char> %0,%2,%3"
+ "vins<REPLACE_ELT_V_char> %0,%2,%3"
  [(set_attr "type" "vecsimple")])
 
 (define_insn "vreplace_un_<mode>"
  [(set (match_operand:V16QI 0 "register_operand" "=v")
-  (unspec:V16QI [(match_operand:REPLACE_ELT 1 "register_operand" "0")
-                 (match_operand:<VEC_base> 2 "register_operand" "r")
+  (unspec:V16QI [(match_operand:V16QI 1 "register_operand" "0")
+		 (match_operand:REPLACE_ELT 2 "register_operand" "r")
 		 (match_operand:QI 3 "const_0_to_12_operand" "n")]
 		UNSPEC_REPLACE_UN))]
  "TARGET_POWER10"
