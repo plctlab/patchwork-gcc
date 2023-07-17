@@ -443,6 +443,15 @@ enum optimize_size_level
   OPTIMIZE_SIZE_MAX
 };
 
+/* part of a complex */
+
+typedef enum
+{
+  REAL_P = 0,
+  IMAG_P = 1,
+  BOTH_P = 2
+} complex_part_t;
+
 /* Support for user-provided GGC and PCH markers.  The first parameter
    is a pointer to a pointer, the second either NULL if the pointer to
    pointer points into a GC object or the actual pointer address if
