@@ -8758,6 +8758,27 @@
   "TARGET_SVE"
   "rev\t%0.<Vctype>, %1.<Vctype>")
 
+(define_peephole2
+  [(set (match_operand:SVE_ALL 0 "register_operand" "")
+        (unspec:SVE_ALL
+          [(match_operand:SVE_ALL 1 "register_operand" "")] UNSPEC_REV))
+   (set (match_operand:SVE_ALL 2 "register_operand" "")
+        (unspec:SVE_ALL
+          [(match_dup 0)] UNSPEC_REV))]
+  "TARGET_SVE"
+  [(const_int 0)]
+  {
+    if (REGNO (operands[2]) != REGNO (operands[0]))
+    {
+      emit_insn (gen_rtx_SET (operands[2], operands[1]));
+      rtx rev = gen_rtx_UNSPEC (<MODE>mode, gen_rtvec (1, operands[1]), UNSPEC_REV);
+      emit_insn (gen_rtx_SET (operands[0], rev));
+    }
+    else
+      emit_insn (gen_rtx_SET (operands[0], operands[1]));
+    DONE;
+  })
+
 ;; -------------------------------------------------------------------------
 ;; ---- [INT,FP] Special-purpose binary permutes
 ;; -------------------------------------------------------------------------
