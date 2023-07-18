@@ -3069,6 +3069,8 @@ package body Sem_Aggr is
             Analyze_And_Resolve (New_Copy_Tree (Key_Expr), Key_Type);
             End_Scope;
 
+            Typ := Key_Type;
+
          elsif Present (Iterator_Specification (Comp)) then
             Copy    := Copy_Separate_Tree (Iterator_Specification (Comp));
             Id_Name :=
@@ -3093,7 +3095,7 @@ package body Sem_Aggr is
 
                elsif Present (Key_Type) then
                   Analyze_And_Resolve (Choice, Key_Type);
-
+                  Typ := Key_Type;
                else
                   Typ := Etype (Choice);  --  assume unique for now
                end if;
@@ -3123,12 +3125,8 @@ package body Sem_Aggr is
 
          Enter_Name (Id);
 
-         if No (Key_Type) then
-            pragma Assert (Present (Typ));
-            Set_Etype (Id, Typ);
-         else
-            Set_Etype (Id, Key_Type);
-         end if;
+         pragma Assert (Present (Typ));
+         Set_Etype (Id, Typ);
 
          Mutate_Ekind (Id, E_Variable);
          Set_Scope (Id, Ent);
