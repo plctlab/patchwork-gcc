@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-march=rv32imafc -mabi=ilp32f -msave-restore -O2 -fno-schedule-insns -fno-schedule-insns2 -fno-unroll-loops -fno-peel-loops -fno-lto" } */
+/* { dg-options "-march=rv32imafc -mabi=ilp32f -msave-restore -O2 -fno-schedule-insns -fno-schedule-insns2 -fno-unroll-loops -fno-peel-loops -fno-lto -mcmodel=medlow" } */
 /* { dg-final { check-function-bodies "**" "" } } */
 
 char my_getchar();
