@@ -4692,10 +4692,6 @@ get_vec_init_expr (tree t)
 #define TYPE_PTR_P(NODE)			\
   (TREE_CODE (NODE) == POINTER_TYPE)
 
-/* Returns true if NODE is a reference.  */
-#define TYPE_REF_P(NODE)			\
-  (TREE_CODE (NODE) == REFERENCE_TYPE)
-
 /* Returns true if NODE is a pointer or a reference.  */
 #define INDIRECT_TYPE_P(NODE)			\
   (TYPE_PTR_P (NODE) || TYPE_REF_P (NODE))

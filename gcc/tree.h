@@ -657,6 +657,10 @@ extern void omp_clause_range_check_failed (const_tree, const char *, int,
 #define AGGREGATE_TYPE_P(TYPE) \
   (TREE_CODE (TYPE) == ARRAY_TYPE || RECORD_OR_UNION_TYPE_P (TYPE))
 
+/* Nonzero if this type is a reference.  */
+#define TYPE_REF_P(NODE)			\
+  (TREE_CODE (NODE) == REFERENCE_TYPE)
+
 /* Nonzero if TYPE represents a pointer or reference type.
    (It should be renamed to INDIRECT_TYPE_P.)  Keep these checks in
    ascending code order.  */
