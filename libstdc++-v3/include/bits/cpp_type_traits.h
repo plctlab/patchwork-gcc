@@ -381,7 +381,7 @@ __INT_N(__GLIBCXX_TYPE_INT_N_3)
   // An arithmetic type is an integer type or a floating point type
   //
   template<typename _Tp>
-    struct __is_arithmetic
+    struct __is_arith
     : public __traitor<__is_integer<_Tp>, __is_floating<_Tp> >
     { };
 
@@ -390,7 +390,7 @@ __INT_N(__GLIBCXX_TYPE_INT_N_3)
   // 
   template<typename _Tp>
     struct __is_scalar
-    : public __traitor<__is_arithmetic<_Tp>, __is_pointer<_Tp> >
+    : public __traitor<__is_arith<_Tp>, __is_pointer<_Tp> >
     { };
 
   //
