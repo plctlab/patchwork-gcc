@@ -781,12 +781,15 @@ static int noce_try_store_flag_constants (struct noce_if_info *);
 static int noce_try_store_flag_mask (struct noce_if_info *);
 static rtx noce_emit_cmove (struct noce_if_info *, rtx, enum rtx_code, rtx,
 			    rtx, rtx, rtx, rtx = NULL, rtx = NULL);
+static rtx noce_emit_condzero_arith (struct noce_if_info *, rtx, enum rtx_code, rtx,
+                                     rtx, rtx, rtx);
 static int noce_try_cmove (struct noce_if_info *);
 static int noce_try_cmove_arith (struct noce_if_info *);
 static rtx noce_get_alt_condition (struct noce_if_info *, rtx, rtx_insn **);
 static int noce_try_minmax (struct noce_if_info *);
 static int noce_try_abs (struct noce_if_info *);
 static int noce_try_sign_mask (struct noce_if_info *);
+static int noce_try_condzero_arith (struct noce_if_info *);
 
 /* Return the comparison code for reversed condition for IF_INFO,
    or UNKNOWN if reversing the condition is not possible.  */
@@ -1828,6 +1831,60 @@ noce_emit_cmove (struct noce_if_info *if_info, rtx x, enum rtx_code code,
     }
   else
     return NULL_RTX;
+}
+
+/* Helper function for noce_emit_condzero_arith.  */
+
+static rtx
+noce_emit_condzero_arith (struct noce_if_info *if_info, rtx x, enum rtx_code code,
+                          rtx cmp_a, rtx cmp_b, rtx vfalse, rtx vtrue)
+{
+  rtx cond = NULL;
+
+  /* Standard form of conditional comparison.  */
+  if (GET_CODE(cmp_a) == REG && cmp_b == const0_rtx)
+    cond = gen_rtx_fmt_ee (code, GET_MODE (if_info->cond), cmp_a, cmp_b);
+
+  /* Register and non-zero immediate comparison.  */
+  else if (GET_CODE(cmp_a) == REG && GET_CODE(cmp_b) == CONST_INT &&
+           cmp_b != const0_rtx)
+    {
+      rtx temp1 = gen_reg_rtx (GET_MODE(cmp_a));
+      rtx temp2 = GEN_INT(-1 * INTVAL (cmp_b));
+      rtx src = gen_rtx_fmt_ee (PLUS, GET_MODE (cmp_a), cmp_a, temp2);
+      emit_insn (gen_rtx_SET (temp1, src));
+      cond = gen_rtx_fmt_ee (code, GET_MODE (if_info->cond), temp1, const0_rtx);
+    }
+
+  /* Register and Register comparison.  */
+  else if (GET_CODE(cmp_a) == REG && GET_CODE(cmp_b) == REG)
+    {
+      rtx temp1 = gen_reg_rtx (GET_MODE(cmp_a));
+      rtx src = gen_rtx_fmt_ee (MINUS, GET_MODE (cmp_a), cmp_a, cmp_b);
+      emit_insn (gen_rtx_SET (temp1, src));
+      cond = gen_rtx_fmt_ee (code, GET_MODE (if_info->cond), temp1, const0_rtx);
+    }
+  else
+    return NULL_RTX;
+
+  rtx if_then_else = gen_rtx_IF_THEN_ELSE (GET_MODE (x), cond, vtrue, vfalse);
+  rtx set = gen_rtx_SET (x, if_then_else);
+
+  start_sequence ();
+  rtx_insn *insn = emit_insn (set);
+
+  if (recog_memoized (insn) >= 0)
+    {
+      rtx_insn *seq = get_insns ();
+      end_sequence ();
+      emit_insn (seq);
+
+      return x;
+    }
+
+  end_sequence ();
+
+  return NULL_RTX;
 }
 
 /* Try only simple constants and registers here.  More complex cases
@@ -2878,6 +2935,197 @@ noce_try_sign_mask (struct noce_if_info *if_info)
   return TRUE;
 }
 
+/* Convert "if (cond) x = x arith_code y; return x;" to a branchless
+   sequence using the canonical form for a conditional-zero. */
+
+static int
+noce_try_condzero_arith (struct noce_if_info *if_info)
+{
+  rtx target;
+  rtx_insn *seq;
+
+  rtx first_pattern = NULL;
+  rtx last_pattern = NULL;
+  rtx else_pattern = NULL;
+  rtx *arith, *ref_arith_op0, *ref_arith_op1;
+  rtx arith_op0, arith_op1;
+  rtx_code arith_code;
+  rtx_code cond_code = GET_CODE (if_info->cond);
+
+  machine_mode arith_mode = GET_MODE (if_info->a);
+  machine_mode cmp_mode = GET_MODE (XEXP(if_info->cond, 0));
+  if (GET_MODE_CLASS (arith_mode) != MODE_INT ||
+      GET_MODE_CLASS (cmp_mode) != MODE_INT)
+    return FALSE;
+
+  /* we shall create new pseudos.  */
+  if (reload_completed)
+    return FALSE;
+
+  /* Check for cond_code.  */
+  if (cond_code != EQ && cond_code != NE)
+    return FALSE;
+
+  /* Check for else_bb.  */
+  if (if_info->else_bb &&
+      !(count_bb_insns(if_info->else_bb) == 1 &&
+        !JUMP_P (BB_END (if_info->then_bb)) &&
+        (else_pattern = single_set (first_active_insn (if_info->else_bb))) &&
+        GET_CODE (else_pattern) == SET &&
+        rtx_equal_p (if_info->x, XEXP(else_pattern, 0))))
+    return FALSE;
+
+  /* count_bb_insns ignores JUMP_INSN.  */
+  if (JUMP_P (BB_END (if_info->then_bb)))
+    return FALSE;
+
+  if (count_bb_insns(if_info->then_bb) > 2)
+    return FALSE;
+
+  /* Optimize for sign-extension.  */
+  if (count_bb_insns(if_info->then_bb) == 2)
+    {
+      last_pattern = copy_rtx (PATTERN (last_active_insn (if_info->then_bb,
+                                                          FALSE)));
+      /* Just processing SET insn, not including other situations
+         in the single_set function.  */
+      if (GET_CODE (last_pattern) != SET)
+        return FALSE;
+
+      rtx_code last_code = GET_CODE (XEXP (last_pattern, 1));
+
+      if (last_code != SIGN_EXTEND && last_code != REG)
+        return FALSE;
+    }
+
+  first_pattern = copy_rtx (PATTERN (first_active_insn (if_info->then_bb)));
+  if (GET_CODE (first_pattern) != SET)
+    return FALSE;
+
+  arith = &XEXP (first_pattern, 1);
+  arith_code = GET_CODE (*arith);
+
+  if (arith_code == SIGN_EXTEND)
+    {
+      arith = &XEXP (*arith, 0);
+      arith_code = GET_CODE (*arith);
+    }
+  /* When shift right logical a non-zero immediate to unsigned integer,
+     zero_extend and sign_extend are equal.
+     In risc-v, using zero_extend to represent shift right logical is
+     a non-canonical form, as shown in riscv.md.  */
+  else if (arith_code == ZERO_EXTEND)
+    {
+      rtx *temp = arith;
+      arith = &XEXP (*arith, 0);
+      arith_code = GET_CODE (*arith);
+      if (arith_code != LSHIFTRT)
+        return FALSE;
+      /* Modify the code to sign_extend for easy subsequent recognition.  */
+      PUT_CODE(*temp, SIGN_EXTEND);
+    }
+
+  if (arith_code != PLUS && arith_code != MINUS && arith_code != IOR &&
+      arith_code != XOR && arith_code != AND && arith_code != ASHIFTRT &&
+      arith_code != LSHIFTRT && arith_code != ASHIFT)
+    return FALSE;
+
+  /* Obtain the arithmetic calculation components: arith_op0 and arith_op1.  */
+  arith_op0 = XEXP (*arith, 0);
+  arith_op1 = XEXP (*arith, 1);
+  ref_arith_op0 = &XEXP (*arith, 0);
+  ref_arith_op1 = &XEXP (*arith, 1);
+
+  if (GET_CODE (arith_op0) == SUBREG)
+    arith_op0 = SUBREG_REG(arith_op0);
+  if (GET_CODE (arith_op1) == SUBREG)
+    arith_op1 = SUBREG_REG(arith_op1);
+
+  /* The arithmetic calculation pattern that can only be processed
+     in insn pattern are as follows:
+     (set (reg/v:DI 137 [ rs1 ])
+        (ashiftrt:DI (reg/v:DI 137 [ rs1 ])
+            (subreg:QI (reg/v:DI 138 [ rs2 ]) 0)))  */
+  if (!else_pattern && !rtx_equal_p (if_info->x, arith_op0))
+    return FALSE;
+
+  /* If else_bb is not empty.  */
+  if (else_pattern && !rtx_equal_p (if_info->x, XEXP(first_pattern, 0)) &&
+      !rtx_equal_p (arith_op0, XEXP(else_pattern, 1)))
+    return FALSE;
+
+  start_sequence ();
+
+  if (arith_code == AND)
+    {
+      rtx reg1 = gen_reg_rtx (arith_mode);
+      rtx temp = gen_rtx_fmt_ee (arith_code, arith_mode, arith_op0, arith_op1);
+      emit_insn (gen_rtx_SET (reg1, temp));
+
+      rtx reg2 = gen_reg_rtx (arith_mode);
+      target = noce_emit_condzero_arith (if_info, reg2, cond_code,
+                                         XEXP (if_info->cond, 0),
+                                         XEXP (if_info->cond, 1),
+                                         const0_rtx, arith_op0);
+      if (!target)
+        {
+          end_sequence ();
+          return FALSE;
+        }
+      rtx ior = gen_rtx_fmt_ee (IOR, arith_mode, reg1, target);
+      emit_insn (gen_rtx_SET (if_info->x, ior));
+    }
+  else
+    {
+      /* In CONST_INT case, force arith_op1 to register.  */
+      if (GET_CODE(arith_op1) == CONST_INT)
+        {
+          rtx reg = gen_reg_rtx (arith_mode);
+          emit_insn (gen_rtx_SET (reg, arith_op1));
+          arith_op1 = reg;
+        }
+
+      /* Apply for a reg as the return register for condezero.  */
+      rtx reg = gen_reg_rtx (arith_mode);
+      target = noce_emit_condzero_arith (if_info, reg, cond_code,
+                                         XEXP (if_info->cond, 0),
+                                         XEXP (if_info->cond, 1),
+                                         arith_op1, const0_rtx);
+      if (!target)
+        {
+          end_sequence ();
+          return FALSE;
+        }
+
+      /* Update arithmetic operand in first_pattern.  */
+
+      /* Shift a register.  */
+      if (arith_code == ASHIFT || arith_code == ASHIFTRT ||
+          arith_code == LSHIFTRT)
+        *ref_arith_op1 = gen_rtx_SUBREG (E_QImode, target, 0);
+      else if (GET_CODE (*ref_arith_op0) == SUBREG)
+        *ref_arith_op1 = gen_rtx_SUBREG (GET_MODE (*ref_arith_op0), target, 0);
+      else
+	*ref_arith_op1 = target;
+
+      emit_insn (first_pattern);
+
+      /* Adding last_pattern to the insn chain.  */
+      if (last_pattern)
+        emit_insn (last_pattern);
+    }
+
+  seq = end_ifcvt_sequence (if_info);
+
+  if (!seq || !targetm.noce_conversion_profitable_p (seq, if_info))
+    return FALSE;
+
+  emit_insn_before_setloc (seq, if_info->jump,
+                           INSN_LOCATION (if_info->insn_a));
+  if_info->transform_name = "noce_try_condzero_arith";
+
+  return TRUE;
+}
 
 /* Optimize away "if (x & C) x |= C" and similar bit manipulation
    transformations.  */
@@ -3969,6 +4217,9 @@ noce_process_if_block (struct noce_if_info *if_info)
 	goto success;
       if (noce_try_store_flag_mask (if_info))
 	goto success;
+      if (HAVE_conditional_move
+          && noce_try_condzero_arith(if_info))
+        goto success;
       if (HAVE_conditional_move
 	  && noce_try_cmove_arith (if_info))
 	goto success;
