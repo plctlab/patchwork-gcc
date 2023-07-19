@@ -303,4 +303,6 @@ extern rtx default_memtag_untagged_pointer (rtx, rtx);
 
 extern HOST_WIDE_INT default_gcov_type_size (void);
 
+extern bool default_have_rotate_and_mask (machine_mode);
+
 #endif /* GCC_TARGHOOKS_H */

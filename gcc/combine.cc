@@ -10475,20 +10475,25 @@ try_widen_shift_mode (enum rtx_code code, rtx op, int count,
       return orig_mode;
 
     case LSHIFTRT:
-      /* Similarly here but with zero bits.  */
-      if (HWI_COMPUTABLE_MODE_P (mode)
-	  && (nonzero_bits (op, mode) & ~GET_MODE_MASK (orig_mode)) == 0)
-	return mode;
-
-      /* We can also widen if the bits brought in will be masked off.  This
-	 operation is performed in ORIG_MODE.  */
-      if (outer_code == AND)
+      /* Skip wider mode when the target has rotate and mask instructions on
+	 orig_mode.  */
+      if (!targetm.have_rotate_and_mask (orig_mode))
 	{
-	  int care_bits = low_bitmask_len (orig_mode, outer_const);
-
-	  if (care_bits >= 0
-	      && GET_MODE_PRECISION (orig_mode) - care_bits >= count)
+	  /* Similarly here but with zero bits.  */
+	  if (HWI_COMPUTABLE_MODE_P (mode)
+	      && (nonzero_bits (op, mode) & ~GET_MODE_MASK (orig_mode)) == 0)
 	    return mode;
+
+	  /* We can also widen if the bits brought in will be masked off.
+	     This operation is performed in ORIG_MODE.  */
+	  if (outer_code == AND)
+	    {
+	      int care_bits = low_bitmask_len (orig_mode, outer_const);
+
+	      if (care_bits >= 0
+		  && GET_MODE_PRECISION (orig_mode) - care_bits >= count)
+		return mode;
+	    }
 	}
       /* fall through */
 

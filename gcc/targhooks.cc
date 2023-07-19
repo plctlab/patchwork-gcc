@@ -2775,4 +2775,11 @@ default_gcov_type_size (void)
   return TYPE_PRECISION (long_long_integer_type_node) > 32 ? 64 : 32;
 }
 
+bool
+default_have_rotate_and_mask (machine_mode mode)
+{
+  gcc_assert (SCALAR_INT_MODE_P (mode));
+  return false;
+}
+
 #include "gt-targhooks.h"

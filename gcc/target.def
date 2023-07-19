@@ -7155,6 +7155,15 @@ DEFHOOKPOD
 @option{-fsanitize=shadow-call-stack}.  The default value is false.",
  bool, false)
 
+/* Return true if the target has rotate and mask instructions for this\n\
+   scalar integer mode.  */
+DEFHOOK
+(have_rotate_and_mask,
+ "Return true if the target has rotate and mask instructions on mode\n\
+ @var{mode}.",
+ bool, (machine_mode mode),
+ default_have_rotate_and_mask)
+
 /* Close the 'struct gcc_target' definition.  */
 HOOK_VECTOR_END (C90_EMPTY_HACK)
 

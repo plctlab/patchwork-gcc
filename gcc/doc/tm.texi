@@ -11090,6 +11090,11 @@ The default is four for machines with a @code{casesi} instruction and
 five otherwise.  This is best for most machines.
 @end deftypefn
 
+@deftypefn {Target Hook} bool TARGET_HAVE_ROTATE_AND_MASK (machine_mode @var{mode})
+Return true if the target has rotate and mask instructions on mode
+ @var{mode}.
+@end deftypefn
+
 @defmac WORD_REGISTER_OPERATIONS
 Define this macro to 1 if operations between registers with integral mode
 smaller than a word are always performed on the entire register.  To be
