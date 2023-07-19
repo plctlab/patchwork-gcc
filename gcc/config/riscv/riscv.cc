@@ -3630,6 +3630,22 @@ riscv_expand_conditional_move (rtx dest, rtx op, rtx cons, rtx alt)
           riscv_emit_binary(IOR, dest, reg1, reg2);
           return true;
         }
+      /* For complex semantics of comparison value.
+         reg + 0 or 0 + reg  */
+      else if ((GET_CODE (cons) == REG &&
+	        GET_CODE (alt) == CONST_INT &&
+                alt == const0_rtx)
+               || (GET_CODE (alt) == REG &&
+                   GET_CODE (cons) == CONST_INT &&
+                   cons == const0_rtx))
+        {
+          riscv_emit_int_compare (&code, &op0, &op1, need_eq_ne_p);
+          rtx cond = gen_rtx_fmt_ee (code, GET_MODE (op0), op0, op1);
+          emit_insn (gen_rtx_SET (dest,
+                                  gen_rtx_IF_THEN_ELSE (mode, cond,
+                                                        cons, alt)));
+          return true;
+        }
     }
 
   return false;
