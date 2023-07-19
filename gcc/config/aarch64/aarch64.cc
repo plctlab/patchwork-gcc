@@ -16702,10 +16702,7 @@ aarch64_vector_costs::count_ops (unsigned int count, vect_cost_for_stmt kind,
     {
       unsigned int base
 	= aarch64_in_loop_reduction_latency (m_vinfo, stmt_info, m_vec_flags);
-
-      /* ??? Ideally we'd do COUNT reductions in parallel, but unfortunately
-	 that's not yet the case.  */
-      ops->reduction_latency = MAX (ops->reduction_latency, base * count);
+      ops->reduction_latency = MAX (ops->reduction_latency, base);
     }
 
   /* Assume that multiply-adds will become a single operation.  */
