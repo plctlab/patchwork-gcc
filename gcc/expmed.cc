@@ -850,6 +850,7 @@ store_bit_field_1 (rtx str_rtx, poly_uint64 bitsize, poly_uint64 bitnum,
      since that case is valid for any mode.  The following cases are only
      valid for integral modes.  */
   opt_scalar_int_mode op0_mode = int_mode_for_mode (GET_MODE (op0));
+  opt_scalar_int_mode str_mode = int_mode_for_mode (GET_MODE (str_rtx));
   scalar_int_mode imode;
   if (!op0_mode.exists (&imode) || imode != GET_MODE (op0))
     {
@@ -881,9 +882,22 @@ store_bit_field_1 (rtx str_rtx, poly_uint64 bitsize, poly_uint64 bitnum,
 	op0 = gen_lowpart (op0_mode.require (), op0);
     }
 
-  return store_integral_bit_field (op0, op0_mode, ibitsize, ibitnum,
-				   bitregion_start, bitregion_end,
-				   fieldmode, value, reverse, fallback_p);
+  /* If MODEs of str_rtx and op0 are INT, and the length of op0 is greater than
+     str_rtx, it means that str_rtx has a shorter SUBREG: int32 on 64 mach/ABI
+     is an example.  For this case, we should use the mode of SUBREG, otherwise
+     bad code will generate for sign-extension ports, like MIPS.  */
+  bool use_str_mode = false;
+  if (GET_MODE_CLASS (GET_MODE (str_rtx)) == MODE_INT
+      && GET_MODE_CLASS (GET_MODE (op0)) == MODE_INT
+      && known_gt (GET_MODE_SIZE (GET_MODE (op0)),
+		   GET_MODE_SIZE (GET_MODE (str_rtx))))
+    use_str_mode = true;
+
+  return store_integral_bit_field (use_str_mode ? str_rtx : op0,
+				   use_str_mode ? str_mode : op0_mode,
+				   ibitsize, ibitnum, bitregion_start,
+				   bitregion_end, fieldmode, value,
+				   reverse, fallback_p);
 }
 
 /* Subroutine of store_bit_field_1, with the same arguments, except
