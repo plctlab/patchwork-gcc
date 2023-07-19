@@ -190,6 +190,9 @@ enum riscv_multilib_select_kind {
 #define TARGET_ZICBOM ((riscv_zicmo_subext & MASK_ZICBOM) != 0)
 #define TARGET_ZICBOP ((riscv_zicmo_subext & MASK_ZICBOP) != 0)
 
+#define MASK_ZICOND   (1 << 2)
+#define TARGET_ZICOND ((riscv_zi_subext & MASK_ZICOND) != 0)
+
 #define MASK_ZFHMIN   (1 << 0)
 #define MASK_ZFH      (1 << 1)
 
