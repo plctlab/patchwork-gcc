@@ -986,6 +986,11 @@ build_aggr_conv (tree type, tree ctor, int flags, tsubst_flags_t complain)
   tree empty_ctor = NULL_TREE;
   hash_set<tree, true> pset;
 
+  /* We've called complete_type on TYPE before calling this function, but
+     perhaps it wasn't successful.  */
+  if (!COMPLETE_TYPE_P (type))
+    return nullptr;
+
   /* We already called reshape_init in implicit_conversion, but it might not
      have done anything in the case of parenthesized aggr init.  */
 
