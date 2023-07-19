@@ -3211,6 +3211,9 @@ gimplify_compound_lval (tree *expr_p, gimple_seq *pre_p, gimple_seq *post_p,
 
       if (TREE_CODE (t) == ARRAY_REF || TREE_CODE (t) == ARRAY_RANGE_REF)
 	{
+	  if (TREE_TYPE (TREE_OPERAND (t, 0)) == error_mark_node)
+	    return GS_ERROR;
+
 	  /* Deal with the low bound and element type size and put them into
 	     the ARRAY_REF.  If these values are set, they have already been
 	     gimplified.  */
