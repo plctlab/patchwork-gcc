@@ -2303,6 +2303,7 @@ enum rs6000_builtin_type_index
   RS6000_BTI_ptr_vector_quad,
   RS6000_BTI_ptr_long_long,
   RS6000_BTI_ptr_long_long_unsigned,
+  RS6000_BTI_PTI,
   RS6000_BTI_MAX
 };
 
@@ -2347,6 +2348,7 @@ enum rs6000_builtin_type_index
 #define uintDI_type_internal_node	 (rs6000_builtin_types[RS6000_BTI_UINTDI])
 #define intTI_type_internal_node	 (rs6000_builtin_types[RS6000_BTI_INTTI])
 #define uintTI_type_internal_node	 (rs6000_builtin_types[RS6000_BTI_UINTTI])
+#define intPTI_type_internal_node	 (rs6000_builtin_types[RS6000_BTI_PTI])
 #define float_type_internal_node	 (rs6000_builtin_types[RS6000_BTI_float])
 #define double_type_internal_node	 (rs6000_builtin_types[RS6000_BTI_double])
 #define long_double_type_internal_node	 (rs6000_builtin_types[RS6000_BTI_long_double])

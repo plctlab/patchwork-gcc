@@ -756,6 +756,15 @@ rs6000_init_builtins (void)
   else
     ieee128_float_type_node = NULL_TREE;
 
+  /* PTImode to get even/odd register pairs.  */
+  intPTI_type_internal_node = make_node(INTEGER_TYPE);
+  TYPE_PRECISION (intPTI_type_internal_node) = GET_MODE_BITSIZE (PTImode);
+  layout_type (intPTI_type_internal_node);
+  SET_TYPE_MODE (intPTI_type_internal_node, PTImode);
+  t = build_qualified_type (intPTI_type_internal_node, TYPE_QUAL_CONST);
+  lang_hooks.types.register_builtin_type (intPTI_type_internal_node,
+					  "__int128pti");
+
   /* Vector pair and vector quad support.  */
   vector_pair_type_node = make_node (OPAQUE_TYPE);
   SET_TYPE_MODE (vector_pair_type_node, OOmode);
