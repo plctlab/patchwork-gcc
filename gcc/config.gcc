@@ -4939,10 +4939,13 @@ case "${target}" in
 		case ${with_arch} in
 		"" | loongarch64 | la464) ;; # OK, append here.
 		native)
-			if test x${host} != x${target}; then
+			case ${host} in
+			loongarch*) ;; # OK
+			*)
 				echo "--with-arch=native is illegal for cross-compiler." 1>&2
 				exit 1
-			fi
+				;;
+			esac
 			;;
 		"")
 			echo "Please set a default value for \${with_arch}" \
