@@ -14,7 +14,8 @@ struct B {
   }
 };
 struct C : A {
-  B bar {this};
+  B bar {this};  // { dg-error "" "" { target c++14_down } }
 };
 
-constexpr C foo {};		// { dg-message "" }
+// error path changes in C++17 due to `C` becoming an aggregate
+constexpr C foo {};  // { dg-error "" "" { target c++17 } }

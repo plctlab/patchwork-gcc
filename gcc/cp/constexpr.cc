@@ -2176,7 +2176,33 @@ modifying_const_object_error (tree expr, tree obj)
   auto_diagnostic_group d;
   error_at (loc, "modifying a const object %qE is not allowed in "
 	    "a constant expression", TREE_OPERAND (expr, 0));
-  inform (location_of (obj), "originally declared %<const%> here");
+
+  /* Find the underlying object that was declared as const.  */
+  location_t decl_loc = UNKNOWN_LOCATION;
+  for (tree probe = obj; decl_loc == UNKNOWN_LOCATION; )
+    switch (TREE_CODE (probe))
+      {
+      case BIT_FIELD_REF:
+      case COMPONENT_REF:
+	{
+	  tree elt = TREE_OPERAND (probe, 1);
+	  if (CP_TYPE_CONST_P (TREE_TYPE (elt)))
+	    decl_loc = DECL_SOURCE_LOCATION (elt);
+	  probe = TREE_OPERAND (probe, 0);
+	}
+	break;
+
+      case ARRAY_REF:
+      case REALPART_EXPR:
+      case IMAGPART_EXPR:
+	probe = TREE_OPERAND (probe, 0);
+	break;
+
+      default:
+	decl_loc = location_of (probe);
+	break;
+      }
+  inform (decl_loc, "originally declared %<const%> here");
 }
 
 /* Return true if FNDECL is a replaceable global allocation function that
@@ -6263,6 +6289,21 @@ cxx_eval_store_expression (const constexpr_ctx *ctx, tree t,
       if (TREE_CODE (init) == TARGET_EXPR)
 	if (tree tinit = TARGET_EXPR_INITIAL (init))
 	  init = tinit;
+
+      /* Improve error messages for initialisers when the initialising
+	 expression has no location information by pointing to the decl
+	 that is getting initialised.  */
+      location_t target_loc = cp_expr_loc_or_input_loc (init);
+      if (!EXPR_HAS_LOCATION (init))
+	{
+	  if (DECL_P (target))
+	    target_loc = DECL_SOURCE_LOCATION (target);
+	  else if (TREE_CODE (target) == COMPONENT_REF
+		   || TREE_CODE (target) == BIT_FIELD_REF)
+	    target_loc = DECL_SOURCE_LOCATION (TREE_OPERAND (target, 1));
+	}
+      iloc_sentinel sentinel = target_loc;
+
       init = cxx_eval_constant_expression (&new_ctx, init, vc_prvalue,
 					   non_constant_p, overflow_p);
       /* The hash table might have moved since the get earlier, and the
@@ -6951,7 +6992,10 @@ cxx_eval_constant_expression (const constexpr_ctx *ctx, tree t,
       return t;
     }
 
+  /* Change the input location to the currently processed expression for
+     better error messages when a subexpression has no location.  */
   location_t loc = cp_expr_loc_or_input_loc (t);
+  iloc_sentinel sentinel (loc);
 
   STRIP_ANY_LOCATION_WRAPPER (t);
 
