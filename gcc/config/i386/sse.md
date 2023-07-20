@@ -1780,7 +1780,20 @@
   [(set (match_dup 4) (match_dup 1))]
   "operands[4] = adjust_address (operands[0], V2DFmode, 0);")
 
-(define_insn "<sse3>_lddqu<avxsizesuffix>"
+(define_expand "<sse3>_lddqu<avxsizesuffix>"
+  [(set (match_operand:VI1 0 "register_operand")
+	(unspec:VI1 [(match_operand:VI1 1 "memory_operand")]
+		    UNSPEC_LDDQU))]
+  "TARGET_SSE3"
+{
+  if (TARGET_AVX && (<MODE_SIZE> == 16 || !TARGET_AVX256_SPLIT_UNALIGNED_LOAD))
+    {
+      emit_move_insn (operands[0], operands[1]);
+      DONE;
+    }
+})
+
+(define_insn "*<sse3>_lddqu<avxsizesuffix>"
   [(set (match_operand:VI1 0 "register_operand" "=x")
 	(unspec:VI1 [(match_operand:VI1 1 "memory_operand" "m")]
 		    UNSPEC_LDDQU))]
