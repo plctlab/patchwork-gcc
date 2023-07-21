@@ -75,6 +75,8 @@ enum lc_reason
   LC_RENAME_VERBATIM,	/* Likewise, but "" != stdin.  */
   LC_ENTER_MACRO,	/* Begin macro expansion.  */
   LC_MODULE,		/* A (C++) Module.  */
+  LC_GEN,		/* Internally generated source.  */
+
   /* FIXME: add support for stringize and paste.  */
   LC_HWM /* High Water Mark.  */
 };
@@ -437,7 +439,13 @@ struct GTY((tag ("1"))) line_map_ordinary : public line_map {
 
   /* Pointer alignment boundary on both 32 and 64-bit systems.  */
 
-  const char *to_file;
+  /* For an LC_GEN map, DATA points to the actual content.  Otherwise it is
+     a file name.  In the former case, the data could contain embedded nulls
+     and it need not be null terminated, so we use the GTY markup appropriate
+     for that case.  */
+  const char * GTY((string_length ("%h.data_len"))) data;
+  unsigned int data_len;
+
   linenum_type to_line;
 
   /* Location from whence this line map was included.  For regular
@@ -662,6 +670,12 @@ ORDINARY_MAP_IN_SYSTEM_HEADER_P (const line_map_ordinary *ord_map)
   return ord_map->sysp;
 }
 
+/* TRUE if this line map contains generated data.  */
+inline bool ORDINARY_MAP_GENERATED_DATA_P (const line_map_ordinary *ord_map)
+{
+  return ord_map->reason == LC_GEN;
+}
+
 /* TRUE if this line map is for a module (not a source file).  */
 
 inline bool
@@ -671,13 +685,41 @@ MAP_MODULE_P (const line_map *map)
 	  && linemap_check_ordinary (map)->reason == LC_MODULE);
 }
 
-/* Get the filename of ordinary map MAP.  */
+/* Get the data contents of ordinary map MAP.  */
 
 inline const char *
 ORDINARY_MAP_FILE_NAME (const line_map_ordinary *ord_map)
 {
-  return ord_map->to_file;
+  linemap_assert (ord_map->reason != LC_GEN);
+  return ord_map->data;
 }
+
+inline const char *
+ORDINARY_MAP_GENERATED_DATA (const line_map_ordinary *ord_map)
+{
+  linemap_assert (ord_map->reason == LC_GEN);
+  return ord_map->data;
+}
+
+inline unsigned int
+ORDINARY_MAP_GENERATED_DATA_LEN (const line_map_ordinary *ord_map)
+{
+  linemap_assert (ord_map->reason == LC_GEN);
+  return ord_map->data_len;
+}
+
+/* Sometimes we don't need to care which kind it is.  */
+inline const char *
+ORDINARY_MAP_FILE_NAME_OR_DATA (const line_map_ordinary *ord_map)
+{
+  return ord_map->data;
+}
+
+/* If we just want to know whether two maps point to the same
+   file/buffer or not.  */
+bool
+ORDINARY_MAPS_SAME_FILE_P (const line_map_ordinary *map1,
+			   const line_map_ordinary *map2);
 
 /* Get the cpp macro whose expansion gave birth to macro map MAP.  */
 
@@ -1097,17 +1139,19 @@ extern line_map *line_map_new_raw (line_maps *, bool, unsigned);
    map that records locations of tokens that are not part of macro
    replacement-lists present at a macro expansion point.
 
-   The text pointed to by TO_FILE must have a lifetime
-   at least as long as the lifetime of SET.  An empty
-   TO_FILE means standard input.  If reason is LC_LEAVE, and
-   TO_FILE is NULL, then TO_FILE, TO_LINE and SYSP are given their
-   natural values considering the file we are returning to.
+   The text pointed to by DATA must have a lifetime at least as long as the
+   lifetime of SET.  If reason is LC_LEAVE, and DATA is NULL, then DATA, TO_LINE
+   and SYSP are given their natural values considering the file we are returning
+   to.  If reason is LC_GEN, then DATA is the actual content, and DATA_LEN>0 is
+   the length of it.  Otherwise DATA is a file name and DATA_LEN need not be
+   specified.  If DATA_LEN is specified for a file name, it should be the length
+   of the file name, including the terminating null.
 
-   A call to this function can relocate the previous set of
-   maps, so any stored line_map pointers should not be used.  */
+   A call to this function can relocate the previous set of maps, so any stored
+   line_map pointers should not be used.  */
 extern const line_map *linemap_add
   (class line_maps *, enum lc_reason, unsigned int sysp,
-   const char *to_file, linenum_type to_line);
+   const char *data, linenum_type to_line, unsigned int data_len = 0);
 
 /* Create a macro map.  A macro map encodes source locations of tokens
    that are part of a macro replacement-list, at a macro expansion
@@ -1257,7 +1301,7 @@ linemap_position_for_loc_and_offset (class line_maps *set,
 inline const char *
 LINEMAP_FILE (const line_map_ordinary *ord_map)
 {
-  return ord_map->to_file;
+  return ORDINARY_MAP_FILE_NAME (ord_map);
 }
 
 /* Return the line number this map started encoding location from.  */
@@ -1276,6 +1320,13 @@ LINEMAP_SYSP (const line_map_ordinary *ord_map)
 {
   return ord_map->sysp;
 }
+
+/* For a normal ordinary map, this is the same as ORDINARY_MAP_FILE_NAME;
+   but for an LC_GEN map, it returns the file name from which the data
+   originated, instead of asserting.  */
+const char *
+ORDINARY_MAP_CONTAINING_FILE_NAME (line_maps *set,
+				   const line_map_ordinary *ord_map);
 
 const struct line_map *first_map_in_common (line_maps *set,
 					    location_t loc0,
@@ -1316,6 +1367,11 @@ typedef struct
 
   /* In a system header?. */
   bool sysp;
+
+  /* If generated data, the data and its length.  The data may contain embedded
+   nulls and need not be null-terminated.  */
+  unsigned int generated_data_len;
+  const char *generated_data;
 } expanded_location;
 
 class range_label;
@@ -2104,12 +2160,14 @@ struct linemap_stats
   long adhoc_table_entries_used;
 };
 
-/* Return the highest location emitted for a given file for which
-   there is a line map in SET.  FILE_NAME is the file name to
-   consider.  If the function returns TRUE, *LOC is set to the highest
-   location emitted for that file.  */
+/* Return the highest location emitted for a given file or generated data buffer
+   for which there is a line map in SET.  If the function returns TRUE, *LOC is
+   set to the highest location emitted for that file.  The const char* arg is
+   either a file name or a generated data buffer, as indicated by
+   IS_DATA.  */
 bool linemap_get_file_highest_location (class line_maps * set,
-					const char *file_name,
+					const char *fname_or_data,
+					bool is_data,
 					location_t *loc);
 
 /* Compute and return statistics about the memory consumption of some
