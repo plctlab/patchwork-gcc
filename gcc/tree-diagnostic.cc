@@ -203,9 +203,12 @@ maybe_unwind_expanded_macro_loc (diagnostic_context *context,
 	const int resolved_def_loc_line = SOURCE_LINE (m, l0);
         if (ix == 0 && saved_location_line != resolved_def_loc_line)
           {
-            diagnostic_append_note (context, resolved_def_loc, 
-                                    "in definition of macro %qs",
-                                    linemap_map_get_macro_name (iter->map));
+	    const char *name = linemap_map_get_macro_name (iter->map);
+	    if (*name == '<')
+	      diagnostic_append_note (context, resolved_def_loc, "in %s", name);
+	    else
+	      diagnostic_append_note (context, resolved_def_loc,
+				      "in definition of macro %qs", name);
             /* At this step, as we've printed the context of the macro
                definition, we don't want to print the context of its
                expansion, otherwise, it'd be redundant.  */
@@ -220,9 +223,12 @@ maybe_unwind_expanded_macro_loc (diagnostic_context *context,
                                     MACRO_MAP_EXPANSION_POINT_LOCATION (iter->map),
                                     LRK_MACRO_DEFINITION_LOCATION, NULL);
 
-        diagnostic_append_note (context, resolved_exp_loc, 
-                                "in expansion of macro %qs",
-                                linemap_map_get_macro_name (iter->map));
+	const char *name = linemap_map_get_macro_name (iter->map);
+	if (*name == '<')
+	  diagnostic_append_note (context, resolved_exp_loc, "in %s", name);
+	else
+	  diagnostic_append_note (context, resolved_exp_loc,
+				  "in expansion of macro %qs", name);
       }
 }
 
