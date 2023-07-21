@@ -84,7 +84,8 @@ Gcc_linemap::to_string(Location location)
   resolved_location =
       linemap_resolve_location (line_table, location.gcc_location(),
                                 LRK_SPELLING_LOCATION, &lmo);
-  if (lmo == NULL || resolved_location < RESERVED_LOCATION_COUNT)
+  if (lmo == NULL || resolved_location < RESERVED_LOCATION_COUNT
+      || ORDINARY_MAP_GENERATED_DATA_P (lmo))
     return "";
   const char *path = LINEMAP_FILE (lmo);
   if (!path)

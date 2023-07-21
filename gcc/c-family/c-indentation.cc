@@ -50,7 +50,7 @@ get_visual_column (expanded_location exploc,
 		   unsigned int *first_nws,
 		   unsigned int tab_width)
 {
-  char_span line = location_get_source_line (exploc.file, exploc.line);
+  char_span line = location_get_source_line (exploc);
   if (!line)
     return false;
   if ((size_t)exploc.column > line.length ())
@@ -87,13 +87,13 @@ get_visual_column (expanded_location exploc,
    Otherwise, return false, leaving *FIRST_NWS untouched.  */
 
 static bool
-get_first_nws_vis_column (const char *file, int line_num,
+get_first_nws_vis_column (expanded_location exploc,
 			  unsigned int *first_nws,
 			  unsigned int tab_width)
 {
   gcc_assert (first_nws);
 
-  char_span line = location_get_source_line (file, line_num);
+  char_span line = location_get_source_line (exploc);
   if (!line)
     return false;
   unsigned int vis_column = 0;
@@ -158,19 +158,18 @@ get_first_nws_vis_column (const char *file, int line_num,
    Return true if such an unindent/outdent is detected.  */
 
 static bool
-detect_intervening_unindent (const char *file,
-			     int body_line,
+detect_intervening_unindent (expanded_location exploc,
 			     int next_stmt_line,
 			     unsigned int vis_column,
 			     unsigned int tab_width)
 {
-  gcc_assert (file);
-  gcc_assert (next_stmt_line > body_line);
+  gcc_assert (exploc.file);
+  gcc_assert (next_stmt_line > exploc.line);
 
-  for (int line = body_line + 1; line < next_stmt_line; line++)
+  while (++exploc.line < next_stmt_line)
     {
       unsigned int line_vis_column;
-      if (get_first_nws_vis_column (file, line, &line_vis_column, tab_width))
+      if (get_first_nws_vis_column (exploc, &line_vis_column, tab_width))
 	if (line_vis_column < vis_column)
 	  return true;
     }
@@ -528,8 +527,7 @@ should_warn_for_misleading_indentation (const token_indent_info &guard_tinfo,
 
 	  /* Don't warn if there is an unindent between the two statements. */
 	  int vis_column = MIN (next_stmt_vis_column, body_vis_column);
-	  if (detect_intervening_unindent (body_exploc.file, body_exploc.line,
-					   next_stmt_exploc.line,
+	  if (detect_intervening_unindent (body_exploc, next_stmt_exploc.line,
 					   vis_column, tab_width))
 	    return false;
 
@@ -691,12 +689,10 @@ assert_get_visual_column_succeeds (const location &loc,
 				   unsigned int expected_visual_column,
 				   unsigned int expected_first_nws)
 {
-  expanded_location exploc;
+  expanded_location exploc = {};
   exploc.file = file;
   exploc.line = line;
   exploc.column = column;
-  exploc.data = NULL;
-  exploc.sysp = false;
   unsigned int actual_visual_column;
   unsigned int actual_first_nws;
   bool result = get_visual_column (exploc,
@@ -729,12 +725,10 @@ assert_get_visual_column_fails (const location &loc,
 				const char *file, int line, int column,
 				const unsigned int tab_width)
 {
-  expanded_location exploc;
+  expanded_location exploc = {};
   exploc.file = file;
   exploc.line = line;
   exploc.column = column;
-  exploc.data = NULL;
-  exploc.sysp = false;
   unsigned int actual_visual_column;
   unsigned int actual_first_nws;
   bool result = get_visual_column (exploc,
