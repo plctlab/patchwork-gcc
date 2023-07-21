@@ -4285,7 +4285,10 @@ cxx_eval_array_reference (const constexpr_ctx *ctx, tree t,
   else
     val = build_value_init (elem_type, tf_warning_or_error);
 
-  if (!SCALAR_TYPE_P (elem_type))
+  if (!SCALAR_TYPE_P (elem_type)
+      /* Create a new constructor only if we don't already have one that
+	 is suitable.  */
+      && !(ctx->ctor && same_type_p (elem_type, TREE_TYPE (ctx->ctor))))
     {
       new_ctx = *ctx;
       new_ctx.ctor = build_constructor (elem_type, NULL);
