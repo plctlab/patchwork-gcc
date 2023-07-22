@@ -701,10 +701,10 @@ alter_subregs (rtx *loc, bool final_p)
   return res;
 }
 
-/* Return true if REGNO is used for return in the current
-   function.  */
+/* Return true if register REG, known to be REG_P, is used for return
+   in the current function.  */
 static bool
-return_regno_p (unsigned int regno)
+return_reg_p (rtx reg)
 {
   rtx outgoing = crtl->return_rtx;
 
@@ -712,7 +712,8 @@ return_regno_p (unsigned int regno)
     return false;
 
   if (REG_P (outgoing))
-    return REGNO (outgoing) == regno;
+    return REGNO (outgoing) == REGNO (reg)
+	   && GET_MODE (outgoing) == GET_MODE (reg);
   else if (GET_CODE (outgoing) == PARALLEL)
     {
       int i;
@@ -721,7 +722,9 @@ return_regno_p (unsigned int regno)
 	{
 	  rtx x = XEXP (XVECEXP (outgoing, 0, i), 0);
 
-	  if (REG_P (x) && REGNO (x) == regno)
+	  if (REG_P (x)
+	      && REGNO (x) == REGNO (reg)
+	      && GET_MODE (x) == GET_MODE (reg))
 	    return true;
 	}
     }
@@ -817,7 +820,7 @@ lra_final_code_change (void)
 	  if (NONJUMP_INSN_P (insn) && GET_CODE (pat) == SET
 	      && REG_P (SET_SRC (pat)) && REG_P (SET_DEST (pat))
 	      && REGNO (SET_SRC (pat)) == REGNO (SET_DEST (pat))
-	      && (! return_regno_p (REGNO (SET_SRC (pat)))
+	      && (! return_reg_p (SET_SRC (pat))
 		  || ! regno_in_use_p (insn, REGNO (SET_SRC (pat)))))
 	    {
 	      lra_invalidate_insn_data (insn);
