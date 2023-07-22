@@ -1906,7 +1906,22 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
  /* (~x & y) | x -> x | y */
  (simplify
   (bitop:c (rbitop:c (bit_not @0) @1) @0)
-  (bitop @0 @1)))
+  (bitop @0 @1))
+ /* Similar but for comparisons which have been inverted already,
+    Note it is hard to simulate the inverted tcc_comparison due
+    NaNs; That is == and != are sometimes inversions and sometimes not.
+    So a double for loop is needed and then compare the inverse code
+    with the result of invert_tree_comparison is needed.
+    This works fine for vector compares as -1 and 0 are bitwise
+    inverses.  */
+ (for cmp (tcc_comparison)
+  (for icmp (tcc_comparison)
+   (simplify
+    (bitop:c (rbitop:c (icmp @0 @1) @2) (cmp@3 @0 @1))
+     (with { enum tree_code ic = invert_tree_comparison
+             (cmp, HONOR_NANS (@0)); }
+      (if (ic == icmp)
+       (bitop @3 @2)))))))
 
 /* ((x | y) & z) | x -> (z & y) | x */
 (simplify
