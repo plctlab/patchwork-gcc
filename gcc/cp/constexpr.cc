@@ -1148,7 +1148,8 @@ enum constexpr_switch_state {
 
 class constexpr_global_ctx {
   /* Values for any temporaries or local variables within the
-     constant-expression. */
+     constant-expression. Objects outside their lifetime have
+     value 'void_node'.  */
   hash_map<tree,tree> values;
 public:
   /* Number of cxx_eval_constant_expression calls (except skipped ones,
@@ -1170,17 +1171,28 @@ public:
     : constexpr_ops_count (0), cleanups (NULL), modifiable (nullptr),
       heap_dealloc_count (0) {}
 
+  bool is_outside_lifetime (tree t)
+  {
+    if (tree *p = values.get (t))
+      if (*p == void_node)
+	return true;
+    return false;
+  }
  tree get_value (tree t)
   {
     if (tree *p = values.get (t))
-      return *p;
+      if (*p != void_node)
+	return *p;
     return NULL_TREE;
   }
   tree *get_value_ptr (tree t)
   {
     if (modifiable && !modifiable->contains (t))
       return nullptr;
-    return values.get (t);
+    if (tree *p = values.get (t))
+      if (*p != void_node)
+	return p;
+    return nullptr;
   }
   void put_value (tree t, tree v)
   {
@@ -1188,7 +1200,13 @@ public:
     if (!already_in_map && modifiable)
       modifiable->add (t);
   }
-  void remove_value (tree t) { values.remove (t); }
+  void remove_value (tree t)
+  {
+    if (DECL_P (t))
+      values.put (t, void_node);
+    else
+      values.remove (t);
+  }
 };
 
 /* Helper class for constexpr_global_ctx.  In some cases we want to avoid
@@ -3106,12 +3124,9 @@ cxx_eval_call_expression (const constexpr_ctx *ctx, tree t,
 	  gcc_assert (!DECL_BY_REFERENCE (res));
 	  ctx->global->put_value (res, NULL_TREE);
 
-	  /* Track the callee's evaluated SAVE_EXPRs and TARGET_EXPRs so that
-	     we can forget their values after the call.  */
-	  constexpr_ctx ctx_with_save_exprs = *ctx;
-	  auto_vec<tree, 10> save_exprs;
-	  ctx_with_save_exprs.save_exprs = &save_exprs;
-	  ctx_with_save_exprs.call = &new_call;
+	  /* Remember the current call we're evaluating.  */
+	  constexpr_ctx call_ctx = *ctx;
+	  call_ctx.call = &new_call;
 	  unsigned save_heap_alloc_count = ctx->global->heap_vars.length ();
 	  unsigned save_heap_dealloc_count = ctx->global->heap_dealloc_count;
 
@@ -3122,7 +3137,7 @@ cxx_eval_call_expression (const constexpr_ctx *ctx, tree t,
 				      non_constant_p, overflow_p);
 
 	  tree jump_target = NULL_TREE;
-	  cxx_eval_constant_expression (&ctx_with_save_exprs, body,
+	  cxx_eval_constant_expression (&call_ctx, body,
 					vc_discard, non_constant_p, overflow_p,
 					&jump_target);
 
@@ -3178,15 +3193,7 @@ cxx_eval_call_expression (const constexpr_ctx *ctx, tree t,
 	    cxx_set_object_constness (ctx, new_obj, /*readonly_p=*/true,
 				      non_constant_p, overflow_p);
 
-	  /* Forget the saved values of the callee's SAVE_EXPRs and
-	     TARGET_EXPRs.  */
-	  for (tree save_expr : save_exprs)
-	    ctx->global->remove_value (save_expr);
-
-	  /* Remove the parms/result from the values map.  Is it worth
-	     bothering to do this when the map itself is only live for
-	     one constexpr evaluation?  If so, maybe also clear out
-	     other vars from call, maybe in BIND_EXPR handling?  */
+	  /* Remove the parms/result from the values map.  */
 	  ctx->global->remove_value (res);
 	  for (tree parm = parms; parm; parm = TREE_CHAIN (parm))
 	    ctx->global->remove_value (parm);
@@ -5710,6 +5717,25 @@ cxx_eval_indirect_ref (const constexpr_ctx *ctx, tree t,
   return r;
 }
 
+/* Complain about R, a DECL that is accessed outside its lifetime.  */
+
+static void
+outside_lifetime_error (location_t loc, tree r)
+{
+  if (DECL_NAME (r) == heap_deleted_identifier)
+    {
+      /* Provide a more accurate message for deleted variables.  */
+      error_at (loc, "use of allocated storage after deallocation "
+		"in a constant expression");
+      inform (DECL_SOURCE_LOCATION (r), "allocated here");
+    }
+  else
+    {
+      error_at (loc, "accessing object outside its lifetime");
+      inform (DECL_SOURCE_LOCATION (r), "declared here");
+    }
+}
+
 /* Complain about R, a VAR_DECL, not being usable in a constant expression.
    FUNDEF_P is true if we're checking a constexpr function body.
    Shared between potential_constant_expression and
@@ -6615,7 +6641,6 @@ cxx_eval_loop_expr (const constexpr_ctx *ctx, tree t,
 		    bool *non_constant_p, bool *overflow_p,
 		    tree *jump_target)
 {
-  constexpr_ctx new_ctx = *ctx;
   tree local_target;
   if (!jump_target)
     {
@@ -6653,14 +6678,12 @@ cxx_eval_loop_expr (const constexpr_ctx *ctx, tree t,
     default:
       gcc_unreachable ();
     }
-  auto_vec<tree, 10> save_exprs;
-  new_ctx.save_exprs = &save_exprs;
   do
     {
       if (count != -1)
 	{
 	  if (body)
-	    cxx_eval_constant_expression (&new_ctx, body, vc_discard,
+	    cxx_eval_constant_expression (ctx, body, vc_discard,
 					  non_constant_p, overflow_p,
 					  jump_target);
 	  if (breaks (jump_target))
@@ -6673,7 +6696,7 @@ cxx_eval_loop_expr (const constexpr_ctx *ctx, tree t,
 	    *jump_target = NULL_TREE;
 
 	  if (expr)
-	    cxx_eval_constant_expression (&new_ctx, expr, vc_prvalue,
+	    cxx_eval_constant_expression (ctx, expr, vc_prvalue,
 					  non_constant_p, overflow_p,
 					  jump_target);
 	}
@@ -6681,7 +6704,7 @@ cxx_eval_loop_expr (const constexpr_ctx *ctx, tree t,
       if (cond)
 	{
 	  tree res
-	    = cxx_eval_constant_expression (&new_ctx, cond, vc_prvalue,
+	    = cxx_eval_constant_expression (ctx, cond, vc_prvalue,
 					    non_constant_p, overflow_p,
 					    jump_target);
 	  if (res)
@@ -6695,11 +6718,6 @@ cxx_eval_loop_expr (const constexpr_ctx *ctx, tree t,
 	  else
 	    gcc_assert (*jump_target);
 	}
-
-      /* Forget saved values of SAVE_EXPRs and TARGET_EXPRs.  */
-      for (tree save_expr : save_exprs)
-	ctx->global->remove_value (save_expr);
-      save_exprs.truncate (0);
 
       if (++count >= constexpr_loop_limit)
 	{
@@ -6717,10 +6735,6 @@ cxx_eval_loop_expr (const constexpr_ctx *ctx, tree t,
 	 && !continues (jump_target)
 	 && (!switches (jump_target) || count == 0)
 	 && !*non_constant_p);
-
-  /* Forget saved values of SAVE_EXPRs and TARGET_EXPRs.  */
-  for (tree save_expr : save_exprs)
-    ctx->global->remove_value (save_expr);
 
   return NULL_TREE;
 }
@@ -7066,11 +7080,20 @@ cxx_eval_constant_expression (const constexpr_ctx *ctx, tree t,
       else if (t == ctx->object)
 	return ctx->ctor;
       if (VAR_P (t))
-	if (tree v = ctx->global->get_value (t))
+	{
+	  if (tree v = ctx->global->get_value (t))
 	    {
 	      r = v;
 	      break;
 	    }
+	  if (ctx->global->is_outside_lifetime (t))
+	    {
+	      if (!ctx->quiet)
+		outside_lifetime_error (loc, t);
+	      *non_constant_p = true;
+	      break;
+	    }
+	}
       if (ctx->manifestly_const_eval == mce_true)
 	maybe_warn_about_constant_value (loc, t);
       if (COMPLETE_TYPE_P (TREE_TYPE (t))
@@ -7115,6 +7138,13 @@ cxx_eval_constant_expression (const constexpr_ctx *ctx, tree t,
 	r = v;
       else if (lval)
 	/* Defer in case this is only used for its type.  */;
+      else if (ctx->global->is_outside_lifetime (t))
+	{
+	  if (!ctx->quiet)
+	    outside_lifetime_error (loc, t);
+	  *non_constant_p = true;
+	  break;
+	}
       else if (COMPLETE_TYPE_P (TREE_TYPE (t))
 	       && is_really_empty_class (TREE_TYPE (t), /*ignore_vptr*/false))
 	{
@@ -7354,17 +7384,28 @@ cxx_eval_constant_expression (const constexpr_ctx *ctx, tree t,
 	auto_vec<tree, 2> cleanups;
 	vec<tree> *prev_cleanups = ctx->global->cleanups;
 	ctx->global->cleanups = &cleanups;
-	r = cxx_eval_constant_expression (ctx, TREE_OPERAND (t, 0),
+
+	auto_vec<tree, 10> save_exprs;
+	constexpr_ctx new_ctx = *ctx;
+	new_ctx.save_exprs = &save_exprs;
+
+	r = cxx_eval_constant_expression (&new_ctx, TREE_OPERAND (t, 0),
 					  lval,
 					  non_constant_p, overflow_p,
 					  jump_target);
+
 	ctx->global->cleanups = prev_cleanups;
 	unsigned int i;
 	tree cleanup;
 	/* Evaluate the cleanups.  */
 	FOR_EACH_VEC_ELT_REVERSE (cleanups, i, cleanup)
-	  cxx_eval_constant_expression (ctx, cleanup, vc_discard,
+	  cxx_eval_constant_expression (&new_ctx, cleanup, vc_discard,
 					non_constant_p, overflow_p);
+
+	/* Forget SAVE_EXPRs and TARGET_EXPRs created by this
+	   full-expression.  */
+	for (tree save_expr : save_exprs)
+	  ctx->global->remove_value (save_expr);
       }
       break;
 
@@ -7870,10 +7911,13 @@ cxx_eval_constant_expression (const constexpr_ctx *ctx, tree t,
 				      non_constant_p, overflow_p, jump_target);
 
     case BIND_EXPR:
-      return cxx_eval_constant_expression (ctx, BIND_EXPR_BODY (t),
-					   lval,
-					   non_constant_p, overflow_p,
-					   jump_target);
+      r = cxx_eval_constant_expression (ctx, BIND_EXPR_BODY (t),
+					lval,
+					non_constant_p, overflow_p,
+					jump_target);
+      for (tree decl = BIND_EXPR_VARS (t); decl; decl = DECL_CHAIN (decl))
+	ctx->global->remove_value (decl);
+      return r;
 
     case PREINCREMENT_EXPR:
     case POSTINCREMENT_EXPR:
