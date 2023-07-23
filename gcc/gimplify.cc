@@ -5976,6 +5976,7 @@ is_gimple_stmt (tree t)
     case OMP_SCOPE:
     case OMP_SECTIONS:
     case OMP_SECTION:
+    case OMP_STRUCTURED_BLOCK:
     case OMP_SINGLE:
     case OMP_MASTER:
     case OMP_MASKED:
@@ -16949,6 +16950,7 @@ gimplify_expr (tree *expr_p, gimple_seq *pre_p, gimple_seq *post_p,
 	  break;
 
 	case OMP_SECTION:
+	case OMP_STRUCTURED_BLOCK:
 	case OMP_MASTER:
 	case OMP_MASKED:
 	case OMP_ORDERED:
@@ -16967,6 +16969,9 @@ gimplify_expr (tree *expr_p, gimple_seq *pre_p, gimple_seq *post_p,
 	      case OMP_SECTION:
 	        g = gimple_build_omp_section (body);
 	        break;
+	      case OMP_STRUCTURED_BLOCK:
+		g = gimple_build_omp_structured_block (body);
+		break;
 	      case OMP_MASTER:
 		g = gimple_build_omp_master (body);
 		break;
@@ -17367,6 +17372,7 @@ gimplify_expr (tree *expr_p, gimple_seq *pre_p, gimple_seq *post_p,
 		  && code != OMP_SCAN
 		  && code != OMP_SECTIONS
 		  && code != OMP_SECTION
+		  && code != OMP_STRUCTURED_BLOCK
 		  && code != OMP_SINGLE
 		  && code != OMP_SCOPE);
     }
