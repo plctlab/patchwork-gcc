@@ -90,7 +90,7 @@
 (define_insn "nop"
   [(const_int 0)]
   ""
-  "ja\t0"
+  "{ja\t0|goto 0}"
   [(set_attr "type" "alu")])
 
 ;;;; Arithmetic/Logical
