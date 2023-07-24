@@ -985,8 +985,11 @@ ifcvt_can_predicate (gimple *stmt)
   if (!types_compatible_p (lhs_type, rhs_type))
     return false;
   internal_fn cond_fn = get_conditional_internal_fn (code);
-  return (cond_fn != IFN_LAST
-	  && vectorized_internal_fn_supported_p (cond_fn, lhs_type));
+  internal_fn cond_len_fn = get_conditional_len_internal_fn (code);
+  return ((cond_fn != IFN_LAST
+	   && vectorized_internal_fn_supported_p (cond_fn, lhs_type))
+	  || (cond_len_fn != IFN_LAST
+	      && vectorized_internal_fn_supported_p (cond_len_fn, lhs_type)));
 }
 
 /* Return true when STMT is if-convertible.
