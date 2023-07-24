@@ -4285,15 +4285,28 @@ cxx_eval_array_reference (const constexpr_ctx *ctx, tree t,
   else
     val = build_value_init (elem_type, tf_warning_or_error);
 
+  bool new_ctor;
   if (!SCALAR_TYPE_P (elem_type))
     {
       new_ctx = *ctx;
-      new_ctx.ctor = build_constructor (elem_type, NULL);
+      /* We clear the object here.  We used to replace it with T, but that
+	 caused problems (101371, 108158); and anyway, T is the initializer,
+	 not the target object.  */
+      new_ctx.object = NULL_TREE;
+      /* Create a new constructor only if we don't already have a suitable
+	 one.  */
+      new_ctor = (!ctx->ctor
+		  || !same_type_ignoring_top_level_qualifiers_p
+		       (elem_type, TREE_TYPE (ctx->ctor)));
+      if (new_ctor)
+	new_ctx.ctor = build_constructor (elem_type, NULL);
       ctx = &new_ctx;
     }
+  else
+    new_ctor = false;
   t = cxx_eval_constant_expression (ctx, val, lval, non_constant_p,
 				    overflow_p);
-  if (!SCALAR_TYPE_P (elem_type) && t != ctx->ctor)
+  if (new_ctor && t != ctx->ctor)
     free_constructor (ctx->ctor);
   return t;
 }
