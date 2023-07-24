@@ -818,7 +818,7 @@ namespace __detail
 	std::tuple<>()
       };
       auto __pos
-	= __h->_M_insert_unique_node(__bkt, __code, __node._M_node);
+	= __h->_M_insert_unique_node(nullptr, __bkt, __code, __node._M_node);
       __node._M_node = nullptr;
       return __pos->second;
     }
@@ -845,7 +845,7 @@ namespace __detail
 	std::tuple<>()
       };
       auto __pos
-	= __h->_M_insert_unique_node(__bkt, __code, __node._M_node);
+	= __h->_M_insert_unique_node(nullptr, __bkt, __code, __node._M_node);
       __node._M_node = nullptr;
       return __pos->second;
     }
@@ -933,13 +933,13 @@ namespace __detail
       insert(const_iterator __hint, const value_type& __v)
       {
 	__hashtable& __h = _M_conjure_hashtable();
-	__node_gen_type __node_gen(__h);	
-	return __h._M_insert(__hint, __v, __node_gen, __unique_keys{});
+	__node_gen_type __node_gen(__h);
+	return __h._M_insert(__hint._M_cur, __v, __node_gen, __unique_keys{});
       }
 
       template<typename _KType, typename... _Args>
 	std::pair<iterator, bool>
-	try_emplace(const_iterator, _KType&& __k, _Args&&... __args)
+	try_emplace(const_iterator __hint, _KType&& __k, _Args&&... __args)
 	{
 	  __hashtable& __h = _M_conjure_hashtable();
 	  auto __code = __h._M_hash_code(__k);
@@ -954,7 +954,8 @@ namespace __detail
 	    std::forward_as_tuple(std::forward<_Args>(__args)...)
 	    };
 	  auto __it
-	    = __h._M_insert_unique_node(__bkt, __code, __node._M_node);
+	    = __h._M_insert_unique_node(__hint._M_cur,
+					__bkt, __code, __node._M_node);
 	  __node._M_node = nullptr;
 	  return { __it, true };
 	}
@@ -985,9 +986,16 @@ namespace __detail
       _M_insert_range(_InputIterator __first, _InputIterator __last,
 		      const _NodeGetter& __node_gen, true_type __uks)
       {
+	using __node_ptr = typename __hashtable::__node_ptr;
 	__hashtable& __h = _M_conjure_hashtable();
+	__node_ptr __hint = nullptr;
 	for (; __first != __last; ++__first)
-	  __h._M_insert(*__first, __node_gen, __uks);
+	  {
+	    __node_ptr __insert_pos
+	      = __h._M_insert(__hint, *__first, __node_gen, __uks)._M_cur;
+	    if (!__insert_pos->_M_nxt)
+	      __hint = __insert_pos;
+	  }
       }
 
   template<typename _Key, typename _Value, typename _Alloc,
@@ -1002,6 +1010,7 @@ namespace __detail
       _M_insert_range(_InputIterator __first, _InputIterator __last,
 		      const _NodeGetter& __node_gen, false_type __uks)
       {
+	using __node_ptr = typename __hashtable::__node_ptr;
 	using __rehash_type = typename __hashtable::__rehash_type;
 	using __rehash_state = typename __hashtable::__rehash_state;
 	using pair_type = std::pair<bool, std::size_t>;
@@ -1020,8 +1029,14 @@ namespace __detail
 	if (__do_rehash.first)
 	  __h._M_rehash(__do_rehash.second, __saved_state);
 
+	__node_ptr __hint = nullptr;
 	for (; __first != __last; ++__first)
-	  __h._M_insert(*__first, __node_gen, __uks);
+	  {
+	    __node_ptr __insert_pos
+	      = __h._M_insert(__hint, *__first, __node_gen, __uks)._M_cur;
+	    if (!__insert_pos->_M_nxt)
+	      __hint = __insert_pos;
+	  }
       }
 
   /**
@@ -1076,7 +1091,7 @@ namespace __detail
       {
 	__hashtable& __h = this->_M_conjure_hashtable();
 	__node_gen_type __node_gen(__h);
-	return __h._M_insert(__hint, std::move(__v), __node_gen,
+	return __h._M_insert(__hint._M_cur, std::move(__v), __node_gen,
 			     __unique_keys{});
       }
     };
@@ -1126,7 +1141,7 @@ namespace __detail
 	insert(const_iterator __hint, _Pair&& __v)
 	{
 	  __hashtable& __h = this->_M_conjure_hashtable();
-	  return __h._M_emplace(__hint, __unique_keys{},
+	  return __h._M_emplace(__hint._M_cur, __unique_keys{},
 				std::forward<_Pair>(__v));
 	}
    };
@@ -1314,19 +1329,6 @@ namespace __detail
 	    "hash function must be invocable with an argument of key type");
 	  return _M_hash()(__k);
 	}
-
-      __hash_code
-      _M_hash_code(const _Hash&,
-		   const _Hash_node_value<_Value, true>& __n) const
-      { return __n._M_hash_code; }
-
-      // Compute hash code using _Hash as __n _M_hash_code, if present, was
-      // computed using _H2.
-      template<typename _H2>
-	__hash_code
-	_M_hash_code(const _H2&,
-		const _Hash_node_value<_Value, __cache_hash_code>& __n) const
-	{ return _M_hash_code(_ExtractKey{}(__n._M_v())); }
 
       __hash_code
       _M_hash_code(const _Hash_node_value<_Value, false>& __n) const
@@ -1999,19 +2001,20 @@ namespace __detail
       _Hashtable_alloc<_NodeAlloc>::_M_allocate_node(_Args&&... __args)
       -> __node_ptr
       {
-	auto __nptr = __node_alloc_traits::allocate(_M_node_allocator(), 1);
+	auto& __alloc = _M_node_allocator();
+	auto __nptr = __node_alloc_traits::allocate(__alloc, 1);
+
 	__node_ptr __n = std::__to_address(__nptr);
 	__try
 	  {
 	    ::new ((void*)__n) __node_type;
-	    __node_alloc_traits::construct(_M_node_allocator(),
-					   __n->_M_valptr(),
+	    __node_alloc_traits::construct(__alloc, __n->_M_valptr(),
 					   std::forward<_Args>(__args)...);
 	    return __n;
 	  }
 	__catch(...)
 	  {
-	    __node_alloc_traits::deallocate(_M_node_allocator(), __nptr, 1);
+	    __node_alloc_traits::deallocate(__alloc, __nptr, 1);
 	    __throw_exception_again;
 	  }
       }

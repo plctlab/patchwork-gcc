@@ -835,30 +835,45 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       // Insert a node at the beginning of a bucket.
       void
-      _M_insert_bucket_begin(size_type __bkt, __node_ptr __node)
+      _M_insert_bucket_begin(__node_base_ptr __hint,
+			     size_type __bkt, __node_ptr __node)
       {
+	__node_base_ptr __prev;
 	if (_M_buckets[__bkt])
 	  {
 	    // Bucket is not empty, we just need to insert the new node
 	    // after the bucket before begin.
-	    __node->_M_nxt = _M_buckets[__bkt]->_M_nxt;
-	    _M_buckets[__bkt]->_M_nxt = __node;
+	    __prev = _M_buckets[__bkt];
 	  }
 	else
 	  {
-	    // The bucket is empty, the new node is inserted at the
-	    // beginning of the singly-linked list and the bucket will
-	    // contain _M_before_begin pointer.
-	    __node->_M_nxt = _M_before_begin._M_nxt;
-	    _M_before_begin._M_nxt = __node;
+	    // Based on benches using last node is not interested when hash code is
+	    // cached in case of unique keys.
+	    if (!(__unique_keys::value && __hash_cached::value) &&
+		__hint && !__hint->_M_nxt)
+	      __prev = __hint;
+	    else
+	      {
+		// The bucket is empty, the new node is inserted at the
+		// beginning of the singly-linked list and the bucket will
+		// contain _M_before_begin pointer.
+		__prev = &_M_before_begin;
 
-	    if (__node->_M_nxt)
-	      // We must update former begin bucket that is pointing to
-	      // _M_before_begin.
-	      _M_buckets[_M_bucket_index(*__node->_M_next())] = __node;
+		if (__prev->_M_nxt)
+		  {
+		    // We must update former begin bucket that is pointing to
+		    // _M_before_begin.
+		    size_type __bb_bkt = _M_bucket_index(
+				*static_cast<__node_ptr>(__prev->_M_nxt));
+		    _M_buckets[__bb_bkt] = __node;
+		  }
+	      }
 
-	    _M_buckets[__bkt] = &_M_before_begin;
+	    _M_buckets[__bkt] = __prev;
 	  }
+
+	__node->_M_nxt = __prev->_M_nxt;
+	__prev->_M_nxt = __node;
       }
 
       // Remove the bucket first node
@@ -884,44 +899,64 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       __node_base_ptr
       _M_get_previous_node(size_type __bkt, __node_ptr __n);
 
-      pair<__node_ptr, __hash_code>
-      _M_compute_hash_code(__node_ptr __hint, const key_type& __k) const;
+      struct _InsertInfo
+      {
+	__node_base_ptr	_M_prev;
+	__node_ptr	_M_equi_n;
+	__node_ptr	_M_hint;
+	__hash_code	_M_code;
+      };
+
+      _InsertInfo
+      _M_get_insert_info(__node_ptr __hint, const key_type& __k,
+			 __node_ptr __n = nullptr) const;
 
       // Insert node __n with hash code __code, in bucket __bkt if no
       // rehash (assumes no element with same key already present).
       // Takes ownership of __n if insertion succeeds, throws otherwise.
       iterator
-      _M_insert_unique_node(size_type __bkt, __hash_code,
+      _M_insert_unique_node(__node_ptr __hint, size_type __bkt, __hash_code,
 			    __node_ptr __n, size_type __n_elt = 1);
 
-      // Insert node __n with key __k and hash code __code.
+      // Insert node __n after __prev if any.
       // Takes ownership of __n if insertion succeeds, throws otherwise.
       iterator
-      _M_insert_multi_node(__node_ptr __hint,
-			   __hash_code __code, __node_ptr __n);
+      _M_insert_multi_node(const _InsertInfo& __info, __node_ptr __n);
 
       template<typename... _Args>
 	std::pair<iterator, bool>
-	_M_emplace(true_type __uks, _Args&&... __args);
+	_M_emplace_unique(__node_ptr __hint, _Args&&... __args);
 
       template<typename... _Args>
 	iterator
-	_M_emplace(false_type __uks, _Args&&... __args)
-	{ return _M_emplace(cend(), __uks, std::forward<_Args>(__args)...); }
+	_M_emplace_multi(__node_ptr __hint, _Args&&... __args);
 
-      // Emplace with hint, useless when keys are unique.
       template<typename... _Args>
-	iterator
-	_M_emplace(const_iterator, true_type __uks, _Args&&... __args)
-	{ return _M_emplace(__uks, std::forward<_Args>(__args)...).first; }
+	std::pair<iterator, bool>
+	_M_emplace(true_type /*__uks*/, _Args&&... __args)
+	{ return _M_emplace_unique(nullptr, std::forward<_Args>(__args)...); }
 
       template<typename... _Args>
 	iterator
-	_M_emplace(const_iterator, false_type __uks, _Args&&... __args);
+	_M_emplace(false_type /*__uks*/, _Args&&... __args)
+	{ return _M_emplace_multi(nullptr, std::forward<_Args>(__args)...); }
+
+      template<typename... _Args>
+	iterator
+	_M_emplace(__node_ptr __hint, true_type /*__uks*/, _Args&&... __args)
+	{
+	  return _M_emplace_unique(__hint,
+				   std::forward<_Args>(__args)...).first;
+	}
+
+      template<typename... _Args>
+	iterator
+	_M_emplace(__node_ptr __hint, false_type /*__uks*/, _Args&&... __args)
+	{ return _M_emplace_multi(__hint, std::forward<_Args>(__args)...); }
 
       template<typename _Kt, typename _Arg, typename _NodeGenerator>
 	std::pair<iterator, bool>
-	_M_insert_unique(_Kt&&, _Arg&&, const _NodeGenerator&);
+	_M_insert_unique(__node_ptr, _Kt&&, _Arg&&, const _NodeGenerator&);
 
       template<typename _Kt>
 	static __conditional_t<
@@ -941,9 +976,10 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
       template<typename _Arg, typename _NodeGenerator>
 	std::pair<iterator, bool>
-	_M_insert_unique_aux(_Arg&& __arg, const _NodeGenerator& __node_gen)
+	_M_insert_unique_aux(__node_ptr __hint,
+			     _Arg&& __arg, const _NodeGenerator& __node_gen)
 	{
-	  return _M_insert_unique(
+	  return _M_insert_unique(__hint,
 	    _S_forward_key(_ExtractKey{}(std::forward<_Arg>(__arg))),
 	    std::forward<_Arg>(__arg), __node_gen);
 	}
@@ -955,7 +991,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	{
 	  using __to_value
 	    = __detail::_ConvertToValueType<_ExtractKey, value_type>;
-	  return _M_insert_unique_aux(
+	  return _M_insert_unique_aux(nullptr,
 	    __to_value{}(std::forward<_Arg>(__arg)), __node_gen);
 	}
 
@@ -966,25 +1002,27 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	{
 	  using __to_value
 	    = __detail::_ConvertToValueType<_ExtractKey, value_type>;
-	  return _M_insert(cend(),
+	  return _M_insert(nullptr,
 	    __to_value{}(std::forward<_Arg>(__arg)), __node_gen, __uks);
 	}
 
-      // Insert with hint, not used when keys are unique.
+      // Insert with hint when keys are unique.
       template<typename _Arg, typename _NodeGenerator>
 	iterator
-	_M_insert(const_iterator, _Arg&& __arg,
-		  const _NodeGenerator& __node_gen, true_type __uks)
+	_M_insert(__node_ptr __hint, _Arg&& __arg,
+		  const _NodeGenerator& __node_gen, true_type /* __uks */)
 	{
-	  return
-	    _M_insert(std::forward<_Arg>(__arg), __node_gen, __uks).first;
+	  using __to_value
+	    = __detail::_ConvertToValueType<_ExtractKey, value_type>;
+	  return _M_insert_unique_aux(__hint,
+	    __to_value{}(std::forward<_Arg>(__arg)), __node_gen).first;
 	}
 
       // Insert with hint when keys are not unique.
       template<typename _Arg, typename _NodeGenerator>
 	iterator
-	_M_insert(const_iterator, _Arg&&,
-		  const _NodeGenerator&, false_type __uks);
+	_M_insert(__node_ptr __hint, _Arg&& __arg,
+		  const _NodeGenerator& __node_gen, false_type /* __uks */);
 
       size_type
       _M_erase(true_type __uks, const key_type&);
@@ -1006,7 +1044,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	iterator
 	emplace_hint(const_iterator __hint, _Args&&... __args)
 	{
-	  return _M_emplace(__hint, __unique_keys{},
+	  return _M_emplace(__hint._M_cur, __unique_keys{},
 			    std::forward<_Args>(__args)...);
 	}
 
@@ -1041,7 +1079,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #if __cplusplus > 201402L
       /// Re-insert an extracted node into a container with unique keys.
       insert_return_type
-      _M_reinsert_node(node_type&& __nh)
+      _M_reinsert_node(const_iterator __hint, node_type&& __nh)
       {
 	insert_return_type __ret;
 	if (__nh.empty())
@@ -1062,7 +1100,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	    else
 	      {
 		__ret.position
-		  = _M_insert_unique_node(__bkt, __code, __nh._M_ptr);
+		  = _M_insert_unique_node(__hint._M_cur,
+					  __bkt, __code, __nh._M_ptr);
 		__nh._M_ptr = nullptr;
 		__ret.inserted = true;
 	      }
@@ -1080,11 +1119,10 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	__glibcxx_assert(get_allocator() == __nh.get_allocator());
 
 	const key_type& __k = __nh._M_key();
-	auto __code = this->_M_hash_code(__k);
-	auto __ret
-	  = _M_insert_multi_node(__hint._M_cur, __code, __nh._M_ptr);
+	auto __info = _M_get_insert_info(__hint._M_cur, __k);
+	auto __it = _M_insert_multi_node(__info, __nh._M_ptr);
 	__nh._M_ptr = nullptr;
-	return __ret;
+	return __it;
       }
 
     private:
@@ -1130,6 +1168,17 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	return __nh;
       }
 
+    private:
+      __hash_code
+      _M_compute_hash_code(const _Hash&, __node_ptr __n, const key_type&)
+      { return this->_M_hash_code(*__n); }
+
+      template<typename _H2>
+	__hash_code
+	_M_compute_hash_code(const _H2&, __node_ptr, const key_type& __k)
+	{ return this->_M_hash_code(__k); }
+
+    public:
       /// Merge from a compatible container into one with unique keys.
       template<typename _Compatible_Hashtable>
 	void
@@ -1139,18 +1188,48 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	      node_type>, "Node types are compatible");
 	  __glibcxx_assert(get_allocator() == __src.get_allocator());
 
+	  __node_ptr __hint = nullptr;
 	  auto __n_elt = __src.size();
 	  for (auto __i = __src.cbegin(), __end = __src.cend(); __i != __end;)
 	    {
 	      auto __pos = __i++;
 	      const key_type& __k = _ExtractKey{}(*__pos);
-	      __hash_code __code
-		= this->_M_hash_code(__src.hash_function(), *__pos._M_cur);
+	      if (size() <= __small_size_threshold())
+		{
+		  __node_ptr __last_n = nullptr;
+		  bool __found = false;
+		  for (auto __n = _M_begin(); __n;
+		       __last_n = __n, __n = __n->_M_next())
+		    if (this->_M_key_equals(__k, *__n))
+		      {
+			__found = true;
+			break;
+		      }
+
+		  if (__found)
+		    {
+		      if (__n_elt != 1)
+			--__n_elt;
+		      continue;
+		    }
+		  else if (!__hint)
+		    __hint = __last_n;
+		}
+
+	      __hash_code __code =
+		_M_compute_hash_code(__src.hash_function(), __pos._M_cur, __k);
 	      size_type __bkt = _M_bucket_index(__code);
-	      if (_M_find_node(__bkt, __k, __code) == nullptr)
+	      if (size() <= __small_size_threshold()
+		  || _M_find_node(__bkt, __k, __code) == nullptr)
 		{
 		  auto __nh = __src.extract(__pos);
-		  _M_insert_unique_node(__bkt, __code, __nh._M_ptr, __n_elt);
+		  auto __pos = _M_insert_unique_node(
+		    __hint, __bkt, __code, __nh._M_ptr, __n_elt)._M_cur;
+
+		  // Keep only the last node as an insertion hint.
+		  if (!__pos->_M_nxt)
+		    __hint = __pos;
+
 		  __nh._M_ptr = nullptr;
 		  __n_elt = 1;
 		}
@@ -1159,6 +1238,22 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	    }
 	}
 
+    private:
+      _InsertInfo
+      _M_get_insert_info(const _Hash&, __node_ptr __hint, __node_ptr __n,
+			 const key_type& __k)
+      {
+	// Same _Hash functor, we can reuse __n hash code.
+	return _M_get_insert_info(__hint, __k, __n);
+      }
+
+      template<typename _H2>
+	_InsertInfo
+	_M_get_insert_info(const _H2&, __node_ptr __hint, __node_ptr,
+			   const key_type& __k)
+	{ return _M_get_insert_info(__hint, __k); }
+
+    public:
       /// Merge from a compatible container into one with equivalent keys.
       template<typename _Compatible_Hashtable>
 	void
@@ -1173,10 +1268,17 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  for (auto __i = __src.cbegin(), __end = __src.cend(); __i != __end;)
 	    {
 	      auto __pos = __i++;
-	      __hash_code __code
-		= this->_M_hash_code(__src.hash_function(), *__pos._M_cur);
+	      const key_type& __k = _ExtractKey{}(*__pos);
+	      auto __info = _M_get_insert_info(__src.hash_function(),
+					       __hint, __pos._M_cur, __k);
 	      auto __nh = __src.extract(__pos);
-	      __hint = _M_insert_multi_node(__hint, __code, __nh._M_ptr)._M_cur;
+	      auto __inserted_n =
+		_M_insert_multi_node(__info, __nh._M_ptr)._M_cur;
+
+	      // Keep only the last node as an insertion hint.
+	      if (!__inserted_n->_M_nxt)
+		__hint = __inserted_n;
+
 	      __nh._M_ptr = nullptr;
 	    }
 	}
@@ -1252,9 +1354,15 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	    _M_bucket_count = __bkt_count;
 	  }
 
+	__node_ptr __hint = nullptr;
 	__alloc_node_gen_t __node_gen(*this);
 	for (; __f != __l; ++__f)
-	  _M_insert(*__f, __node_gen, __uks);
+	  {
+	    __node_ptr __insert_pos
+	      = _M_insert(__hint, *__f, __node_gen, __uks)._M_cur;
+	    if (!__insert_pos->_M_nxt)
+	      __hint = __insert_pos;
+	  }
       }
 
   template<typename _Key, typename _Value, typename _Alloc,
@@ -1681,9 +1789,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     {
       if (size() <= __small_size_threshold())
 	{
-	  for (auto __it = _M_begin(); __it; __it = __it->_M_next())
-	    if (this->_M_key_equals(__k, *__it))
-	      return iterator(__it);
+	  for (auto __n = _M_begin(); __n; __n = __n->_M_next())
+	    if (this->_M_key_equals(__k, *__n))
+	      return iterator(__n);
 	  return end();
 	}
 
@@ -1704,9 +1812,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     {
       if (size() <= __small_size_threshold())
 	{
-	  for (auto __it = _M_begin(); __it; __it = __it->_M_next())
-	    if (this->_M_key_equals(__k, *__it))
-	      return const_iterator(__it);
+	  for (auto __n = _M_begin(); __n; __n = __n->_M_next())
+	    if (this->_M_key_equals(__k, *__n))
+	      return const_iterator(__n);
 	  return end();
 	}
 
@@ -2036,7 +2144,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       auto
       _Hashtable<_Key, _Value, _Alloc, _ExtractKey, _Equal,
 		 _Hash, _RangeHash, _Unused, _RehashPolicy, _Traits>::
-      _M_emplace(true_type /* __uks */, _Args&&... __args)
+      _M_emplace_unique(__node_ptr __hint, _Args&&... __args)
       -> pair<iterator, bool>
       {
 	// First build the node to get access to the hash code
@@ -2044,10 +2152,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	const key_type& __k = _ExtractKey{}(__node._M_node->_M_v());
 	if (size() <= __small_size_threshold())
 	  {
-	    for (auto __it = _M_begin(); __it; __it = __it->_M_next())
-	      if (this->_M_key_equals(__k, *__it))
+	    __node_ptr __last_n = nullptr;
+	    for (auto __n = _M_begin(); __n;
+		 __last_n = __n, __n = __n->_M_next())
+	      if (this->_M_key_equals(__k, *__n))
 		// There is already an equivalent node, no insertion
-		return { iterator(__it), false };
+		return { iterator(__n), false };
+
+	    __hint = __last_n;
 	  }
 
 	__hash_code __code = this->_M_hash_code(__k);
@@ -2058,7 +2170,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	    return { iterator(__p), false };
 
 	// Insert the node
-	auto __pos = _M_insert_unique_node(__bkt, __code, __node._M_node);
+	auto __pos = _M_insert_unique_node(__hint, __bkt, __code,
+					   __node._M_node);
 	__node._M_node = nullptr;
 	return { __pos, true };
       }
@@ -2071,17 +2184,15 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       auto
       _Hashtable<_Key, _Value, _Alloc, _ExtractKey, _Equal,
 		 _Hash, _RangeHash, _Unused, _RehashPolicy, _Traits>::
-      _M_emplace(const_iterator __hint, false_type /* __uks */,
-		 _Args&&... __args)
+      _M_emplace_multi(__node_ptr __hint, _Args&&... __args)
       -> iterator
       {
 	// First build the node to get its hash code.
 	_Scoped_node __node { this, std::forward<_Args>(__args)...  };
 	const key_type& __k = _ExtractKey{}(__node._M_node->_M_v());
 
-	auto __res = this->_M_compute_hash_code(__hint._M_cur, __k);
-	auto __pos
-	  = _M_insert_multi_node(__res.first, __res.second, __node._M_node);
+	auto __info = _M_get_insert_info(__hint, __k);
+	auto __pos = _M_insert_multi_node(__info, __node._M_node);
 	__node._M_node = nullptr;
 	return __pos;
       }
@@ -2093,26 +2204,32 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     auto
     _Hashtable<_Key, _Value, _Alloc, _ExtractKey, _Equal,
 	       _Hash, _RangeHash, _Unused, _RehashPolicy, _Traits>::
-    _M_compute_hash_code(__node_ptr __hint, const key_type& __k) const
-    -> pair<__node_ptr, __hash_code>
+    _M_get_insert_info(__node_ptr __hint, const key_type& __k,
+		       __node_ptr __equi_n) const
+    -> _InsertInfo
     {
       if (size() <= __small_size_threshold())
 	{
-	  if (__hint)
-	    {
-	      for (auto __it = __hint; __it; __it = __it->_M_next())
-		if (this->_M_key_equals(__k, *__it))
-		  return { __it, this->_M_hash_code(*__it) };
-	    }
+	  __node_ptr __last_n = nullptr;
+	  __node_base_ptr __prev
+	    = const_cast<__node_base_ptr>(&_M_before_begin);
+	  for (auto __n = static_cast<__node_ptr>(__prev->_M_nxt); __n;
+	       __prev = __last_n = __n, __n = __n->_M_next())
+	    if (this->_M_key_equals(__k, *__n))
+	      return
+		{
+		  __prev, __n, __hint,
+		  __hash_cached::value ? this->_M_hash_code(*__n) : 0
+		};
 
-	  for (auto __it = _M_begin(); __it != __hint; __it = __it->_M_next())
-	    if (this->_M_key_equals(__k, *__it))
-	      return { __it, this->_M_hash_code(*__it) };
-
-	  __hint = nullptr;
+	  __hint = __last_n;
 	}
 
-      return { __hint, this->_M_hash_code(__k) };
+      return
+	{
+	  nullptr, nullptr, __hint,
+	  __equi_n ? this->_M_hash_code(*__equi_n) : this->_M_hash_code(__k)
+	};
     }
 
   template<typename _Key, typename _Value, typename _Alloc,
@@ -2122,7 +2239,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     auto
     _Hashtable<_Key, _Value, _Alloc, _ExtractKey, _Equal,
 	       _Hash, _RangeHash, _Unused, _RehashPolicy, _Traits>::
-    _M_insert_unique_node(size_type __bkt, __hash_code __code,
+    _M_insert_unique_node(__node_ptr __hint,
+			  size_type __bkt, __hash_code __code,
 			  __node_ptr __node, size_type __n_elt)
     -> iterator
     {
@@ -2140,7 +2258,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       this->_M_store_code(*__node, __code);
 
       // Always insert at the beginning of the bucket.
-      _M_insert_bucket_begin(__bkt, __node);
+      _M_insert_bucket_begin(__hint, __bkt, __node);
       ++_M_element_count;
       return iterator(__node);
     }
@@ -2152,8 +2270,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     auto
     _Hashtable<_Key, _Value, _Alloc, _ExtractKey, _Equal,
 	       _Hash, _RangeHash, _Unused, _RehashPolicy, _Traits>::
-    _M_insert_multi_node(__node_ptr __hint,
-			 __hash_code __code, __node_ptr __node)
+    _M_insert_multi_node(const _InsertInfo& __info, __node_ptr __node)
     -> iterator
     {
       const __rehash_state& __saved_state = _M_rehash_policy._M_state();
@@ -2163,39 +2280,46 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       if (__do_rehash.first)
 	_M_rehash(__do_rehash.second, __saved_state);
 
+      auto __code = __info._M_code;
       this->_M_store_code(*__node, __code);
       const key_type& __k = _ExtractKey{}(__node->_M_v());
-      size_type __bkt = _M_bucket_index(__code);
+      auto __prev = __info._M_prev;
+      const bool __has_prev = __prev != nullptr;
+      size_type __bkt;
 
       // Find the node before an equivalent one or use hint if it exists and
       // if it is equivalent.
-      __node_base_ptr __prev
-	= __builtin_expect(__hint != nullptr, false)
-	  && this->_M_equals(__k, __code, *__hint)
-	    ? __hint
-	    : _M_find_before_node(__bkt, __k, __code);
+      if (!__has_prev)
+	{
+	  __bkt = _M_bucket_index(__code);
+	  __prev = _M_find_before_node(__bkt, __k, __code);
+	}
 
       if (__prev)
 	{
 	  // Insert after the node before the equivalent one.
 	  __node->_M_nxt = __prev->_M_nxt;
 	  __prev->_M_nxt = __node;
-	  if (__builtin_expect(__prev == __hint, false))
-	    // hint might be the last bucket node, in this case we need to
-	    // update next bucket.
-	    if (__node->_M_nxt
-		&& !this->_M_equals(__k, __code, *__node->_M_next()))
-	      {
-		size_type __next_bkt = _M_bucket_index(*__node->_M_next());
-		if (__next_bkt != __bkt)
-		  _M_buckets[__next_bkt] = __node;
-	      }
+
+	  // __hint might be the last bucket node, in this case we need to
+	  // update next bucket.
+	  if (__has_prev && __node->_M_nxt != __info._M_equi_n)
+	    {
+	      const auto __nxt = __node->_M_next();
+	      if (!this->_M_equals(__k, __code, *__nxt))
+		{
+		  size_type __next_bkt = _M_bucket_index(*__nxt);
+		  if (__next_bkt != _M_bucket_index(__code))
+		    _M_buckets[__next_bkt] = __node;
+		}
+	    }
 	}
       else
 	// The inserted node has no equivalent in the hashtable. We must
 	// insert the new node at the beginning of the bucket to preserve
 	// equivalent elements' relative positions.
-	_M_insert_bucket_begin(__bkt, __node);
+	_M_insert_bucket_begin(__info._M_hint, __bkt, __node);
+
       ++_M_element_count;
       return iterator(__node);
     }
@@ -2209,14 +2333,20 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       auto
       _Hashtable<_Key, _Value, _Alloc, _ExtractKey, _Equal,
 		 _Hash, _RangeHash, _Unused, _RehashPolicy, _Traits>::
-      _M_insert_unique(_Kt&& __k, _Arg&& __v,
+      _M_insert_unique(__node_ptr __hint, _Kt&& __k, _Arg&& __v,
 		       const _NodeGenerator& __node_gen)
       -> pair<iterator, bool>
       {
 	if (size() <= __small_size_threshold())
-	  for (auto __it = _M_begin(); __it; __it = __it->_M_next())
-	    if (this->_M_key_equals_tr(__k, *__it))
-	      return { iterator(__it), false };
+	  {
+	    __node_ptr __last_n = nullptr;
+	    for (auto __n = _M_begin(); __n;
+		 __last_n = __n, __n = __n->_M_next())
+	      if (this->_M_key_equals_tr(__k, *__n))
+		return { iterator(__n), false };
+
+	    __hint = __last_n;
+	  }
 
 	__hash_code __code = this->_M_hash_code_tr(__k);
 	size_type __bkt = _M_bucket_index(__code);
@@ -2231,8 +2361,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 				     __node_gen),
 	  this
 	};
+
 	auto __pos
-	  = _M_insert_unique_node(__bkt, __code, __node._M_node);
+	  = _M_insert_unique_node(__hint, __bkt, __code, __node._M_node);
 	__node._M_node = nullptr;
 	return { __pos, true };
       }
@@ -2246,20 +2377,18 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
       auto
       _Hashtable<_Key, _Value, _Alloc, _ExtractKey, _Equal,
 		 _Hash, _RangeHash, _Unused, _RehashPolicy, _Traits>::
-      _M_insert(const_iterator __hint, _Arg&& __v,
-		const _NodeGenerator& __node_gen,
+      _M_insert(__node_ptr __hint, _Arg&& __v, const _NodeGenerator& __node_gen,
 		false_type /* __uks */)
       -> iterator
       {
 	// First allocate new node so that we don't do anything if it throws.
-	_Scoped_node __node{ __node_gen(std::forward<_Arg>(__v)), this };
+	_Scoped_node __node { __node_gen(std::forward<_Arg>(__v)), this };
 
 	// Second compute the hash code so that we don't rehash if it throws.
-	auto __res = this->_M_compute_hash_code(
-	  __hint._M_cur, _ExtractKey{}(__node._M_node->_M_v()));
+	auto __info =
+	  _M_get_insert_info(__hint, _ExtractKey{}(__node._M_node->_M_v()));
+	auto __pos = _M_insert_multi_node(__info, __node._M_node);
 
-	auto __pos
-	  = _M_insert_multi_node(__res.first, __res.second, __node._M_node);
 	__node._M_node = nullptr;
 	return __pos;
       }
