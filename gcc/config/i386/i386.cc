@@ -5060,6 +5060,51 @@ ix86_check_no_addr_space (rtx insn)
     }
   return true;
 }
+
+/* Return mask of invariant operands:
+   bit number     0 1 2
+   operand number 1 2 3.  */
+
+int
+ternlog_invariant_operand_mask (rtx *operands)
+{
+  int mask = 0;
+  int imm8 = XINT (operands[4], 0);
+
+  if (((imm8 >> 4) & 0xF) == (imm8 & 0xF))
+    mask |= 1;
+  if (((imm8 >> 2) & 0x33) == (imm8 & 0x33))
+    mask |= (1 << 1);
+  if (((imm8 >> 1) & 0x55) == (imm8 & 0x55))
+    mask |= (1 << 2);
+
+  return mask;
+}
+
+/* Replace one of the unused operators with the one used.  */
+
+void
+reduce_ternlog_operands (rtx *operands)
+{
+  int mask = ternlog_invariant_operand_mask (operands);
+
+  if (mask & 1) /* the first operand is invariant.  */
+    operands[1] = operands[2];
+
+  if (mask & 2) /* the second operand is invariant.  */
+    operands[2] = operands[1];
+
+  if (mask & 4)	/* the third operand is invariant.  */
+   operands[3] = operands[1];
+  else if (!MEM_P (operands[3]))
+    {
+      if (mask & 1) /* the first operand is invariant.  */
+	operands[1] = operands[3];
+      if (mask & 2) /* the second operands is invariant.  */
+	operands[2] = operands[3];
+    }
+}
+
 
 /* Initialize the table of extra 80387 mathematical constants.  */
 

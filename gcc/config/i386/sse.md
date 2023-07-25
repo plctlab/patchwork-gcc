@@ -12416,6 +12416,49 @@
    (set_attr "prefix" "evex")
    (set_attr "mode" "<sseinsnmode>")])
 
+;; If the first and the second operands of ternlog are invariant and
+;; the third operand is memory
+;; then we should add load third operand from memory to register and
+;; replace first and second operands with this register
+(define_split
+  [(set (match_operand:V 0 "register_operand")
+	(unspec:V
+	  [(match_operand:V 1 "register_operand")
+	   (match_operand:V 2 "register_operand")
+	   (match_operand:V 3 "memory_operand")
+	   (match_operand:SI 4 "const_0_to_255_operand")]
+	  UNSPEC_VTERNLOG))]
+  "ternlog_invariant_operand_mask (operands) == 3 && !reload_completed"
+  [(set (match_dup 0)
+	(match_dup 3))
+   (set (match_dup 0)
+	(unspec:V
+	  [(match_dup 0)
+	   (match_dup 0)
+	   (match_dup 0)
+	   (match_dup 4)]
+	  UNSPEC_VTERNLOG))])
+
+;; Replace invariant ternlog operands with used operands
+;; (except for the case discussed in the previous define_split)
+(define_split
+  [(set (match_operand:V 0 "register_operand")
+	(unspec:V
+	  [(match_operand:V 1 "register_operand")
+	   (match_operand:V 2 "register_operand")
+	   (match_operand:V 3 "nonimmediate_operand")
+	   (match_operand:SI 4 "const_0_to_255_operand")]
+	  UNSPEC_VTERNLOG))]
+  "ternlog_invariant_operand_mask (operands) != 0 && !reload_completed"
+  [(set (match_dup 0)
+	(unspec:V
+	  [(match_dup 1)
+	   (match_dup 2)
+	   (match_dup 3)
+	   (match_dup 4)]
+	  UNSPEC_VTERNLOG))]
+  "reduce_ternlog_operands (operands);")
+
 ;; There must be lots of other combinations like
 ;;
 ;; (any_logic:V

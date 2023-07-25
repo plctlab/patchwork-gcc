@@ -57,6 +57,8 @@ extern int standard_80387_constant_p (rtx);
 extern const char *standard_80387_constant_opcode (rtx);
 extern rtx standard_80387_constant_rtx (int);
 extern int standard_sse_constant_p (rtx, machine_mode);
+extern int ternlog_invariant_operand_mask (rtx *operands);
+extern void reduce_ternlog_operands (rtx *operands);
 extern const char *standard_sse_constant_opcode (rtx_insn *, rtx *);
 extern bool ix86_standard_x87sse_constant_load_p (const rtx_insn *, rtx);
 extern bool ix86_pre_reload_split (void);
