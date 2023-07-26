@@ -19,7 +19,6 @@
 
 (define_c_enum "unspec" [
     ;; Zbkb unspecs
-    UNSPEC_BREV8
     UNSPEC_ZIP
     UNSPEC_UNZIP
     UNSPEC_PACK
@@ -73,8 +72,7 @@
 ;; ZBKB extension
 (define_insn "riscv_brev8_<mode>"
   [(set (match_operand:X 0 "register_operand" "=r")
-        (unspec:X [(match_operand:X 1 "register_operand" "r")]
-                  UNSPEC_BREV8))]
+        (bitreverse:X (match_operand:X 1 "register_operand" "r")))]
   "TARGET_ZBKB"
   "brev8\t%0,%1"
   [(set_attr "type" "crypto")])
