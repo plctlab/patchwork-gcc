@@ -26983,21 +26983,6 @@ supported_simd_type (tree t)
   return false;
 }
 
-/* Return true for types that currently are supported as SIMD return
-   or argument types.  */
-
-static bool
-currently_supported_simd_type (tree t, tree b)
-{
-  if (COMPLEX_FLOAT_TYPE_P (t))
-    return false;
-
-  if (TYPE_SIZE (t) != TYPE_SIZE (b))
-    return false;
-
-  return supported_simd_type (t);
-}
-
 /* Implement TARGET_SIMD_CLONE_COMPUTE_VECSIZE_AND_SIMDLEN.  */
 
 static int
@@ -27006,7 +26991,7 @@ aarch64_simd_clone_compute_vecsize_and_simdlen (struct cgraph_node *node,
 					tree base_type, int num,
 					bool explicit_p)
 {
-  tree t, ret_type;
+  tree t, ret_type, nfs_type;
   unsigned int elt_bits, count;
   unsigned HOST_WIDE_INT const_simdlen;
   poly_uint64 vec_bits;
@@ -27029,55 +27014,61 @@ aarch64_simd_clone_compute_vecsize_and_simdlen (struct cgraph_node *node,
     }
 
   ret_type = TREE_TYPE (TREE_TYPE (node->decl));
+  /* According to AArch64's Vector ABI the type that determines the simdlen is
+     the narrowest of types, so we ignore base_type for AArch64.  */
   if (TREE_CODE (ret_type) != VOID_TYPE
-      && !currently_supported_simd_type (ret_type, base_type))
+      && !supported_simd_type (ret_type))
     {
       if (!explicit_p)
 	;
-      else if (TYPE_SIZE (ret_type) != TYPE_SIZE (base_type))
-	warning_at (DECL_SOURCE_LOCATION (node->decl), 0,
-		    "GCC does not currently support mixed size types "
-		    "for %<simd%> functions");
-      else if (supported_simd_type (ret_type))
+      else if (COMPLEX_FLOAT_TYPE_P (ret_type))
 	warning_at (DECL_SOURCE_LOCATION (node->decl), 0,
 		    "GCC does not currently support return type %qT "
-		    "for %<simd%> functions", ret_type);
+		    "for simd", ret_type);
       else
 	warning_at (DECL_SOURCE_LOCATION (node->decl), 0,
-		    "unsupported return type %qT for %<simd%> functions",
+		    "unsupported return type %qT for simd",
 		    ret_type);
       return 0;
     }
 
+  nfs_type = ret_type;
   int i;
   tree type_arg_types = TYPE_ARG_TYPES (TREE_TYPE (node->decl));
   bool decl_arg_p = (node->definition || type_arg_types == NULL_TREE);
-
   for (t = (decl_arg_p ? DECL_ARGUMENTS (node->decl) : type_arg_types), i = 0;
        t && t != void_list_node; t = TREE_CHAIN (t), i++)
     {
       tree arg_type = decl_arg_p ? TREE_TYPE (t) : TREE_VALUE (t);
-
       if (clonei->args[i].arg_type != SIMD_CLONE_ARG_TYPE_UNIFORM
-	  && !currently_supported_simd_type (arg_type, base_type))
+	  && !supported_simd_type (arg_type))
 	{
 	  if (!explicit_p)
 	    ;
-	  else if (TYPE_SIZE (arg_type) != TYPE_SIZE (base_type))
-	    warning_at (DECL_SOURCE_LOCATION (node->decl), 0,
-			"GCC does not currently support mixed size types "
-			"for %<simd%> functions");
-	  else
+	  else if (COMPLEX_FLOAT_TYPE_P (ret_type))
 	    warning_at (DECL_SOURCE_LOCATION (node->decl), 0,
 			"GCC does not currently support argument type %qT "
-			"for %<simd%> functions", arg_type);
+			"for simd", arg_type);
+	  else
+	    warning_at (DECL_SOURCE_LOCATION (node->decl), 0,
+			"unsupported argument type %qT for simd",
+			arg_type);
 	  return 0;
 	}
+      if (clonei->args[i].arg_type != SIMD_CLONE_ARG_TYPE_UNIFORM
+	  && (TREE_CODE (nfs_type) == VOID_TYPE
+	      || TYPE_PRECISION (nfs_type) > TYPE_PRECISION (arg_type)))
+	nfs_type = arg_type;
     }
+
+  /* If we could not determine the nfs_type from available parameters/return,
+     then fallback to using base_type.  */
+  if (TREE_CODE (nfs_type) == VOID_TYPE)
+    nfs_type = base_type;
 
   clonei->vecsize_mangle = 'n';
   clonei->mask_mode = VOIDmode;
-  elt_bits = GET_MODE_BITSIZE (SCALAR_TYPE_MODE (base_type));
+  elt_bits = GET_MODE_BITSIZE (SCALAR_TYPE_MODE (nfs_type));
   if (known_eq (clonei->simdlen, 0U))
     {
       count = 2;
@@ -27088,21 +27079,9 @@ aarch64_simd_clone_compute_vecsize_and_simdlen (struct cgraph_node *node,
     {
       count = 1;
       vec_bits = clonei->simdlen * elt_bits;
-      /* For now, SVE simdclones won't produce illegal simdlen, So only check
-	 const simdlens here.  */
-      if (clonei->simdlen.is_constant (&const_simdlen)
-	  && maybe_ne (vec_bits, 64U) && maybe_ne (vec_bits, 128U))
-	{
-	  if (explicit_p)
-	    warning_at (DECL_SOURCE_LOCATION (node->decl), 0,
-			"GCC does not currently support simdlen %wd for "
-			"type %qT",
-			const_simdlen, base_type);
-	  return 0;
-	}
     }
-  clonei->vecsize_int = vec_bits;
-  clonei->vecsize_float = vec_bits;
+  clonei->vecsize_int = 0;
+  clonei->vecsize_float = 0;
   return count;
 }
 

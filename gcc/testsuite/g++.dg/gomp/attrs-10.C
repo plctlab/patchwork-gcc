@@ -13,6 +13,11 @@ f1 (int l)
   return l;
 }
 
+// { dg-final { scan-assembler-times "_ZGVnN2l__Z2f1i:" 1 { target { aarch64*-*-* } } } }
+// { dg-final { scan-assembler-times "_ZGVnM2l__Z2f1i:" 1 { target { aarch64*-*-* } } } }
+// { dg-final { scan-assembler-times "_ZGVnN4l__Z2f1i:" 1 { target { aarch64*-*-* } } } }
+// { dg-final { scan-assembler-times "_ZGVnM4l__Z2f1i:" 1 { target { aarch64*-*-* } } } }
+
 // { dg-final { scan-assembler-times "_ZGVbM4l__Z2f1i:" 1 { target { i?86-*-* x86_64-*-* } } } }
 // { dg-final { scan-assembler-times "_ZGVbN4l__Z2f1i:" 1 { target { i?86-*-* x86_64-*-* } } } }
 // { dg-final { scan-assembler-times "_ZGVcM4l__Z2f1i:" 1 { target { i?86-*-* x86_64-*-* } } } }
@@ -28,13 +33,18 @@ f2 (int l)
   return l + 1;
 }
 
-// { dg-final { scan-assembler-not "_ZGV\[a-zA-Z0-9]__Z2f2i:" { target { i?86-*-* x86_64-*-* } } } }
+// { dg-final { scan-assembler-not "_ZGV\[a-zA-Z0-9]__Z2f2i:" { target { i?86-*-* x86_64-*-* aarch64*-*-* } } } }
 
 int
 f3 (int l)
 {
   return l + 2;
 }
+
+// { dg-final { scan-assembler-times "_ZGVnN2u__Z2f3i:" 1 { target { aarch64*-*-* } } } }
+// { dg-final { scan-assembler-times "_ZGVnM2u__Z2f3i:" 1 { target { aarch64*-*-* } } } }
+// { dg-final { scan-assembler-times "_ZGVnN4u__Z2f3i:" 1 { target { aarch64*-*-* } } } }
+// { dg-final { scan-assembler-times "_ZGVnM4u__Z2f3i:" 1 { target { aarch64*-*-* } } } }
 
 // { dg-final { scan-assembler-times "_ZGVbM4u__Z2f3i:" 1 { target { i?86-*-* x86_64-*-* } } } }
 // { dg-final { scan-assembler-times "_ZGVbN4u__Z2f3i:" 1 { target { i?86-*-* x86_64-*-* } } } }
@@ -51,13 +61,17 @@ f4 (int l)
   return l + 3;
 }
 
-// { dg-final { scan-assembler-not "_ZGV\[a-zA-Z0-9]__Z2f4i:" { target { i?86-*-* x86_64-*-* } } } }
+// { dg-final { scan-assembler-not "_ZGV\[a-zA-Z0-9]__Z2f4i:" { target { i?86-*-* x86_64-*-* aarch64*-*-* } } } }
 
 int
 f5 (int l)
-{	// { dg-warning "GCC does not currently support simdlen 8 for type 'int'" "" { target aarch64*-*-* } .-1 }
+{
   return l + 4;
 }
+
+// { dg-final { scan-assembler-times "_ZGVnN4l__Z2f5i:" 1 { target { aarch64*-*-* } } } }
+// { dg-final { scan-assembler-times "_ZGVnM4l__Z2f5i:" 1 { target { aarch64*-*-* } } } }
+// { dg-final { scan-assembler-times "_ZGVnN8u__Z2f5i:" 1 { target { aarch64*-*-* } } } }
 
 // { dg-final { scan-assembler-times "_ZGVbM4l__Z2f5i:" 1 { target { i?86-*-* x86_64-*-* } } } }
 // { dg-final { scan-assembler-times "_ZGVbN4l__Z2f5i:" 1 { target { i?86-*-* x86_64-*-* } } } }
@@ -78,9 +92,13 @@ f5 (int l)
 int
 f6 [[omp::sequence (directive (declare simd uniform (l) simdlen (8), notinbranch),
 		    omp::directive (declare simd linear (l) simdlen (8) inbranch))]] (int l)
-{	// { dg-warning "GCC does not currently support simdlen 8 for type 'int'" "" { target aarch64*-*-* } .-2 }
+{
   return l + 5;
 }
+
+// { dg-final { scan-assembler-times "_ZGVnN4l__Z2f6i:" 1 { target { aarch64*-*-* } } } }
+// { dg-final { scan-assembler-times "_ZGVnM4u__Z2f6i:" 1 { target { aarch64*-*-* } } } }
+// { dg-final { scan-assembler-times "_ZGVnN8u__Z2f6i:" 1 { target { aarch64*-*-* } } } }
 
 // { dg-final { scan-assembler-times "_ZGVbM4u__Z2f6i:" 1 { target { i?86-*-* x86_64-*-* } } } }
 // { dg-final { scan-assembler-times "_ZGVbN4l__Z2f6i:" 1 { target { i?86-*-* x86_64-*-* } } } }
@@ -109,7 +127,7 @@ f7 (int l)
   return l + 6;
 }
 
-// { dg-final { scan-assembler-not "_ZGV\[a-zA-Z0-9]__Z2f7i:" { target { i?86-*-* x86_64-*-* } } } }
+// { dg-final { scan-assembler-not "_ZGV\[a-zA-Z0-9]__Z2f7i:" { target { i?86-*-* x86_64-*-* aarch64*-*-* } } } }
 
 int
 f8 (int l)
@@ -117,16 +135,21 @@ f8 (int l)
   return l + 7;
 }
 
-// { dg-final { scan-assembler-not "_ZGV\[a-zA-Z0-9]__Z2f8i:" { target { i?86-*-* x86_64-*-* } } } }
+// { dg-final { scan-assembler-not "_ZGV\[a-zA-Z0-9]__Z2f8i:" { target { i?86-*-* x86_64-*-* aarch64*-*-* } } } }
 
 [[omp::sequence (omp::directive (declare variant (f7), match (construct={parallel})),
 		 directive (declare simd uniform (l), simdlen(4)))]]
 int
 f9 [[omp::directive (declare simd uniform (l) simdlen (8)),
      omp::directive (declare variant (f8) match (construct={parallel,for}))]] (int l)
-{	// { dg-warning "GCC does not currently support simdlen 8 for type 'int'" "" { target aarch64*-*-* } .-2 }
+{
   return l + 8;
 }
+
+// { dg-final { scan-assembler-times "_ZGVnN4u__Z2f9i:" 1 { target { aarch64*-*-* } } } }
+// { dg-final { scan-assembler-times "_ZGVnM4u__Z2f9i:" 1 { target { aarch64*-*-* } } } }
+// { dg-final { scan-assembler-times "_ZGVnN8u__Z2f9i:" 1 { target { aarch64*-*-* } } } }
+// { dg-final { scan-assembler-times "_ZGVnM8u__Z2f9i:" 1 { target { aarch64*-*-* } } } }
 
 // { dg-final { scan-assembler-times "_ZGVbM4u__Z2f9i:" 1 { target { i?86-*-* x86_64-*-* } } } }
 // { dg-final { scan-assembler-times "_ZGVbN4u__Z2f9i:" 1 { target { i?86-*-* x86_64-*-* } } } }
@@ -174,12 +197,18 @@ f10 (int x)
 
 template [[omp::directive (declare simd, notinbranch)]] int f10<0> (int);
 
+// { dg-final { scan-assembler-times "_ZGVnN2v__Z3f10ILi0EEii:" 1 { target { aarch64*-*-* } } } }
+// { dg-final { scan-assembler-times "_ZGVnN4v__Z3f10ILi0EEii:" 1 { target { aarch64*-*-* } } } }
+
 // { dg-final { scan-assembler-times "_ZGVbN4v__Z3f10ILi0EEii:" 1 { target { i?86-*-* x86_64-*-* } } } }
 // { dg-final { scan-assembler-times "_ZGVcN4v__Z3f10ILi0EEii:" 1 { target { i?86-*-* x86_64-*-* } } } }
 // { dg-final { scan-assembler-times "_ZGVdN8v__Z3f10ILi0EEii:" 1 { target { i?86-*-* x86_64-*-* } } } }
 // { dg-final { scan-assembler-times "_ZGVeN16v__Z3f10ILi0EEii:" 1 { target { i?86-*-* x86_64-*-* } } } }
 
 template  int f10<1> [[omp::directive (declare simd inbranch linear(x))]] (int x);
+
+// { dg-final { scan-assembler-times "_ZGVnM2l__Z3f10ILi1EEii:" 1 { target { aarch64*-*-* } } } }
+// { dg-final { scan-assembler-times "_ZGVnM4l__Z3f10ILi1EEii:" 1 { target { aarch64*-*-* } } } }
 
 // { dg-final { scan-assembler-times "_ZGVbM4l__Z3f10ILi1EEii:" 1 { target { i?86-*-* x86_64-*-* } } } }
 // { dg-final { scan-assembler-times "_ZGVcM4l__Z3f10ILi1EEii:" 1 { target { i?86-*-* x86_64-*-* } } } }
@@ -195,6 +224,9 @@ f11<0> (int x)
   return x;
 }
 
+// { dg-final { scan-assembler-times "_ZGVnM2v__Z3f11ILi0EEii:" 1 { target { aarch64*-*-* } } } }
+// { dg-final { scan-assembler-times "_ZGVnM4v__Z3f11ILi0EEii:" 1 { target { aarch64*-*-* } } } }
+
 // { dg-final { scan-assembler-times "_ZGVbM4v__Z3f11ILi0EEii:" 1 { target { i?86-*-* x86_64-*-* } } } }
 // { dg-final { scan-assembler-times "_ZGVcM4v__Z3f11ILi0EEii:" 1 { target { i?86-*-* x86_64-*-* } } } }
 // { dg-final { scan-assembler-times "_ZGVdM8v__Z3f11ILi0EEii:" 1 { target { i?86-*-* x86_64-*-* } } } }
@@ -205,6 +237,9 @@ f11<1> [[omp::directive (declare simd, notinbranch, linear (y))]] (int y)
 {
   return y;
 }
+
+// { dg-final { scan-assembler-times "_ZGVnN2l__Z3f11ILi1EEii:" 1 { target { aarch64*-*-* } } } }
+// { dg-final { scan-assembler-times "_ZGVnN4l__Z3f11ILi1EEii:" 1 { target { aarch64*-*-* } } } }
 
 // { dg-final { scan-assembler-times "_ZGVbN4l__Z3f11ILi1EEii:" 1 { target { i?86-*-* x86_64-*-* } } } }
 // { dg-final { scan-assembler-times "_ZGVcN4l__Z3f11ILi1EEii:" 1 { target { i?86-*-* x86_64-*-* } } } }
@@ -222,6 +257,9 @@ S::f12 (int x)
 {
   return x;
 }
+
+// { dg-final { scan-assembler-times "_ZGVnM2uv__ZN1S3f12Ei:" 1 { target { aarch64*-*-* } } } }
+// { dg-final { scan-assembler-times "_ZGVnM2uv__ZN1S3f12Ei:" 1 { target { aarch64*-*-* } } } }
 
 // { dg-final { scan-assembler-times "_ZGVbM4uv__ZN1S3f12Ei:" 1 { target { i?86-*-* x86_64-*-* } } } }
 // { dg-final { scan-assembler-times "_ZGVcM4uv__ZN1S3f12Ei:" 1 { target { i?86-*-* x86_64-*-* } } } }
