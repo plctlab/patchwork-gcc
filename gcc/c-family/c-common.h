@@ -988,6 +988,9 @@ extern void c_parse_file (void);
 
 extern void c_parse_final_cleanups (void);
 
+/* This initializes for preprocess-only mode.  */
+extern void c_init_preprocess (void);
+
 /* These macros provide convenient access to the various _STMT nodes.  */
 
 /* Nonzero if a given STATEMENT_LIST represents the outermost binding
@@ -1212,6 +1215,7 @@ extern tree c_build_bind_expr (location_t, tree, tree);
 /* In c-lex.cc.  */
 extern enum cpp_ttype
 conflict_marker_get_final_tok_kind (enum cpp_ttype tok1_kind);
+extern void c_lex_enable_token_streaming (bool enabled);
 
 /* In c-pch.cc  */
 extern void pch_init (void);

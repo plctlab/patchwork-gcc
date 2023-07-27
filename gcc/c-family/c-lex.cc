@@ -57,6 +57,17 @@ static void cb_ident (cpp_reader *, unsigned int, const cpp_string *);
 static void cb_def_pragma (cpp_reader *, unsigned int);
 static void cb_define (cpp_reader *, unsigned int, cpp_hashnode *);
 static void cb_undef (cpp_reader *, unsigned int, cpp_hashnode *);
+
+/* Flag to remember if we are in a mode (such as flag_preprocess_only) in which
+   tokens obtained here need to be streamed to the preprocessor.  */
+static bool stream_tokens_to_preprocessor = false;
+
+void
+c_lex_enable_token_streaming (bool enabled)
+{
+  stream_tokens_to_preprocessor = enabled;
+}
+
 
 void
 init_c_lex (void)
@@ -249,6 +260,10 @@ cb_def_pragma (cpp_reader *pfile, location_t loc)
       location_t fe_loc = loc;
 
       space = name = (const unsigned char *) "";
+
+      /* N.B.  It's fine to call cpp_get_token () directly here (rather than our
+	 local wrapper get_token ()), because this callback is not used with
+	 flag_preprocess_only==true.  */
       s = cpp_get_token (pfile);
       if (s->type != CPP_EOF)
 	{
@@ -284,8 +299,32 @@ cb_undef (cpp_reader *pfile, location_t loc, cpp_hashnode *node)
 			 (const char *) NODE_NAME (node));
 }
 
+/* Wrapper around cpp_get_token_with_location to stream the token to the
+   preprocessor so it can output it.  This is necessary with
+   flag_preprocess_only if we are obtaining tokens here instead of from the loop
+   in c-ppoutput.cc, such as while processing a #pragma.  */
+
+static const cpp_token *
+get_token (cpp_reader *pfile, location_t *loc = nullptr)
+{
+  if (stream_tokens_to_preprocessor)
+    {
+      location_t x;
+      if (!loc)
+	loc = &x;
+      const auto tok = cpp_get_token_with_location (pfile, loc);
+      c_pp_stream_token (pfile, tok, *loc);
+      return tok;
+    }
+  else
+    return cpp_get_token_with_location (pfile, loc);
+}
+
 /* Wrapper around cpp_get_token to skip CPP_PADDING tokens
-   and not consume CPP_EOF.  */
+   and not consume CPP_EOF.  This does not perform the optional
+   streaming in preprocess_only mode, so is suitable to be used
+   when processing builtin expansions such as c_common_has_attribute.  */
+
 static const cpp_token *
 get_token_no_padding (cpp_reader *pfile)
 {
@@ -496,7 +535,7 @@ c_lex_with_flags (tree *value, location_t *loc, unsigned char *cpp_flags,
 
   timevar_push (TV_CPP);
  retry:
-  tok = cpp_get_token_with_location (parse_in, loc);
+  tok = get_token (parse_in, loc);
   type = tok->type;
 
  retry_after_at:
@@ -570,7 +609,7 @@ c_lex_with_flags (tree *value, location_t *loc, unsigned char *cpp_flags,
 	  location_t newloc;
 
 	retry_at:
-	  tok = cpp_get_token_with_location (parse_in, &newloc);
+	  tok = get_token (parse_in, &newloc);
 	  type = tok->type;
 	  switch (type)
 	    {
@@ -720,7 +759,7 @@ c_lex_with_flags (tree *value, location_t *loc, unsigned char *cpp_flags,
 	{
 	  do
 	    {
-	      tok = cpp_get_token_with_location (parse_in, loc);
+	      tok = get_token (parse_in, loc);
 	      type = tok->type;
 	    }
 	  while (type == CPP_PADDING || type == CPP_COMMENT);
@@ -1312,7 +1351,7 @@ lex_string (const cpp_token *tok, tree *valp, bool objc_string, bool translate)
   bool objc_at_sign_was_seen = false;
 
  retry:
-  tok = cpp_get_token (parse_in);
+  tok = get_token (parse_in);
   switch (tok->type)
     {
     case CPP_PADDING:

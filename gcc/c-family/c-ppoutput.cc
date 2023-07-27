@@ -99,11 +99,20 @@ preprocess_file (cpp_reader *pfile)
     }
   else if (cpp_get_options (pfile)->traditional)
     scan_translation_unit_trad (pfile);
-  else if (cpp_get_options (pfile)->directives_only
-	   && !cpp_get_options (pfile)->preprocessed)
-    scan_translation_unit_directives_only (pfile);
   else
-    scan_translation_unit (pfile);
+    {
+      /* If we end up processing a pragma while preprocessing, the handler
+	 for that pragma may end up obtaining some tokens from libcpp itself,
+	 e.g. by calling pragma_lex ().  The frontend needs to know that it
+	 should inform us about all such tokens, so we can output them.  */
+      c_lex_enable_token_streaming (true);
+
+      if (cpp_get_options (pfile)->directives_only
+	  && !cpp_get_options (pfile)->preprocessed)
+	scan_translation_unit_directives_only (pfile);
+      else
+	scan_translation_unit (pfile);
+    }
 
   /* -dM command line option.  Should this be elsewhere?  */
   if (flag_dump_macros == 'M')
