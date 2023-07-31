@@ -388,13 +388,32 @@ statement_sink_location (gimple *stmt, basic_block frombb,
 
 	  imm_use_iterator imm_iter;
 	  use_operand_p use_p;
+	  auto_bitmap bbs_to_check;
 	  FOR_EACH_IMM_USE_FAST (use_p, imm_iter, gimple_vuse (stmt))
 	    {
 	      gimple *use_stmt = USE_STMT (use_p);
 	      basic_block bb = gimple_bb (use_stmt);
+
+	      /* If there is no virtual definition here, continue.  */
+	      if (gimple_code (use_stmt) != GIMPLE_PHI
+		  && !gimple_vdef (use_stmt))
+		continue;
+
+	      /* When the virtual definition is possibly within the same
+		 irreducible region as the current sinking location all
+		 bets are off.  */
+	      if (((bb->flags & commondom->flags & BB_IRREDUCIBLE_LOOP)
+		   && bb->loop_father == commondom->loop_father)
+		  || ((commondom->flags & BB_IRREDUCIBLE_LOOP)
+		      && flow_loop_nested_p (commondom->loop_father,
+					     bb->loop_father))
+		  || ((bb->flags & BB_IRREDUCIBLE_LOOP)
+		      && flow_loop_nested_p (bb->loop_father,
+					     commondom->loop_father)))
+		;
 	      /* For PHI nodes the block we know sth about is the incoming block
 		 with the use.  */
-	      if (gimple_code (use_stmt) == GIMPLE_PHI)
+	      else if (gimple_code (use_stmt) == GIMPLE_PHI)
 		{
 		  /* If the PHI defines the virtual operand, ignore it.  */
 		  if (gimple_phi_result (use_stmt) == gimple_vuse (stmt))
@@ -402,32 +421,97 @@ statement_sink_location (gimple *stmt, basic_block frombb,
 		  /* In case the PHI node post-dominates the current insert
 		     location we can disregard it.  But make sure it is not
 		     dominating it as well as can happen in a CFG cycle.  */
-		  if (commondom != bb
-		      && !dominated_by_p (CDI_DOMINATORS, commondom, bb)
-		      && dominated_by_p (CDI_POST_DOMINATORS, commondom, bb)
-		      /* If the blocks are possibly within the same irreducible
-			 cycle the above check breaks down.  */
-		      && !((bb->flags & commondom->flags & BB_IRREDUCIBLE_LOOP)
-			   && bb->loop_father == commondom->loop_father)
-		      && !((commondom->flags & BB_IRREDUCIBLE_LOOP)
-			   && flow_loop_nested_p (commondom->loop_father,
-						  bb->loop_father))
-		      && !((bb->flags & BB_IRREDUCIBLE_LOOP)
-			   && flow_loop_nested_p (bb->loop_father,
-						  commondom->loop_father)))
+		  if (!dominated_by_p (CDI_DOMINATORS, commondom, bb)
+		      && dominated_by_p (CDI_POST_DOMINATORS, commondom, bb))
 		    continue;
-		  bb = EDGE_PRED (bb, PHI_ARG_INDEX_FROM_USE (use_p))->src;
 		}
-	      else if (!gimple_vdef (use_stmt))
+
+	      /* For PHIs the relevant block is the edge source.  */
+	      if (gimple_code (use_stmt) == GIMPLE_PHI)
+		bb = EDGE_PRED (bb, PHI_ARG_INDEX_FROM_USE (use_p))->src;
+	      if (bb == commondom)
 		continue;
+	      if (bb == frombb)
+		return false;
+
 	      /* If the use is not dominated by the path entry it is not on
 		 the path.  */
 	      if (!dominated_by_p (CDI_DOMINATORS, bb, frombb))
 		continue;
-	      /* There is no easy way to disregard defs not on the path from
-		 frombb to commondom so just consider them all.  */
-	      commondom = nearest_common_dominator (CDI_DOMINATORS,
-						    bb, commondom);
+
+	      /* If BB is definitely on the path, shrink it.  Else defer
+		 processing.  */
+	      if (dominated_by_p (CDI_DOMINATORS, commondom, bb))
+		commondom = bb;
+	      else
+		bitmap_set_bit (bbs_to_check, bb->index);
+	    }
+
+	  /* Now check whether any of the BBs recorded in bbs_to_check
+	     is on a path from frombb to commondom.  If so, adjust
+	     commondom accordingly.  */
+	  if (!bitmap_empty_p (bbs_to_check))
+	    {
+	      auto_bb_flag visited (cfun);
+	      auto_vec<basic_block, 3> worklist;
+	      auto_vec<basic_block, 3> toclean;
+	      worklist.quick_push (commondom);
+	      do
+		{
+		  basic_block pb = worklist.pop ();
+		  edge_iterator ei;
+		  edge e;
+		  FOR_EACH_EDGE (e, ei, pb->preds)
+		    /* When we run into backedges instead of checking paths
+		       covering those (esp. considering irreducible regions)
+		       simply adjust commondom to the non-backedge common
+		       dominators.  */
+		    if (e->flags & EDGE_DFS_BACK)
+		      {
+			FOR_EACH_EDGE (e, ei, pb->preds)
+			  if (!(e->flags & EDGE_DFS_BACK))
+			    commondom
+			      = nearest_common_dominator (CDI_DOMINATORS,
+							  e->src, commondom);
+			if (!(commondom->flags & visited))
+			  {
+			    commondom->flags |= visited;
+			    toclean.safe_push (commondom);
+			    worklist.safe_push (commondom);
+			  }
+			break;
+		      }
+		    else if (e->src == frombb)
+		      ;
+		    else if (!(e->src->flags & visited))
+		      {
+			if (bitmap_clear_bit (bbs_to_check, e->src->index))
+			  {
+			    commondom = nearest_common_dominator (CDI_DOMINATORS,
+								  e->src,
+								  commondom);
+			    if (commondom == frombb)
+			      break;
+			    if (!(commondom->flags & visited))
+			      {
+				commondom->flags |= visited;
+				toclean.safe_push (commondom);
+				worklist.safe_push (commondom);
+			      }
+			  }
+			else
+			  {
+			    e->src->flags |= visited;
+			    toclean.safe_push (e->src);
+			    worklist.safe_push (e->src);
+			  }
+		      }
+		}
+	      while (commondom != frombb
+		     && !worklist.is_empty ()
+		     && !bitmap_empty_p (bbs_to_check));
+	      for (basic_block cb : toclean)
+		cb->flags &= ~visited;
 	      if (commondom == frombb)
 		return false;
 	    }
@@ -856,6 +940,7 @@ pass_sink_code::execute (function *fun)
   /* Arrange for the critical edge splitting to be undone if requested.  */
   unsigned todo = unsplit_edges ? TODO_cleanup_cfg : 0;
   connect_infinite_loops_to_exit ();
+  mark_dfs_back_edges (fun);
   memset (&sink_stats, 0, sizeof (sink_stats));
   calculate_dominance_info (CDI_DOMINATORS);
   calculate_dominance_info (CDI_POST_DOMINATORS);
