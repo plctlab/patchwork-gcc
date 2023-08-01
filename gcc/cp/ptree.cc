@@ -38,10 +38,6 @@ cxx_print_decl (FILE *file, tree node, int indent)
       return;
     }
 
-  if (!CODE_CONTAINS_STRUCT (TREE_CODE (node), TS_DECL_COMMON)
-      || !DECL_LANG_SPECIFIC (node))
-    return;
-
   if (TREE_CODE (node) == FUNCTION_DECL)
     {
       int flags = TFF_DECL_SPECIFIERS|TFF_RETURN_TYPE
@@ -106,7 +102,10 @@ cxx_print_decl (FILE *file, tree node, int indent)
       need_indent = false;
     }
 
-  if (DECL_EXTERNAL (node) && DECL_NOT_REALLY_EXTERN (node))
+  if (CODE_CONTAINS_STRUCT (TREE_CODE (node), TS_DECL_COMMON)
+      && DECL_LANG_SPECIFIC (node)
+      && DECL_EXTERNAL (node)
+      && DECL_NOT_REALLY_EXTERN (node))
     {
       if (need_indent)
 	indent_to (file, indent + 3);
@@ -115,6 +114,7 @@ cxx_print_decl (FILE *file, tree node, int indent)
     }
 
   if (TREE_CODE (node) == FUNCTION_DECL
+      && DECL_LANG_SPECIFIC (node)
       && DECL_PENDING_INLINE_INFO (node))
     {
       if (need_indent)
@@ -124,27 +124,29 @@ cxx_print_decl (FILE *file, tree node, int indent)
       need_indent = false;
     }
   
-  if (VAR_OR_FUNCTION_DECL_P (node)
+  if (DECL_LANG_SPECIFIC (node)
       && DECL_TEMPLATE_INFO (node))
-    print_node (file, "template-info", DECL_TEMPLATE_INFO (node),
-		indent + 4);
+    {
+      print_node (file, "template-info", DECL_TEMPLATE_INFO (node),
+		  indent + 4);
+      indent_to (file, indent + 3);
+      fprintf (file, " use_template=%d", DECL_USE_TEMPLATE (node));
+    }
 }
 
 void
 cxx_print_type (FILE *file, tree node, int indent)
 {
+  if (TYPE_LANG_SPECIFIC (node)
+      && TYPE_TEMPLATE_INFO (node))
+    print_node (file, "template-info", TYPE_TEMPLATE_INFO (node), indent + 4);
+
   switch (TREE_CODE (node))
     {
     case BOUND_TEMPLATE_TEMPLATE_PARM:
-      print_node (file, "args", TYPE_TI_ARGS (node), indent + 4);
-      gcc_fallthrough ();
-
     case TEMPLATE_TYPE_PARM:
     case TEMPLATE_TEMPLATE_PARM:
-      indent_to (file, indent + 3);
-      fprintf (file, "index %d level %d orig_level %d",
-	       TEMPLATE_TYPE_IDX (node), TEMPLATE_TYPE_LEVEL (node),
-	       TEMPLATE_TYPE_ORIG_LEVEL (node));
+      print_node (file, "tpi", TEMPLATE_TYPE_PARM_INDEX (node), indent + 4);
       return;
 
     case FUNCTION_TYPE:
