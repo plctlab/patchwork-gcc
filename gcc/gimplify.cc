@@ -225,6 +225,7 @@ struct gimplify_omp_ctx
   vec<tree> loop_iter_var;
   location_t location;
   enum omp_clause_default_kind default_kind;
+  struct gimplify_omp_ctx *oacc_default_clause_ctx;
   enum omp_region_type region_type;
   enum tree_code code;
   bool combined_loop;
@@ -459,6 +460,10 @@ new_omp_context (enum omp_region_type region_type)
     c->default_kind = OMP_CLAUSE_DEFAULT_SHARED;
   else
     c->default_kind = OMP_CLAUSE_DEFAULT_UNSPECIFIED;
+  if (gimplify_omp_ctxp)
+    c->oacc_default_clause_ctx = gimplify_omp_ctxp->oacc_default_clause_ctx;
+  else
+    c->oacc_default_clause_ctx = c;
   c->defaultmap[GDMK_SCALAR] = GOVD_MAP;
   c->defaultmap[GDMK_SCALAR_TARGET] = GOVD_MAP;
   c->defaultmap[GDMK_AGGREGATE] = GOVD_MAP;
@@ -7688,6 +7693,25 @@ omp_default_clause (struct gimplify_omp_ctx *ctx, tree decl,
   return flags;
 }
 
+/* Return string name for types of OpenACC constructs from ORT_* values.  */
+
+static const char *
+oacc_region_type_name (enum omp_region_type region_type)
+{
+  switch (region_type)
+    {
+    case ORT_ACC_DATA:
+      return "data";
+    case ORT_ACC_PARALLEL:
+      return "parallel";
+    case ORT_ACC_KERNELS:
+      return "kernels";
+    case ORT_ACC_SERIAL:
+      return "serial";
+    default:
+      gcc_unreachable ();
+    }
+}
 
 /* Determine outer default flags for DECL mentioned in an OACC region
    but not declared in an enclosing clause.  */
@@ -7695,7 +7719,6 @@ omp_default_clause (struct gimplify_omp_ctx *ctx, tree decl,
 static unsigned
 oacc_default_clause (struct gimplify_omp_ctx *ctx, tree decl, unsigned flags)
 {
-  const char *rkind;
   bool on_device = false;
   bool is_private = false;
   bool declared = is_oacc_declared (decl);
@@ -7724,17 +7747,20 @@ oacc_default_clause (struct gimplify_omp_ctx *ctx, tree decl, unsigned flags)
       flags |= GOVD_MAP_TO_ONLY;
     }
 
+  /* Use the enclosing construct with a default clause to set the current
+     default kind.  */
+  enum omp_clause_default_kind default_kind
+    = ctx->oacc_default_clause_ctx->default_kind;
+
   switch (ctx->region_type)
     {
     case ORT_ACC_KERNELS:
-      rkind = "kernels";
-
       if (is_private)
 	flags |= GOVD_FIRSTPRIVATE;
       else if (AGGREGATE_TYPE_P (type))
 	{
 	  /* Aggregates default to 'present_or_copy', or 'present'.  */
-	  if (ctx->default_kind != OMP_CLAUSE_DEFAULT_PRESENT)
+	  if (default_kind != OMP_CLAUSE_DEFAULT_PRESENT)
 	    flags |= GOVD_MAP;
 	  else
 	    flags |= GOVD_MAP | GOVD_MAP_FORCE_PRESENT;
@@ -7747,8 +7773,6 @@ oacc_default_clause (struct gimplify_omp_ctx *ctx, tree decl, unsigned flags)
 
     case ORT_ACC_PARALLEL:
     case ORT_ACC_SERIAL:
-      rkind = ctx->region_type == ORT_ACC_PARALLEL ? "parallel" : "serial";
-
       if (is_private)
 	flags |= GOVD_FIRSTPRIVATE;
       else if (on_device || declared)
@@ -7756,7 +7780,7 @@ oacc_default_clause (struct gimplify_omp_ctx *ctx, tree decl, unsigned flags)
       else if (AGGREGATE_TYPE_P (type))
 	{
 	  /* Aggregates default to 'present_or_copy', or 'present'.  */
-	  if (ctx->default_kind != OMP_CLAUSE_DEFAULT_PRESENT)
+	  if (default_kind != OMP_CLAUSE_DEFAULT_PRESENT)
 	    flags |= GOVD_MAP;
 	  else
 	    flags |= GOVD_MAP | GOVD_MAP_FORCE_PRESENT;
@@ -7774,16 +7798,20 @@ oacc_default_clause (struct gimplify_omp_ctx *ctx, tree decl, unsigned flags)
   if (DECL_ARTIFICIAL (decl))
     ; /* We can get compiler-generated decls, and should not complain
 	 about them.  */
-  else if (ctx->default_kind == OMP_CLAUSE_DEFAULT_NONE)
+  else if (default_kind == OMP_CLAUSE_DEFAULT_NONE)
     {
       error ("%qE not specified in enclosing OpenACC %qs construct",
-	     DECL_NAME (lang_hooks.decls.omp_report_decl (decl)), rkind);
-      inform (ctx->location, "enclosing OpenACC %qs construct", rkind);
+	     DECL_NAME (lang_hooks.decls.omp_report_decl (decl)),
+	     oacc_region_type_name (ctx->region_type));
+      inform (ctx->oacc_default_clause_ctx->location,
+	      "enclosing OpenACC %qs construct",
+	      oacc_region_type_name
+	      (ctx->oacc_default_clause_ctx->region_type));
     }
-  else if (ctx->default_kind == OMP_CLAUSE_DEFAULT_PRESENT)
+  else if (default_kind == OMP_CLAUSE_DEFAULT_PRESENT)
     ; /* Handled above.  */
   else
-    gcc_checking_assert (ctx->default_kind == OMP_CLAUSE_DEFAULT_SHARED);
+    gcc_checking_assert (default_kind == OMP_CLAUSE_DEFAULT_SHARED);
 
   return flags;
 }
@@ -12088,6 +12116,10 @@ gimplify_scan_omp_clauses (tree *list_p, gimple_seq *pre_p,
 
 	case OMP_CLAUSE_DEFAULT:
 	  ctx->default_kind = OMP_CLAUSE_DEFAULT_KIND (c);
+	  if (flag_openacc)
+	    /* For OpenACC, set current context to the 'active' one for
+	       default-clause lookup.  */
+	    ctx->oacc_default_clause_ctx = ctx;
 	  break;
 
 	case OMP_CLAUSE_INCLUSIVE:

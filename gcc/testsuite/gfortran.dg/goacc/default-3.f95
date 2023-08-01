@@ -15,4 +15,65 @@ subroutine f1
        = f1_a; ! { dg-error ".f1_a. not specified in enclosing OpenACC .parallel. construct" }
   ! { dg-bogus ".f1_b. not specified in enclosing OpenACC .parallel. construct" "" { xfail *-*-* } .-1 }
   !$acc end parallel
+
+  !$acc data default (none) ! { dg-message "enclosing OpenACC .data. construct" }
+  !$acc kernels
+  f1_b(1) & ! { dg-error ".f1_b. not specified in enclosing OpenACC .kernels. construct" "" { xfail *-*-* } }
+       = f1_a; ! { dg-error ".f1_a. not specified in enclosing OpenACC .kernels. construct" }
+  ! { dg-bogus ".f1_b. not specified in enclosing OpenACC .kernels. construct" "" { xfail *-*-* } .-1 }
+  !$acc end kernels
+  !$acc end data
+
+  !$acc data default (none) ! { dg-message "enclosing OpenACC .data. construct" }
+  !$acc parallel
+  f1_b(1) & ! { dg-error ".f1_b. not specified in enclosing OpenACC .parallel. construct" "" { xfail *-*-* } }
+       = f1_a; ! { dg-error ".f1_a. not specified in enclosing OpenACC .parallel. construct" }
+  ! { dg-bogus ".f1_b. not specified in enclosing OpenACC .parallel. construct" "" { xfail *-*-* } .-1 }
+  !$acc end parallel
+  !$acc end data
+
+  !$acc data default (none)
+  !$acc parallel default (none) ! { dg-message "enclosing OpenACC .parallel. construct" }
+  f1_b(1) & ! { dg-error ".f1_b. not specified in enclosing OpenACC .parallel. construct" "" { xfail *-*-* } }
+       = f1_a; ! { dg-error ".f1_a. not specified in enclosing OpenACC .parallel. construct" }
+  ! { dg-bogus ".f1_b. not specified in enclosing OpenACC .parallel. construct" "" { xfail *-*-* } .-1 }
+  !$acc end parallel
+  !$acc end data
+
+  !$acc data default (none) ! { dg-message "enclosing OpenACC .data. construct" }
+  !$acc data
+  !$acc data
+  !$acc parallel
+  f1_b(1) & ! { dg-error ".f1_b. not specified in enclosing OpenACC .parallel. construct" "" { xfail *-*-* } }
+       = f1_a; ! { dg-error ".f1_a. not specified in enclosing OpenACC .parallel. construct" }
+  ! { dg-bogus ".f1_b. not specified in enclosing OpenACC .parallel. construct" "" { xfail *-*-* } .-1 }
+  !$acc end parallel
+  !$acc end data
+  !$acc end data
+  !$acc end data
+
+  !$acc data
+  !$acc data default (none) ! { dg-message "enclosing OpenACC .data. construct" }
+  !$acc data
+  !$acc parallel
+  f1_b(1) & ! { dg-error ".f1_b. not specified in enclosing OpenACC .parallel. construct" "" { xfail *-*-* } }
+       = f1_a; ! { dg-error ".f1_a. not specified in enclosing OpenACC .parallel. construct" }
+  ! { dg-bogus ".f1_b. not specified in enclosing OpenACC .parallel. construct" "" { xfail *-*-* } .-1 }
+  !$acc end parallel
+  !$acc end data
+  !$acc end data
+  !$acc end data
+
+  !$acc data
+  !$acc data
+  !$acc data default (none) ! { dg-message "enclosing OpenACC .data. construct" }
+  !$acc parallel
+  f1_b(1) & ! { dg-error ".f1_b. not specified in enclosing OpenACC .parallel. construct" "" { xfail *-*-* } }
+       = f1_a; ! { dg-error ".f1_a. not specified in enclosing OpenACC .parallel. construct" }
+  ! { dg-bogus ".f1_b. not specified in enclosing OpenACC .parallel. construct" "" { xfail *-*-* } .-1 }
+  !$acc end parallel
+  !$acc end data
+  !$acc end data
+  !$acc end data
+
 end subroutine f1
