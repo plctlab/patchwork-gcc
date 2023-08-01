@@ -1,7 +1,7 @@
 /* Test specification of custom instructions via pragmas.  */
 
 /* { dg-do compile } */
-/* { dg-options "-O1 -ffinite-math-only" } */
+/* { dg-options "-O1 -ffinite-math-only -save-temps" } */
 
 /* -O1 in the options is significant.  Without it FP operations may not be
    optimized to custom instructions.  */

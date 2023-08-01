@@ -1,8 +1,8 @@
 /* Functional tests for the "target" attribute and pragma.  */
 
-/* { dg-do compile */
+/* { dg-do compile } */
 /* { dg-require-effective-target target_attribute } */
-/* { dg-options "-O3 -march=zEC12 -mno-htm -fno-ipa-icf" } */
+/* { dg-options "-O3 -march=zEC12 -mno-htm -fno-ipa-icf -save-temps" } */
 
 #pragma GCC target("htm")
 void p1(void)

@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-O2 -march=armv8-a+crypto" } */
+/* { dg-options "-O2 -march=armv8-a+crypto -save-temps" } */
 
 /* Test that pragma option pushing and popping works.
    Also that CPP predefines redefinitions on #pragma works.  */
