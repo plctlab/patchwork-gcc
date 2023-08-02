@@ -596,6 +596,7 @@ extern bool gomp_cancel_var;
 extern enum gomp_target_offload_t gomp_target_offload_var;
 extern int gomp_max_task_priority_var;
 extern unsigned long long gomp_spin_count_var, gomp_throttled_spin_count_var;
+extern unsigned long long gomp_thread_delay_count;
 extern unsigned long gomp_available_cpus, gomp_managed_threads;
 extern unsigned long *gomp_nthreads_var_list, gomp_nthreads_var_list_len;
 extern char *gomp_bind_var_list;

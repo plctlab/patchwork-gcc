@@ -105,6 +105,7 @@ gomp_mutex_t gomp_managed_threads_lock;
 #endif
 unsigned long gomp_available_cpus = 1, gomp_managed_threads = 1;
 unsigned long long gomp_spin_count_var, gomp_throttled_spin_count_var;
+unsigned long long gomp_thread_delay_count;
 unsigned long *gomp_nthreads_var_list, gomp_nthreads_var_list_len;
 char *gomp_bind_var_list;
 unsigned long gomp_bind_var_list_len;
@@ -2249,6 +2250,9 @@ initialize_env (void)
     wait_policy = none->icvs.wait_policy;
   else if (all != NULL && gomp_get_icv_flag (all->flags, GOMP_ICV_WAIT_POLICY))
     wait_policy = all->icvs.wait_policy;
+
+  if (!parse_spincount ("GOMP_DELAYCOUNT", &gomp_thread_delay_count))
+    gomp_thread_delay_count = 300;
 
   if (!parse_spincount ("GOMP_SPINCOUNT", &gomp_spin_count_var))
     {

@@ -30,6 +30,7 @@
 #include "pool.h"
 #include <stdlib.h>
 #include <string.h>
+#include "localfn.h"
 
 #ifdef LIBGOMP_USE_PTHREADS
 pthread_attr_t gomp_thread_attr;
@@ -61,7 +62,6 @@ struct gomp_thread_start_data
   bool nested;
   pthread_t handle;
 };
-
 
 /* This function is a pthread_create entry point.  This contains the idle
    loop in which a thread waits to be called up to become part of a team.  */
@@ -111,7 +111,8 @@ gomp_thread_start (void *xdata)
 
       gomp_barrier_wait (&team->barrier);
 
-      local_fn (local_data);
+      RUNLOCALFN(local_fn, local_data, thr->ts.team_id);
+
       gomp_team_barrier_wait_final (&team->barrier);
       gomp_finish_task (task);
       gomp_barrier_wait_last (&team->barrier);
@@ -126,7 +127,8 @@ gomp_thread_start (void *xdata)
 	  struct gomp_team *team = thr->ts.team;
 	  struct gomp_task *task = thr->task;
 
-	  local_fn (local_data);
+	  RUNLOCALFN(local_fn, local_data, thr->ts.team_id);
+
 	  gomp_team_barrier_wait_final (&team->barrier);
 	  gomp_finish_task (task);
 

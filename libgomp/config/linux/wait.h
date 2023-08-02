@@ -44,21 +44,16 @@
 extern int gomp_futex_wait, gomp_futex_wake;
 
 #include <futex.h>
-
+#include <spin.h>
 static inline int do_spin (int *addr, int val)
 {
-  unsigned long long i, count = gomp_spin_count_var;
+  unsigned long long count = gomp_spin_count_var;
 
   if (__builtin_expect (__atomic_load_n (&gomp_managed_threads,
                                          MEMMODEL_RELAXED)
                         > gomp_available_cpus, 0))
     count = gomp_throttled_spin_count_var;
-  for (i = 0; i < count; i++)
-    if (__builtin_expect (__atomic_load_n (addr, MEMMODEL_RELAXED) != val, 0))
-      return 0;
-    else
-      cpu_relax ();
-  return 1;
+  return do_spin_for_count (addr, val, count);
 }
 
 static inline void do_wait (int *addr, int val)
