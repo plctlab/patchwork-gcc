@@ -8994,7 +8994,8 @@ void aarch_bti_arch_check (void)
 bool
 aarch_bti_enabled (void)
 {
-  return (aarch_enable_bti == 1);
+  gcc_checking_assert (aarch_enable_bti != AARCH_BTI_FUNCTION_UNSET);
+  return (aarch_enable_bti != AARCH_BTI_FUNCTION_NONE);
 }
 
 /* Check if INSN is a BTI J insn.  */
@@ -18430,12 +18431,12 @@ aarch64_override_options (void)
 
   selected_tune = tune ? tune->ident : cpu->ident;
 
-  if (aarch_enable_bti == 2)
+  if (aarch_enable_bti == AARCH_BTI_FUNCTION_UNSET)
     {
 #ifdef TARGET_ENABLE_BTI
-      aarch_enable_bti = 1;
+      aarch_enable_bti = AARCH_BTI_FUNCTION;
 #else
-      aarch_enable_bti = 0;
+      aarch_enable_bti = AARCH_BTI_FUNCTION_NONE;
 #endif
     }
 
@@ -22814,7 +22815,8 @@ aarch64_print_patchable_function_entry (FILE *file,
   basic_block bb = ENTRY_BLOCK_PTR_FOR_FN (cfun)->next_bb;
 
   if (!aarch_bti_enabled ()
-      || cgraph_node::get (cfun->decl)->only_called_directly_p ())
+      || (aarch_enable_bti != AARCH_BTI_FUNCTION_ALL
+	  && cgraph_node::get (cfun->decl)->only_called_directly_p ()))
     {
       /* Emit the patchable_area at the beginning of the function.  */
       rtx_insn *insn = emit_insn_before (pa, BB_HEAD (bb));

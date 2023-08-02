@@ -666,7 +666,7 @@ static enum aarch_parse_opt_result
 aarch_handle_no_branch_protection (char* str, char* rest)
 {
   aarch_ra_sign_scope = AARCH_FUNCTION_NONE;
-  aarch_enable_bti = 0;
+  aarch_enable_bti = AARCH_BTI_FUNCTION_NONE;
   if (rest)
     {
       error ("unexpected %<%s%> after %<%s%>", rest, str);
@@ -680,7 +680,7 @@ aarch_handle_standard_branch_protection (char* str, char* rest)
 {
   aarch_ra_sign_scope = AARCH_FUNCTION_NON_LEAF;
   aarch_ra_sign_key = AARCH_KEY_A;
-  aarch_enable_bti = 1;
+  aarch_enable_bti = AARCH_BTI_FUNCTION;
   if (rest)
     {
       error ("unexpected %<%s%> after %<%s%>", rest, str);
@@ -718,7 +718,15 @@ static enum aarch_parse_opt_result
 aarch_handle_bti_protection (char* str ATTRIBUTE_UNUSED,
 			     char* rest ATTRIBUTE_UNUSED)
 {
-  aarch_enable_bti = 1;
+  aarch_enable_bti = AARCH_BTI_FUNCTION;
+  return AARCH_PARSE_OK;
+}
+
+static enum aarch_parse_opt_result
+aarch_handle_bti_all (char* str ATTRIBUTE_UNUSED,
+		      char* rest ATTRIBUTE_UNUSED)
+{
+  aarch_enable_bti = AARCH_BTI_FUNCTION_ALL;
   return AARCH_PARSE_OK;
 }
 
@@ -728,12 +736,18 @@ static const struct aarch_branch_protect_type aarch_pac_ret_subtypes[] = {
   { NULL, NULL, NULL, 0 }
 };
 
+static const struct aarch_branch_protect_type aarch_bti_subtypes[] = {
+  { "all", aarch_handle_bti_all, NULL, 0 },
+  { NULL, NULL, NULL, 0 }
+};
+
 static const struct aarch_branch_protect_type aarch_branch_protect_types[] = {
   { "none", aarch_handle_no_branch_protection, NULL, 0 },
   { "standard", aarch_handle_standard_branch_protection, NULL, 0 },
   { "pac-ret", aarch_handle_pac_ret_protection, aarch_pac_ret_subtypes,
     ARRAY_SIZE (aarch_pac_ret_subtypes) },
-  { "bti", aarch_handle_bti_protection, NULL, 0 },
+  { "bti", aarch_handle_bti_protection, aarch_bti_subtypes,
+    ARRAY_SIZE (aarch_bti_subtypes) },
   { NULL, NULL, NULL, 0 }
 };
 

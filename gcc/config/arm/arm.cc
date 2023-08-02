@@ -28618,7 +28618,7 @@ arm_file_start (void)
 {
   int val;
   bool pac = (aarch_ra_sign_scope != AARCH_FUNCTION_NONE);
-  bool bti = (aarch_enable_bti == 1);
+  bool bti = (aarch_enable_bti != AARCH_BTI_FUNCTION_NONE);
 
   arm_print_asm_arch_directives
     (asm_out_file, TREE_TARGET_OPTION (target_option_default_node));
@@ -33240,7 +33240,7 @@ void aarch_bti_arch_check (void)
 bool
 aarch_bti_enabled (void)
 {
-  return aarch_enable_bti != 0;
+  return aarch_enable_bti != AARCH_BTI_FUNCTION_NONE;
 }
 
 /* Check if INSN is a BTI J insn.  */

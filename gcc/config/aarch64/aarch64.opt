@@ -37,7 +37,7 @@ TargetVariable
 aarch64_feature_flags aarch64_isa_flags = 0
 
 TargetVariable
-unsigned aarch_enable_bti = 2
+enum aarch_bti_function_type aarch_enable_bti = AARCH_BTI_FUNCTION_UNSET
 
 TargetVariable
 enum aarch_key_type aarch_ra_sign_key = AARCH_KEY_A

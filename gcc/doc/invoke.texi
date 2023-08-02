@@ -775,7 +775,7 @@ Objective-C and Objective-C++ Dialects}.
 -mpc-relative-literal-loads
 -msign-return-address=@var{scope}
 -mbranch-protection=@var{none}|@var{standard}|@var{pac-ret}[+@var{leaf}
-+@var{b-key}]|@var{bti}
++@var{b-key}]|@var{bti}[+@var{all}]
 -mharden-sls=@var{opts}
 -march=@var{name}  -mcpu=@var{name}  -mtune=@var{name}
 -moverride=@var{string}  -mverbose-cost-dump
@@ -855,7 +855,7 @@ Objective-C and Objective-C++ Dialects}.
 -mstack-protector-guard=@var{guard} -mstack-protector-guard-offset=@var{offset}
 -mfdpic
 -mbranch-protection=@var{none}|@var{standard}|@var{pac-ret}[+@var{leaf}]
-[+@var{bti}]|@var{bti}[+@var{pac-ret}[+@var{leaf}]]}
+[+@var{bti}[+@var{all}]]|@var{bti}[+@var{all}][+@var{pac-ret}[+@var{leaf}]]}
 
 @emph{AVR Options}
 @gccoptlist{-mmcu=@var{mcu}  -mabsdata  -maccumulate-args
@@ -20429,7 +20429,7 @@ default value is @samp{none}. This option has been deprecated by
 -mbranch-protection.
 
 @opindex mbranch-protection
-@item -mbranch-protection=@var{none}|@var{standard}|@var{pac-ret}[+@var{leaf}+@var{b-key}]|@var{bti}
+@item -mbranch-protection=@var{none}|@var{standard}|@var{pac-ret}[+@var{leaf}+@var{b-key}]|@var{bti}[+@var{all}]
 Select the branch protection features to use.
 @samp{none} is the default and turns off all types of branch protection.
 @samp{standard} turns on all types of branch protection features.  If a feature
@@ -20441,7 +20441,10 @@ functions will practically always do this) using the a-key.  The optional
 argument @samp{leaf} can be used to extend the signing to include leaf
 functions.  The optional argument @samp{b-key} can be used to sign the functions
 with the B-key instead of the A-key.
-@samp{bti} turns on branch target identification mechanism.
+@samp{bti}[+@var{all}] turns on branch target identification mechanism. If
+the optional argument @samp{all} is specified, bti-c instruction will be
+unconditionally added to the beginning of all functions, otherwise, only
+added to function that is supposed to be indirect call target by compiler.
 
 @opindex mharden-sls
 @item -mharden-sls=@var{opts}
@@ -22705,7 +22708,7 @@ build the Linux kernel using the same (@code{arm-*-uclinuxfdpiceabi})
 toolchain as the one used to build the userland programs.
 
 @opindex mbranch-protection
-@item -mbranch-protection=@var{none}|@var{standard}|@var{pac-ret}[+@var{leaf}][+@var{bti}]|@var{bti}[+@var{pac-ret}[+@var{leaf}]]
+@item -mbranch-protection=@var{none}|@var{standard}|@var{pac-ret}[+@var{leaf}][+@var{bti}[+@var{all}]]|@var{bti}[+@var{all}][+@var{pac-ret}[+@var{leaf}]]
 Enable branch protection features (armv8.1-m.main only).
 @samp{none} generate code without branch protection or return address
 signing.
@@ -22717,7 +22720,8 @@ the return address to memory.
 @samp{leaf} When return address signing is enabled, also sign leaf
 functions even if they do not write the return address to memory.
 +@samp{bti} Add landing-pad instructions at the permitted targets of
-indirect branch instructions.
+indirect branch instructions. If the optional argument @samp{all} is
+specified, the instruction will be unconditionally added to all functions.
 
 If the @samp{+pacbti} architecture extension is not enabled, then all
 branch protection and return address signing operations are

@@ -50,6 +50,24 @@ enum aarch_key_type {
   AARCH_KEY_B
 };
 
+/* Function types to insert bti.  */
+enum aarch_bti_function_type {
+  AARCH_BTI_FUNCTION_UNSET = -1u,
+  /* Don't add bti to any function.  */
+  AARCH_BTI_FUNCTION_NONE = 0,
+  /* Add bti to function that may be indirect call target. The judgement is
+     only made based on the information that compiler could get.  However,
+     at linking stage, a direct call might be rewritten to indirect call with
+     some kind of linker-generated thunk stub as invocation relay for some
+     reasons.  One instance is if a direct callee is placed far from its
+     caller, direct branch instruction could not represent the distance.
+     For this case that have to rely on linker decision, bti would not be
+     added.  */
+  AARCH_BTI_FUNCTION,
+  /* Add bti to all functions.  */
+  AARCH_BTI_FUNCTION_ALL
+};
+
 struct aarch_branch_protect_type
 {
   /* The type's name that the user passes to the branch-protection option

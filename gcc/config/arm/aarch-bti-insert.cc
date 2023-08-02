@@ -164,7 +164,8 @@ rest_of_insert_bti (void)
      functions that are already protected by Return Address Signing (PACIASP/
      PACIBSP).  For all other cases insert a BTI C at the beginning of the
      function.  */
-  if (!cgraph_node::get (cfun->decl)->only_called_directly_p ())
+  if (aarch_enable_bti == AARCH_BTI_FUNCTION_ALL
+      || !cgraph_node::get (cfun->decl)->only_called_directly_p ())
     {
       bb = ENTRY_BLOCK_PTR_FOR_FN (cfun)->next_bb;
       insn = BB_HEAD (bb);
