@@ -10796,7 +10796,7 @@
 		   (const_string "1")
 		   (const_string "*")))
    (set (attr "prefix_extra")
-     (if_then_else (eq_attr "alternative" "5,6,7,8,9")
+     (if_then_else (eq_attr "alternative" "5,6,9")
 		   (const_string "1")
 		   (const_string "*")))
    (set (attr "length_immediate")
@@ -16499,7 +16499,7 @@
    vp<maxmin_int><ssemodesuffix>\t{%2, %1, %0<mask_operand3>|%0<mask_operand3>, %1, %2}"
   [(set_attr "isa" "noavx,noavx,avx")
    (set_attr "type" "sseiadd")
-   (set_attr "prefix_extra" "1,1,*")
+   (set_attr "prefix_extra" "1")
    (set_attr "prefix" "orig,orig,vex")
    (set_attr "mode" "TI")])
 
@@ -16533,7 +16533,10 @@
   "TARGET_AVX2 && !(MEM_P (operands[1]) && MEM_P (operands[2]))"
   "vpcmpeq<ssemodesuffix>\t{%2, %1, %0|%0, %1, %2}"
   [(set_attr "type" "ssecmp")
-   (set_attr "prefix_extra" "1")
+   (set (attr "prefix_extra")
+     (if_then_else (eq (const_string "<MODE>mode") (const_string "V4DImode"))
+		   (const_string "1")
+		   (const_string "*")))
    (set_attr "prefix" "vex")
    (set_attr "mode" "OI")])
 
@@ -16768,7 +16771,10 @@
   "TARGET_AVX2"
   "vpcmpgt<ssemodesuffix>\t{%2, %1, %0|%0, %1, %2}"
   [(set_attr "type" "ssecmp")
-   (set_attr "prefix_extra" "1")
+   (set (attr "prefix_extra")
+     (if_then_else (eq (const_string "<MODE>mode") (const_string "V4DImode"))
+		   (const_string "1")
+		   (const_string "*")))
    (set_attr "prefix" "vex")
    (set_attr "mode" "OI")])
 
@@ -18212,7 +18218,7 @@
        (const_string "*")))
    (set (attr "prefix_extra")
      (if_then_else
-       (and (not (match_test "TARGET_AVX"))
+       (ior (eq_attr "prefix" "evex")
 	    (match_test "GET_MODE_NUNITS (<MODE>mode) == 8"))
        (const_string "*")
        (const_string "1")))
@@ -19373,8 +19379,7 @@
    (set_attr "prefix_data16" "1")
    (set (attr "prefix_extra")
      (if_then_else
-       (and (eq_attr "alternative" "0,2")
-	    (eq (const_string "<MODE>mode") (const_string "V8HImode")))
+       (eq (const_string "<MODE>mode") (const_string "V8HImode"))
        (const_string "*")
        (const_string "1")))
    (set_attr "length_immediate" "1")
@@ -21718,7 +21723,7 @@
   "%vmovntdqa\t{%1, %0|%0, %1}"
   [(set_attr "isa" "noavx,noavx,avx")
    (set_attr "type" "ssemov")
-   (set_attr "prefix_extra" "1,1,*")
+   (set_attr "prefix_extra" "1")
    (set_attr "prefix" "orig,orig,maybe_evex")
    (set_attr "mode" "<sseinsnmode>")])
 
