@@ -3975,7 +3975,6 @@
    vpcmpeq<ssemodesuffix>\t{%2, %1, %0<mask_scalar_merge_operand3>|%0<mask_scalar_merge_operand3>, %1, %2}
    vptestnm<ssemodesuffix>\t{%1, %1, %0<mask_scalar_merge_operand3>|%0<mask_scalar_merge_operand3>, %1, %1}"
   [(set_attr "type" "ssecmp")
-   (set_attr "prefix_extra" "1")
    (set_attr "prefix" "evex")
    (set_attr "mode" "<sseinsnmode>")])
 
@@ -4073,7 +4072,6 @@
    vpcmpeq<ssemodesuffix>\t{%2, %1, %0<mask_scalar_merge_operand3>|%0<mask_scalar_merge_operand3>, %1, %2}
    vptestnm<ssemodesuffix>\t{%1, %1, %0<mask_scalar_merge_operand3>|%0<mask_scalar_merge_operand3>, %1, %1}"
   [(set_attr "type" "ssecmp")
-   (set_attr "prefix_extra" "1")
    (set_attr "prefix" "evex")
    (set_attr "mode" "<sseinsnmode>")])
 
@@ -11219,7 +11217,6 @@
   return "vextract<shuffletype>64x2\t{%2, %1, %0%{%5%}%N4|%0%{%5%}%N4, %1, %2}";
 }
   [(set_attr "type" "sselog1")
-   (set_attr "prefix_extra" "1")
    (set_attr "length_immediate" "1")
    (set_attr "prefix" "evex")
    (set_attr "mode" "<sseinsnmode>")])
@@ -11238,7 +11235,6 @@
   return "vextract<shuffletype>64x2\t{%2, %1, %0|%0, %1, %2}";
 }
   [(set_attr "type" "sselog1")
-   (set_attr "prefix_extra" "1")
    (set_attr "length_immediate" "1")
    (set_attr "prefix" "evex")
    (set_attr "mode" "<sseinsnmode>")])
@@ -11286,7 +11282,6 @@
   return "vextract<shuffletype>32x4\t{%2, %1, %0%{%7%}%N6|%0%{%7%}%N6, %1, %2}";
 }
   [(set_attr "type" "sselog1")
-   (set_attr "prefix_extra" "1")
    (set_attr "length_immediate" "1")
    (set_attr "prefix" "evex")
    (set_attr "mode" "<sseinsnmode>")])
@@ -11309,7 +11304,6 @@
   return "vextract<shuffletype>32x4\t{%2, %1, %0|%0, %1, %2}";
 }
   [(set_attr "type" "sselog1")
-   (set_attr "prefix_extra" "1")
    (set_attr "length_immediate" "1")
    (set_attr "prefix" "evex")
    (set_attr "mode" "<sseinsnmode>")])
@@ -11403,7 +11397,6 @@
    && (!MEM_P (operands[0]) || rtx_equal_p (operands[0], operands[2]))"
   "vextract<shuffletype>64x4\t{$0x0, %1, %0%{%3%}%N2|%0%{%3%}%N2, %1, 0x0}"
   [(set_attr "type" "sselog1")
-   (set_attr "prefix_extra" "1")
    (set_attr "length_immediate" "1")
    (set_attr "memory" "none,store")
    (set_attr "prefix" "evex")
@@ -11423,7 +11416,6 @@
     return "#";
 }
   [(set_attr "type" "sselog1")
-   (set_attr "prefix_extra" "1")
    (set_attr "length_immediate" "1")
    (set_attr "memory" "none,store,load")
    (set_attr "prefix" "evex")
@@ -11442,7 +11434,6 @@
    && (!MEM_P (operands[0]) || rtx_equal_p (operands[0], operands[2]))"
   "vextract<shuffletype>64x4\t{$0x1, %1, %0%{%3%}%N2|%0%{%3%}%N2, %1, 0x1}"
   [(set_attr "type" "sselog1")
-   (set_attr "prefix_extra" "1")
    (set_attr "length_immediate" "1")
    (set_attr "prefix" "evex")
    (set_attr "mode" "<sseinsnmode>")])
@@ -11456,7 +11447,6 @@
   "TARGET_AVX512F"
   "vextract<shuffletype>64x4\t{$0x1, %1, %0|%0, %1, 0x1}"
   [(set_attr "type" "sselog1")
-   (set_attr "prefix_extra" "1")
    (set_attr "length_immediate" "1")
    (set_attr "prefix" "evex")
    (set_attr "mode" "<sseinsnmode>")])
@@ -11476,7 +11466,6 @@
    && (!MEM_P (operands[0]) || rtx_equal_p (operands[0], operands[2]))"
   "vextract<shuffletype>32x8\t{$0x1, %1, %0%{%3%}%N2|%0%{%3%}%N2, %1, 0x1}"
   [(set_attr "type" "sselog1")
-   (set_attr "prefix_extra" "1")
    (set_attr "length_immediate" "1")
    (set_attr "prefix" "evex")
    (set_attr "mode" "<sseinsnmode>")])
@@ -11494,7 +11483,6 @@
    vextract<shuffletype>32x8\t{$0x1, %1, %0|%0, %1, 0x1}
    vextracti64x4\t{$0x1, %1, %0|%0, %1, 0x1}"
   [(set_attr "type" "sselog1")
-   (set_attr "prefix_extra" "1")
    (set_attr "isa" "avx512dq,noavx512dq")
    (set_attr "length_immediate" "1")
    (set_attr "prefix" "evex")
@@ -11582,7 +11570,6 @@
    && (!MEM_P (operands[0]) || rtx_equal_p (operands[0], operands[2]))"
   "vextract<shuffletype>32x8\t{$0x0, %1, %0%{%3%}%N2|%0%{%3%}%N2, %1, 0x0}"
   [(set_attr "type" "sselog1")
-   (set_attr "prefix_extra" "1")
    (set_attr "length_immediate" "1")
    (set_attr "memory" "none,store")
    (set_attr "prefix" "evex")
@@ -11612,7 +11599,6 @@
     return "#";
 }
   [(set_attr "type" "sselog1")
-   (set_attr "prefix_extra" "1")
    (set_attr "length_immediate" "1")
    (set_attr "memory" "none,load,store")
    (set_attr "prefix" "evex")
@@ -11655,7 +11641,6 @@
    && (!MEM_P (operands[0]) || rtx_equal_p (operands[0], operands[2]))"
   "vextract<shuffletype>64x2\t{$0x0, %1, %0%{%3%}%N2|%0%{%3%}%N2, %1, 0x0}"
    [(set_attr "type" "sselog1")
-    (set_attr "prefix_extra" "1")
     (set_attr "length_immediate" "1")
     (set_attr "memory" "none,store")
     (set_attr "prefix" "evex")
@@ -11693,7 +11678,6 @@
    && (!MEM_P (operands[0]) || rtx_equal_p (operands[0], operands[2]))"
   "vextract<shuffletype>64x2\t{$0x1, %1, %0%{%3%}%N2|%0%{%3%}%N2, %1, 0x1}"
   [(set_attr "type" "sselog1")
-   (set_attr "prefix_extra" "1")
    (set_attr "length_immediate" "1")
    (set_attr "prefix" "vex")
    (set_attr "mode" "<sseinsnmode>")])
@@ -11745,7 +11729,6 @@
    && (!MEM_P (operands[0]) || rtx_equal_p (operands[0], operands[2]))"
   "vextract<shuffletype>32x4\t{$0x0, %1, %0%{%3%}%N2|%0%{%3%}%N2, %1, 0x0}"
   [(set_attr "type" "sselog1")
-   (set_attr "prefix_extra" "1")
    (set_attr "length_immediate" "1")
    (set_attr "prefix" "evex")
    (set_attr "mode" "<sseinsnmode>")])
@@ -11834,7 +11817,6 @@
     operands[1] = gen_lowpart (<ssehalfvecmode>mode, operands[1]);
 }
   [(set_attr "type" "sselog1")
-   (set_attr "prefix_extra" "1")
    (set_attr "length_immediate" "1")
    (set_attr "memory" "none,load,store")
    (set_attr "prefix" "evex")
@@ -11855,7 +11837,6 @@
   "TARGET_AVX512F"
   "vextracti64x4\t{$0x1, %1, %0|%0, %1, 0x1}"
   [(set_attr "type" "sselog1")
-   (set_attr "prefix_extra" "1")
    (set_attr "length_immediate" "1")
    (set_attr "prefix" "evex")
    (set_attr "mode" "XI")])
@@ -11937,7 +11918,6 @@
     operands[1] = gen_lowpart (V32QImode, operands[1]);
 }
   [(set_attr "type" "sselog1")
-   (set_attr "prefix_extra" "1")
    (set_attr "length_immediate" "1")
    (set_attr "memory" "none,load,store")
    (set_attr "prefix" "evex")
@@ -11966,7 +11946,6 @@
   "TARGET_AVX512F"
   "vextracti64x4\t{$0x1, %1, %0|%0, %1, 0x1}"
   [(set_attr "type" "sselog1")
-   (set_attr "prefix_extra" "1")
    (set_attr "length_immediate" "1")
    (set_attr "prefix" "evex")
    (set_attr "mode" "XI")])
@@ -15166,7 +15145,6 @@
   "TARGET_AVX512F && !(MEM_P (operands[1]) && MEM_P (operands[2]))"
   "vpmuludq\t{%2, %1, %0<mask_operand3>|%0<mask_operand3>, %1, %2}"
   [(set_attr "type" "sseimul")
-   (set_attr "prefix_extra" "1")
    (set_attr "prefix" "evex")
    (set_attr "mode" "XI")])
 
@@ -15282,7 +15260,6 @@
   "TARGET_AVX512F && !(MEM_P (operands[1]) && MEM_P (operands[2]))"
   "vpmuldq\t{%2, %1, %0<mask_operand3>|%0<mask_operand3>, %1, %2}"
   [(set_attr "type" "sseimul")
-   (set_attr "prefix_extra" "1")
    (set_attr "prefix" "evex")
    (set_attr "mode" "XI")])
 
@@ -16305,7 +16282,6 @@
   "TARGET_AVX512F && !(MEM_P (operands[1]) && MEM_P (operands[2]))"
   "vp<maxmin_int><ssemodesuffix>\t{%2, %1, %0<mask_operand3>|%0<mask_operand3>, %1, %2}"
   [(set_attr "type" "sseiadd")
-   (set_attr "prefix_extra" "1")
    (set_attr "prefix" "maybe_evex")
    (set_attr "mode" "<sseinsnmode>")])
 
@@ -19691,7 +19667,6 @@
   "TARGET_AVX512F"
   "vextracti32x4\t{%2, %1, %0|%0, %1, %2}"
   [(set_attr "type" "sselog")
-   (set_attr "prefix_extra" "1")
    (set_attr "length_immediate" "1")
    (set_attr "prefix" "evex")
    (set_attr "mode" "XI")])
@@ -21262,7 +21237,6 @@
 }
   [(set_attr "type" "sseishft")
    (set_attr "atom_unit" "sishuf")
-   (set_attr "prefix_extra" "1")
    (set_attr "length_immediate" "1")
    (set_attr "prefix" "evex")
    (set_attr "mode" "<sseinsnmode>")])
@@ -22036,7 +22010,6 @@
   "TARGET_AVX512BW"
   "vpmov<extsuffix>bw\t{%1, %0<mask_operand2>|%0<mask_operand2>, %1}"
   [(set_attr "type" "ssemov")
-   (set_attr "prefix_extra" "1")
    (set_attr "prefix" "evex")
    (set_attr "mode" "XI")])
 
@@ -26050,7 +26023,7 @@
    vshuf<shuffletype>32x4\t{$0x44, %g1, %g1, %0<mask_operand2>|%0<mask_operand2>, %g1, %g1, 0x44}
    vbroadcast<shuffletype>32x8\t{%1, %0<mask_operand2>|%0<mask_operand2>, %1}"
   [(set_attr "type" "ssemov")
-   (set_attr "prefix_extra" "1")
+   (set_attr "length_immediate" "1,*")
    (set_attr "prefix" "evex")
    (set_attr "mode" "<sseinsnmode>")])
 
@@ -26067,7 +26040,7 @@
    vshuf<shuffletype>64x2\t{$0x0, %<xtg_mode>1, %<xtg_mode>1, %0<mask_operand2>|%0<mask_operand2>, %<xtg_mode>1, %<xtg_mode>1, 0x0}
    vbroadcast<shuffletype>64x2\t{%1, %0<mask_operand2>|%0<mask_operand2>, %1}"
   [(set_attr "type" "ssemov")
-   (set_attr "prefix_extra" "1")
+   (set_attr "length_immediate" "1")
    (set_attr "prefix" "evex")
    (set_attr "mode" "<sseinsnmode>")])
 
