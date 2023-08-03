@@ -44,7 +44,7 @@
 */
 
 /* This structure stores the various varieties of time that can be
-   measured.  Times are stored in seconds.  The time may be an
+   measured.  Times are stored in nanoseconds.  The time may be an
    absolute time or a time difference; in the former case, the time
    base is undefined, except that the difference between two times
    produces a valid time difference.  */
@@ -52,14 +52,13 @@
 struct timevar_time_def
 {
   /* User time in this process.  */
-  double user;
+  uint64_t user;
 
-  /* System time (if applicable for this host platform) in this
-     process.  */
-  double sys;
+  /* System time (if applicable for this host platform) in this process.  */
+  uint64_t sys;
 
   /* Wall clock time.  */
-  double wall;
+  uint64_t wall;
 
   /* Garbage collector memory.  */
   size_t ggc_mem;
