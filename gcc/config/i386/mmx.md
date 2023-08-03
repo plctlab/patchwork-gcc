@@ -2423,7 +2423,7 @@
    vp<maxmin_int><mmxvecsize>\t{%2, %1, %0|%0, %1, %2}"
   [(set_attr "isa" "noavx,noavx,avx")
    (set_attr "type" "sseiadd")
-   (set_attr "prefix_extra" "1,1,*")
+   (set_attr "prefix_extra" "1")
    (set_attr "prefix" "orig,orig,vex")
    (set_attr "mode" "TI")])
 
@@ -2472,7 +2472,7 @@
    vp<maxmin_int>b\t{%2, %1, %0|%0, %1, %2}"
   [(set_attr "isa" "noavx,noavx,avx")
    (set_attr "type" "sseiadd")
-   (set_attr "prefix_extra" "1,1,*")
+   (set_attr "prefix_extra" "1")
    (set_attr "prefix" "orig,orig,vex")
    (set_attr "mode" "TI")])
 
@@ -2501,7 +2501,7 @@
    vp<maxmin_int><mmxvecsize>\t{%2, %1, %0|%0, %1, %2}"
   [(set_attr "isa" "noavx,noavx,avx")
    (set_attr "type" "sseiadd")
-   (set_attr "prefix_extra" "1,1,*")
+   (set_attr "prefix_extra" "1")
    (set_attr "prefix" "orig,orig,vex")
    (set_attr "mode" "TI")])
 
@@ -2563,7 +2563,7 @@
    vp<maxmin_int>w\t{%2, %1, %0|%0, %1, %2}"
   [(set_attr "isa" "noavx,noavx,avx")
    (set_attr "type" "sseiadd")
-   (set_attr "prefix_extra" "1,1,*")
+   (set_attr "prefix_extra" "1")
    (set_attr "prefix" "orig,orig,vex")
    (set_attr "mode" "TI")])
 
