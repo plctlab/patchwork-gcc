@@ -3721,7 +3721,6 @@
     }
 }
   [(set_attr "isa" "noavx,avx")
-   (set_attr "prefix_data16" "1")
    (set_attr "prefix_extra" "1")
    (set_attr "type" "sselog")
    (set_attr "length_immediate" "1")
@@ -3808,7 +3807,6 @@
 }
   [(set_attr "isa" "noavx,avx")
    (set_attr "type" "sselog")
-   (set_attr "prefix_data16" "1")
    (set_attr "prefix_extra" "1")
    (set_attr "length_immediate" "1")
    (set_attr "prefix" "orig,vex")
@@ -3860,7 +3858,6 @@
    %vpextrb\t{%2, %1, %k0|%k0, %1, %2}
    %vpextrb\t{%2, %1, %0|%0, %1, %2}"
   [(set_attr "type" "sselog1")
-   (set_attr "prefix_data16" "1")
    (set_attr "prefix_extra" "1")
    (set_attr "length_immediate" "1")
    (set_attr "prefix" "maybe_vex")
@@ -3875,7 +3872,6 @@
   "TARGET_SSE4_1 && TARGET_MMX_WITH_SSE"
   "%vpextrb\t{%2, %1, %k0|%k0, %1, %2}"
   [(set_attr "type" "sselog1")
-   (set_attr "prefix_data16" "1")
    (set_attr "prefix_extra" "1")
    (set_attr "length_immediate" "1")
    (set_attr "prefix" "maybe_vex")
@@ -3893,7 +3889,6 @@
    vpshufb\t{%2, %1, %0|%0, %1, %2}"
   [(set_attr "isa" "noavx,avx")
    (set_attr "type" "sselog1")
-   (set_attr "prefix_data16" "1,*")
    (set_attr "prefix_extra" "1")
    (set_attr "prefix" "orig,maybe_evex")
    (set_attr "btver2_decode" "vector")
@@ -3911,7 +3906,6 @@
    vpshufb\t{%2, %1, %0|%0, %1, %2}"
   [(set_attr "isa" "noavx,avx")
    (set_attr "type" "sselog1")
-   (set_attr "prefix_data16" "1,*")
    (set_attr "prefix_extra" "1")
    (set_attr "prefix" "orig,maybe_evex")
    (set_attr "btver2_decode" "vector")
@@ -4049,7 +4043,6 @@
    (set_attr "mmx_isa" "native,*")
    (set_attr "type" "mmxcvt,sselog1")
    (set_attr "prefix_extra" "1,*")
-   (set_attr "prefix_data16" "*,1")
    (set_attr "length_immediate" "*,1")
    (set_attr "mode" "DI,TI")])
 
@@ -4389,7 +4382,6 @@
 }
   [(set_attr "isa" "noavx,avx")
    (set_attr "type" "sselog")
-   (set_attr "prefix_data16" "1")
    (set_attr "prefix_extra" "1")
    (set_attr "length_immediate" "1")
    (set_attr "prefix" "orig,vex")
@@ -4433,7 +4425,6 @@
    %vpextrb\t{%2, %1, %k0|%k0, %1, %2}
    %vpextrb\t{%2, %1, %0|%0, %1, %2}"
   [(set_attr "type" "sselog1")
-   (set_attr "prefix_data16" "1")
    (set_attr "prefix_extra" "1")
    (set_attr "length_immediate" "1")
    (set_attr "prefix" "maybe_vex")
@@ -4448,7 +4439,6 @@
   "TARGET_SSE4_1"
   "%vpextrb\t{%2, %1, %k0|%k0, %1, %2}"
   [(set_attr "type" "sselog1")
-   (set_attr "prefix_data16" "1")
    (set_attr "prefix_extra" "1")
    (set_attr "length_immediate" "1")
    (set_attr "prefix" "maybe_vex")
