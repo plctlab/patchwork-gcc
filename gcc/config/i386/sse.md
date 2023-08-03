@@ -24179,7 +24179,10 @@
 		      (const_int 13) (const_int 15)])))))]
   "TARGET_XOP"
   "vphadd<u>bw\t{%1, %0|%0, %1}"
-  [(set_attr "type" "sseiadd1")])
+  [(set_attr "type" "sseiadd1")
+   (set_attr "prefix" "vex")
+   (set_attr "prefix_extra" "1")
+   (set_attr "mode" "TI")])
 
 (define_insn "xop_phadd<u>bd"
   [(set (match_operand:V4SI 0 "register_operand" "=x")
@@ -24208,7 +24211,10 @@
 		       (const_int 11) (const_int 15)]))))))]
   "TARGET_XOP"
   "vphadd<u>bd\t{%1, %0|%0, %1}"
-  [(set_attr "type" "sseiadd1")])
+  [(set_attr "type" "sseiadd1")
+   (set_attr "prefix" "vex")
+   (set_attr "prefix_extra" "1")
+   (set_attr "mode" "TI")])
 
 (define_insn "xop_phadd<u>bq"
   [(set (match_operand:V2DI 0 "register_operand" "=x")
@@ -24253,7 +24259,10 @@
 	     (parallel [(const_int 7) (const_int 15)])))))))]
   "TARGET_XOP"
   "vphadd<u>bq\t{%1, %0|%0, %1}"
-  [(set_attr "type" "sseiadd1")])
+  [(set_attr "type" "sseiadd1")
+   (set_attr "prefix" "vex")
+   (set_attr "prefix_extra" "1")
+   (set_attr "mode" "TI")])
 
 (define_insn "xop_phadd<u>wd"
   [(set (match_operand:V4SI 0 "register_operand" "=x")
@@ -24270,7 +24279,10 @@
 		      (const_int 5) (const_int 7)])))))]
   "TARGET_XOP"
   "vphadd<u>wd\t{%1, %0|%0, %1}"
-  [(set_attr "type" "sseiadd1")])
+  [(set_attr "type" "sseiadd1")
+   (set_attr "prefix" "vex")
+   (set_attr "prefix_extra" "1")
+   (set_attr "mode" "TI")])
 
 (define_insn "xop_phadd<u>wq"
   [(set (match_operand:V2DI 0 "register_operand" "=x")
@@ -24295,7 +24307,10 @@
 	    (parallel [(const_int 3) (const_int 7)]))))))]
   "TARGET_XOP"
   "vphadd<u>wq\t{%1, %0|%0, %1}"
-  [(set_attr "type" "sseiadd1")])
+  [(set_attr "type" "sseiadd1")
+   (set_attr "prefix" "vex")
+   (set_attr "prefix_extra" "1")
+   (set_attr "mode" "TI")])
 
 (define_insn "xop_phadd<u>dq"
   [(set (match_operand:V2DI 0 "register_operand" "=x")
@@ -24310,7 +24325,10 @@
 	   (parallel [(const_int 1) (const_int 3)])))))]
   "TARGET_XOP"
   "vphadd<u>dq\t{%1, %0|%0, %1}"
-  [(set_attr "type" "sseiadd1")])
+  [(set_attr "type" "sseiadd1")
+   (set_attr "prefix" "vex")
+   (set_attr "prefix_extra" "1")
+   (set_attr "mode" "TI")])
 
 (define_insn "xop_phsubbw"
   [(set (match_operand:V8HI 0 "register_operand" "=x")
@@ -24331,7 +24349,10 @@
 		      (const_int 13) (const_int 15)])))))]
   "TARGET_XOP"
   "vphsubbw\t{%1, %0|%0, %1}"
-  [(set_attr "type" "sseiadd1")])
+  [(set_attr "type" "sseiadd1")
+   (set_attr "prefix" "vex")
+   (set_attr "prefix_extra" "1")
+   (set_attr "mode" "TI")])
 
 (define_insn "xop_phsubwd"
   [(set (match_operand:V4SI 0 "register_operand" "=x")
@@ -24348,7 +24369,10 @@
 		      (const_int 5) (const_int 7)])))))]
   "TARGET_XOP"
   "vphsubwd\t{%1, %0|%0, %1}"
-  [(set_attr "type" "sseiadd1")])
+  [(set_attr "type" "sseiadd1")
+   (set_attr "prefix" "vex")
+   (set_attr "prefix_extra" "1")
+   (set_attr "mode" "TI")])
 
 (define_insn "xop_phsubdq"
   [(set (match_operand:V2DI 0 "register_operand" "=x")
@@ -24363,7 +24387,10 @@
 	   (parallel [(const_int 1) (const_int 3)])))))]
   "TARGET_XOP"
   "vphsubdq\t{%1, %0|%0, %1}"
-  [(set_attr "type" "sseiadd1")])
+  [(set_attr "type" "sseiadd1")
+   (set_attr "prefix" "vex")
+   (set_attr "prefix_extra" "1")
+   (set_attr "mode" "TI")])
 
 ;; XOP permute instructions
 (define_insn "xop_pperm"
@@ -24491,6 +24518,8 @@
   "TARGET_XOP"
   "vprot<ssemodesuffix>\t{%2, %1, %0|%0, %1, %2}"
   [(set_attr "type" "sseishft")
+   (set_attr "prefix" "vex")
+   (set_attr "prefix_extra" "1")
    (set_attr "length_immediate" "1")
    (set_attr "mode" "TI")])
 
@@ -24506,6 +24535,8 @@
   return \"vprot<ssemodesuffix>\t{%3, %1, %0|%0, %1, %3}\";
 }
   [(set_attr "type" "sseishft")
+   (set_attr "prefix" "vex")
+   (set_attr "prefix_extra" "1")
    (set_attr "length_immediate" "1")
    (set_attr "mode" "TI")])
 
@@ -24546,8 +24577,8 @@
   "TARGET_XOP && !(MEM_P (operands[1]) && MEM_P (operands[2]))"
   "vprot<ssemodesuffix>\t{%2, %1, %0|%0, %1, %2}"
   [(set_attr "type" "sseishft")
-   (set_attr "prefix_data16" "0")
-   (set_attr "prefix_extra" "2")
+   (set_attr "prefix" "vex")
+   (set_attr "prefix_extra" "1")
    (set_attr "mode" "TI")])
 
 ;; XOP packed shift instructions.
@@ -24794,8 +24825,8 @@
   "TARGET_XOP && !(MEM_P (operands[1]) && MEM_P (operands[2]))"
   "vpsha<ssemodesuffix>\t{%2, %1, %0|%0, %1, %2}"
   [(set_attr "type" "sseishft")
-   (set_attr "prefix_data16" "0")
-   (set_attr "prefix_extra" "2")
+   (set_attr "prefix" "vex")
+   (set_attr "prefix_extra" "1")
    (set_attr "mode" "TI")])
 
 (define_insn "xop_shl<mode>3"
@@ -24813,8 +24844,8 @@
   "TARGET_XOP && !(MEM_P (operands[1]) && MEM_P (operands[2]))"
   "vpshl<ssemodesuffix>\t{%2, %1, %0|%0, %1, %2}"
   [(set_attr "type" "sseishft")
-   (set_attr "prefix_data16" "0")
-   (set_attr "prefix_extra" "2")
+   (set_attr "prefix" "vex")
+   (set_attr "prefix_extra" "1")
    (set_attr "mode" "TI")])
 
 (define_expand "<insn><mode>3"
@@ -25026,6 +25057,8 @@
   "TARGET_XOP"
   "vfrcz<ssemodesuffix>\t{%1, %0|%0, %1}"
   [(set_attr "type" "ssecvt1")
+   (set_attr "prefix" "vex")
+   (set_attr "prefix_extra" "1")
    (set_attr "mode" "<MODE>")])
 
 (define_expand "xop_vmfrcz<mode>2"
@@ -25050,6 +25083,8 @@
   "TARGET_XOP"
   "vfrcz<ssescalarmodesuffix>\t{%1, %0|%0, %<iptr>1}"
   [(set_attr "type" "ssecvt1")
+   (set_attr "prefix" "vex")
+   (set_attr "prefix_extra" "1")
    (set_attr "mode" "<MODE>")])
 
 (define_insn "xop_maskcmp<mode>3"
