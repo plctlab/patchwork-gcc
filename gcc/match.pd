@@ -1908,10 +1908,12 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
   (bitop:c (rbitop:c (bit_not @0) @1) @0)
   (bitop @0 @1)))
 
-/* ((x | y) & z) | x -> (z & y) | x */
-(simplify
-  (bit_ior:c (bit_and:cs (bit_ior:cs @0 @1) @2) @0)
-  (bit_ior (bit_and @2 @1) @0))
+/* ((x |^ y) & z) | x -> (z & y) | x  */
+(for op (bit_ior bit_xor)
+ (simplify
+  (bit_ior:c (nop_convert1? (bit_and:c (nop_convert2? (op:c @0 @1)) @2)) @3)
+  (if (bitwise_equal_p (@0, @3))
+   (convert (bit_ior (bit_and @1 (convert @2)) (convert @0))))))
 
 /* (x | CST1) & CST2 -> (x & CST2) | (CST1 & CST2) */
 (simplify
