@@ -175,11 +175,13 @@ extern void loongarch_register_frame_header_opt (void);
 /* Routines implemented in loongarch-c.c.  */
 void loongarch_cpu_cpp_builtins (cpp_reader *);
 
+extern tree loongarch_fold_builtin(tree,int,tree*,bool);
 extern void loongarch_init_builtins (void);
 extern void loongarch_atomic_assign_expand_fenv (tree *, tree *, tree *);
 extern tree loongarch_builtin_decl (unsigned int, bool);
 extern rtx loongarch_expand_builtin (tree, rtx, rtx subtarget ATTRIBUTE_UNUSED,
 				     machine_mode, int);
 extern tree loongarch_build_builtin_va_list (void);
+extern machine_mode loongarch_c_mode_for_suffix (char suffix);
 
 #endif /* ! GCC_LOONGARCH_PROTOS_H */

@@ -43,6 +43,13 @@
   UNSPEC_FTINTRP
   UNSPEC_FSCALEB
   UNSPEC_FLOGB
+  
+  UNSPEC_INFQ
+  UNSPEC_HUGE_VALQ
+  UNSPEC_FABSQ
+  UNSPEC_COPYSIGNQ
+  UNSPEC_NANQ
+  UNSPEC_NANSQ
 
   ;; Override return address for exception handling.
   UNSPEC_EH_RETURN
@@ -562,6 +569,17 @@
 				 (40 "5")
 				 (48 "6")
 				 (56 "7")])
+
+;; mathq function 
+(define_int_iterator MATHQ [UNSPEC_INFQ UNSPEC_HUGE_VALQ UNSPEC_FABSQ UNSPEC_COPYSIGNQ 
+                         UNSPEC_NANQ UNSPEC_NANSQ])
+(define_int_attr mathq_pattern [(UNSPEC_INFQ "infq")
+                               (UNSPEC_HUGE_VALQ "huge_valq")
+                               (UNSPEC_FABSQ "fabsq")
+                               (UNSPEC_COPYSIGNQ "copysignq")
+                               (UNSPEC_NANQ "nanq")
+                               (UNSPEC_NANSQ "nansq")]
+)
 
 ;;
 ;;  ....................
@@ -2007,6 +2025,13 @@
 	(const_int 0))]
   ""
   "movgr2cf\t%0,$r0")
+
+;; Implements functions with a "q" suffix
+
+(define_insn "<mathq_pattern>"
+  [(unspec:SI [(const_int 0)]MATHQ)]
+  ""
+  " ")
 
 ;; Conditional move instructions.
 
