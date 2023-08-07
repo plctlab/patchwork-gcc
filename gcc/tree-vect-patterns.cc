@@ -1502,6 +1502,122 @@ vect_recog_widen_minus_pattern (vec_info *vinfo, stmt_vec_info last_stmt_info,
 				      "vect_recog_widen_minus_pattern");
 }
 
+/* Return TRUE if we have the necessary operations to create a vectorized
+   popcount for type VEC_TYPE.  */
+
+static bool
+vect_have_popcount_fallback (tree vec_type)
+{
+  return (optab_for_tree_code (RSHIFT_EXPR, vec_type, optab_scalar)
+	  && optab_for_tree_code (PLUS_EXPR, vec_type, optab_default)
+	  && optab_for_tree_code (MINUS_EXPR, vec_type, optab_default)
+	  && optab_for_tree_code (BIT_AND_EXPR, vec_type, optab_default)
+	  && optab_for_tree_code (MULT_EXPR, vec_type, optab_default));
+}
+
+/* This generates a Wilkes-Wheeler-Gill popcount similar to what libgcc
+   does (and match.pd recognizes).  There are only 32-bit and 64-bit
+   variants.
+   It returns the generated gimple sequence of vector instructions with
+   type VEC_TYPE which is being attached to STMT_VINFO.
+   RHS is the unpromoted input value and LHS_TYPE is the output type.
+   RET_VAR is the address of an SSA variable that holds the result
+   of the last operation.  It needs to be created before calling
+   this function and must have LHS_TYPE.
+
+   int popcount64c (uint64_t x)
+   {
+     x -= (x >> 1) & 0x5555555555555555ULL;
+     x = (x & 0x3333333333333333ULL) + ((x >> 2) & 0x3333333333333333ULL);
+     x = (x + (x >> 4)) & 0x0f0f0f0f0f0f0f0fULL;
+     return (x * 0x0101010101010101ULL) >> 56;
+   }
+
+   int popcount32c (uint32_t x)
+   {
+     x -= (x >> 1) & 0x55555555;
+     x = (x & 0x33333333) + ((x >> 2) & 0x33333333);
+     x = (x + (x >> 4)) & 0x0f0f0f0f;
+     return (x * 0x01010101) >> 24;
+   }
+   */
+
+static gimple*
+vect_generate_popcount_fallback (vec_info *vinfo, stmt_vec_info stmt_vinfo,
+				 vect_unpromoted_value rhs, tree lhs_type,
+				 tree vec_type, tree *ret_var)
+{
+  int bitsize = GET_MODE_BITSIZE (TYPE_MODE (lhs_type)).to_constant ();
+  bool is64 = bitsize == 64;
+
+  tree nuop1 = vect_convert_input (vinfo, stmt_vinfo,
+				   lhs_type, &rhs, vec_type);
+
+  tree one_cst = build_one_cst (lhs_type);
+  tree two_cst = build_int_cst (lhs_type, 2);
+  tree four_cst = build_int_cst (lhs_type, 4);
+  tree lcst = build_int_cst (lhs_type, bitsize - CHAR_BIT);
+
+  tree c1 = build_int_cst (lhs_type,
+			   is64 ? 0x5555555555555555ull : 0x55555555);
+  tree c2 = build_int_cst (lhs_type,
+			   is64 ? 0x3333333333333333ull : 0x33333333);
+  tree c4 = build_int_cst (lhs_type,
+			   is64 ? 0x0F0F0F0F0F0F0F0Full : 0x0F0F0F0F);
+  tree cm = build_int_cst (lhs_type,
+			   is64 ? 0x0101010101010101ull : 0x01010101);
+
+  gassign *g;
+
+  tree shift1 = vect_recog_temp_ssa_var (lhs_type, NULL);
+  g = gimple_build_assign (shift1, RSHIFT_EXPR, nuop1, one_cst);
+  append_pattern_def_seq (vinfo, stmt_vinfo, g, vec_type);
+
+  tree and1 = vect_recog_temp_ssa_var (lhs_type, NULL);
+  g = gimple_build_assign (and1, BIT_AND_EXPR, shift1, c1);
+  append_pattern_def_seq (vinfo, stmt_vinfo, g, vec_type);
+
+  tree x1 = vect_recog_temp_ssa_var (lhs_type, NULL);
+  g = gimple_build_assign (x1, MINUS_EXPR, nuop1, and1);
+  append_pattern_def_seq (vinfo, stmt_vinfo, g, vec_type);
+
+  tree shift2 = vect_recog_temp_ssa_var (lhs_type, NULL);
+  g = gimple_build_assign (shift2, RSHIFT_EXPR, x1, two_cst);
+  append_pattern_def_seq (vinfo, stmt_vinfo, g, vec_type);
+
+  tree and2 = vect_recog_temp_ssa_var (lhs_type, NULL);
+  g = gimple_build_assign (and2, BIT_AND_EXPR, shift2, c2);
+  append_pattern_def_seq (vinfo, stmt_vinfo, g, vec_type);
+
+  tree and22 = vect_recog_temp_ssa_var (lhs_type, NULL);
+  g = gimple_build_assign (and22, BIT_AND_EXPR, x1, c2);
+  append_pattern_def_seq (vinfo, stmt_vinfo, g, vec_type);
+
+  tree x2 = vect_recog_temp_ssa_var (lhs_type, NULL);
+  g = gimple_build_assign (x2, PLUS_EXPR, and2, and22);
+  append_pattern_def_seq (vinfo, stmt_vinfo, g, vec_type);
+
+  tree shift3 = vect_recog_temp_ssa_var (lhs_type, NULL);
+  g = gimple_build_assign (shift3, RSHIFT_EXPR, x2, four_cst);
+  append_pattern_def_seq (vinfo, stmt_vinfo, g, vec_type);
+
+  tree plus3 = vect_recog_temp_ssa_var (lhs_type, NULL);
+  g = gimple_build_assign (plus3, PLUS_EXPR, shift3, x2);
+  append_pattern_def_seq (vinfo, stmt_vinfo, g, vec_type);
+
+  tree x3 = vect_recog_temp_ssa_var (lhs_type, NULL);
+  g = gimple_build_assign (x3, BIT_AND_EXPR, plus3, c4);
+  append_pattern_def_seq (vinfo, stmt_vinfo, g, vec_type);
+
+  tree x4 = vect_recog_temp_ssa_var (lhs_type, NULL);
+  g = gimple_build_assign (x4, MULT_EXPR, x3, cm);
+  append_pattern_def_seq (vinfo, stmt_vinfo, g, vec_type);
+
+  g = gimple_build_assign (*ret_var, RSHIFT_EXPR, x4, lcst);
+
+  return g;
+}
+
 /* Function vect_recog_ctz_ffs_pattern
 
    Try to find the following pattern:
@@ -1614,8 +1730,9 @@ vect_recog_ctz_ffs_pattern (vec_info *vinfo, stmt_vec_info stmt_vinfo,
     }
   if ((ifnnew == IFN_LAST
        || (defined_at_zero && !defined_at_zero_new))
-      && direct_internal_fn_supported_p (IFN_POPCOUNT, vec_rhs_type,
-					 OPTIMIZE_FOR_SPEED))
+      && (direct_internal_fn_supported_p (IFN_POPCOUNT, vec_rhs_type,
+					 OPTIMIZE_FOR_SPEED)
+	  || vect_have_popcount_fallback (vec_rhs_type)))
     {
       ifnnew = IFN_POPCOUNT;
       defined_at_zero_new = true;
@@ -1716,9 +1833,22 @@ vect_recog_ctz_ffs_pattern (vec_info *vinfo, stmt_vec_info stmt_vinfo,
 
   /* Create B = .IFNNEW (A).  */
   new_var = vect_recog_temp_ssa_var (lhs_type, NULL);
-  pattern_stmt = gimple_build_call_internal (ifnnew, 1, rhs_oprnd);
-  gimple_call_set_lhs (pattern_stmt, new_var);
-  gimple_set_location (pattern_stmt, loc);
+  if (ifnnew == IFN_POPCOUNT
+      && !direct_internal_fn_supported_p (ifn, vec_type, OPTIMIZE_FOR_SPEED))
+    {
+      gcc_assert (vect_have_popcount_fallback (vec_type));
+      vect_unpromoted_value un_rhs;
+      vect_look_through_possible_promotion (vinfo, rhs_oprnd, &un_rhs);
+      pattern_stmt = vect_generate_popcount_fallback (vinfo, stmt_vinfo, un_rhs,
+						      lhs_type, vec_type,
+						      &new_var);
+    }
+  else
+    {
+      pattern_stmt = gimple_build_call_internal (ifnnew, 1, rhs_oprnd);
+      gimple_call_set_lhs (pattern_stmt, new_var);
+      gimple_set_location (pattern_stmt, loc);
+    }
   *type_out = vec_type;
 
   if (sub)
@@ -1761,6 +1891,7 @@ vect_recog_ctz_ffs_pattern (vec_info *vinfo, stmt_vec_info stmt_vinfo,
 
   return pattern_stmt;
 }
+
 
 /* Function vect_recog_popcount_clz_ctz_ffs_pattern
 
@@ -1946,12 +2077,17 @@ vect_recog_popcount_clz_ctz_ffs_pattern (vec_info *vinfo,
   if (!vec_type)
     return NULL;
 
+  bool popcount_fallback_p = false;
+
   bool supported
     = direct_internal_fn_supported_p (ifn, vec_type, OPTIMIZE_FOR_SPEED);
   if (!supported)
     switch (ifn)
       {
       case IFN_POPCOUNT:
+	if (vect_have_popcount_fallback (vec_type))
+	  popcount_fallback_p = true;
+	break;
       case IFN_CLZ:
 	return NULL;
       case IFN_FFS:
@@ -1967,7 +2103,8 @@ vect_recog_popcount_clz_ctz_ffs_pattern (vec_info *vinfo,
 					    OPTIMIZE_FOR_SPEED))
 	  break;
 	if (direct_internal_fn_supported_p (IFN_POPCOUNT, vec_type,
-					    OPTIMIZE_FOR_SPEED))
+					    OPTIMIZE_FOR_SPEED)
+	    || vect_have_popcount_fallback (vec_type))
 	  break;
 	return NULL;
       default:
@@ -1977,12 +2114,25 @@ vect_recog_popcount_clz_ctz_ffs_pattern (vec_info *vinfo,
   vect_pattern_detected ("vec_recog_popcount_clz_ctz_ffs_pattern",
 			 call_stmt);
 
-  /* Create B = .POPCOUNT (A).  */
   new_var = vect_recog_temp_ssa_var (lhs_type, NULL);
-  pattern_stmt = gimple_build_call_internal (ifn, 1, unprom_diff.op);
-  gimple_call_set_lhs (pattern_stmt, new_var);
-  gimple_set_location (pattern_stmt, gimple_location (last_stmt));
-  *type_out = vec_type;
+  if (!popcount_fallback_p)
+    {
+      /* Create B = .POPCOUNT (A).  */
+      pattern_stmt = gimple_build_call_internal (ifn, 1, unprom_diff.op);
+      gimple_call_set_lhs (pattern_stmt, new_var);
+      gimple_set_location (pattern_stmt, gimple_location (last_stmt));
+      *type_out = vec_type;
+    }
+  else
+    {
+      pattern_stmt = vect_generate_popcount_fallback (vinfo, stmt_vinfo,
+						      unprom_diff,
+						      lhs_type, vec_type,
+						      &new_var);
+      *type_out = vec_type;
+      /* For popcount we're done here.  */
+      return pattern_stmt;
+    }
 
   if (dump_enabled_p ())
     dump_printf_loc (MSG_NOTE, vect_location,
