@@ -35,6 +35,10 @@ along with GCC; see the file COPYING3.  If not see
 #include "tree-pass.h"
 #include "rtl-iter.h"
 #include "target.h"
+#include "dominance.h"
+
+#include "ira.h"
+#include "regpressure.h"
 
 /* This pass does simple forward propagation and simplification when an
    operand of an insn can only come from a single def.  This pass uses
@@ -101,6 +105,10 @@ along with GCC; see the file COPYING3.  If not see
 using namespace rtl_ssa;
 
 static int num_changes;
+
+/* Keep track of which registers already increased the pressure to avoid double
+   booking.  */
+sbitmap pressure_accounted;
 
 /* Do not try to replace constant addresses or addresses of local and
    argument slots.  These MEM expressions are made only once and inserted
@@ -180,6 +188,8 @@ namespace
     bool changed_mem_p () const { return result_flags & CHANGED_MEM; }
     bool folded_to_constants_p () const;
     bool profitable_p () const;
+    bool register_pressure_high_p (rtx, rtx, rtx_insn *, rtx_insn *) const;
+    void update_register_pressure (rtx, rtx, rtx_insn *, rtx_insn *) const;
 
     bool check_mem (int, rtx) final override;
     void note_simplification (int, uint16_t, rtx, rtx) final override;
@@ -331,25 +341,243 @@ fwprop_propagation::profitable_p () const
       && (result_flags & PROFITABLE))
     return true;
 
-  if (REG_P (to))
+  /* Only continue with an unary operation if we consider register
+     pressure.  */
+  rtx what = copy_rtx (to);
+  if (UNARY_P (what) && flag_ira_hoist_pressure)
+    what = XEXP (what, 0);
+
+  if (REG_P (what))
     return true;
 
-  if (GET_CODE (to) == SUBREG
-      && REG_P (SUBREG_REG (to))
-      && !paradoxical_subreg_p (to))
+  if (GET_CODE (what) == SUBREG
+      && REG_P (SUBREG_REG (what))
+      && !paradoxical_subreg_p (what))
     return true;
 
-  if (CONSTANT_P (to))
+  if (CONSTANT_P (what))
     return true;
 
   return false;
 }
 
-/* Check that X has a single def.  */
+/* Check if the register pressure in any predecessor block of USE's block
+   until DEF's block is equal or higher to the number of hardregs in NU's
+   register class.  */
+bool
+fwprop_propagation::register_pressure_high_p (rtx nu, rtx old, rtx_insn *def,
+					      rtx_insn *use) const
+{
+  enum reg_class nu_class, old_class;
+  int nu_nregs, old_nregs;
+  nu_class = regpressure_get_regno_pressure_class (REGNO (nu), &nu_nregs);
+  old_class
+    = regpressure_get_regno_pressure_class (REGNO (old), &old_nregs);
+
+  if (nu_class == NO_REGS && old_class == NO_REGS)
+    return true;
+
+  if (nu_class == old_class)
+    return false;
+
+  basic_block bbfrom = BLOCK_FOR_INSN (def);
+  basic_block bbto = BLOCK_FOR_INSN (use);
+
+  basic_block bb;
+
+  sbitmap visited = sbitmap_alloc (last_basic_block_for_fn (cfun));
+  bitmap_clear (visited);
+  auto_vec<basic_block> q;
+  q.safe_push (bbto);
+
+  while (!q.is_empty ())
+    {
+      bb = q.pop ();
+
+      if (bitmap_bit_p (visited, bb->index))
+	continue;
+
+      /* Nothing to do if the register to be replaced is not live
+	 in this BB.  */
+      if (bb != bbfrom && !regpressure_is_live_in (bb, REGNO (old)))
+	continue;
+
+      /* Nothing to do if the replacement register is already live in
+	 this BB.  */
+      if (regpressure_is_live_in (bb, REGNO (nu)))
+	continue;
+
+      bitmap_set_bit (visited, bb->index);
+
+      int press = regpressure_get (bb, nu_class);
+      if (dump_file && (dump_flags & TDF_DETAILS))
+	fprintf (dump_file, "pressure for reg %d in bb %d: %d\n",
+		 REGNO (nu), bb->index, press);
+
+      if (press + nu_nregs > ira_class_hard_regs_num[nu_class])
+	return true;
+
+      if (bb == bbfrom || bb == ENTRY_BLOCK_PTR_FOR_FN (cfun))
+	break;
+
+      edge e;
+      edge_iterator ei;
+
+      FOR_EACH_EDGE (e, ei, bb->preds)
+	{
+	  basic_block pred = e->src;
+	  q.safe_push (pred);
+	}
+    }
+
+  sbitmap_free (visited);
+
+  return false;
+}
+
+/* Update the register pressure when propagating from DEF to USE
+   replacing OLD with NU.  */
+void
+fwprop_propagation::update_register_pressure (rtx nu, rtx old, rtx_insn *def,
+					      rtx_insn *use) const
+{
+  basic_block bb;
+
+  enum reg_class nu_class, old_class;
+  int nu_nregs, old_nregs;
+  nu_class = regpressure_get_regno_pressure_class (REGNO (nu), &nu_nregs);
+  old_class = regpressure_get_regno_pressure_class (REGNO (old), &old_nregs);
+
+  if (nu_class == old_class)
+    return;
+
+  basic_block bbfrom = BLOCK_FOR_INSN (def);
+  basic_block bbto = BLOCK_FOR_INSN (use);
+
+  sbitmap visited = sbitmap_alloc (last_basic_block_for_fn (cfun));
+  bitmap_clear (visited);
+  auto_vec<basic_block> q;
+  q.safe_push (bbto);
+
+  /* Precompute the users.  */
+  auto_vec<rtx_insn *> users;
+  df_ref duse;
+  bool should_decrease = true;
+  FOR_EACH_INSN_USE (duse, def)
+    {
+      rtx dreg = DF_REF_REAL_REG (duse);
+      if (REGNO (dreg) != REGNO (old))
+	continue;
+
+      df_ref op_ref = DF_REG_USE_CHAIN (REGNO (dreg));
+      for (; op_ref; op_ref = DF_REF_NEXT_REG (op_ref))
+	{
+	  if (!DF_REF_INSN_INFO (op_ref))
+	    continue;
+
+	  rtx_insn *insn = DF_REF_INSN (op_ref);
+
+	  /* If there are other users in BBTO, never decrease the
+	     pressure.  */
+	  if (BLOCK_FOR_INSN (insn) == bbto && insn != use)
+	    {
+	      should_decrease = false;
+	      break;
+	    }
+
+	  users.safe_push (insn);
+	}
+    }
+
+  while (!q.is_empty ())
+    {
+      bb = q.pop ();
+
+      if (bitmap_bit_p (visited, bb->index))
+	continue;
+
+      /* Nothing to do if the register to be replaced is not live
+	 in this BB.  */
+      if (bb != bbfrom && !regpressure_is_live_in (bb, REGNO (old)))
+	continue;
+
+      /* Nothing to do if the new register is already live in this BB.  */
+      if (regpressure_is_live_in (bb, REGNO (nu)))
+	continue;
+
+      bitmap_set_bit (visited, bb->index);
+
+      if (regpressure_is_live_in (bb, REGNO (old)))
+	{
+	  if (dump_file && (dump_flags & TDF_DETAILS))
+	    fprintf (dump_file, "increasing pressure for "
+		     "reg %d in bb %d by %d regs.\n",
+		     REGNO (nu), bb->index, nu_nregs);
+	  regpressure_set_live_in (bb, REGNO (nu));
+	  regpressure_increase (bb, nu_class, nu_nregs);
+
+	  if (should_decrease)
+	    {
+	      rtx_insn *user;
+	      int ix;
+	      bool should_decrease_local = true;
+
+	      /* If this BB dominates no BB where OLD is used (except BBTO)
+		 the register pressure is decreased.  */
+	      FOR_EACH_VEC_ELT(users, ix, user)
+		{
+		  basic_block ubb = BLOCK_FOR_INSN (user);
+		  if (ubb == bbto)
+		    continue;
+		  if (dominated_by_p (CDI_DOMINATORS, ubb, bb))
+		    {
+		      should_decrease_local = false;
+		      break;
+		    }
+		}
+
+	      if (should_decrease_local)
+		{
+		  if (dump_file && (dump_flags & TDF_DETAILS))
+		    fprintf (dump_file, "decreasing pressure for "
+			     "reg %d in bb %d by %d regs.\n",
+			     REGNO (nu), bb->index, old_nregs);
+		  regpressure_clear_live_in (bb, REGNO (old));
+		  regpressure_decrease (bb, old_class, old_nregs);
+		}
+	    }
+	}
+
+      if (bb == bbfrom || bb == ENTRY_BLOCK_PTR_FOR_FN (cfun))
+	break;
+
+      edge e;
+      edge_iterator ei;
+
+      FOR_EACH_EDGE (e, ei, bb->preds)
+	{
+	  basic_block pred = e->src;
+	  q.safe_push (pred);
+	}
+    }
+
+  sbitmap_free (visited);
+}
+
+/* Check that X has a single def.  Also look through unary operations if
+   we take register pressure into consideration.  */
 
 static bool
 reg_single_def_p (rtx x)
 {
+  if (UNARY_P (x) && flag_ira_hoist_pressure)
+    {
+      x = XEXP (x, 0);
+
+      if (SUBREG_P (x) && !contains_paradoxical_subreg_p (x))
+	x = SUBREG_REG (x);
+    }
+
   return REG_P (x) && crtl->ssa->single_dominating_def (REGNO (x));
 }
 
@@ -503,6 +731,53 @@ try_fwprop_subst_pattern (obstack_watermark &attempt, insn_change &use_change,
 	    ok = false;
 	  }
       }
+
+  if (ok && UNARY_P (src))
+    {
+      /* Currently the register classes can only be different with a
+	 unary operation like vec_duplicate.
+	 In that case the propagation can increase the register pressure
+	 on the way to the target BB.
+	 Therefore, we first check if the pressure of the respective register
+	 is already high, i.e. equals or exceeds the number of hardregs for
+	 that class.  If not, we allow the propagation and update the
+	 pressure.  */
+
+      rtx src1 = src;
+
+      /* Strip unary operation and possible subreg.  */
+      src1 = XEXP (src, 0);
+      if (GET_CODE (src1) == SUBREG)
+	src1 = SUBREG_REG (src1);
+
+      rtx_insn *def_rtl = def_insn->rtl ();
+
+      if (REG_P (dest) && REG_P (src1))
+	{
+	  if (!bitmap_bit_p (pressure_accounted, REGNO (src1)))
+	    {
+	      if (!prop.register_pressure_high_p (src1, dest, def_rtl, use_rtl))
+		{
+		  prop.update_register_pressure (src1, dest, def_rtl, use_rtl);
+		  bitmap_set_bit (pressure_accounted, REGNO (src1));
+		}
+	      else
+		{
+		  if (dump_file && (dump_flags & TDF_DETAILS))
+		    fprintf (dump_file, "cannot propagate from insn %d into"
+			     " insn %d: %s\n", def_insn->uid (),
+			     use_insn->uid (),
+			     "would increase register pressure beyond number"
+			     " of hard regs");
+		  ok = false;
+		}
+	    }
+	  else
+	    if (dump_file && (dump_flags & TDF_DETAILS))
+	      fprintf (dump_file, "pressure for reg %d has already"
+		       " been accounted\n", REGNO (src1));
+	}
+    }
 
   if (!ok)
     {
@@ -873,7 +1148,7 @@ forward_propagate_into (use_info *use, bool reg_prop_only = false)
   if ((reg_prop_only
        || (def_loop != use_loop
 	   && !flow_loop_nested_p (use_loop, def_loop)))
-      && (!reg_single_def_p (dest) || !reg_single_def_p (src)))
+      && !reg_single_def_p (dest))
     return false;
 
   /* Don't substitute into a non-local goto, this confuses CFG.  */
@@ -904,6 +1179,14 @@ fwprop_init (void)
 
   df_analyze ();
   crtl->ssa = new rtl_ssa::function_info (cfun);
+
+  /* Calculate register pressure for each basic block.  */
+  if (flag_ira_hoist_pressure)
+    {
+      regpressure_init ();
+
+      pressure_accounted = sbitmap_alloc (DF_REG_SIZE (df));
+    }
 }
 
 static void
@@ -924,6 +1207,12 @@ fwprop_done (void)
     fprintf (dump_file,
 	     "\nNumber of successful forward propagations: %d\n\n",
 	     num_changes);
+
+  if (flag_ira_hoist_pressure)
+    {
+      regpressure_cleanup ();
+      sbitmap_free (pressure_accounted);
+    }
 }
 
 /* Try to optimize INSN, returning true if something changes.
@@ -933,6 +1222,10 @@ fwprop_done (void)
 static bool
 fwprop_insn (insn_info *insn, bool fwprop_addr_p)
 {
+  /* TODO: when rejecting propagations due to register pressure
+     we would actually like to try the propagation with most
+     potential = uses first instead of going through them
+     sequentially.  */
   for (use_info *use : insn->uses ())
     {
       if (use->is_mem ())
