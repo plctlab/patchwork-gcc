@@ -36,6 +36,8 @@ along with GCC; see the file COPYING3.  If not see
 #include "fold-const.h"
 #include "expr.h"
 #include "langhooks.h"
+#include "calls.h"
+#include "explow.h"
 
 /* Macros to create an enumeration identifier for a function prototype.  */
 #define LARCH_FTYPE_NAME1(A, B) LARCH_##A##_FTYPE_##B
@@ -48,8 +50,17 @@ enum loongarch_function_type
 #define DEF_LARCH_FTYPE(NARGS, LIST) LARCH_FTYPE_NAME##NARGS LIST,
 #include "config/loongarch/loongarch-ftypes.def"
 #undef DEF_LARCH_FTYPE
+  LARCH_BUILTIN_HUGE_VALQ,
+  LARCH_BUILTIN_INFQ,
+  LARCH_BUILTIN_FABSQ,
+  LARCH_BUILTIN_COPYSIGNQ,
+  LARCH_BUILTIN_NANQ,
+  LARCH_BUILTIN_NANSQ,
   LARCH_MAX_FTYPE_MAX
 };
+
+/* Count the number of functions with "q" as the suffix.  */
+const int MATHQ_NUMS=(int)LARCH_MAX_FTYPE_MAX-(int)LARCH_BUILTIN_HUGE_VALQ;
 
 /* Specifies how a built-in function should be converted into rtl.  */
 enum loongarch_builtin_type
@@ -62,6 +73,12 @@ enum loongarch_builtin_type
   /* The function corresponds directly to an .md pattern.  There is no return
      value and the arguments are mapped to operands 0 and above.  */
   LARCH_BUILTIN_DIRECT_NO_TARGET,
+
+ /* The function corresponds to  __builtin_{huge_valq,infq}.  */
+  LARCH_BUILTIN_HIQ_DIRECT,
+
+  /* Define the type of the __builtin_{nanq,nansq,fabsq,copysignq} function.  */
+  LARCH_BUILTIN_NNFCQ_DIRECT
 
 };
 
@@ -136,6 +153,18 @@ AVAIL_ALL (hard_float, TARGET_HARD_FLOAT_ABI)
   LARCH_BUILTIN (INSN, #INSN, LARCH_BUILTIN_DIRECT_NO_TARGET, \
 		 FUNCTION_TYPE, AVAIL)
 
+/* Define an float to do funciton {huge_valq,infq}.*/
+#define FLOAT_BUILTIN_HIQ(INSN, FUNCTION_TYPE)	  \
+    { CODE_FOR_ ## INSN,			  \
+    "__builtin_" #INSN,  LARCH_BUILTIN_HIQ_DIRECT,    \
+    FUNCTION_TYPE, loongarch_builtin_avail_default }
+
+/* Define an float to do funciton {nanq,nansq,fabsq,copysignq}.*/
+#define FLOAT_BUILTIN_NNFCQ(INSN, FUNCTION_TYPE)      \
+    { CODE_FOR_ ## INSN,				\
+    "__builtin_" #INSN,  LARCH_BUILTIN_NNFCQ_DIRECT,	  \
+    FUNCTION_TYPE, loongarch_builtin_avail_default }
+
 static const struct loongarch_builtin_description loongarch_builtins[] = {
 #define LARCH_MOVFCSR2GR 0
   DIRECT_BUILTIN (movfcsr2gr, LARCH_USI_FTYPE_UQI, hard_float),
@@ -183,6 +212,14 @@ static const struct loongarch_builtin_description loongarch_builtins[] = {
   DIRECT_NO_TARGET_BUILTIN (asrtgt_d, LARCH_VOID_FTYPE_DI_DI, default),
   DIRECT_NO_TARGET_BUILTIN (syscall, LARCH_VOID_FTYPE_USI, default),
   DIRECT_NO_TARGET_BUILTIN (break, LARCH_VOID_FTYPE_USI, default),
+
+  FLOAT_BUILTIN_HIQ (huge_valq, LARCH_BUILTIN_HUGE_VALQ),
+  FLOAT_BUILTIN_HIQ (infq, LARCH_BUILTIN_INFQ),
+  FLOAT_BUILTIN_NNFCQ (fabsq, LARCH_BUILTIN_FABSQ),
+  FLOAT_BUILTIN_NNFCQ (nanq, LARCH_BUILTIN_NANQ),
+  FLOAT_BUILTIN_NNFCQ (nansq, LARCH_BUILTIN_NANSQ),
+  FLOAT_BUILTIN_NNFCQ (copysignq, LARCH_BUILTIN_COPYSIGNQ),
+
 };
 
 /* Index I is the function declaration for loongarch_builtins[I], or null if
@@ -255,10 +292,13 @@ loongarch_init_builtins (void)
   const struct loongarch_builtin_description *d;
   unsigned int i;
   tree type;
+  tree const_string_type
+     =build_pointer_type (build_qualified_type (char_type_node,
+						TYPE_QUAL_CONST));
 
   /* Iterate through all of the bdesc arrays, initializing all of the
      builtin functions.  */
-  for (i = 0; i < ARRAY_SIZE (loongarch_builtins); i++)
+  for (i = 0; i < ARRAY_SIZE (loongarch_builtins)-MATHQ_NUMS; i++)
     {
       d = &loongarch_builtins[i];
       if (d->avail ())
@@ -270,6 +310,63 @@ loongarch_init_builtins (void)
 	  loongarch_get_builtin_decl_index[d->icode] = i;
 	}
     }
+   /* Register the type long_double_type_node as a built-in type and
+     give it an alias "__float128".  */
+  (*lang_hooks.types.register_builtin_type) (long_double_type_node,
+					    "__float128");
+
+      type = build_function_type_list (long_double_type_node, NULL_TREE);
+      d = &loongarch_builtins[i];
+      loongarch_builtin_decls[i]
+	=add_builtin_function ("__builtin_huge_valq", type,
+			     i,	BUILT_IN_MD, NULL, NULL_TREE);
+      loongarch_get_builtin_decl_index[d->icode]=i++;
+
+      type = build_function_type_list (long_double_type_node, NULL_TREE);
+      d = &loongarch_builtins[i];
+      loongarch_builtin_decls[i]
+	=add_builtin_function ("__builtin_infq",  type,
+				i,  BUILT_IN_MD,  NULL,	NULL_TREE);
+      loongarch_get_builtin_decl_index[d->icode]=i++;
+
+      type = build_function_type_list (long_double_type_node,
+				       long_double_type_node,
+				       NULL_TREE);
+      d = &loongarch_builtins[i];
+      loongarch_builtin_decls[i]
+	=add_builtin_function ("__builtin_fabsq", type,
+			       i,  BUILT_IN_MD,  "__fabstf2",  NULL_TREE);
+      TREE_READONLY (loongarch_builtin_decls[i]) =1;
+      loongarch_get_builtin_decl_index[d->icode]=i++;
+
+      type = build_function_type_list (long_double_type_node,
+				       long_double_type_node,
+				       long_double_type_node,
+				       NULL_TREE);
+      d = &loongarch_builtins[i];
+      loongarch_builtin_decls[i]
+	=add_builtin_function ("__builtin_copysignq", type,
+			       i,  BUILT_IN_MD,  "__copysigntf3",  NULL_TREE);
+      TREE_READONLY (loongarch_builtin_decls[i]) =1;
+      loongarch_get_builtin_decl_index[d->icode]=i++;
+
+      type=build_function_type_list (long_double_type_node,
+				     const_string_type,
+				     NULL_TREE);
+      d = &loongarch_builtins[i];
+      loongarch_builtin_decls[i]
+	=add_builtin_function ("__builtin_nanq", type,
+			       i, BUILT_IN_MD,  "nanq", NULL_TREE);
+      TREE_READONLY (loongarch_builtin_decls[i]) =1;
+      loongarch_get_builtin_decl_index[d->icode]=i++;
+
+      d = &loongarch_builtins[i];
+      loongarch_builtin_decls[i]
+	=add_builtin_function ("__builtin_nansq", type,
+			       i, BUILT_IN_MD,  "nansq",  NULL_TREE);
+      TREE_READONLY (loongarch_builtin_decls[i]) =1;
+      loongarch_get_builtin_decl_index[d->icode]=i;
+
 }
 
 /* Implement TARGET_BUILTIN_DECL.  */
@@ -281,6 +378,42 @@ loongarch_builtin_decl (unsigned int code, bool initialize_p ATTRIBUTE_UNUSED)
     return error_mark_node;
   return loongarch_builtin_decls[code];
 }
+
+tree
+loongarch_fold_builtin (tree fndecl, int n_args ATTRIBUTE_UNUSED,
+			tree *args, bool ignore ATTRIBUTE_UNUSED)
+{
+  if (DECL_BUILT_IN_CLASS (fndecl) == BUILT_IN_MD)
+    {
+      enum loongarch_function_type fn_code
+	 = (enum loongarch_function_type) DECL_MD_FUNCTION_CODE (fndecl);
+      switch (fn_code)
+	{
+	  case LARCH_BUILTIN_NANQ:
+	  case LARCH_BUILTIN_NANSQ:
+	    {
+	      tree type = TREE_TYPE (TREE_TYPE (fndecl));
+	      const char *str = c_getstr (*args);
+	      int quiet = fn_code == LARCH_BUILTIN_NANQ;
+	      REAL_VALUE_TYPE real;
+
+	      if (str && real_nan (&real, str, quiet, TYPE_MODE (type)))
+		return build_real (type, real);
+	      return NULL_TREE;
+	    }
+
+	  default:
+	    break;
+	}
+      }
+
+#ifdef SUBTARGET_FOLD_BUILTIN
+  return SUBTARGET_FOLD_BUILTIN (fndecl, n_args, args, ignore);
+#endif
+
+  return NULL_TREE;
+}
+
 
 /* Take argument ARGNO from EXP's argument list and convert it into
    an expand operand.  Store the operand in *OP.  */
@@ -366,7 +499,28 @@ loongarch_expand_builtin (tree exp, rtx target, rtx subtarget ATTRIBUTE_UNUSED,
 
     case LARCH_BUILTIN_DIRECT_NO_TARGET:
       return loongarch_expand_builtin_direct (d->icode, target, exp, false);
-    }
+
+    case LARCH_BUILTIN_NNFCQ_DIRECT:
+      return expand_call ( exp ,target , ignore);
+
+    case LARCH_BUILTIN_HIQ_DIRECT:
+      {
+	machine_mode target_mode = TYPE_MODE (TREE_TYPE (exp));
+	REAL_VALUE_TYPE inf;
+	rtx tmp;
+
+	real_inf (&inf);
+	tmp = const_double_from_real_value (inf, target_mode);
+
+	tmp=validize_mem (force_const_mem (target_mode,tmp));
+
+	if (target ==0)
+	    target =gen_reg_rtx (target_mode);
+	emit_move_insn (target,tmp);
+
+	return target;
+      }
+  }
   gcc_unreachable ();
 }
 
