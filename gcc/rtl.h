@@ -1766,6 +1766,10 @@ extern const char * const reg_note_name[];
 #define VAR_LOC_UNKNOWN_P(X) \
   (GET_CODE (X) == CLOBBER && XEXP ((X), 0) == const0_rtx)
 
+/* Determine whether RTX is USE or CLOBBER.  */
+#define CLOBBER_OR_USE_P(RTX) \
+  (GET_CODE (RTX) == USE || GET_CODE (RTX) == CLOBBER)
+
 /* 1 if RTX is emitted after a call, but it should take effect before
    the call returns.  */
 #define NOTE_DURING_CALL_P(RTX)				\
