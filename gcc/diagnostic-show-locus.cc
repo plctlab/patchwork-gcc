@@ -998,7 +998,7 @@ compatible_locations_p (location_t loc_a, location_t loc_b)
 	 are in the same file.  */
       const line_map_ordinary *ord_map_a = linemap_check_ordinary (map_a);
       const line_map_ordinary *ord_map_b = linemap_check_ordinary (map_b);
-      return ord_map_a->to_file == ord_map_b->to_file;
+      return ORDINARY_MAPS_SAME_FILE_P (ord_map_a, ord_map_b);
     }
 }
 

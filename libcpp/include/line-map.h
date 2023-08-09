@@ -75,6 +75,8 @@ enum lc_reason
   LC_RENAME_VERBATIM,	/* Likewise, but "" != stdin.  */
   LC_ENTER_MACRO,	/* Begin macro expansion.  */
   LC_MODULE,		/* A (C++) Module.  */
+  LC_GEN,		/* Internally generated source.  */
+
   /* FIXME: add support for stringize and paste.  */
   LC_HWM /* High Water Mark.  */
 };
@@ -355,6 +357,16 @@ typedef void *(*line_map_realloc) (void *, size_t);
    for a given requested allocation.  */
 typedef size_t (*line_map_round_alloc_size_func) (size_t);
 
+/* Struct to hold the data + size for in-memory data to be stored in a
+   line_map_ordinary.  Because this is used rarely, it is better to
+   dynamically allocate this struct just when needed, rather than adding
+   overhead to every line_map to store the extra field.  */
+struct GTY(()) line_map_data
+{
+  const char * GTY((string_length ("%h.len"))) data;
+  unsigned int len;
+};
+
 /* A line_map encodes a sequence of locations.
    There are two kinds of maps. Ordinary maps and macro expansion
    maps, a.k.a macro maps.
@@ -437,9 +449,15 @@ struct GTY((tag ("1"))) line_map_ordinary : public line_map {
 
   /* Pointer alignment boundary on both 32 and 64-bit systems.  */
 
-  const char *to_file;
-  linenum_type to_line;
+  /* SRC is either the file name, in the typical case, or a pointer to
+     a line_map_data which shows where to find the actual data, for the
+     case of an LC_GEN map.  */
+  union {
+    const char * GTY((tag ("false"))) file;
+    line_map_data * GTY((tag ("true"))) data;
+  } GTY((desc ("ORDINARY_MAP_GENERATED_DATA_P (&%1)"))) src;
 
+  linenum_type to_line;
   /* Location from whence this line map was included.  For regular
      #includes, this location will be the last location of a map.  For
      outermost file, this is 0.  For modules it could be anywhere
@@ -565,6 +583,42 @@ struct GTY((tag ("2"))) line_map_macro : public line_map {
 #define linemap_assert_fails(EXPR) (! (EXPR))
 #endif
 
+/* A source_id represents a location that contains source code, which is usually
+   the name of a file.  But if the buffer length is non-zero, then it refers
+   instead to an in-memory buffer.  This is used so that diagnostics can refer
+   to generated data as well as to normal source code.  */
+
+class source_id
+{
+public:
+  /* This constructor is for the typical case, where the source code lives in
+     a file.  It is not explicit, because this case is by far the most common
+     one, it is worthwhile to allow implicit construction from a string.  */
+  source_id (const char *filename = nullptr)
+    : m_filename_or_buffer (filename),
+      m_len (0)
+  {}
+
+  /* This constructor is for the in-memory data case.  */
+  source_id (const char *buffer, unsigned buffer_len)
+    : m_filename_or_buffer (buffer),
+      m_len (buffer_len)
+  {
+    linemap_assert (buffer_len > 0);
+  }
+
+  explicit operator bool () const { return m_filename_or_buffer; }
+  const char * get_filename_or_buffer () const { return m_filename_or_buffer; }
+  unsigned get_buffer_len () const { return m_len; }
+  bool is_buffer () const { return m_len; }
+  bool operator== (source_id src) const;
+  bool operator!= (source_id src) const { return !(*this == src); }
+
+private:
+  const char *m_filename_or_buffer;
+  unsigned m_len;
+};
+
 /* Get whether location LOC is an ordinary location.  */
 
 inline bool
@@ -662,6 +716,12 @@ ORDINARY_MAP_IN_SYSTEM_HEADER_P (const line_map_ordinary *ord_map)
   return ord_map->sysp;
 }
 
+/* TRUE if this line map contains generated data.  */
+inline bool ORDINARY_MAP_GENERATED_DATA_P (const line_map_ordinary *ord_map)
+{
+  return ord_map->reason == LC_GEN;
+}
+
 /* TRUE if this line map is for a module (not a source file).  */
 
 inline bool
@@ -671,13 +731,45 @@ MAP_MODULE_P (const line_map *map)
 	  && linemap_check_ordinary (map)->reason == LC_MODULE);
 }
 
-/* Get the filename of ordinary map MAP.  */
+/* Get the data contents of ordinary map MAP.  */
 
 inline const char *
 ORDINARY_MAP_FILE_NAME (const line_map_ordinary *ord_map)
 {
-  return ord_map->to_file;
+  linemap_assert (ord_map->reason != LC_GEN);
+  return ord_map->src.file;
 }
+
+inline const char *
+ORDINARY_MAP_GENERATED_DATA (const line_map_ordinary *ord_map)
+{
+  linemap_assert (ord_map->reason == LC_GEN);
+  return ord_map->src.data->data;
+}
+
+inline unsigned int
+ORDINARY_MAP_GENERATED_DATA_LEN (const line_map_ordinary *ord_map)
+{
+  linemap_assert (ord_map->reason == LC_GEN);
+  return ord_map->src.data->len;
+}
+
+inline source_id ORDINARY_MAP_SOURCE_ID (const line_map_ordinary *ord_map)
+{
+  if (ORDINARY_MAP_GENERATED_DATA_P (ord_map))
+    return source_id {ord_map->src.data->data, ord_map->src.data->len};
+  return source_id {ord_map->src.file};
+}
+
+/* If we just want to know whether two maps point to the same
+   file/buffer or not.  */
+inline bool
+ORDINARY_MAPS_SAME_FILE_P (const line_map_ordinary *map1,
+			   const line_map_ordinary *map2)
+{
+  return ORDINARY_MAP_SOURCE_ID (map1) == ORDINARY_MAP_SOURCE_ID (map2);
+}
+
 
 /* Get the cpp macro whose expansion gave birth to macro map MAP.  */
 
@@ -1093,21 +1185,28 @@ extern location_t linemap_line_start
 extern line_map *line_map_new_raw (line_maps *, bool, unsigned);
 
 /* Add a mapping of logical source line to physical source file and
-   line number. This function creates an "ordinary map", which is a
+   line number.  This function creates an "ordinary map", which is a
    map that records locations of tokens that are not part of macro
    replacement-lists present at a macro expansion point.
 
-   The text pointed to by TO_FILE must have a lifetime
-   at least as long as the lifetime of SET.  An empty
-   TO_FILE means standard input.  If reason is LC_LEAVE, and
-   TO_FILE is NULL, then TO_FILE, TO_LINE and SYSP are given their
-   natural values considering the file we are returning to.
+   The text pointed to by FILENAME_OR_BUFFER must have a lifetime at least as
+   long as the lifetime of SET.  If reason is LC_LEAVE, and FILENAME_OR_BUFFER
+   is NULL, then FILENAME_OR_BUFFER, TO_LINE and SYSP are given their natural
+   values considering the file we are returning to.  If reason is LC_GEN, then
+   FILENAME_OR_BUFFER is the actual content, and DATA_LEN>0 is the length of it.
+   Otherwise FILENAME_OR_BUFFER is a file name and DATA_LEN is ignored.
 
-   A call to this function can relocate the previous set of
-   maps, so any stored line_map pointers should not be used.  */
+   If reason is LC_RENAME, and the map being renamed from is an LC_GEN map,
+   then FILENAME_OR_BUFFER may be NULL and will be copied from the source
+   map.
+
+   A call to this function can relocate the previous set of maps, so any stored
+   line_map pointers should not be used.  */
+
 extern const line_map *linemap_add
   (class line_maps *, enum lc_reason, unsigned int sysp,
-   const char *to_file, linenum_type to_line);
+   const char *filename_or_buffer, linenum_type to_line,
+   unsigned int data_len = 0);
 
 /* Create a macro map.  A macro map encodes source locations of tokens
    that are part of a macro replacement-list, at a macro expansion
@@ -1257,7 +1356,7 @@ linemap_position_for_loc_and_offset (class line_maps *set,
 inline const char *
 LINEMAP_FILE (const line_map_ordinary *ord_map)
 {
-  return ord_map->to_file;
+  return ORDINARY_MAP_FILE_NAME (ord_map);
 }
 
 /* Return the line number this map started encoding location from.  */
@@ -1276,6 +1375,13 @@ LINEMAP_SYSP (const line_map_ordinary *ord_map)
 {
   return ord_map->sysp;
 }
+
+/* For a normal ordinary map, this is the same as ORDINARY_MAP_FILE_NAME;
+   but for an LC_GEN map, it returns the file name from which the data
+   originated, instead of asserting.  */
+const char *
+ORDINARY_MAP_CONTAINING_FILE_NAME (line_maps *set,
+				   const line_map_ordinary *ord_map);
 
 const struct line_map *first_map_in_common (line_maps *set,
 					    location_t loc0,
@@ -2104,12 +2210,10 @@ struct linemap_stats
   long adhoc_table_entries_used;
 };
 
-/* Return the highest location emitted for a given file for which
-   there is a line map in SET.  FILE_NAME is the file name to
-   consider.  If the function returns TRUE, *LOC is set to the highest
-   location emitted for that file.  */
-bool linemap_get_file_highest_location (class line_maps * set,
-					const char *file_name,
+/* Return the highest location emitted for a given source ID for which there is
+   a line map in SET.  If the function returns TRUE, *LOC is set to the highest
+   location emitted for that source.  */
+bool linemap_get_file_highest_location (line_maps *set, source_id src,
 					location_t *loc);
 
 /* Compute and return statistics about the memory consumption of some
