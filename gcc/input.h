@@ -114,15 +114,21 @@ class char_span
   size_t m_n_elts;
 };
 
-extern char_span location_get_source_line (const char *file_path, int line);
+extern char_span location_get_source_line (source_id src, int line);
+inline char_span location_get_source_line (expanded_location exploc)
+{
+  return location_get_source_line (exploc.src, exploc.line);
+}
 extern char *get_source_text_between (location_t, location_t);
 extern char_span get_source_file_content (const char *file_path);
 
 extern bool location_missing_trailing_newline (const char *file_path);
 
-/* Forward decl of slot within file_cache, so that the definition doesn't
+/* Forward decl of slots within file_cache, so that the definition doesn't
    need to be in this header.  */
+class cache_data_source;
 class file_cache_slot;
+class data_cache_slot;
 
 /* A cache of source files for use when emitting diagnostics
    (and in a few places in the C/C++ frontends).
@@ -140,7 +146,10 @@ class file_cache
   ~file_cache ();
 
   file_cache_slot *lookup_or_add_file (const char *file_path);
+  data_cache_slot *lookup_or_add_data (const char *data, unsigned int data_len);
+  cache_data_source *lookup_or_add (source_id src);
   void forcibly_evict_file (const char *file_path);
+  void forcibly_evict_data (const char *data, unsigned int data_len);
 
   /* See comments in diagnostic.h about the input conversion context.  */
   struct input_context
@@ -152,13 +161,17 @@ class file_cache
 				 bool should_skip_bom);
 
  private:
-  file_cache_slot *evicted_cache_tab_entry (unsigned *highest_use_count);
-  file_cache_slot *add_file (const char *file_path);
-  file_cache_slot *lookup_file (const char *file_path);
+  template <class Slot>
+  Slot *evicted_cache_tab_entry (Slot *slots, unsigned int *highest_use_count);
 
- private:
+  file_cache_slot *add_file (const char *file_path);
+  data_cache_slot *add_data (const char *data, unsigned int data_len);
+  file_cache_slot *lookup_file (const char *file_path);
+  data_cache_slot *lookup_data (const char *data, unsigned int data_len);
+
   static const size_t num_file_slots = 16;
   file_cache_slot *m_file_slots;
+  data_cache_slot *m_data_slots;
   input_context in_context;
 };
 
@@ -256,6 +269,8 @@ void dump_location_info (FILE *stream);
 void diagnostics_file_cache_fini (void);
 
 void diagnostics_file_cache_forcibly_evict_file (const char *file_path);
+void diagnostics_file_cache_forcibly_evict_data (const char *data,
+						 unsigned int data_len);
 
 class GTY(()) string_concat
 {
