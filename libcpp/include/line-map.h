@@ -1410,18 +1410,22 @@ linemap_location_before_p (class line_maps *set,
 
 typedef struct
 {
-  /* The name of the source file involved.  */
-  const char *file;
+  /* The file name of the location involved, or NULL if the location
+     is not in an external file.  */
+  const char *file = nullptr;
+
+  /* A source_id recording the file name and/or the in-memory content,
+     as appropriate.  Users that need to handle in-memory content need
+     to use this rather than FILE.  */
+  source_id src;
 
   /* The line-location in the source file.  */
-  int line;
+  int line = 0;
+  int column = 0;
+  void *data = nullptr;
 
-  int column;
-
-  void *data;
-
-  /* In a system header?. */
-  bool sysp;
+  /* In a system header?  */
+  bool sysp = false;
 } expanded_location;
 
 class range_label;
@@ -2065,7 +2069,7 @@ class fixit_hint
 	      const char *new_content);
   ~fixit_hint () { free (m_bytes); }
 
-  bool affects_line_p (const char *file, int line) const;
+  bool affects_line_p (source_id src, int line) const;
   location_t get_start_loc () const { return m_start; }
   location_t get_next_loc () const { return m_next_loc; }
   bool maybe_append (location_t start,

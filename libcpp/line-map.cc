@@ -1905,8 +1905,6 @@ linemap_expand_location (line_maps *set,
 
 {
   expanded_location xloc;
-
-  memset (&xloc, 0, sizeof (xloc));
   if (IS_ADHOC_LOC (loc))
     {
       xloc.data = get_data_from_adhoc_loc (set, loc);
@@ -1932,8 +1930,9 @@ linemap_expand_location (line_maps *set,
 	abort ();
 
       const line_map_ordinary *ord_map = linemap_check_ordinary (map);
-
-      xloc.file = LINEMAP_FILE (ord_map);
+      xloc.src = ORDINARY_MAP_SOURCE_ID (ord_map);
+      if (!xloc.src.is_buffer ())
+	xloc.file = xloc.src.get_filename_or_buffer ();
       xloc.line = SOURCE_LINE (ord_map, loc);
       xloc.column = SOURCE_COLUMN (ord_map, loc);
       xloc.sysp = LINEMAP_SYSP (ord_map) != 0;
@@ -2534,7 +2533,7 @@ rich_location::maybe_add_fixit (location_t start,
     = linemap_client_expand_location_to_spelling_point (next_loc,
 							LOCATION_ASPECT_START);
   /* They must be within the same file...  */
-  if (exploc_start.file != exploc_next_loc.file)
+  if (exploc_start.src != exploc_next_loc.src)
     {
       stop_supporting_fixits ();
       return;
@@ -2619,19 +2618,19 @@ fixit_hint::fixit_hint (location_t start,
 /* Does this fix-it hint affect the given line?  */
 
 bool
-fixit_hint::affects_line_p (const char *file, int line) const
+fixit_hint::affects_line_p (source_id src, int line) const
 {
   expanded_location exploc_start
     = linemap_client_expand_location_to_spelling_point (m_start,
 							LOCATION_ASPECT_START);
-  if (file != exploc_start.file)
+  if (src != exploc_start.src)
     return false;
   if (line < exploc_start.line)
       return false;
   expanded_location exploc_next_loc
     = linemap_client_expand_location_to_spelling_point (m_next_loc,
 							LOCATION_ASPECT_START);
-  if (file != exploc_next_loc.file)
+  if (src != exploc_next_loc.src)
     return false;
   if (line > exploc_next_loc.line)
       return false;
