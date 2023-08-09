@@ -392,7 +392,7 @@ create_pre_exit (int n_entities, int *entity_map, const int *num_modes)
 			    && mode != targetm.mode_switching.exit (e))
 			  break;
 		      }
-		    if (j >= 0)
+		    if (j >= 0 && GET_CODE (return_copy_pat) != CLOBBER)
 		      {
 			/* __builtin_return emits a sequence of loads to all
 			   return registers.  One of them might require
