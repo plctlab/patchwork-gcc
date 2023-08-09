@@ -697,9 +697,9 @@ static cpp_char_column_policy def_policy ()
 }
 
 /* Create some expanded locations for testing layout_range.  The filename
-   member of the explocs is set to the empty string.  This member will only be
+   member of the explocs is set to NULL.  This member will only be
    inspected by the calls to location_compute_display_column() made from the
-   layout_point constructors.  That function will check for an empty filename
+   layout_point constructors.  That function will check for a NULL filename
    argument and not attempt to open it, rather treating the non-existent data
    as if the display width were the same as the byte count.  Tests exercising a
    real difference between byte count and display width are performed later,
@@ -708,10 +708,14 @@ static cpp_char_column_policy def_policy ()
 static layout_range
 make_range (int start_line, int start_col, int end_line, int end_col)
 {
-  const expanded_location start_exploc
-    = {"", start_line, start_col, NULL, false};
-  const expanded_location finish_exploc
-    = {"", end_line, end_col, NULL, false};
+  expanded_location start_exploc;
+  start_exploc.line = start_line;
+  start_exploc.column = start_col;
+
+  expanded_location finish_exploc;
+  finish_exploc.line = end_line;
+  finish_exploc.column = end_col;
+
   return layout_range (exploc_with_display_col (start_exploc, def_policy (),
 						LOCATION_ASPECT_START),
 		       exploc_with_display_col (finish_exploc, def_policy (),
@@ -1268,12 +1272,12 @@ layout::maybe_add_location_range (const location_range *loc_range,
 
   /* If any part of the range isn't in the same file as the primary
      location of this diagnostic, ignore the range.  */
-  if (start.file != m_exploc.file)
+  if (start.src != m_exploc.src)
     return false;
-  if (finish.file != m_exploc.file)
+  if (finish.src != m_exploc.src)
     return false;
   if (loc_range->m_range_display_kind == SHOW_RANGE_WITH_CARET)
-    if (caret.file != m_exploc.file)
+    if (caret.src != m_exploc.src)
       return false;
 
   /* Sanitize the caret location for non-primary ranges.  */
@@ -1437,9 +1441,9 @@ layout::get_expanded_location (const line_span *line_span) const
 bool
 layout::validate_fixit_hint_p (const fixit_hint *hint)
 {
-  if (LOCATION_FILE (hint->get_start_loc ()) != m_exploc.file)
+  if (LOCATION_SRC (hint->get_start_loc ()) != m_exploc.src)
     return false;
-  if (LOCATION_FILE (hint->get_next_loc ()) != m_exploc.file)
+  if (LOCATION_SRC (hint->get_next_loc ()) != m_exploc.src)
     return false;
 
   return true;
@@ -2102,7 +2106,7 @@ layout::print_leading_fixits (linenum_type row)
 
       gcc_assert (hint->insertion_p ());
 
-      if (hint->affects_line_p (m_exploc.file, row))
+      if (hint->affects_line_p (m_exploc.src, row))
 	{
 	  /* Printing the '+' with normal colorization
 	     and the inserted line with "insert" colorization
@@ -2554,7 +2558,7 @@ layout::print_trailing_fixits (linenum_type row)
       if (hint->ends_with_newline_p ())
 	continue;
 
-      if (hint->affects_line_p (m_exploc.file, row))
+      if (hint->affects_line_p (m_exploc.src, row))
 	corrections.add_hint (hint);
     }
 
