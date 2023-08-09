@@ -8,7 +8,8 @@ void
 f (void)
 {
   const char *str = outer(inner(1,2)); /* { dg-line str_location } */
-  /* { dg-warning "35:'pragma omp error' encountered: Test" "" { target *-*-* } inner_location }
+  /* { dg-warning "1:'pragma omp error' encountered: Test" "" { target *-*-* } 1 }
+     { dg-note "35: in <_Pragma directive>" "" { target *-*-* } inner_location }
      { dg-note "20:in expansion of macro 'inner'" "" { target *-*-* } outer_location }
      { dg-note "21:in expansion of macro 'outer'" "" { target *-*-* } str_location } */
 }
