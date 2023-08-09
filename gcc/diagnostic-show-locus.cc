@@ -1618,8 +1618,7 @@ layout::calculate_x_offset_display ()
       return;
     }
 
-  const char_span line = location_get_source_line (m_exploc.file,
-						   m_exploc.line);
+  const char_span line = location_get_source_line (m_exploc);
   if (!line)
     {
       /* Nothing to do, we couldn't find the source line.  */
@@ -2407,16 +2406,15 @@ class line_corrections
 {
 public:
   line_corrections (const char_display_policy &policy,
-		    const char *filename,
-		    linenum_type row)
-  : m_policy (policy), m_filename (filename), m_row (row)
+		    source_id src, linenum_type row)
+  : m_policy (policy), m_src (src), m_row (row)
   {}
   ~line_corrections ();
 
   void add_hint (const fixit_hint *hint);
 
   const char_display_policy &m_policy;
-  const char *m_filename;
+  source_id m_src;
   linenum_type m_row;
   auto_vec <correction *> m_corrections;
 };
@@ -2437,7 +2435,7 @@ line_corrections::~line_corrections ()
 class source_line
 {
 public:
-  source_line (const char *filename, int line);
+  source_line (source_id src, int line);
 
   char_span as_span () { return char_span (chars, width); }
 
@@ -2447,9 +2445,9 @@ public:
 
 /* source_line's ctor.  */
 
-source_line::source_line (const char *filename, int line)
+source_line::source_line (source_id src, int line)
 {
-  char_span span = location_get_source_line (filename, line);
+  char_span span = location_get_source_line (src, line);
   chars = span.get_buffer ();
   width = span.length ();
 }
@@ -2493,7 +2491,7 @@ line_corrections::add_hint (const fixit_hint *hint)
 				affected_bytes.start - 1);
 
 	  /* Try to read the source.  */
-	  source_line line (m_filename, m_row);
+	  source_line line (m_src, m_row);
 	  if (line.chars && between.finish < line.width)
 	    {
 	      /* Consolidate into the last correction:
@@ -2549,7 +2547,7 @@ layout::print_trailing_fixits (linenum_type row)
 {
   /* Build a list of correction instances for the line,
      potentially consolidating hints (for the sake of readability).  */
-  line_corrections corrections (m_policy, m_exploc.file, row);
+  line_corrections corrections (m_policy, m_exploc.src, row);
   for (unsigned int i = 0; i < m_fixit_hints.length (); i++)
     {
       const fixit_hint *hint = m_fixit_hints[i];
@@ -2787,7 +2785,7 @@ layout::show_ruler (int max_column) const
 void
 layout::print_line (linenum_type row)
 {
-  char_span line = location_get_source_line (m_exploc.file, row);
+  char_span line = location_get_source_line (m_exploc.src, row);
   if (!line)
     return;
 
@@ -2996,10 +2994,10 @@ test_layout_x_offset_display_utf8 (const line_table_case &case_)
      no multibyte characters earlier on the line.  */
   const int emoji_col = 102;
 
-  temp_source_file tmp (SELFTEST_LOCATION, ".c", content);
   line_table_test ltt (case_);
-
-  linemap_add (line_table, LC_ENTER, false, tmp.get_filename (), 1);
+  temp_source_file tmp (SELFTEST_LOCATION, ".c", content, 1 + line_bytes,
+			ltt.m_generated_data);
+  tmp.do_linemap_add (1);
 
   location_t line_end = linemap_position_for_column (line_table, line_bytes);
 
@@ -3007,17 +3005,23 @@ test_layout_x_offset_display_utf8 (const line_table_case &case_)
   if (line_end > LINE_MAP_MAX_LOCATION_WITH_COLS)
     return;
 
-  ASSERT_STREQ (tmp.get_filename (), LOCATION_FILE (line_end));
+  if (ltt.m_generated_data)
+    {
+      ASSERT_EQ (nullptr, tmp.get_filename ());
+      ASSERT_STREQ (special_fname_generated (), LOCATION_FILE (line_end));
+    }
+  else
+    ASSERT_STREQ (tmp.get_filename (), LOCATION_FILE (line_end));
   ASSERT_EQ (1, LOCATION_LINE (line_end));
   ASSERT_EQ (line_bytes, LOCATION_COLUMN (line_end));
 
-  char_span lspan = location_get_source_line (tmp.get_filename (), 1);
+  const expanded_location xloc = expand_location (line_end);
+  char_span lspan = location_get_source_line (xloc);
   ASSERT_EQ (line_display_cols,
 	     cpp_display_width (lspan.get_buffer (), lspan.length (),
 				def_policy ()));
   ASSERT_EQ (line_display_cols,
-	     location_compute_display_column (expand_location (line_end),
-					      def_policy ()));
+	     location_compute_display_column (xloc, def_policy ()));
   ASSERT_EQ (0, memcmp (lspan.get_buffer () + (emoji_col - 1),
 			"\xf0\x9f\x98\x82\xf0\x9f\x98\x82", 8));
 
@@ -3149,10 +3153,10 @@ test_layout_x_offset_display_tab (const line_table_case &case_)
      a space would have taken up.  */
   ASSERT_EQ (7, extra_width[10]);
 
-  temp_source_file tmp (SELFTEST_LOCATION, ".c", content);
   line_table_test ltt (case_);
-
-  linemap_add (line_table, LC_ENTER, false, tmp.get_filename (), 1);
+  temp_source_file tmp (SELFTEST_LOCATION, ".c", content, line_bytes + 1,
+			ltt.m_generated_data);
+  tmp.do_linemap_add (1);
 
   location_t line_end = linemap_position_for_column (line_table, line_bytes);
 
@@ -3161,7 +3165,8 @@ test_layout_x_offset_display_tab (const line_table_case &case_)
     return;
 
   /* Check that cpp_display_width handles the tabs as expected.  */
-  char_span lspan = location_get_source_line (tmp.get_filename (), 1);
+  const expanded_location xloc = expand_location (line_end);
+  char_span lspan = location_get_source_line (xloc);
   ASSERT_EQ ('\t', *(lspan.get_buffer () + (tab_col - 1)));
   for (int tabstop = 1; tabstop != num_tabstops; ++tabstop)
     {
@@ -3170,8 +3175,7 @@ test_layout_x_offset_display_tab (const line_table_case &case_)
 		 cpp_display_width (lspan.get_buffer (), lspan.length (),
 				    policy));
       ASSERT_EQ (line_bytes + extra_width[tabstop],
-		 location_compute_display_column (expand_location (line_end),
-						  policy));
+		 location_compute_display_column (xloc, policy));
     }
 
   /* Check that the tab is expanded to the expected number of spaces.  */
@@ -3795,10 +3799,10 @@ test_diagnostic_show_locus_one_liner (const line_table_case &case_)
      ....................0000000001111111.
      ....................1234567890123456.  */
   const char *content = "foo = bar.field;\n";
-  temp_source_file tmp (SELFTEST_LOCATION, ".c", content);
   line_table_test ltt (case_);
-
-  linemap_add (line_table, LC_ENTER, false, tmp.get_filename (), 1);
+  temp_source_file tmp (SELFTEST_LOCATION, ".c", content, strlen (content),
+			ltt.m_generated_data);
+  tmp.do_linemap_add (1);
 
   location_t line_end = linemap_position_for_column (line_table, 16);
 
@@ -3806,7 +3810,14 @@ test_diagnostic_show_locus_one_liner (const line_table_case &case_)
   if (line_end > LINE_MAP_MAX_LOCATION_WITH_COLS)
     return;
 
-  ASSERT_STREQ (tmp.get_filename (), LOCATION_FILE (line_end));
+  if (ltt.m_generated_data)
+    {
+      ASSERT_EQ (nullptr, tmp.get_filename ());
+      ASSERT_STREQ (special_fname_generated (), LOCATION_FILE (line_end));
+    }
+  else
+    ASSERT_STREQ (tmp.get_filename (), LOCATION_FILE (line_end));
+
   ASSERT_EQ (1, LOCATION_LINE (line_end));
   ASSERT_EQ (16, LOCATION_COLUMN (line_end));
 
@@ -4377,10 +4388,10 @@ test_diagnostic_show_locus_one_liner_utf8 (const line_table_case &case_)
     /* 0000000000000000000001111111111111111111222222222222222222222233333
        1111222233334444567890122223333456789999000011112222345678999900001
        Byte columns.  */
-  temp_source_file tmp (SELFTEST_LOCATION, ".c", content);
   line_table_test ltt (case_);
-
-  linemap_add (line_table, LC_ENTER, false, tmp.get_filename (), 1);
+  temp_source_file tmp (SELFTEST_LOCATION, ".c", content, strlen (content),
+			ltt.m_generated_data);
+  tmp.do_linemap_add (1);
 
   location_t line_end = linemap_position_for_column (line_table, 31);
 
@@ -4388,11 +4399,18 @@ test_diagnostic_show_locus_one_liner_utf8 (const line_table_case &case_)
   if (line_end > LINE_MAP_MAX_LOCATION_WITH_COLS)
     return;
 
-  ASSERT_STREQ (tmp.get_filename (), LOCATION_FILE (line_end));
+  if (ltt.m_generated_data)
+    {
+      ASSERT_EQ (nullptr, tmp.get_filename ());
+      ASSERT_STREQ (special_fname_generated (), LOCATION_FILE (line_end));
+    }
+  else
+    ASSERT_STREQ (tmp.get_filename (), LOCATION_FILE (line_end));
+
   ASSERT_EQ (1, LOCATION_LINE (line_end));
   ASSERT_EQ (31, LOCATION_COLUMN (line_end));
 
-  char_span lspan = location_get_source_line (tmp.get_filename (), 1);
+  char_span lspan = location_get_source_line (expand_location (line_end));
   ASSERT_EQ (25, cpp_display_width (lspan.get_buffer (), lspan.length (),
 				    def_policy ()));
   ASSERT_EQ (25, location_compute_display_column (expand_location (line_end),
@@ -4429,12 +4447,10 @@ test_add_location_if_nearby (const line_table_case &case_)
        "  double x;\n"                              /* line 4.  */
        "  double y;\n"                              /* line 5.  */
        ";\n");                                      /* line 6.  */
-  temp_source_file tmp (SELFTEST_LOCATION, ".c", content);
   line_table_test ltt (case_);
-
-  const line_map_ordinary *ord_map
-    = linemap_check_ordinary (linemap_add (line_table, LC_ENTER, false,
-					   tmp.get_filename (), 0));
+  temp_source_file tmp (SELFTEST_LOCATION, ".c", content, strlen (content),
+			ltt.m_generated_data);
+  const line_map_ordinary *ord_map = tmp.do_linemap_add (0);
 
   linemap_line_start (line_table, 1, 100);
 
@@ -4493,12 +4509,10 @@ test_diagnostic_show_locus_fixit_lines (const line_table_case &case_)
        "\n"                                      /* line 4.  */
        "\n"                                      /* line 5.  */
        "                        : 0.0};\n");     /* line 6.  */
-  temp_source_file tmp (SELFTEST_LOCATION, ".c", content);
   line_table_test ltt (case_);
-
-  const line_map_ordinary *ord_map
-    = linemap_check_ordinary (linemap_add (line_table, LC_ENTER, false,
-					   tmp.get_filename (), 0));
+  temp_source_file tmp (SELFTEST_LOCATION, ".c", content, strlen (content),
+			ltt.m_generated_data);
+  const line_map_ordinary *ord_map = tmp.do_linemap_add (0);
 
   linemap_line_start (line_table, 1, 100);
 
@@ -4589,8 +4603,10 @@ static void
 test_fixit_consolidation (const line_table_case &case_)
 {
   line_table_test ltt (case_);
-
-  linemap_add (line_table, LC_ENTER, false, "test.c", 1);
+  if (ltt.m_generated_data)
+    linemap_add (line_table, LC_GEN, false, "some content", 1, 13);
+  else
+    linemap_add (line_table, LC_ENTER, false, "test.c", 1);
 
   const location_t c10 = linemap_position_for_column (line_table, 10);
   const location_t c15 = linemap_position_for_column (line_table, 15);
@@ -4736,13 +4752,11 @@ test_overlapped_fixit_printing (const line_table_case &case_)
      ...123456789012345678901234567890123456789.  */
   const char *content
     = ("  foo *f = (foo *)ptr->field;\n");
-  temp_source_file tmp (SELFTEST_LOCATION, ".C", content);
   line_table_test ltt (case_);
+  temp_source_file tmp (SELFTEST_LOCATION, ".C", content, strlen (content),
+			ltt.m_generated_data);
 
-  const line_map_ordinary *ord_map
-    = linemap_check_ordinary (linemap_add (line_table, LC_ENTER, false,
-					   tmp.get_filename (), 0));
-
+  const line_map_ordinary *ord_map = tmp.do_linemap_add (0);
   linemap_line_start (line_table, 1, 100);
 
   const location_t final_line_end
@@ -4762,6 +4776,8 @@ test_overlapped_fixit_printing (const line_table_case &case_)
   const location_t expr_finish
     = linemap_position_for_line_and_column (line_table, ord_map, 1, 28);
   const location_t expr = make_location (expr_start, expr_start, expr_finish);
+
+  const expanded_location xloc = expand_location (expr);
 
   /* Various examples of fix-it hints that aren't themselves consolidated,
      but for which the *printing* may need consolidation.  */
@@ -4806,7 +4822,7 @@ test_overlapped_fixit_printing (const line_table_case &case_)
     /* Add each hint in turn to a line_corrections instance,
        and verify that they are consolidated into one correction instance
        as expected.  */
-    line_corrections lc (policy, tmp.get_filename (), 1);
+    line_corrections lc (policy, xloc.src, xloc.line);
 
     /* The first replace hint by itself.  */
     lc.add_hint (hint_0);
@@ -4947,13 +4963,10 @@ test_overlapped_fixit_printing_utf8 (const line_table_case &case_)
        12344445555666677778901234566667777888899990123456789012333344445
        Byte columns.  */
 
-  temp_source_file tmp (SELFTEST_LOCATION, ".C", content);
   line_table_test ltt (case_);
-
-  const line_map_ordinary *ord_map
-    = linemap_check_ordinary (linemap_add (line_table, LC_ENTER, false,
-					   tmp.get_filename (), 0));
-
+  temp_source_file tmp (SELFTEST_LOCATION, ".C", content, strlen (content),
+			ltt.m_generated_data);
+  const line_map_ordinary *ord_map = tmp.do_linemap_add (0);
   linemap_line_start (line_table, 1, 100);
 
   const location_t final_line_end
@@ -4973,6 +4986,8 @@ test_overlapped_fixit_printing_utf8 (const line_table_case &case_)
   const location_t expr_finish
     = linemap_position_for_line_and_column (line_table, ord_map, 1, 34);
   const location_t expr = make_location (expr_start, expr_start, expr_finish);
+
+  const expanded_location xloc = expand_location (expr);
 
   /* Various examples of fix-it hints that aren't themselves consolidated,
      but for which the *printing* may need consolidation.  */
@@ -5022,7 +5037,7 @@ test_overlapped_fixit_printing_utf8 (const line_table_case &case_)
     /* Add each hint in turn to a line_corrections instance,
        and verify that they are consolidated into one correction instance
        as expected.  */
-    line_corrections lc (policy, tmp.get_filename (), 1);
+    line_corrections lc (policy, xloc.src, xloc.line);
 
     /* The first replace hint by itself.  */
     lc.add_hint (hint_0);
@@ -5180,13 +5195,11 @@ test_overlapped_fixit_printing_2 (const line_table_case &case_)
      ...123456789012345678901234567890123456789.  */
   const char *content
     = ("int a5[][0][0] = { 1, 2 };\n");
-  temp_source_file tmp (SELFTEST_LOCATION, ".c", content);
+
   line_table_test ltt (case_);
-
-  const line_map_ordinary *ord_map
-    = linemap_check_ordinary (linemap_add (line_table, LC_ENTER, false,
-					   tmp.get_filename (), 0));
-
+  temp_source_file tmp (SELFTEST_LOCATION, ".c", content, strlen (content),
+			ltt.m_generated_data);
+  const line_map_ordinary *ord_map = tmp.do_linemap_add (0);
   linemap_line_start (line_table, 1, 100);
 
   const location_t final_line_end
@@ -5271,10 +5284,10 @@ test_fixit_insert_containing_newline (const line_table_case &case_)
 			     "      x = a;\n"  /* line 2. */
 			     "    case 'b':\n" /* line 3. */
 			     "      x = b;\n");/* line 4. */
-
-  temp_source_file tmp (SELFTEST_LOCATION, ".c", old_content);
   line_table_test ltt (case_);
-  linemap_add (line_table, LC_ENTER, false, tmp.get_filename (), 3);
+  temp_source_file tmp (SELFTEST_LOCATION, ".c", old_content,
+			strlen (old_content), false);
+  tmp.do_linemap_add (3);
 
   location_t case_start = linemap_position_for_column (line_table, 5);
   location_t case_finish = linemap_position_for_column (line_table, 13);
@@ -5342,12 +5355,11 @@ test_fixit_insert_containing_newline_2 (const line_table_case &case_)
 			     "{\n"              /* line 2. */
 			     " putchar (ch);\n" /* line 3. */
 			     "}\n");            /* line 4. */
-
-  temp_source_file tmp (SELFTEST_LOCATION, ".c", old_content);
   line_table_test ltt (case_);
+  temp_source_file tmp (SELFTEST_LOCATION, ".c", old_content,
+			strlen (old_content), ltt.m_generated_data);
 
-  const line_map_ordinary *ord_map = linemap_check_ordinary
-    (linemap_add (line_table, LC_ENTER, false, tmp.get_filename (), 0));
+  const line_map_ordinary *ord_map = tmp.do_linemap_add (0);
   linemap_line_start (line_table, 1, 100);
 
   /* The primary range is the "putchar" token.  */
@@ -5406,9 +5418,10 @@ test_fixit_replace_containing_newline (const line_table_case &case_)
     .........................1234567890123.  */
   const char *old_content = "foo = bar ();\n";
 
-  temp_source_file tmp (SELFTEST_LOCATION, ".c", old_content);
   line_table_test ltt (case_);
-  linemap_add (line_table, LC_ENTER, false, tmp.get_filename (), 1);
+  temp_source_file tmp (SELFTEST_LOCATION, ".c", old_content,
+			strlen (old_content), ltt.m_generated_data);
+  tmp.do_linemap_add (1);
 
   /* Replace the " = " with "\n  = ", as if we were reformatting an
      overly long line.  */
@@ -5446,10 +5459,10 @@ test_fixit_deletion_affecting_newline (const line_table_case &case_)
   const char *old_content = ("foo = bar (\n"
 			     "      );\n");
 
-  temp_source_file tmp (SELFTEST_LOCATION, ".c", old_content);
   line_table_test ltt (case_);
-  const line_map_ordinary *ord_map = linemap_check_ordinary
-    (linemap_add (line_table, LC_ENTER, false, tmp.get_filename (), 0));
+  temp_source_file tmp (SELFTEST_LOCATION, ".c", old_content,
+			strlen (old_content), ltt.m_generated_data);
+  const line_map_ordinary *ord_map = tmp.do_linemap_add (0);
   linemap_line_start (line_table, 1, 100);
 
   /* Attempt to delete the " (\n...)".  */
@@ -5498,9 +5511,10 @@ test_tab_expansion (const line_table_case &case_)
   const int last_byte_col = 25;
   ASSERT_EQ (35, cpp_display_width (content, last_byte_col, policy));
 
-  temp_source_file tmp (SELFTEST_LOCATION, ".c", content);
   line_table_test ltt (case_);
-  linemap_add (line_table, LC_ENTER, false, tmp.get_filename (), 1);
+  temp_source_file tmp (SELFTEST_LOCATION, ".c", content, strlen (content),
+			ltt.m_generated_data);
+  tmp.do_linemap_add (1);
 
   /* Don't attempt to run the tests if column data might be unavailable.  */
   location_t line_end = linemap_position_for_column (line_table, last_byte_col);
@@ -5547,15 +5561,14 @@ test_escaping_bytes_1 (const line_table_case &case_)
 {
   const char content[] = "before\0\1\2\3\v\x80\xff""after\n";
   const size_t sz = sizeof (content);
-  temp_source_file tmp (SELFTEST_LOCATION, ".c", content, sz);
   line_table_test ltt (case_);
-  const line_map_ordinary *ord_map = linemap_check_ordinary
-    (linemap_add (line_table, LC_ENTER, false, tmp.get_filename (), 0));
+  temp_source_file tmp (SELFTEST_LOCATION, ".c", content, sz,
+			ltt.m_generated_data);
+  const line_map_ordinary *ord_map = tmp.do_linemap_add (0);
   linemap_line_start (line_table, 1, 100);
 
   location_t finish
-    = linemap_position_for_line_and_column (line_table, ord_map, 1,
-					    strlen (content));
+    = linemap_position_for_line_and_column (line_table, ord_map, 1, sz);
 
   if (finish > LINE_MAP_MAX_LOCATION_WITH_COLS)
     return;
@@ -5603,15 +5616,14 @@ test_escaping_bytes_2 (const line_table_case &case_)
 {
   const char content[]  = "\0after\n";
   const size_t sz = sizeof (content);
-  temp_source_file tmp (SELFTEST_LOCATION, ".c", content, sz);
   line_table_test ltt (case_);
-  const line_map_ordinary *ord_map = linemap_check_ordinary
-    (linemap_add (line_table, LC_ENTER, false, tmp.get_filename (), 0));
+  temp_source_file tmp (SELFTEST_LOCATION, ".c", content, sz,
+			ltt.m_generated_data);
+  const line_map_ordinary *ord_map = tmp.do_linemap_add (0);
   linemap_line_start (line_table, 1, 100);
 
   location_t finish
-    = linemap_position_for_line_and_column (line_table, ord_map, 1,
-					    strlen (content));
+    = linemap_position_for_line_and_column (line_table, ord_map, 1, sz);
 
   if (finish > LINE_MAP_MAX_LOCATION_WITH_COLS)
     return;
@@ -5663,8 +5675,7 @@ test_line_numbers_multiline_range ()
   temp_source_file tmp (SELFTEST_LOCATION, ".txt", pp_formatted_text (&pp));
   line_table_test ltt;
 
-  const line_map_ordinary *ord_map = linemap_check_ordinary
-    (linemap_add (line_table, LC_ENTER, false, tmp.get_filename (), 0));
+  const line_map_ordinary *ord_map = tmp.do_linemap_add (0);
   linemap_line_start (line_table, 1, 100);
 
   /* Create a multi-line location, starting at the "line" of line 9, with
@@ -5705,28 +5716,28 @@ diagnostic_show_locus_cc_tests ()
 
   test_display_widths ();
 
-  for_each_line_table_case (test_layout_x_offset_display_utf8);
-  for_each_line_table_case (test_layout_x_offset_display_tab);
+  for_each_line_table_case (test_layout_x_offset_display_utf8, true);
+  for_each_line_table_case (test_layout_x_offset_display_tab, true);
 
   test_get_line_bytes_without_trailing_whitespace ();
 
   test_diagnostic_show_locus_unknown_location ();
 
-  for_each_line_table_case (test_diagnostic_show_locus_one_liner);
-  for_each_line_table_case (test_diagnostic_show_locus_one_liner_utf8);
-  for_each_line_table_case (test_add_location_if_nearby);
-  for_each_line_table_case (test_diagnostic_show_locus_fixit_lines);
-  for_each_line_table_case (test_fixit_consolidation);
-  for_each_line_table_case (test_overlapped_fixit_printing);
-  for_each_line_table_case (test_overlapped_fixit_printing_utf8);
-  for_each_line_table_case (test_overlapped_fixit_printing_2);
-  for_each_line_table_case (test_fixit_insert_containing_newline);
-  for_each_line_table_case (test_fixit_insert_containing_newline_2);
-  for_each_line_table_case (test_fixit_replace_containing_newline);
-  for_each_line_table_case (test_fixit_deletion_affecting_newline);
-  for_each_line_table_case (test_tab_expansion);
-  for_each_line_table_case (test_escaping_bytes_1);
-  for_each_line_table_case (test_escaping_bytes_2);
+  for_each_line_table_case (test_diagnostic_show_locus_one_liner, true);
+  for_each_line_table_case (test_diagnostic_show_locus_one_liner_utf8, true);
+  for_each_line_table_case (test_add_location_if_nearby, true);
+  for_each_line_table_case (test_diagnostic_show_locus_fixit_lines, true);
+  for_each_line_table_case (test_fixit_consolidation, true);
+  for_each_line_table_case (test_overlapped_fixit_printing, true);
+  for_each_line_table_case (test_overlapped_fixit_printing_utf8, true);
+  for_each_line_table_case (test_overlapped_fixit_printing_2, true);
+  for_each_line_table_case (test_fixit_insert_containing_newline, true);
+  for_each_line_table_case (test_fixit_insert_containing_newline_2, true);
+  for_each_line_table_case (test_fixit_replace_containing_newline, true);
+  for_each_line_table_case (test_fixit_deletion_affecting_newline, true);
+  for_each_line_table_case (test_tab_expansion, true);
+  for_each_line_table_case (test_escaping_bytes_1, true);
+  for_each_line_table_case (test_escaping_bytes_2, true);
 
   test_line_numbers_multiline_range ();
 }

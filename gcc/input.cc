@@ -1048,7 +1048,7 @@ get_source_text_between (location_t start, location_t end)
   /* For a single line we need to trim both edges.  */
   if (expstart.line == expend.line)
     {
-      char_span line = location_get_source_line (expstart.file, expstart.line);
+      char_span line = location_get_source_line (expstart);
       if (line.length () < 1)
 	return NULL;
       int s = expstart.column - 1;
@@ -1065,7 +1065,7 @@ get_source_text_between (location_t start, location_t end)
      parts of the start and end lines off depending on column values.  */
   for (int lnum = expstart.line; lnum <= expend.line; ++lnum)
     {
-      char_span line = location_get_source_line (expstart.file, lnum);
+      char_span line = location_get_source_line (expstart.src, lnum);
       if (line.length () < 1 && (lnum != expstart.line && lnum != expend.line))
 	continue;
 
@@ -1114,11 +1114,10 @@ get_source_text_between (location_t start, location_t end)
    as decoded according to the input charset, encoded as UTF-8.  */
 
 char_span
-get_source_file_content (const char *file_path)
+get_source_file_content (source_id src)
 {
   diagnostic_file_cache_init ();
-
-  file_cache_slot *c = global_dc->m_file_cache->lookup_or_add_file (file_path);
+  const auto c = global_dc->m_file_cache->lookup_or_add (src);
   return c->get_full_file_content ();
 }
 
@@ -1127,15 +1126,11 @@ get_source_file_content (const char *file_path)
    requesting a line number beyond the end of the file.  */
 
 bool
-location_missing_trailing_newline (const char *file_path)
+location_missing_trailing_newline (source_id src)
 {
   diagnostic_file_cache_init ();
-
-  file_cache_slot *c = global_dc->m_file_cache->lookup_or_add_file (file_path);
-  if (c == NULL)
-    return false;
-
-  return c->missing_trailing_newline_p ();
+  const auto c = global_dc->m_file_cache->lookup_or_add (src);
+  return c && c->missing_trailing_newline_p ();
 }
 
 /* Test if the location originates from the spelling location of a
@@ -1850,7 +1845,7 @@ get_substring_ranges_for_loc (cpp_reader *pfile,
       if (start.column > finish.column)
 	return "range endpoints are reversed";
 
-      char_span line = location_get_source_line (start.file, start.line);
+      char_span line = location_get_source_line (start);
       if (!line)
 	return "unable to read source line";
 
