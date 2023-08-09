@@ -295,7 +295,7 @@ edit_context::apply_fixit (const fixit_hint *hint)
 {
   expanded_location start = expand_location (hint->get_start_loc ());
   expanded_location next_loc = expand_location (hint->get_next_loc ());
-  if (start.file != next_loc.file)
+  if (start.src != next_loc.src || start.src.is_buffer ())
     return false;
   if (start.line != next_loc.line)
     return false;
