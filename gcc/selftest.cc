@@ -163,14 +163,21 @@ assert_str_startswith (const location &loc,
 
 named_temp_file::named_temp_file (const char *suffix)
 {
-  m_filename = make_temp_file (suffix);
-  ASSERT_NE (m_filename, NULL);
+  if (suffix)
+    {
+      m_filename = make_temp_file (suffix);
+      ASSERT_NE (m_filename, NULL);
+    }
+  else
+    m_filename = nullptr;
 }
 
 /* Destructor.  Delete the tempfile.  */
 
 named_temp_file::~named_temp_file ()
 {
+  if (!m_filename)
+    return;
   unlink (m_filename);
   diagnostics_file_cache_forcibly_evict_file (m_filename);
   free (m_filename);
@@ -183,7 +190,9 @@ named_temp_file::~named_temp_file ()
 temp_source_file::temp_source_file (const location &loc,
 				    const char *suffix,
 				    const char *content)
-: named_temp_file (suffix)
+: named_temp_file (suffix),
+  content_buf (nullptr),
+  content_len (0)
 {
   FILE *out = fopen (get_filename (), "w");
   if (!out)
@@ -192,19 +201,41 @@ temp_source_file::temp_source_file (const location &loc,
   fclose (out);
 }
 
-/* As above, but with a size, to allow for NUL bytes in CONTENT.  */
+/* As above, but with a size, to allow for NUL bytes in CONTENT.  When
+   IS_GENERATED==true, the data is kept in memory instead, for testing LC_GEN
+   maps.  */
 
 temp_source_file::temp_source_file (const location &loc,
 				    const char *suffix,
 				    const char *content,
-				    size_t sz)
-: named_temp_file (suffix)
+				    size_t sz,
+				    bool is_generated)
+: named_temp_file (is_generated ? nullptr : suffix),
+  content_buf (is_generated ? XNEWVEC (char, sz) : nullptr),
+  content_len (is_generated ? sz : 0)
 {
-  FILE *out = fopen (get_filename (), "w");
-  if (!out)
-    fail_formatted (loc, "unable to open tempfile: %s", get_filename ());
-  fwrite (content, sz, 1, out);
-  fclose (out);
+  if (is_generated)
+    {
+      gcc_assert (sz); /* Empty generated content is not supported.  */
+      memcpy (content_buf, content, sz);
+    }
+  else
+    {
+      FILE *out = fopen (get_filename (), "w");
+      if (!out)
+	fail_formatted (loc, "unable to open tempfile: %s", get_filename ());
+      fwrite (content, sz, 1, out);
+      fclose (out);
+    }
+}
+
+temp_source_file::~temp_source_file ()
+{
+  if (content_buf)
+    {
+      diagnostics_file_cache_forcibly_evict_data (content_buf, content_len);
+      XDELETEVEC (content_buf);
+    }
 }
 
 /* Avoid introducing locale-specific differences in the results
