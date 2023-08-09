@@ -207,6 +207,28 @@ private:
   void maybe_grow ();
 };
 
+/* This is the implementation of cache_data_source for generated
+   data that is already in memory.  */
+class data_cache_slot final : public cache_data_source
+{
+public:
+  void create (const char *data, unsigned int data_len,
+	       unsigned int highest_use_count);
+  bool represents_data (const char *data, unsigned int) const
+  {
+    /* We can just use pointer equality here since the generated data lives in
+       memory in one persistent place.  It isn't anticipated there would be
+       several generated data buffers with the same content, so we don't mind
+       that in such a case we will store it twice.  */
+    return m_data_begin == data;
+  }
+
+protected:
+  /* In contrast to file_cache_slot, we do not own a buffer.  The buffer
+     passed to create() needs to outlive this object.  */
+  bool get_more_data () override { return false; }
+};
+
 /* Current position in real source file.  */
 
 location_t input_location = UNKNOWN_LOCATION;
@@ -382,6 +404,21 @@ file_cache::lookup_file (const char *file_path)
   return r;
 }
 
+data_cache_slot *
+file_cache::lookup_data (const char *data, unsigned int data_len)
+{
+  for (unsigned int i = 0; i != num_file_slots; ++i)
+    {
+      const auto slot = m_data_slots + i;
+      if (slot->represents_data (data, data_len))
+	{
+	  slot->inc_use_count ();
+	  return slot;
+	}
+    }
+  return nullptr;
+}
+
 /* Purge any mention of FILENAME from the cache of files used for
    printing source code.  For use in selftests when working
    with tempfiles.  */
@@ -398,6 +435,15 @@ diagnostics_file_cache_forcibly_evict_file (const char *file_path)
 }
 
 void
+diagnostics_file_cache_forcibly_evict_data (const char *data,
+					    unsigned int data_len)
+{
+  if (!global_dc->m_file_cache)
+    return;
+  global_dc->m_file_cache->forcibly_evict_data (data, data_len);
+}
+
+void
 file_cache::forcibly_evict_file (const char *file_path)
 {
   gcc_assert (file_path);
@@ -410,36 +456,36 @@ file_cache::forcibly_evict_file (const char *file_path)
   r->reset ();
 }
 
+void
+file_cache::forcibly_evict_data (const char *data, unsigned int data_len)
+{
+  if (auto r = lookup_data (data, data_len))
+    r->reset ();
+}
+
 /* Return the cache that has been less used, recently, or the
    first empty one.  If HIGHEST_USE_COUNT is non-null,
    *HIGHEST_USE_COUNT is set to the highest use count of the entries
    in the cache table.  */
 
-file_cache_slot*
-file_cache::evicted_cache_tab_entry (unsigned *highest_use_count)
+template <class Slot>
+Slot *
+file_cache::evicted_cache_tab_entry (Slot *slots,
+				     unsigned int *highest_use_count)
 {
-  diagnostic_file_cache_init ();
-
-  file_cache_slot *to_evict = &m_file_slots[0];
+  auto to_evict = &slots[0];
   unsigned huc = to_evict->get_use_count ();
   for (unsigned i = 1; i < num_file_slots; ++i)
     {
-      file_cache_slot *c = &m_file_slots[i];
-      bool c_is_empty = (c->get_file_path () == NULL);
-
+      auto c = &slots[i];
       if (c->get_use_count () < to_evict->get_use_count ()
-	  || (to_evict->get_file_path () && c_is_empty))
+	  || (!to_evict->unused () && c->unused ()))
 	/* We evict C because it's either an entry with a lower use
 	   count or one that is empty.  */
 	to_evict = c;
 
       if (huc < c->get_use_count ())
 	huc = c->get_use_count ();
-
-      if (c_is_empty)
-	/* We've reached the end of the cache; subsequent elements are
-	   all empty.  */
-	break;
     }
 
   if (highest_use_count)
@@ -463,9 +509,20 @@ file_cache::add_file (const char *file_path)
     return NULL;
 
   unsigned highest_use_count = 0;
-  file_cache_slot *r = evicted_cache_tab_entry (&highest_use_count);
+  file_cache_slot *r = evicted_cache_tab_entry (m_file_slots,
+						&highest_use_count);
   if (!r->create (in_context, file_path, fp, highest_use_count))
     return NULL;
+  return r;
+}
+
+data_cache_slot *
+file_cache::add_data (const char *data, unsigned int data_len)
+{
+  unsigned int highest_use_count = 0;
+  data_cache_slot *r = evicted_cache_tab_entry (m_data_slots,
+						&highest_use_count);
+  r->create (data, data_len, highest_use_count);
   return r;
 }
 
@@ -525,10 +582,22 @@ file_cache_slot::create (const file_cache::input_context &in_context,
   return true;
 }
 
+void
+data_cache_slot::create (const char *data, unsigned int data_len,
+			 unsigned int highest_use_count)
+{
+  reset ();
+  on_create (highest_use_count + 1,
+	     total_lines_num (source_id {data, data_len}));
+  m_data_begin = data;
+  m_data_end = data + data_len;
+}
+
 /* file_cache's ctor.  */
 
 file_cache::file_cache ()
-: m_file_slots (new file_cache_slot[num_file_slots])
+  : m_file_slots (new file_cache_slot[num_file_slots]),
+    m_data_slots (new data_cache_slot[num_file_slots])
 {
   initialize_input_context (nullptr, false);
 }
@@ -537,6 +606,7 @@ file_cache::file_cache ()
 
 file_cache::~file_cache ()
 {
+  delete[] m_data_slots;
   delete[] m_file_slots;
 }
 
@@ -552,6 +622,24 @@ file_cache::lookup_or_add_file (const char *file_path)
   if (r == NULL)
     r = add_file (file_path);
   return r;
+}
+
+data_cache_slot *
+file_cache::lookup_or_add_data (const char *data, unsigned int data_len)
+{
+  data_cache_slot *r = lookup_data (data, data_len);
+  if (!r)
+    r = add_data (data, data_len);
+  return r;
+}
+
+cache_data_source *
+file_cache::lookup_or_add (source_id src)
+{
+  if (src.is_buffer ())
+    return lookup_or_add_data (src.get_filename_or_buffer (),
+			       src.get_buffer_len ());
+  return src ? lookup_or_add_file (src.get_filename_or_buffer ()) : nullptr;
 }
 
 cache_data_source::cache_data_source ()
@@ -912,26 +1000,22 @@ cache_data_source::read_line_num (size_t line_num,
    If the function fails, a NULL char_span is returned.  */
 
 char_span
-location_get_source_line (const char *file_path, int line)
+location_get_source_line (source_id src, int line)
 {
-  const char *buffer = NULL;
-  ssize_t len;
-
-  if (line == 0)
-    return char_span (NULL, 0);
-
-  if (file_path == NULL)
-    return char_span (NULL, 0);
+  const char_span fail (nullptr, 0);
+  if (!src || line <= 0)
+    return fail;
 
   diagnostic_file_cache_init ();
+  const auto c = global_dc->m_file_cache->lookup_or_add (src);
+  if (!c)
+    return fail;
 
-  file_cache_slot *c = global_dc->m_file_cache->lookup_or_add_file (file_path);
-  if (c == NULL)
-    return char_span (NULL, 0);
-
+  const char *buffer = NULL;
+  ssize_t len;
   bool read = c->read_line_num (line, &buffer, &len);
   if (!read)
-    return char_span (NULL, 0);
+    return fail;
 
   return char_span (buffer, len);
 }
@@ -1193,9 +1277,9 @@ int
 location_compute_display_column (expanded_location exploc,
 				 const cpp_char_column_policy &policy)
 {
-  if (!(exploc.file && *exploc.file && exploc.line && exploc.column))
+  if (!(exploc.src && exploc.line && exploc.column))
     return exploc.column;
-  char_span line = location_get_source_line (exploc.file, exploc.line);
+  char_span line = location_get_source_line (exploc);
   /* If line is NULL, this function returns exploc.column which is the
      desired fallback.  */
   return cpp_byte_column_to_display_column (line.get_buffer (), line.length (),
@@ -1425,13 +1509,26 @@ dump_location_info (FILE *stream)
 	    {
 	      /* Beginning of a new source line: draw the line.  */
 
-	      char_span line_text = location_get_source_line (exploc.file,
-							      exploc.line);
+	      char_span line_text = location_get_source_line (exploc);
 	      if (!line_text)
 		break;
+
+	      const char *fn1, *fn2;
+	      if (exploc.src.is_buffer ())
+		{
+		  fn1 = ORDINARY_MAP_CONTAINING_FILE_NAME (line_table, map);
+		  fn2 = special_fname_generated ();
+		}
+	      else
+		{
+		  fn1 = exploc.file;
+		  fn2 = "";
+		}
+
 	      fprintf (stream,
-		       "%s:%3i|loc:%5i|%.*s\n",
-		       exploc.file, exploc.line,
+		       "%s%s:%3i|loc:%5i|%.*s\n",
+		       fn1, fn2,
+		       exploc.line,
 		       loc,
 		       (int)line_text.length (), line_text.get_buffer ());
 
@@ -1450,7 +1547,7 @@ dump_location_info (FILE *stream)
 	      if (len_loc < 5)
 		len_loc = 5;
 
-	      int indent = 6 + strlen (exploc.file) + len_lnum + len_loc;
+	      int indent = 6 + strlen (fn1) + strlen (fn2) + len_lnum + len_loc;
 
 	      /* Thousands.  */
 	      if (end_location > 999)
