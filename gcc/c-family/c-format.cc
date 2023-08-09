@@ -4523,9 +4523,9 @@ get_corrected_substring (const substring_loc &fmt_loc,
     = expand_location_to_spelling_point (fmt_substring_range.m_start);
   expanded_location finish
     = expand_location_to_spelling_point (fmt_substring_range.m_finish);
-  if (caret.file != start.file)
+  if (caret.src != start.src)
     return NULL;
-  if (start.file != finish.file)
+  if (start.src != finish.src)
     return NULL;
   if (caret.line != start.line)
     return NULL;

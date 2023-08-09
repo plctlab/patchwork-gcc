@@ -334,7 +334,7 @@ should_warn_for_misleading_indentation (const token_indent_info &guard_tinfo,
   const unsigned int tab_width = global_dc->tabstop;
 
   /* They must be in the same file.  */
-  if (next_stmt_exploc.file != body_exploc.file)
+  if (next_stmt_exploc.src != body_exploc.src)
     return false;
 
   /* If NEXT_STMT_LOC and BODY_LOC are on the same line, consider
@@ -363,7 +363,7 @@ should_warn_for_misleading_indentation (const token_indent_info &guard_tinfo,
                                           ^ DON'T WARN HERE.  */
   if (next_stmt_exploc.line == body_exploc.line)
     {
-      if (guard_exploc.file != body_exploc.file)
+      if (guard_exploc.src != body_exploc.src)
 	return true;
       if (guard_exploc.line < body_exploc.line)
 	/* The guard is on a line before a line that contains both
@@ -372,7 +372,7 @@ should_warn_for_misleading_indentation (const token_indent_info &guard_tinfo,
       else if (guard_exploc.line == body_exploc.line)
 	{
 	  /* They're all on the same line.  */
-	  gcc_assert (guard_exploc.file == next_stmt_exploc.file);
+	  gcc_assert (guard_exploc.src == next_stmt_exploc.src);
 	  gcc_assert (guard_exploc.line == next_stmt_exploc.line);
 	  unsigned int guard_vis_column;
 	  unsigned int guard_line_first_nws;
@@ -692,7 +692,7 @@ assert_get_visual_column_succeeds (const location &loc,
 				   unsigned int expected_first_nws)
 {
   expanded_location exploc;
-  exploc.file = file;
+  exploc.src = exploc.file = file;
   exploc.line = line;
   exploc.column = column;
   exploc.data = NULL;
@@ -730,7 +730,7 @@ assert_get_visual_column_fails (const location &loc,
 				const unsigned int tab_width)
 {
   expanded_location exploc;
-  exploc.file = file;
+  exploc.src = exploc.file = file;
   exploc.line = line;
   exploc.column = column;
   exploc.data = NULL;
