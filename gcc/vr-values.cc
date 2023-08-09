@@ -968,7 +968,70 @@ test_for_singularity (enum tree_code cond_code, tree op0,
       if (operand_equal_p (min, max, 0) && is_gimple_min_invariant (min))
 	return min;
     }
+
   return NULL;
+}
+
+/* Simplify integer comparisons such that the constant is one of the range pairs.
+   For an example, 
+   A has a range of [0,0][100,INF]
+   and the comparison of `A < 50`.
+   This should be optimized to `A <= 0`
+   and then test_for_singularity can optimize it to `A == 0`.   */
+
+static bool
+simplify_compare_using_range_pairs (tree_code &cond_code, tree &op0, tree &op1,
+				    const value_range *vr)
+{
+  if (TREE_CODE (op1) != INTEGER_CST
+      || vr->num_pairs () < 2)
+    return false;
+  auto val_op1 = wi::to_wide (op1);
+  tree type = TREE_TYPE (op0);
+  auto sign = TYPE_SIGN (type);
+  auto p = vr->num_pairs ();
+  /* Find the value range pair where op1
+     is in the middle of if one exist. */
+  for (unsigned i = 1; i < p; i++)
+    {
+      auto lower = vr->upper_bound (i - 1);
+      auto upper = vr->lower_bound (i);
+      if (wi::lt_p (val_op1, lower, sign))
+	continue;
+      if (wi::gt_p (val_op1, upper, sign))
+	continue;
+      if (cond_code == LT_EXPR
+          && val_op1 != lower)
+        {
+	  op1 = wide_int_to_tree (type, lower);
+	  cond_code = LE_EXPR;
+	  return true;
+        }
+      if (cond_code == LE_EXPR
+          && val_op1 != upper
+          && val_op1 != lower)
+        {
+	  op1 = wide_int_to_tree (type, lower);
+	  cond_code = LE_EXPR;
+	  return true;
+        }
+      if (cond_code == GT_EXPR
+          && val_op1 != upper)
+        {
+	  op1 = wide_int_to_tree (type, upper);
+	  cond_code = GE_EXPR;
+	  return true;
+        }
+      if (cond_code == GE_EXPR
+          && val_op1 != lower
+          && val_op1 != upper)
+        {
+	  op1 = wide_int_to_tree (type, upper);
+	  cond_code = GE_EXPR;
+	  return true;
+        }
+    }
+  return false;
 }
 
 /* Return whether the value range *VR fits in an integer type specified
@@ -1154,6 +1217,8 @@ simplify_using_ranges::simplify_cond_using_ranges_1 (gcond *stmt)
 	 able to simplify this conditional. */
       if (!vr.undefined_p () && !vr.varying_p ())
 	{
+	  if (simplify_compare_using_range_pairs (cond_code, op0, op1, &vr))
+	    happened = true;
 	  tree new_tree = test_for_singularity (cond_code, op0, op1, &vr);
 	  if (new_tree)
 	    {

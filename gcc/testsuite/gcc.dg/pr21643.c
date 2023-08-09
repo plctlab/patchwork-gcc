@@ -1,6 +1,10 @@
 /* PR tree-optimization/21643 */
 /* { dg-do compile } */
-/* { dg-options "-O2 -fdump-tree-reassoc1-details --param logical-op-non-short-circuit=1" } */
+/* Note VRP is able to transform `c >= 0x20` in f7
+   to `c >= 0x21` since we want to test
+   reassociation and not VRP, turn it off. */
+
+/* { dg-options "-O2 -fdump-tree-reassoc1-details --param logical-op-non-short-circuit=1 -fno-tree-vrp" } */
 
 int
 f1 (unsigned char c)
