@@ -236,8 +236,6 @@ expand_location_1 (location_t loc,
       loc = LOCATION_LOCUS (loc);
     }
 
-  memset (&xloc, 0, sizeof (xloc));
-
   if (loc >= RESERVED_LOCATION_COUNT)
     {
       if (!expansion_point_p)
@@ -288,7 +286,12 @@ expand_location_1 (location_t loc,
 
   xloc.data = block;
   if (loc <= BUILTINS_LOCATION)
-    xloc.file = loc == UNKNOWN_LOCATION ? NULL : special_fname_builtin ();
+    {
+      xloc.file = loc == UNKNOWN_LOCATION ? NULL : special_fname_builtin ();
+      xloc.src = xloc.file;
+    }
+  else if (xloc.src.is_buffer ())
+    xloc.file = special_fname_generated ();
 
   return xloc;
 }
@@ -323,11 +326,11 @@ diagnostic_file_cache_fini (void)
    equals the actual number of lines of the file.  */
 
 static size_t
-total_lines_num (const char *file_path)
+total_lines_num (source_id src)
 {
   size_t r = 0;
   location_t l = 0;
-  if (linemap_get_file_highest_location (line_table, file_path, &l))
+  if (linemap_get_file_highest_location (line_table, src, &l))
     {
       gcc_assert (l >= RESERVED_LOCATION_COUNT);
       expanded_location xloc = expand_location (l);
@@ -990,9 +993,7 @@ get_source_text_between (location_t start, location_t end)
 
   /* If the locations are in different files or the end comes before the
      start, give up and return nothing.  */
-  if (!expstart.file || !expend.file)
-    return NULL;
-  if (strcmp (expstart.file, expend.file) != 0)
+  if (!expstart.src || expend.src != expstart.src)
     return NULL;
   if (expstart.line > expend.line)
     return NULL;
@@ -1788,7 +1789,7 @@ get_substring_ranges_for_loc (cpp_reader *pfile,
       expanded_location finish
 	= expand_location_to_spelling_point (src_range.m_finish,
 					     LOCATION_ASPECT_FINISH);
-      if (start.file != finish.file)
+      if (start.src != finish.src)
 	return "range endpoints are in different files";
       if (start.line != finish.line)
 	return "range endpoints are on different lines";
@@ -1839,7 +1840,7 @@ get_substring_ranges_for_loc (cpp_reader *pfile,
 	return "start and finish are spelled in different ordinary maps";
       /* The file from linemap_resolve_location ought to match that from
 	 expand_location_to_spelling_point.  */
-      if (ORDINARY_MAP_SOURCE_ID (start_ord_map) != start.file)
+      if (ORDINARY_MAP_SOURCE_ID (start_ord_map) != start.src)
 	return "mismatching file after resolving linemap";
 
       location_t start_loc
