@@ -119,10 +119,10 @@ inline char_span location_get_source_line (expanded_location exploc)
 {
   return location_get_source_line (exploc.src, exploc.line);
 }
-extern char *get_source_text_between (location_t, location_t);
-extern char_span get_source_file_content (const char *file_path);
 
-extern bool location_missing_trailing_newline (const char *file_path);
+extern char *get_source_text_between (location_t, location_t);
+extern char_span get_source_file_content (source_id src);
+extern bool location_missing_trailing_newline (source_id src);
 
 /* Forward decl of slots within file_cache, so that the definition doesn't
    need to be in this header.  */
