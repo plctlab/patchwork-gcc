@@ -2066,6 +2066,20 @@ get_num_source_ranges_for_substring (cpp_reader *pfile,
 
 /* Selftests of location handling.  */
 
+/* Wrapper around linemap_add to handle transparently adding either a tmp file,
+   or in-memory generated content.  */
+const line_map_ordinary *
+temp_source_file::do_linemap_add (int line)
+{
+  const line_map *map;
+  if (content_buf)
+    map = linemap_add (line_table, LC_GEN, false, content_buf,
+		       line, content_len);
+  else
+    map = linemap_add (line_table, LC_ENTER, false, get_filename (), line);
+  return linemap_check_ordinary (map);
+}
+
 /* Verify that compare() on linenum_type handles comparisons over the full
    range of the type.  */
 
@@ -2144,13 +2158,16 @@ assert_loceq (const char *exp_filename, int exp_linenum, int exp_colnum,
 class line_table_case
 {
 public:
-  line_table_case (int default_range_bits, int base_location)
+  line_table_case (int default_range_bits, int base_location,
+		   bool generated_data)
   : m_default_range_bits (default_range_bits),
-    m_base_location (base_location)
+    m_base_location (base_location),
+    m_generated_data (generated_data)
   {}
 
   int m_default_range_bits;
   int m_base_location;
+  bool m_generated_data;
 };
 
 /* Constructor.  Store the old value of line_table, and create a new
@@ -2167,6 +2184,7 @@ line_table_test::line_table_test ()
   gcc_assert (saved_line_table->round_alloc_size);
   line_table->round_alloc_size = saved_line_table->round_alloc_size;
   line_table->default_range_bits = 0;
+  m_generated_data = false;
 }
 
 /* Constructor.  Store the old value of line_table, and create a new
@@ -2188,6 +2206,7 @@ line_table_test::line_table_test (const line_table_case &case_)
       line_table->highest_location = case_.m_base_location;
       line_table->highest_line = case_.m_base_location;
     }
+  m_generated_data = case_.m_generated_data;
 }
 
 /* Destructor.  Restore the old value of line_table.  */
@@ -2207,7 +2226,10 @@ test_accessing_ordinary_linemaps (const line_table_case &case_)
   line_table_test ltt (case_);
 
   /* Build a simple linemap describing some locations. */
-  linemap_add (line_table, LC_ENTER, false, "foo.c", 0);
+  if (ltt.m_generated_data)
+    linemap_add (line_table, LC_GEN, false, "some data", 0, 10);
+  else
+    linemap_add (line_table, LC_ENTER, false, "foo.c", 0);
 
   linemap_line_start (line_table, 1, 100);
   location_t loc_a = linemap_position_for_column (line_table, 1);
@@ -2257,21 +2279,23 @@ test_accessing_ordinary_linemaps (const line_table_case &case_)
   linemap_add (line_table, LC_LEAVE, false, NULL, 0);
 
   /* Verify that we can recover the location info.  */
-  assert_loceq ("foo.c", 1, 1, loc_a);
-  assert_loceq ("foo.c", 1, 23, loc_b);
-  assert_loceq ("foo.c", 2, 1, loc_c);
-  assert_loceq ("foo.c", 2, 17, loc_d);
-  assert_loceq ("foo.c", 3, 700, loc_e);
-  assert_loceq ("foo.c", 4, 100, loc_back_to_short);
+  const auto fname
+    = (ltt.m_generated_data ? special_fname_generated () : "foo.c");
+  assert_loceq (fname, 1, 1, loc_a);
+  assert_loceq (fname, 1, 23, loc_b);
+  assert_loceq (fname, 2, 1, loc_c);
+  assert_loceq (fname, 2, 17, loc_d);
+  assert_loceq (fname, 3, 700, loc_e);
+  assert_loceq (fname, 4, 100, loc_back_to_short);
 
   /* In the very wide line, the initial location should be fully tracked.  */
-  assert_loceq ("foo.c", 5, 2000, loc_start_of_very_long_line);
+  assert_loceq (fname, 5, 2000, loc_start_of_very_long_line);
   /* ...but once we exceed LINE_MAP_MAX_COLUMN_NUMBER column-tracking should
      be disabled.  */
-  assert_loceq ("foo.c", 5, 0, loc_too_wide);
-  assert_loceq ("foo.c", 5, 0, loc_too_wide_2);
+  assert_loceq (fname, 5, 0, loc_too_wide);
+  assert_loceq (fname, 5, 0, loc_too_wide_2);
   /*...and column-tracking should be re-enabled for subsequent lines.  */
-  assert_loceq ("foo.c", 6, 10, loc_sane_again);
+  assert_loceq (fname, 6, 10, loc_sane_again);
 
   assert_loceq ("bar.c", 1, 150, loc_f);
 
@@ -2318,10 +2342,11 @@ test_make_location_nonpure_range_endpoints (const line_table_case &case_)
      with C++ frontend.
      ....................0000000001111111111222.
      ....................1234567890123456789012.  */
-  const char *content = "     r += !aaa == bbb;\n";
-  temp_source_file tmp (SELFTEST_LOCATION, ".C", content);
   line_table_test ltt (case_);
-  linemap_add (line_table, LC_ENTER, false, tmp.get_filename (), 1);
+  const char *content = "     r += !aaa == bbb;\n";
+  temp_source_file tmp (SELFTEST_LOCATION, ".C", content, strlen (content),
+			ltt.m_generated_data);
+  tmp.do_linemap_add (1);
 
   const location_t c11 = linemap_position_for_column (line_table, 11);
   const location_t c12 = linemap_position_for_column (line_table, 12);
@@ -3978,7 +4003,8 @@ static const location_t boundary_locations[] = {
 /* Run TESTCASE multiple times, once for each case in our test matrix.  */
 
 void
-for_each_line_table_case (void (*testcase) (const line_table_case &))
+for_each_line_table_case (void (*testcase) (const line_table_case &),
+			  bool test_generated_data)
 {
   /* As noted above in the description of struct line_table_case,
      we want to explore a test matrix of interesting line_table
@@ -3997,16 +4023,19 @@ for_each_line_table_case (void (*testcase) (const line_table_case &))
       const int num_boundary_locations = ARRAY_SIZE (boundary_locations);
       for (int loc_idx = 0; loc_idx < num_boundary_locations; loc_idx++)
 	{
-	  line_table_case c (default_range_bits, boundary_locations[loc_idx]);
-
-	  testcase (c);
-
-	  num_cases_tested++;
+	  /* ...and try both normal files, and internally generated data.  */
+	  for (int gen = 0; gen != 1+test_generated_data; ++gen)
+	    {
+	      line_table_case c (default_range_bits,
+				 boundary_locations[loc_idx], gen);
+	      testcase (c);
+	      num_cases_tested++;
+	    }
 	}
     }
 
   /* Verify that we fully covered the test matrix.  */
-  ASSERT_EQ (num_cases_tested, 2 * 12);
+  ASSERT_EQ (num_cases_tested, 2 * 12 * (1+test_generated_data));
 }
 
 /* Verify that when presented with a consecutive pair of locations with
@@ -4017,7 +4046,7 @@ for_each_line_table_case (void (*testcase) (const line_table_case &))
 static void
 test_line_offset_overflow ()
 {
-  line_table_test ltt (line_table_case (5, 0));
+  line_table_test ltt (line_table_case (5, 0, false));
 
   linemap_add (line_table, LC_ENTER, false, "foo.c", 0);
   linemap_line_start (line_table, 1, 100);
@@ -4257,9 +4286,9 @@ input_cc_tests ()
   test_should_have_column_data_p ();
   test_unknown_location ();
   test_builtins ();
-  for_each_line_table_case (test_make_location_nonpure_range_endpoints);
+  for_each_line_table_case (test_make_location_nonpure_range_endpoints, true);
 
-  for_each_line_table_case (test_accessing_ordinary_linemaps);
+  for_each_line_table_case (test_accessing_ordinary_linemaps, true);
   for_each_line_table_case (test_lexer);
   for_each_line_table_case (test_lexer_string_locations_simple);
   for_each_line_table_case (test_lexer_string_locations_ebcdic);
