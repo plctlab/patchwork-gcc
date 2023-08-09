@@ -35,6 +35,12 @@ special_fname_builtin ()
   return _("<built-in>");
 }
 
+const char *
+special_fname_generated ()
+{
+  return _("<generated>");
+}
+
 /* Input charset configuration.  */
 static const char *default_charset_callback (const char *)
 {
@@ -1391,7 +1397,19 @@ dump_location_info (FILE *stream)
       fprintf (stream, "ORDINARY MAP: %i\n", idx);
       dump_location_range (stream,
 			   MAP_START_LOCATION (map), end_location);
-      fprintf (stream, "  file: %s\n", ORDINARY_MAP_FILE_NAME (map));
+
+      if (ORDINARY_MAP_GENERATED_DATA_P (map))
+	{
+	  fprintf (stream, "  file: %s%s\n",
+		   ORDINARY_MAP_CONTAINING_FILE_NAME (line_table, map),
+		   special_fname_generated ());
+	  fprintf (stream, "  data: %.*s\n",
+		   (int) ORDINARY_MAP_GENERATED_DATA_LEN (map),
+		   ORDINARY_MAP_GENERATED_DATA (map));
+	}
+      else
+	fprintf (stream, "  file: %s\n", LINEMAP_FILE (map));
+
       fprintf (stream, "  starting at line: %i\n",
 	       ORDINARY_MAP_STARTING_LINE_NUMBER (map));
       fprintf (stream, "  column and range bits: %i\n",
@@ -1416,6 +1434,9 @@ dump_location_info (FILE *stream)
 	break;
       case LC_ENTER_MACRO:
 	reason = "LC_RENAME_MACRO";
+	break;
+      case LC_GEN:
+	reason = "LC_GEN";
 	break;
       default:
 	reason = "Unknown";
@@ -1814,11 +1835,11 @@ get_substring_ranges_for_loc (cpp_reader *pfile,
       /* Bulletproofing.  We ought to only have different ordinary maps
 	 for start vs finish due to line-length jumps.  */
       if (start_ord_map != final_ord_map
-	  && start_ord_map->to_file != final_ord_map->to_file)
+	  && !ORDINARY_MAPS_SAME_FILE_P (start_ord_map, final_ord_map))
 	return "start and finish are spelled in different ordinary maps";
       /* The file from linemap_resolve_location ought to match that from
 	 expand_location_to_spelling_point.  */
-      if (start_ord_map->to_file != start.file)
+      if (ORDINARY_MAP_SOURCE_ID (start_ord_map) != start.file)
 	return "mismatching file after resolving linemap";
 
       location_t start_loc

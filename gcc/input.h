@@ -34,6 +34,7 @@ extern GTY(()) class line_maps *saved_line_table;
 
 /* Returns the translated string referring to the special location.  */
 const char *special_fname_builtin ();
+const char *special_fname_generated ();
 
 /* line-map.cc reserves RESERVED_LOCATION_COUNT to the user.  Ensure
    both UNKNOWN_LOCATION and BUILTINS_LOCATION fit into that.  */
