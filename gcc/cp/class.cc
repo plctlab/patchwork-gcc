@@ -205,6 +205,7 @@ static tree get_vcall_index (tree, tree);
 static bool type_maybe_constexpr_default_constructor (tree);
 static bool type_maybe_constexpr_destructor (tree);
 static bool field_poverlapping_p (tree);
+static void propagate_class_warmth_attribute (tree);
 
 /* Set CURRENT_ACCESS_SPECIFIER based on the protection of DECL.  */
 
@@ -7733,6 +7734,30 @@ unreverse_member_declarations (tree t)
     }
 }
 
+/* Classes, structs or unions T marked with hotness attributes propagate
+   the attribute to all methods.  */
+
+void
+propagate_class_warmth_attribute (tree t)
+{
+
+  if (t == NULL_TREE
+      || !(TREE_CODE (t) == RECORD_TYPE
+	   || TREE_CODE (t) == UNION_TYPE))
+    return;
+
+  tree class_has_cold_attr = lookup_attribute ("cold",
+   				TYPE_ATTRIBUTES (t));
+  tree class_has_hot_attr = lookup_attribute ("hot",
+   				TYPE_ATTRIBUTES (t));
+
+  if (class_has_cold_attr || class_has_hot_attr)
+    for (tree f = TYPE_FIELDS (t); f; f = DECL_CHAIN (f))
+      if (TREE_CODE (f) == FUNCTION_DECL)
+	maybe_propagate_warmth_attributes (f, t);
+
+}
+
 tree
 finish_struct (tree t, tree attributes)
 {
@@ -7865,6 +7890,10 @@ finish_struct (tree t, tree attributes)
       /* Lambdas are defined by the LAMBDA_EXPR.  */
       && !LAMBDA_TYPE_P (t))
     add_stmt (build_min (TAG_DEFN, t));
+
+  /* This must be done after all lazily declared special member functions
+     have been injected.  */
+  propagate_class_warmth_attribute (t);
 
   return t;
 }
