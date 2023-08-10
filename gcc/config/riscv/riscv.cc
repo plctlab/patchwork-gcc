@@ -2377,14 +2377,9 @@ riscv_rtx_costs (rtx x, machine_mode mode, int outer_code, int opno ATTRIBUTE_UN
     case CONST:
       if ((cost = riscv_const_insns (x)) > 0)
 	{
-	  /* If the constant is likely to be stored in a GPR, SETs of
-	     single-insn constants are as cheap as register sets; we
-	     never want to CSE them.  */
+	  /* Hoist will GCSE constants only if cost is non-zero.  */
 	  if (cost == 1 && outer_code == SET)
-	    *total = 0;
-	  /* When we load a constant more than once, it usually is better
-	     to duplicate the last operation in the sequence than to CSE
-	     the constant itself.  */
+	    *total = COSTS_N_INSNS (1);
 	  else if (outer_code == SET || GET_MODE (x) == VOIDmode)
 	    *total = COSTS_N_INSNS (1);
 	}
