@@ -854,6 +854,7 @@ wrapup_namespace_globals ()
 	      && !TREE_PUBLIC (decl)
 	      && !DECL_ARTIFICIAL (decl)
 	      && !DECL_FRIEND_PSEUDO_TEMPLATE_INSTANTIATION (decl)
+	      && !deduction_guide_p (decl)
 	      && !warning_suppressed_p (decl, OPT_Wunused_function))
 	    warning_at (DECL_SOURCE_LOCATION (decl),
 			OPT_Wunused_function,
