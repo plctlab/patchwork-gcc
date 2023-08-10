@@ -13,11 +13,13 @@ void foo (char *p)
   __builtin_prefetch (p, 1, 3);
 }
 
-int foo1()
+void foo1 ()
 {
-  return __builtin_riscv_zicbop_cbo_prefetchi(1);
+  __builtin_riscv_zicbop_prefetch_i(0);
+  __builtin_riscv_zicbop_prefetch_i(&foo);
+  __builtin_riscv_zicbop_prefetch_i((void*)0x111);
 }
 
-/* { dg-final { scan-assembler-times "prefetch.i" 1 } } */
+/* { dg-final { scan-assembler-times "prefetch.i" 3 } } */
 /* { dg-final { scan-assembler-times "prefetch.r" 4 } } */
 /* { dg-final { scan-assembler-times "prefetch.w" 4 } } */

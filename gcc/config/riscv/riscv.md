@@ -3151,9 +3151,8 @@
 })
 
 (define_insn "riscv_prefetchi_<mode>"
-  [(unspec_volatile:X [(match_operand:X 0 "address_operand" "r")
-              (match_operand:X 1 "imm5_operand" "i")]
-              UNSPECV_PREI)]
+  [(unspec_volatile:X [(match_operand:X 0 "register_operand" "r")]
+    UNSPECV_PREI)]
   "TARGET_ZICBOP"
   "prefetch.i\t%a0"
 )

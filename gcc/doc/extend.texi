@@ -21255,6 +21255,13 @@ Xgnuzihintpausestate extension, which redefines the @code{pause} instruction to
 change architectural state.
 @enddefbuiltin
 
+@defbuiltin{void __builtin_riscv_zicbop_prefetch_i (void *@var{addr})}
+Generates the @code{prefetch.i} machine instruction to instruct the hardware
+that a cache block containing @var{addr} is likely to be accessed by an
+instruction fetch in the near future.
+Available if the Zicbop extension is enabled.
+@enddefbuiltin
+
 @node RISC-V Vector Intrinsics
 @subsection RISC-V Vector Intrinsics
 
