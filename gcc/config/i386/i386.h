@@ -564,7 +564,17 @@ extern GTY(()) tree x86_mfence;
 # define SUBTARGET_DRIVER_SELF_SPECS ""
 #endif
 
-#define DRIVER_SELF_SPECS SUBTARGET_DRIVER_SELF_SPECS
+#ifndef GATHER_SCATTER_DRIVER_SELF_SPECS
+# define GATHER_SCATTER_DRIVER_SELF_SPECS \
+  "%{mno-gather:-mtune-ctrl=^use_gather_2parts,^use_gather_4parts,^use_gather} \
+   %{mgather:-mtune-ctrl=use_gather_2parts,use_gather_4parts,use_gather} \
+   %{mno-scatter:-mtune-ctrl=^use_scatter_2parts,^use_scatter_4parts,^use_scatter} \
+   %{mscatter:-mtune-ctrl=use_scatter_2parts,use_scatter_4parts,use_scatter}"
+#endif
+
+#define DRIVER_SELF_SPECS \
+  SUBTARGET_DRIVER_SELF_SPECS " " \
+  GATHER_SCATTER_DRIVER_SELF_SPECS
 
 /* -march=native handling only makes sense with compiler running on
    an x86 or x86_64 chip.  If changing this condition, also change
