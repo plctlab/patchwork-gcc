@@ -907,66 +907,30 @@ simplify_using_ranges::simplify_bit_ops_using_ranges
    a known value range VR.
 
    If there is one and only one value which will satisfy the
-   conditional, then return that value.  Else return NULL.
-
-   If signed overflow must be undefined for the value to satisfy
-   the conditional, then set *STRICT_OVERFLOW_P to true.  */
+   conditional on the EDGE, then return that value.
+   Else return NULL.  */
 
 static tree
 test_for_singularity (enum tree_code cond_code, tree op0,
-		      tree op1, const value_range *vr)
+		      tree op1, Value_Range vr, bool edge)
 {
-  tree min = NULL;
-  tree max = NULL;
-
-  /* Extract minimum/maximum values which satisfy the conditional as it was
-     written.  */
-  if (cond_code == LE_EXPR || cond_code == LT_EXPR)
+  /* This is already a singularity.  */
+  if (cond_code == NE_EXPR || cond_code == EQ_EXPR)
+    return NULL;
+  auto range_op = range_op_handler (cond_code);
+  int_range<2> op1_range (TREE_TYPE (op0));
+  wide_int w = wi::to_wide (op1);
+  op1_range.set (TREE_TYPE (op1), w, w);
+  Value_Range vr1(TREE_TYPE (op0));
+  if (range_op.op1_range (vr1, TREE_TYPE (op0),
+			  edge ? range_true () : range_false (),
+			  op1_range))
     {
-      min = TYPE_MIN_VALUE (TREE_TYPE (op0));
-
-      max = op1;
-      if (cond_code == LT_EXPR)
-	{
-	  tree one = build_int_cst (TREE_TYPE (op0), 1);
-	  max = fold_build2 (MINUS_EXPR, TREE_TYPE (op0), max, one);
-	  /* Signal to compare_values_warnv this expr doesn't overflow.  */
-	  if (EXPR_P (max))
-	    suppress_warning (max, OPT_Woverflow);
-	}
-    }
-  else if (cond_code == GE_EXPR || cond_code == GT_EXPR)
-    {
-      max = TYPE_MAX_VALUE (TREE_TYPE (op0));
-
-      min = op1;
-      if (cond_code == GT_EXPR)
-	{
-	  tree one = build_int_cst (TREE_TYPE (op0), 1);
-	  min = fold_build2 (PLUS_EXPR, TREE_TYPE (op0), min, one);
-	  /* Signal to compare_values_warnv this expr doesn't overflow.  */
-	  if (EXPR_P (min))
-	    suppress_warning (min, OPT_Woverflow);
-	}
-    }
-
-  /* Now refine the minimum and maximum values using any
-     value range information we have for op0.  */
-  if (min && max)
-    {
-      tree type = TREE_TYPE (op0);
-      tree tmin = wide_int_to_tree (type, vr->lower_bound ());
-      tree tmax = wide_int_to_tree (type, vr->upper_bound ());
-      if (compare_values (tmin, min) == 1)
-	min = tmin;
-      if (compare_values (tmax, max) == -1)
-	max = tmax;
-
-      /* If the new min/max values have converged to a single value,
-	 then there is only one value which can satisfy the condition,
-	 return that value.  */
-      if (operand_equal_p (min, max, 0) && is_gimple_min_invariant (min))
-	return min;
+      vr.intersect (vr1);
+      tree newop1;
+      /* If the updated range is just a singleton, then we can just do a comparison */
+      if (vr.singleton_p (&newop1))
+	return newop1;
     }
   return NULL;
 }
@@ -1143,9 +1107,9 @@ simplify_using_ranges::simplify_cond_using_ranges_1 (gcond *stmt)
       && cond_code != EQ_EXPR
       && TREE_CODE (op0) == SSA_NAME
       && INTEGRAL_TYPE_P (TREE_TYPE (op0))
-      && is_gimple_min_invariant (op1))
+      && TREE_CODE (op1) == INTEGER_CST)
     {
-      value_range vr;
+      Value_Range vr (TREE_TYPE (op0));
 
       if (!query->range_of_expr (vr, op0, stmt))
 	vr.set_undefined ();
@@ -1154,7 +1118,8 @@ simplify_using_ranges::simplify_cond_using_ranges_1 (gcond *stmt)
 	 able to simplify this conditional. */
       if (!vr.undefined_p () && !vr.varying_p ())
 	{
-	  tree new_tree = test_for_singularity (cond_code, op0, op1, &vr);
+	  tree new_tree = test_for_singularity (cond_code, op0, op1, vr,
+						true);
 	  if (new_tree)
 	    {
 	      if (dump_file)
@@ -1178,13 +1143,9 @@ simplify_using_ranges::simplify_cond_using_ranges_1 (gcond *stmt)
 
 	      return true;
 	    }
-
-	  /* Try again after inverting the condition.  We only deal
-	     with integral types here, so no need to worry about
-	     issues with inverting FP comparisons.  */
-	  new_tree = test_for_singularity
-		       (invert_tree_comparison (cond_code, false),
-			op0, op1, &vr);
+	  /* Try again after inverting the condition. */
+	  new_tree = test_for_singularity (cond_code, op0, op1, vr,
+					   false);
 	  if (new_tree)
 	    {
 	      if (dump_file)
