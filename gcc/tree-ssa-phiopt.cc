@@ -2259,7 +2259,8 @@ spaceship_replacement (basic_block cond_bb, basic_block middle_bb,
     }
   if (lhs != (orig_use_lhs ? orig_use_lhs : phires)
       || !tree_fits_shwi_p (rhs)
-      || !IN_RANGE (tree_to_shwi (rhs), -1, 1))
+      || !(IN_RANGE (tree_to_shwi (rhs), 0, 1)
+	   || integer_all_onesp (rhs)))
     return false;
 
   if (is_cast)
@@ -2269,9 +2270,20 @@ spaceship_replacement (basic_block cond_bb, basic_block middle_bb,
       /* As for -ffast-math we assume the 2 return to be
 	 impossible, canonicalize (unsigned) res <= 1U or
 	 (unsigned) res < 2U into res >= 0 and (unsigned) res > 1U
-	 or (unsigned) res >= 2U as res < 0.  */
+	 or (unsigned) res >= 2U as res < 0.
+	 Sometimes we get (unsigned)res != N.  Support those cases too. */
       switch (cmp)
 	{
+	case NE_EXPR:
+	case EQ_EXPR:
+	  {
+	    tree newrhs = fold_convert (TREE_TYPE (phires), rhs);
+	    tree tmp = fold_convert (TREE_TYPE (rhs), newrhs);
+	    if (!tree_int_cst_equal (rhs, tmp))
+	      return false;
+	    rhs = newrhs;
+	    break;
+	  }
 	case LE_EXPR:
 	  if (!integer_onep (rhs))
 	    return false;
@@ -2295,7 +2307,8 @@ spaceship_replacement (basic_block cond_bb, basic_block middle_bb,
 	default:
 	  return false;
 	}
-      rhs = build_zero_cst (TREE_TYPE (phires));
+      if (cmp != EQ_EXPR && cmp != NE_EXPR)
+	rhs = build_zero_cst (TREE_TYPE (phires));
     }
   else if (orig_use_lhs)
     {
