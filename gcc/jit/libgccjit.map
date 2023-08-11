@@ -104,6 +104,7 @@ LIBGCCJIT_ABI_0
     gcc_jit_type_as_object;
     gcc_jit_type_get_const;
     gcc_jit_type_get_pointer;
+    gcc_jit_type_get_restrict;
     gcc_jit_type_get_volatile;
 
   local: *;
