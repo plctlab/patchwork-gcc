@@ -7671,6 +7671,17 @@ vectorizable_reduction (loop_vec_info loop_vinfo,
 			     " no conditional operation is available.\n");
 	  LOOP_VINFO_CAN_USE_PARTIAL_VECTORS_P (loop_vinfo) = false;
 	}
+      else if (reduction_type == FOLD_LEFT_REDUCTION
+	       && reduc_fn == IFN_LAST
+	       && FLOAT_TYPE_P (vectype_in)
+	       && HONOR_SIGNED_ZEROS (vectype_in))
+	{
+	  if (dump_enabled_p ())
+	    dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location,
+			     "can't operate on partial vectors because"
+			     " signed zeros need to be handled.\n");
+	  LOOP_VINFO_CAN_USE_PARTIAL_VECTORS_P (loop_vinfo) = false;
+	}
       else
 	vect_record_loop_mask (loop_vinfo, masks, ncopies * vec_num,
 			       vectype_in, NULL);
