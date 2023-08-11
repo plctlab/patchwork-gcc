@@ -8586,6 +8586,27 @@ vect_can_vectorize_without_simd_p (code_helper code)
 	  && vect_can_vectorize_without_simd_p (tree_code (code)));
 }
 
+/* Return true if target supports extract last vectorization with LEN.  */
+
+static bool
+vect_can_vectorize_extract_last_with_len_p (tree vectype)
+{
+  /* Return false if target doesn't support LEN in loop control.  */
+  machine_mode vmode;
+  machine_mode vec_mode = TYPE_MODE (vectype);
+  if (!VECTOR_MODE_P (vec_mode))
+    return false;
+  if (!get_len_load_store_mode (vec_mode, true).exists (&vmode)
+      || !get_len_load_store_mode (vec_mode, false).exists (&vmode))
+    return false;
+
+  /* Target need to support VEC_EXTRACT to extract the last active element.  */
+  return convert_optab_handler (vec_extract_optab,
+				vec_mode,
+				TYPE_MODE (TREE_TYPE (vectype)))
+	 != CODE_FOR_nothing;
+}
+
 /* Create vector init for vectorized iv.  */
 static tree
 vect_create_nonlinear_iv_init (gimple_seq* stmts, tree init_expr,
@@ -9890,7 +9911,8 @@ vectorizable_live_operation (vec_info *vinfo,
       if (loop_vinfo && LOOP_VINFO_CAN_USE_PARTIAL_VECTORS_P (loop_vinfo))
 	{
 	  if (!direct_internal_fn_supported_p (IFN_EXTRACT_LAST, vectype,
-					       OPTIMIZE_FOR_SPEED))
+					       OPTIMIZE_FOR_SPEED)
+	      && !vect_can_vectorize_extract_last_with_len_p (vectype))
 	    {
 	      if (dump_enabled_p ())
 		dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location,
@@ -9919,9 +9941,14 @@ vectorizable_live_operation (vec_info *vinfo,
 	  else
 	    {
 	      gcc_assert (ncopies == 1 && !slp_node);
-	      vect_record_loop_mask (loop_vinfo,
-				     &LOOP_VINFO_MASKS (loop_vinfo),
-				     1, vectype, NULL);
+	      if (vect_can_vectorize_extract_last_with_len_p (vectype))
+		vect_record_loop_len (loop_vinfo,
+				      &LOOP_VINFO_LENS (loop_vinfo),
+				      1, vectype, 1);
+	      else
+		vect_record_loop_mask (loop_vinfo,
+				       &LOOP_VINFO_MASKS (loop_vinfo),
+				       1, vectype, NULL);
 	    }
 	}
       /* ???  Enable for loop costing as well.  */
@@ -9947,7 +9974,9 @@ vectorizable_live_operation (vec_info *vinfo,
   gimple *vec_stmt;
   if (slp_node)
     {
-      gcc_assert (!loop_vinfo || !LOOP_VINFO_FULLY_MASKED_P (loop_vinfo));
+      gcc_assert (!loop_vinfo
+		  || (!LOOP_VINFO_FULLY_MASKED_P (loop_vinfo)
+		      && !LOOP_VINFO_FULLY_WITH_LENGTH_P (loop_vinfo)));
 
       /* Get the correct slp vectorized stmt.  */
       vec_stmt = SLP_TREE_VEC_STMTS (slp_node)[vec_entry];
@@ -9991,7 +10020,42 @@ vectorizable_live_operation (vec_info *vinfo,
 
       gimple_seq stmts = NULL;
       tree new_tree;
-      if (LOOP_VINFO_FULLY_MASKED_P (loop_vinfo))
+      if (LOOP_VINFO_FULLY_WITH_LENGTH_P (loop_vinfo))
+	{
+	  /* Emit:
+
+	       SCALAR_RES = VEC_EXTRACT <VEC_LHS, LEN + BIAS - 1>
+
+	     where VEC_LHS is the vectorized live-out result and MASK is
+	     the loop mask for the final iteration.  */
+	  gcc_assert (ncopies == 1 && !slp_node);
+	  gimple_seq tem = NULL;
+	  gimple_stmt_iterator gsi = gsi_last (tem);
+	  tree len
+	    = vect_get_loop_len (loop_vinfo, &gsi,
+				 &LOOP_VINFO_LENS (loop_vinfo),
+				 1, vectype, 0, 0);
+
+	  /* BIAS - 1.  */
+	  signed char biasval = LOOP_VINFO_PARTIAL_LOAD_STORE_BIAS (loop_vinfo);
+	  tree bias_minus_one
+	    = int_const_binop (MINUS_EXPR,
+			       build_int_cst (TREE_TYPE (len), biasval),
+			       build_one_cst (TREE_TYPE (len)));
+
+	  /* LAST_INDEX = LEN + (BIAS - 1).  */
+	  tree last_index = gimple_build (&stmts, PLUS_EXPR, TREE_TYPE (len),
+					  len, bias_minus_one);
+
+	  /* SCALAR_RES = VEC_EXTRACT <VEC_LHS, LEN + BIAS - 1>.  */
+	  tree scalar_res
+	    = gimple_build (&stmts, CFN_VEC_EXTRACT, TREE_TYPE (vectype),
+			    vec_lhs_phi, last_index);
+
+	  /* Convert the extracted vector element to the scalar type.  */
+	  new_tree = gimple_convert (&stmts, lhs_type, scalar_res);
+	}
+      else if (LOOP_VINFO_FULLY_MASKED_P (loop_vinfo))
 	{
 	  /* Emit:
 
