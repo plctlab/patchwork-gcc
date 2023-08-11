@@ -1457,6 +1457,8 @@ static int goal_alt_dont_inherit_ops[MAX_RECOG_OPERANDS];
 static bool goal_alt_swapped;
 /* The chosen insn alternative.	 */
 static int goal_alt_number;
+/* True if output reload of the stack pointer should be generated.  */
+static bool goal_alt_out_sp_reload_p;
 
 /* True if the corresponding operand is the result of an equivalence
    substitution.  */
@@ -2086,6 +2088,9 @@ process_alt_operands (int only_alternative)
   int curr_alt_dont_inherit_ops_num;
   /* Numbers of operands whose reload pseudos should not be inherited.	*/
   int curr_alt_dont_inherit_ops[MAX_RECOG_OPERANDS];
+  /* True if output stack pointer reload should be generated for the current
+     alternative.  */
+  bool curr_alt_out_sp_reload_p;
   rtx op;
   /* The register when the operand is a subreg of register, otherwise the
      operand itself.  */
@@ -2161,7 +2166,8 @@ process_alt_operands (int only_alternative)
 	}
       reject += static_reject;
       early_clobbered_regs_num = 0;
-
+      curr_alt_out_sp_reload_p = false;
+      
       for (nop = 0; nop < n_operands; nop++)
 	{
 	  const char *p;
@@ -2632,12 +2638,10 @@ process_alt_operands (int only_alternative)
 	      bool no_regs_p;
 
 	      reject += op_reject;
-	      /* Never do output reload of stack pointer.  It makes
-		 impossible to do elimination when SP is changed in
-		 RTL.  */
-	      if (op == stack_pointer_rtx && ! frame_pointer_needed
+	      /* Mark output reload of the stack pointer.  */
+	      if (op == stack_pointer_rtx
 		  && curr_static_id->operand[nop].type != OP_IN)
-		goto fail;
+		curr_alt_out_sp_reload_p = true;
 
 	      /* If this alternative asks for a specific reg class, see if there
 		 is at least one allocatable register in that class.  */
@@ -3272,6 +3276,7 @@ process_alt_operands (int only_alternative)
 	  for (nop = 0; nop < curr_alt_dont_inherit_ops_num; nop++)
 	    goal_alt_dont_inherit_ops[nop] = curr_alt_dont_inherit_ops[nop];
 	  goal_alt_swapped = curr_swapped;
+	  goal_alt_out_sp_reload_p = curr_alt_out_sp_reload_p;
 	  best_overall = overall;
 	  best_losers = losers;
 	  best_reload_nregs = reload_nregs;
@@ -4781,6 +4786,27 @@ curr_insn_transform (bool check_only_p)
       lra_update_insn_regno_info (curr_insn);
     }
   lra_process_new_insns (curr_insn, before, after, "Inserting insn reload");
+  if (goal_alt_out_sp_reload_p)
+    {
+      /* We have an output stack pointer reload -- update sp offset: */
+      rtx set;
+      bool done_p = false;
+      poly_int64 sp_offset = curr_id->sp_offset;
+      for (rtx_insn *insn = after; insn != NULL_RTX; insn = NEXT_INSN (insn))
+	if ((set = single_set (insn)) != NULL_RTX
+	    && SET_DEST (set) == stack_pointer_rtx)
+	  {
+	    lra_assert (!done_p);
+	    curr_id->sp_offset = 0;
+	    lra_insn_recog_data_t id = lra_get_insn_recog_data (insn);
+	    id->sp_offset = sp_offset;
+	    if (lra_dump_file != NULL)
+	      fprintf (lra_dump_file,
+		       "            Moving sp offset from insn %u to %u\n",
+		       INSN_UID (curr_insn), INSN_UID (insn));
+	  }
+      lra_assert (!done_p);
+    }
   return change_p;
 }
 
