@@ -2742,6 +2742,9 @@ assign_parm_find_stack_rtl (tree parm, struct assign_parm_data_one *data)
   data->stack_parm = stack_parm;
 }
 
+extern void set_scalar_rtx_for_aggregate_access (tree, rtx);
+extern void set_scalar_rtx_for_returns ();
+
 /* A subroutine of assign_parms.  Adjust DATA->ENTRY_RTL such that it's
    always valid and contiguous.  */
 
@@ -3117,8 +3120,24 @@ assign_parm_setup_block (struct assign_parm_data_all *all,
 	  emit_move_insn (mem, entry_parm);
 	}
       else
-	move_block_from_reg (REGNO (entry_parm), mem,
-			     size_stored / UNITS_PER_WORD);
+	{
+	  int regno = REGNO (entry_parm);
+	  int nregs = size_stored / UNITS_PER_WORD;
+	  move_block_from_reg (regno, mem, nregs);
+
+	  rtx *tmps = XALLOCAVEC (rtx, nregs);
+	  machine_mode mode = word_mode;
+	  HOST_WIDE_INT word_size = GET_MODE_SIZE (mode).to_constant ();
+	  for (int i = 0; i < nregs; i++)
+	    {
+	      rtx reg = gen_rtx_REG (mode, regno + i);
+	      rtx off = GEN_INT (word_size * i);
+	      tmps[i] = gen_rtx_EXPR_LIST (VOIDmode, reg, off);
+	    }
+
+	  rtx regs = gen_rtx_PARALLEL (BLKmode, gen_rtvec_v (nregs, tmps));
+	  set_scalar_rtx_for_aggregate_access (parm, regs);
+	}
     }
   else if (data->stack_parm == 0 && !TYPE_EMPTY_P (data->arg.type))
     {
@@ -3717,6 +3736,10 @@ assign_parms (tree fndecl)
 	}
       else
 	set_decl_incoming_rtl (parm, data.entry_parm, false);
+
+      rtx incoming = DECL_INCOMING_RTL (parm);
+      if (GET_CODE (incoming) == PARALLEL)
+	set_scalar_rtx_for_aggregate_access (parm, incoming);
 
       assign_parm_adjust_stack_rtl (&data);
 
@@ -5163,6 +5186,7 @@ expand_function_start (tree subr)
 	    {
 	      gcc_assert (GET_CODE (hard_reg) == PARALLEL);
 	      set_parm_rtl (res, gen_group_rtx (hard_reg));
+	      set_scalar_rtx_for_returns ();
 	    }
 	}
 

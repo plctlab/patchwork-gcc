@@ -100,6 +100,7 @@ static void do_tablejump (rtx, machine_mode, rtx, rtx, rtx,
 static rtx const_vector_from_tree (tree);
 static tree tree_expr_size (const_tree);
 static void convert_mode_scalar (rtx, rtx, int);
+rtx get_scalar_rtx_for_aggregate_expr (tree);
 
 
 /* This is run to set up which modes can be used
@@ -5623,11 +5624,12 @@ expand_assignment (tree to, tree from, bool nontemporal)
      Assignment of an array element at a constant index, and assignment of
      an array element in an unaligned packed structure field, has the same
      problem.  Same for (partially) storing into a non-memory object.  */
-  if (handled_component_p (to)
-      || (TREE_CODE (to) == MEM_REF
-	  && (REF_REVERSE_STORAGE_ORDER (to)
-	      || mem_ref_refers_to_non_mem_p (to)))
-      || TREE_CODE (TREE_TYPE (to)) == ARRAY_TYPE)
+  if (!get_scalar_rtx_for_aggregate_expr (to)
+      && (handled_component_p (to)
+	  || (TREE_CODE (to) == MEM_REF
+	      && (REF_REVERSE_STORAGE_ORDER (to)
+		  || mem_ref_refers_to_non_mem_p (to)))
+	  || TREE_CODE (TREE_TYPE (to)) == ARRAY_TYPE))
     {
       machine_mode mode1;
       poly_int64 bitsize, bitpos;
@@ -8995,6 +8997,9 @@ expand_expr_real (tree exp, rtx target, machine_mode tmode,
       ret = CONST0_RTX (tmode);
       return ret ? ret : const0_rtx;
     }
+  rtx x = get_scalar_rtx_for_aggregate_expr (exp);
+  if (x)
+    return x;
 
   ret = expand_expr_real_1 (exp, target, tmode, modifier, alt_rtl,
 			    inner_reference_p);
