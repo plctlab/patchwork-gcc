@@ -5,7 +5,7 @@
 // Test that a zero-width bit field in an otherwise homogeneous aggregate
 // generates a psabi warning and passes arguments in GPRs.
 
-// { dg-final { scan-assembler-times {\mstd\M} 4 } }
+// { dg-final { scan-assembler-times {\mmtvsrd\M} 4 } }
 
 struct a_thing
 {

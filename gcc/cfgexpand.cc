@@ -74,6 +74,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "output.h"
 #include "builtins.h"
 #include "opts.h"
+#include "tree-sra.h"
 
 /* Some systems use __main in a way incompatible with its use in gcc, in these
    cases use the macros NAME__MAIN to give a quoted symbol and SYMBOL__MAIN to
@@ -96,6 +97,472 @@ static rtx expand_debug_expr (tree);
 static bool defer_stack_allocation (tree, bool);
 
 static void record_alignment_for_reg_var (unsigned int);
+
+extern rtx
+expand_shift (enum tree_code, machine_mode, rtx, poly_int64, rtx, int);
+
+/* For light SRA in expander about paramaters and returns.  */
+struct access : public base_access
+{
+  /* The rtx for the access: link to incoming/returning register(s).  */
+  rtx rtx_val;
+};
+
+typedef struct access *access_p;
+
+struct expand_sra : public default_analyzer
+{
+  expand_sra ();
+  ~expand_sra ();
+
+  /* Now use default APIs, no actions for
+     pre_analyze_stmt, analyze_return.  */
+
+  /* overwrite analyze_default_stmt.  */
+  void analyze_default_stmt (gimple *);
+
+  /* overwrite analyze phi,call,asm .  */
+  void analyze_phi (gphi *stmt) { analyze_default_stmt (stmt); };
+  void analyze_call (gcall *stmt) { analyze_default_stmt (stmt); };
+  void analyze_asm (gasm *stmt) { analyze_default_stmt (stmt); };
+  /* overwrite analyze_assign.  */
+  void analyze_assign (gassign *);
+
+  /* Compute the scalar rtx(s) for all access of BASE from a parrallel REGS. */
+  bool scalarize_accesses (tree base, rtx regs);
+  /* Return the scalarized rtx for EXPR.  */
+  rtx get_scalarized_rtx (tree expr);
+
+private:
+  void prepare_expander_sra (void);
+
+  /* Return true if VAR is a candidate for SRA.  */
+  bool add_sra_candidate (tree var);
+
+  /* Collect the parameter and returns with type which is suitable for
+     scalarization.  */
+  bool collect_sra_candidates (void);
+
+  /* Return true if EXPR has interesting access to the sra candidates,
+     and created access, return false otherwise.  */
+  access_p build_access (tree expr, bool write);
+
+  /* Check if the accesses of BASE are scalarizbale.
+     Now support the parms only with reading or returns only with writing.  */
+  bool valid_scalariable_accesses (vec<access_p> *access_vec, bool is_parm);
+
+  /* Compute the scalar rtx for one access ACC from a parrallel REGS. */
+  bool scalarize_access (access_p acc, rtx regs);
+
+  /* Callback of walk_stmt_load_store_addr_ops, used to remove
+     unscalarizable accesses.  */
+  static bool visit_base (gimple *, tree op, tree, void *data);
+
+  /* Expr (tree) -> Scalarized value (rtx) map.  */
+  hash_map<tree, rtx> *expr_rtx_vec;
+
+  /* Base (tree) -> Vector (vec<access_p> *) map.  */
+  hash_map<tree, auto_vec<access_p> > *base_access_vec;
+};
+
+access_p
+expand_sra::build_access (tree expr, bool write)
+{
+  enum tree_code code = TREE_CODE (expr);
+  if (code != VAR_DECL && code != PARM_DECL && code != COMPONENT_REF
+      && code != ARRAY_REF && code != ARRAY_RANGE_REF)
+    return NULL;
+
+  HOST_WIDE_INT offset, size;
+  bool reverse;
+  tree base = get_ref_base_and_extent_hwi (expr, &offset, &size, &reverse);
+  if (!base || !DECL_P (base))
+    return NULL;
+  if (storage_order_barrier_p (expr) || TREE_THIS_VOLATILE (expr))
+    {
+      base_access_vec->remove (base);
+      return NULL;
+    }
+
+  vec<access_p> *access_vec = base_access_vec->get (base);
+  if (!access_vec)
+    return NULL;
+
+  /* TODO: support reverse. */
+  if (reverse || size <= 0 || offset + size > tree_to_shwi (DECL_SIZE (base)))
+    {
+      base_access_vec->remove (base);
+      return NULL;
+    }
+
+  struct access *access = XNEWVEC (struct access, 1);
+
+  memset (access, 0, sizeof (struct access));
+  access->offset = offset;
+  access->size = size;
+  access->expr = expr;
+  access->write = write;
+  access->rtx_val = NULL_RTX;
+
+  access_vec->safe_push (access);
+
+  return access;
+}
+
+bool
+expand_sra::visit_base (gimple *, tree op, tree, void *data)
+{
+  op = get_base_address (op);
+  if (op && DECL_P (op))
+    {
+      expand_sra *p = (expand_sra *) data;
+      p->base_access_vec->remove (op);
+    }
+  return false;
+}
+
+void
+expand_sra::analyze_default_stmt (gimple *stmt)
+{
+  if (base_access_vec && !base_access_vec->is_empty ())
+    walk_stmt_load_store_addr_ops (stmt, this, visit_base, visit_base,
+				   visit_base);
+}
+
+void
+expand_sra::analyze_assign (gassign *stmt)
+{
+  if (!base_access_vec || base_access_vec->is_empty ())
+    return;
+
+  if (gimple_assign_single_p (stmt) && !gimple_clobber_p (stmt))
+    {
+      tree rhs = gimple_assign_rhs1 (stmt);
+      tree lhs = gimple_assign_lhs (stmt);
+      bool res_r = build_access (rhs, false);
+      bool res_l = build_access (lhs, true);
+      if (res_l && TREE_CODE (rhs) == CONSTRUCTOR)
+	base_access_vec->remove (get_base_address (lhs));
+
+      if (res_l || res_r)
+	return;
+    }
+
+  analyze_default_stmt (stmt);
+}
+
+/* Return true if VAR is a candidate for SRA.  */
+
+bool
+expand_sra::add_sra_candidate (tree var)
+{
+  tree type = TREE_TYPE (var);
+
+  if (!AGGREGATE_TYPE_P (type) || !tree_fits_shwi_p (TYPE_SIZE (type))
+      || tree_to_shwi (TYPE_SIZE (type)) == 0 || TREE_THIS_VOLATILE (var)
+      || is_va_list_type (type))
+    return false;
+  gcc_assert (COMPLETE_TYPE_P (type));
+
+  base_access_vec->get_or_insert (var);
+
+  return true;
+}
+
+bool
+expand_sra::collect_sra_candidates (void)
+{
+  bool ret = false;
+
+  /* Collect parameters.  */
+  for (tree parm = DECL_ARGUMENTS (current_function_decl); parm;
+       parm = DECL_CHAIN (parm))
+    ret |= add_sra_candidate (parm);
+
+  /* Collect VARs on returns.  */
+  if (DECL_RESULT (current_function_decl))
+    {
+      edge_iterator ei;
+      edge e;
+      FOR_EACH_EDGE (e, ei, EXIT_BLOCK_PTR_FOR_FN (cfun)->preds)
+	if (greturn *r = safe_dyn_cast<greturn *> (*gsi_last_bb (e->src)))
+	  {
+	    tree val = gimple_return_retval (r);
+	    /* To sclaraized the return, the return value should be only
+	       writen, except this return stmt.
+	       Then using 'true(write)' to create the access. */
+	    if (val && VAR_P (val))
+	      ret |= add_sra_candidate (val) && build_access (val, true);
+	  }
+    }
+
+  return ret;
+}
+
+bool
+expand_sra::valid_scalariable_accesses (vec<access_p> *access_vec, bool is_parm)
+{
+  if (access_vec->is_empty ())
+    return false;
+
+  for (unsigned int j = 0; j < access_vec->length (); j++)
+    {
+      struct access *access = (*access_vec)[j];
+      if (is_parm && access->write)
+	return false;
+
+      if (!is_parm && !access->write)
+	return false;
+    }
+
+  return true;
+}
+
+void
+expand_sra::prepare_expander_sra ()
+{
+  if (optimize <= 0)
+    return;
+
+  base_access_vec = new hash_map<tree, auto_vec<access_p> >;
+  expr_rtx_vec = new hash_map<tree, rtx>;
+
+  collect_sra_candidates ();
+}
+
+expand_sra::expand_sra () : expr_rtx_vec (NULL), base_access_vec (NULL)
+{
+  prepare_expander_sra ();
+}
+
+expand_sra::~expand_sra ()
+{
+  if (optimize <= 0)
+    return;
+  delete expr_rtx_vec;
+  expr_rtx_vec = NULL;
+  delete base_access_vec;
+  base_access_vec = NULL;
+}
+
+rtx
+expand_sra::get_scalarized_rtx (tree expr)
+{
+  if (!expr_rtx_vec)
+    return NULL_RTX;
+  rtx *val = expr_rtx_vec->get (expr);
+  return val ? *val : NULL_RTX;
+}
+
+/* Get the register at INDEX from a parallel REGS.  */
+
+static rtx
+extract_one_reg (rtx regs, int index)
+{
+  rtx orig_reg = XEXP (XVECEXP (regs, 0, index), 0);
+  if (!HARD_REGISTER_P (orig_reg))
+    return orig_reg;
+
+  /* Reading from param hard reg need to be moved to a temp.  */
+  rtx reg = gen_reg_rtx (GET_MODE (orig_reg));
+  emit_move_insn (reg, orig_reg);
+  return reg;
+}
+
+/* Get IMODE part from REG at OFF_BITS.  */
+
+static rtx
+extract_sub_reg (rtx orig_reg, int off_bits, machine_mode mode)
+{
+  scalar_int_mode imode;
+  if (!int_mode_for_mode (mode).exists (&imode))
+    return NULL_RTX;
+
+  machine_mode orig_mode = GET_MODE (orig_reg);
+  gcc_assert (GET_MODE_CLASS (orig_mode) == MODE_INT);
+
+  poly_uint64 lowpart_off = subreg_lowpart_offset (imode, orig_mode);
+  int lowpart_off_bits = lowpart_off.to_constant () * BITS_PER_UNIT;
+  int shift_bits;
+  if (lowpart_off_bits >= off_bits)
+    shift_bits = lowpart_off_bits - off_bits;
+  else
+    shift_bits = off_bits - lowpart_off_bits;
+
+  rtx reg = orig_reg;
+  if (shift_bits > 0)
+    reg = expand_shift (RSHIFT_EXPR, orig_mode, reg, shift_bits, NULL, 1);
+
+  rtx subreg = gen_lowpart (imode, reg);
+  rtx result = gen_reg_rtx (imode);
+  emit_move_insn (result, subreg);
+
+  if (mode != imode)
+    result = gen_lowpart (mode, result);
+
+  return result;
+}
+
+bool
+expand_sra::scalarize_access (access_p acc, rtx regs)
+{
+  machine_mode expr_mode = TYPE_MODE (TREE_TYPE (acc->expr));
+
+  /* mode of mult registers. */
+  if (expr_mode != BLKmode
+      && known_gt (acc->size, GET_MODE_BITSIZE (word_mode)))
+    return false;
+
+  /* Compute the position of the access in the whole parallel rtx.  */
+  int start_index = -1;
+  int end_index = -1;
+  HOST_WIDE_INT left_bits = 0;
+  HOST_WIDE_INT right_bits = 0;
+  int cur_index = XEXP (XVECEXP (regs, 0, 0), 0) ? 0 : 1;
+  for (; cur_index < XVECLEN (regs, 0); cur_index++)
+    {
+      rtx slot = XVECEXP (regs, 0, cur_index);
+      HOST_WIDE_INT off = UINTVAL (XEXP (slot, 1)) * BITS_PER_UNIT;
+      machine_mode mode = GET_MODE (XEXP (slot, 0));
+      HOST_WIDE_INT size = GET_MODE_BITSIZE (mode).to_constant ();
+      if (off <= acc->offset && off + size > acc->offset)
+	{
+	  start_index = cur_index;
+	  left_bits = acc->offset - off;
+	}
+      if (off + size >= acc->offset + acc->size)
+	{
+	  end_index = cur_index;
+	  right_bits = off + size - (acc->offset + acc->size);
+	  break;
+	}
+    }
+  /* Invalid access possition: padding or outof bound.  */
+  if (start_index < 0 || end_index < 0)
+    return false;
+
+  /* Need multi-registers in a parallel for the access.  */
+  if (expr_mode == BLKmode || end_index > start_index)
+    {
+      if (left_bits || right_bits)
+	return false;
+
+      int num_words = end_index - start_index + 1;
+      rtx *tmps = XALLOCAVEC (rtx, num_words);
+
+      int pos = 0;
+      HOST_WIDE_INT start;
+      start = UINTVAL (XEXP (XVECEXP (regs, 0, start_index), 1));
+      /* Extract whole registers.  */
+      for (; pos < num_words; pos++)
+	{
+	  int index = start_index + pos;
+	  rtx reg = extract_one_reg (regs, index);
+	  machine_mode mode = GET_MODE (reg);
+	  HOST_WIDE_INT off;
+	  off = UINTVAL (XEXP (XVECEXP (regs, 0, index), 1)) - start;
+	  tmps[pos] = gen_rtx_EXPR_LIST (mode, reg, GEN_INT (off));
+	}
+
+      rtx reg = gen_rtx_PARALLEL (expr_mode, gen_rtvec_v (pos, tmps));
+      acc->rtx_val = reg;
+      return true;
+    }
+
+  /* Just need one reg for the access.  */
+  if (end_index == start_index && left_bits == 0 && right_bits == 0)
+    {
+      rtx reg = extract_one_reg (regs, start_index);
+      if (GET_MODE (reg) != expr_mode)
+	reg = gen_lowpart (expr_mode, reg);
+
+      acc->rtx_val = reg;
+      return true;
+    }
+
+  /* Need to extract part reg for the access.  */
+  if (!acc->write && end_index == start_index
+      && (acc->size % BITS_PER_UNIT) == 0)
+    {
+      rtx orig_reg = XEXP (XVECEXP (regs, 0, start_index), 0);
+      acc->rtx_val = extract_sub_reg (orig_reg, left_bits, expr_mode);
+      if (acc->rtx_val)
+	return true;
+    }
+
+  return false;
+}
+
+bool
+expand_sra::scalarize_accesses (tree base, rtx regs)
+{
+  if (!base_access_vec)
+    return false;
+  vec<access_p> *access_vec = base_access_vec->get (base);
+  if (!access_vec)
+    return false;
+  bool is_parm = TREE_CODE (base) == PARM_DECL;
+  if (!valid_scalariable_accesses (access_vec, is_parm))
+    return false;
+
+  /* Go through each access, compute corresponding rtx(regs or subregs)
+     for the expression.  */
+  int n = access_vec->length ();
+  int cur_access_index = 0;
+  for (; cur_access_index < n; cur_access_index++)
+    if (!scalarize_access ((*access_vec)[cur_access_index], regs))
+      break;
+
+  /* Bind/map expr(tree) to sclarized rtx if all access scalarized.  */
+  if (cur_access_index == n)
+    for (int j = 0; j < n; j++)
+      {
+	access_p access = (*access_vec)[j];
+	expr_rtx_vec->put (access->expr, access->rtx_val);
+      }
+
+  return true;
+}
+
+static expand_sra *current_sra = NULL;
+
+/* Check If there is an sra access for the expr.
+   Return the correspond scalar sym for the access. */
+
+rtx
+get_scalar_rtx_for_aggregate_expr (tree expr)
+{
+  return current_sra ? current_sra->get_scalarized_rtx (expr) : NULL_RTX;
+}
+
+/* Compute/Set RTX registers for those accesses on BASE.  */
+
+void
+set_scalar_rtx_for_aggregate_access (tree base, rtx regs)
+{
+  if (!current_sra)
+    return;
+  current_sra->scalarize_accesses (base, regs);
+}
+
+void
+set_scalar_rtx_for_returns ()
+{
+  if (!current_sra)
+    return;
+
+  tree res = DECL_RESULT (current_function_decl);
+  gcc_assert (res);
+  edge_iterator ei;
+  edge e;
+  FOR_EACH_EDGE (e, ei, EXIT_BLOCK_PTR_FOR_FN (cfun)->preds)
+    if (greturn *r = safe_dyn_cast<greturn *> (*gsi_last_bb (e->src)))
+      {
+	tree val = gimple_return_retval (r);
+	if (val && VAR_P (val))
+	  current_sra->scalarize_accesses (val, DECL_RTL (res));
+      }
+}
 
 /* Return an expression tree corresponding to the RHS of GIMPLE
    statement STMT.  */
@@ -3778,7 +4245,8 @@ expand_return (tree retval)
 
   /* If we are returning the RESULT_DECL, then the value has already
      been stored into it, so we don't have to do anything special.  */
-  if (TREE_CODE (retval_rhs) == RESULT_DECL)
+  if (TREE_CODE (retval_rhs) == RESULT_DECL
+      || get_scalar_rtx_for_aggregate_expr (retval_rhs))
     expand_value_return (result_rtl);
 
   /* If the result is an aggregate that is being returned in one (or more)
@@ -4422,6 +4890,9 @@ expand_debug_expr (tree exp)
   int unsignedp = TYPE_UNSIGNED (TREE_TYPE (exp));
   addr_space_t as;
   scalar_int_mode op0_mode, op1_mode, addr_mode;
+  rtx x = get_scalar_rtx_for_aggregate_expr (exp);
+  if (x)
+    return NULL_RTX;/* optimized out.  */
 
   switch (TREE_CODE_CLASS (TREE_CODE (exp)))
     {
@@ -6634,6 +7105,9 @@ pass_expand::execute (function *fun)
   auto_bitmap forced_stack_vars;
   discover_nonconstant_array_refs (forced_stack_vars);
 
+  current_sra = new expand_sra;
+  scan_function (cfun, *current_sra);
+
   /* Make sure all values used by the optimization passes have sane
      defaults.  */
   reg_renumber = 0;
@@ -7062,6 +7536,8 @@ pass_expand::execute (function *fun)
       loop_optimizer_finalize ();
     }
 
+  delete current_sra;
+  current_sra = NULL;
   timevar_pop (TV_POST_EXPAND);
 
   return 0;
