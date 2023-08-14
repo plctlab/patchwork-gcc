@@ -6853,59 +6853,59 @@ avoid_type_punning_on_regs (tree t, bitmap forced_stack_vars)
     bitmap_set_bit (forced_stack_vars, DECL_UID (base));
 }
 
-/* RTL expansion is not able to compile array references with variable
-   offsets for arrays stored in single register.  Discover such
-   expressions and mark variables as addressable to avoid this
-   scenario.  */
+/* Beside light-sra, walk stmts to discover expressions of array references
+   with variable offsets for arrays and mark variables as addressable to
+   avoid to be stored in single register. */
 
-static void
-discover_nonconstant_array_refs (bitmap forced_stack_vars)
+struct array_and_sra_walk : public expand_sra
 {
-  basic_block bb;
-  gimple_stmt_iterator gsi;
+  array_and_sra_walk (bitmap map) : wi{}, forced_stack_vars (map)
+  {
+    wi.info = forced_stack_vars;
+  };
 
-  walk_stmt_info wi = {};
-  wi.info = forced_stack_vars;
-  FOR_EACH_BB_FN (bb, cfun)
-    for (gsi = gsi_start_bb (bb); !gsi_end_p (gsi); gsi_next (&gsi))
+  void pre_analyze_stmt (gimple *stmt)
+  {
+    expand_sra::pre_analyze_stmt (stmt);
+    if (!is_gimple_debug (stmt))
+      walk_gimple_op (stmt, discover_nonconstant_array_refs_r, &wi);
+    if (gimple_vdef (stmt))
       {
-	gimple *stmt = gsi_stmt (gsi);
-	if (!is_gimple_debug (stmt))
-	  {
-	    walk_gimple_op (stmt, discover_nonconstant_array_refs_r, &wi);
-	    gcall *call = dyn_cast <gcall *> (stmt);
-	    if (call && gimple_call_internal_p (call))
-	      {
-		tree cand = NULL_TREE;
-		switch (gimple_call_internal_fn (call))
-		  {
-		  case IFN_LOAD_LANES:
-		    /* The source must be a MEM.  */
-		    cand = gimple_call_arg (call, 0);
-		    break;
-		  case IFN_STORE_LANES:
-		    /* The destination must be a MEM.  */
-		    cand = gimple_call_lhs (call);
-		    break;
-		  default:
-		    break;
-		  }
-		if (cand)
-		  cand = get_base_address (cand);
-		if (cand
-		    && DECL_P (cand)
-		    && use_register_for_decl (cand))
-		  bitmap_set_bit (forced_stack_vars, DECL_UID (cand));
-	      }
-	    if (gimple_vdef (stmt))
-	      {
-		tree t = gimple_get_lhs (stmt);
-		if (t && REFERENCE_CLASS_P (t))
-		  avoid_type_punning_on_regs (t, forced_stack_vars);
-	      }
-	  }
+	tree t = gimple_get_lhs (stmt);
+	if (t && REFERENCE_CLASS_P (t))
+	  avoid_type_punning_on_regs (t, forced_stack_vars);
       }
-}
+  }
+
+  void analyze_call (gcall *call)
+  {
+    expand_sra::analyze_call (call);
+    if (gimple_call_internal_p (call))
+      {
+	tree cand = NULL_TREE;
+	switch (gimple_call_internal_fn (call))
+	  {
+	  case IFN_LOAD_LANES:
+	    /* The source must be a MEM.  */
+	    cand = gimple_call_arg (call, 0);
+	    break;
+	  case IFN_STORE_LANES:
+	    /* The destination must be a MEM.  */
+	    cand = gimple_call_lhs (call);
+	    break;
+	  default:
+	    break;
+	  }
+	if (cand)
+	  cand = get_base_address (cand);
+	if (cand && DECL_P (cand) && use_register_for_decl (cand))
+	  bitmap_set_bit (forced_stack_vars, DECL_UID (cand));
+      }
+  };
+
+  walk_stmt_info wi;
+  bitmap forced_stack_vars;
+};
 
 /* This function sets crtl->args.internal_arg_pointer to a virtual
    register if DRAP is needed.  Local register allocator will replace
@@ -7101,12 +7101,12 @@ pass_expand::execute (function *fun)
 	    avoid_deep_ter_for_debug (gsi_stmt (gsi), 0);
     }
 
-  /* Mark arrays indexed with non-constant indices with TREE_ADDRESSABLE.  */
+  /* Mark arrays indexed with non-constant indices with TREE_ADDRESSABLE.
+     And scan expressions for possible SRA accesses. */
   auto_bitmap forced_stack_vars;
-  discover_nonconstant_array_refs (forced_stack_vars);
-
-  current_sra = new expand_sra;
-  scan_function (cfun, *current_sra);
+  array_and_sra_walk *walker = new array_and_sra_walk (forced_stack_vars);
+  current_sra = walker;
+  scan_function (cfun, *walker);
 
   /* Make sure all values used by the optimization passes have sane
      defaults.  */
@@ -7536,7 +7536,7 @@ pass_expand::execute (function *fun)
       loop_optimizer_finalize ();
     }
 
-  delete current_sra;
+  delete walker;
   current_sra = NULL;
   timevar_pop (TV_POST_EXPAND);
 
