@@ -4704,11 +4704,14 @@ print_test (output_state *os, const rtx_test &test, bool is_param,
       break;
 
     case rtx_test::SUBREG_FIELD:
+      printf ("(SUBREG_BYTE (");
+      print_test_rtx (os, test);
+      printf (").is_constant () && ");
       printf ("%s (", invert_p ? "maybe_ne" : "known_eq");
       print_nonbool_test (os, test);
       printf (", ");
       print_label_value (test, is_param, value);
-      printf (")");
+      printf ("))");
       break;
 
     case rtx_test::SAVED_CONST_INT:
