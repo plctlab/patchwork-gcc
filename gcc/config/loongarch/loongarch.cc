@@ -6783,6 +6783,16 @@ loongarch_set_handled_components (sbitmap components)
 	cfun->machine->reg_is_wrapped_separately[regno] = true;
 }
 
+/* Target hook for c_mode_for_suffix.  */
+machine_mode
+loongarch_c_mode_for_suffix (char suffix)
+{
+  if (suffix == 'q')
+    return TFmode;
+
+  return VOIDmode;
+}
+
 /* Initialize the GCC target structure.  */
 #undef TARGET_ASM_ALIGNED_HI_OP
 #define TARGET_ASM_ALIGNED_HI_OP "\t.half\t"
@@ -6894,6 +6904,10 @@ loongarch_set_handled_components (sbitmap components)
 #define TARGET_BUILTIN_DECL loongarch_builtin_decl
 #undef TARGET_EXPAND_BUILTIN
 #define TARGET_EXPAND_BUILTIN loongarch_expand_builtin
+#undef TARGET_FOLD_BUILTIN
+#define TARGET_FOLD_BUILTIN loongarch_fold_builtin
+#undef TARGET_C_MODE_FOR_SUFFIX
+#define TARGET_C_MODE_FOR_SUFFIX loongarch_c_mode_for_suffix
 
 /* The generic ELF target does not always have TLS support.  */
 #ifdef HAVE_AS_TLS

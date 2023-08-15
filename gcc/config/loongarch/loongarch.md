@@ -44,6 +44,13 @@
   UNSPEC_FSCALEB
   UNSPEC_FLOGB
 
+  UNSPEC_INFQ
+  UNSPEC_HUGE_VALQ
+  UNSPEC_FABSQ
+  UNSPEC_COPYSIGNQ
+  UNSPEC_NANQ
+  UNSPEC_NANSQ
+
   ;; Override return address for exception handling.
   UNSPEC_EH_RETURN
 
@@ -562,6 +569,15 @@
 				 (40 "5")
 				 (48 "6")
 				 (56 "7")])
+
+;; mathq function
+(define_int_iterator MATHQ[UNSPEC_INFQ	 UNSPEC_HUGE_VALQ
+			    UNSPEC_NANQ UNSPEC_NANSQ])
+(define_int_attr mathq_pattern[(UNSPEC_INFQ "infq")
+				(UNSPEC_HUGE_VALQ "huge_valq")
+				(UNSPEC_NANQ "nanq")
+				(UNSPEC_NANSQ "nansq")]
+)
 
 ;;
 ;;  ....................
@@ -2007,6 +2023,59 @@
 	(const_int 0))]
   ""
   "movgr2cf\t%0,$r0")
+
+;; Implements functions with a "q" suffix
+
+(define_insn "<mathq_pattern>"
+  [(unspec:SI[(const_int 0)] MATHQ)]
+  ""
+  "")
+
+;;Implement __builtin_fabsq function.
+
+(define_insn_and_split   "fabsq"
+  [(set (match_operand:TF  0 "register_operand" "=r")
+	(unspec:TF[(match_operand:TF 1 "register_operand" "rG")]
+		    UNSPEC_FABSQ))]
+  ""
+  "#"
+  "reload_completed"
+[(set (zero_extract:DI (match_operand:DI 0 "register_operand")
+			(match_operand:SI 3 "const_int_operand")
+			(match_operand:SI 4 "const_int_operand"))
+      (match_operand:DI 2 "const_int_operand"))]
+{
+	operands[0] = gen_rtx_REG (Pmode, REGNO (operands[0])+1);
+	operands[2] = GEN_INT (0);
+	operands[3] = GEN_INT (1);
+	operands[4] = GEN_INT (63);
+}
+)
+
+;;Implement __builtin_copysignq function.
+
+(define_insn_and_split  "copysignq"
+  [(set (match_operand:TF  0 "register_operand" "=r")
+	(unspec:TF[(match_operand:TF 1 "register_operand" "rG")
+		    (match_operand:TF 2 "register_operand" "rG")]
+		      UNSPEC_COPYSIGNQ))]
+ ""
+ "#"
+ "reload_completed"
+  [(set (match_operand:DI 2 "register_operand")
+	(lshiftrt :DI (match_operand:DI 2 "register_operand")
+	(match_operand:SI 4 "arith_operand")))
+   (set (zero_extract:DI (match_operand:DI 0 "register_operand")
+			  (match_operand:SI 3 "const_int_operand")
+			  (match_operand:SI 4 "const_int_operand"))
+	(match_operand:DI 2 "register_operand"))]
+{
+   operands[0] = gen_rtx_REG (Pmode,REGNO (operands[0])+1);
+   operands[2] = gen_rtx_REG (Pmode,REGNO (operands[2])+1);
+   operands[3] = GEN_INT (1);
+   operands[4] = GEN_INT (63);
+}
+)
 
 ;; Conditional move instructions.
 
