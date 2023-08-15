@@ -52,7 +52,7 @@ LIST = aarch64-elf aarch64-freebsd13 aarch64-linux-gnu aarch64-rtems \
   i686-netbsdelf9 \
   i686-openbsd i686-elf i686-kopensolaris-gnu i686-gnu \
   i686-pc-msdosdjgpp i686-lynxos i686-nto-qnx \
-  i686-rtems i686-solaris2.11 i686-wrs-vxworks \
+  i686-rtems i686-solaris2.11OPT-with-gnu-as i686-wrs-vxworks \
   i686-wrs-vxworksae \
   i686-cygwinOPT-enable-threads=yes i686-mingw32crt ia64-elf \
   ia64-linux ia64-hpux ia64-hp-vms iq2000-elf lm32-elf \
