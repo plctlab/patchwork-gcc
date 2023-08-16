@@ -50,3 +50,23 @@ unsigned int foo5(unsigned int rs1, unsigned int rs2)
 {
     return (rs1 >> rs2) | (rs1 << (32 - rs2));
 }
+
+/*
+**foo6:
+**	rori	a0,a0,32
+**	ret
+*/
+unsigned long foo6(unsigned long rotate)
+{
+    return (rotate << 32) | (rotate >> 32);
+}
+
+/*
+**foo7:
+**	roriw	a0,a0,16
+**	ret
+*/
+unsigned int foo7(unsigned int rotate)
+{
+    return (rotate << 16) | (rotate >> 16);
+}

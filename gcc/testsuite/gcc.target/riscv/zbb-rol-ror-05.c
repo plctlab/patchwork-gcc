@@ -22,3 +22,13 @@ unsigned int foo2(unsigned int rs1)
 {
     return (rs1 << 10) | (rs1 >> 22);
 }
+
+/*
+**foo3:
+**	rori	a0,a0,16
+**	ret
+*/
+unsigned int foo3(unsigned int rs1)
+{
+    return (rs1 << 16) | (rs1 >> 16);
+}
