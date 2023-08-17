@@ -18253,6 +18253,21 @@ The builtin uses the ISA 3.0 instruction @code{mffscdrn} if available.
 Otherwise the builtin reads the FPSCR, masks the current decimal rounding
 mode bits out and OR's in the new value.
 
+_Decimal64 __builtin_dfp_quantize (_Decimal64, _Decimal64, const int);
+_Decimal64 __builtin_dfp_quantize (const int, _Decimal64, const int);
+_Decimal128 __builtin_dfp_quantize (_Decimal128, _Decimal128, const int);
+_Decimal128 __builtin_dfp_quantize (const int, _Decimal128, const int);
+
+The @code{__builtin_dfp_quantize} built-in, converts and rounds the second
+argument to the form with the same exponent as that of the first operand.
+If the first argument is a constant int, then the 5-bit value in the second
+argument is converted and rounded to the form with the exponent specified by
+the 5-bit const int value in the first argument.  The third argument, constant
+int, is a two bit field that specifies the rounding mode.  The possible modes
+are: 00 Round to nearest, ties to even; 01 Round toward 0; 10 Round to nearest,
+ties away from 0; 11 Round according to DRN where DRN is the Decimal Floating
+point field of the FPSCR.
+
 @end smallexample
 
 The following functions require @option{-mhard-float},
