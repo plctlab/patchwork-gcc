@@ -400,6 +400,8 @@ struct GTY((desc("0"), tag("0"),
      1 in a VALUE or DEBUG_EXPR is NO_LOC_P in var-tracking.cc.
      Dumped as "/i" in RTL dumps.  */
   unsigned return_val : 1;
+  /* 1 in a SYMBOL_REF if it is the target of a libcall.  */
+  unsigned is_libcall : 1;
 
   union {
     /* The final union field is aligned to 64 bits on LP64 hosts,
@@ -2731,6 +2733,10 @@ do {								        \
    emit_library_call.  */
 #define SYMBOL_REF_USED(RTX)						\
   (RTL_FLAG_CHECK1 ("SYMBOL_REF_USED", (RTX), SYMBOL_REF)->used)
+
+/* 1 if RTX is a symbol_ref that represents a libcall target.  */
+#define SYMBOL_REF_LIBCALL(RTX)                                         \
+  (RTL_FLAG_CHECK1 ("SYMBOL_REF_LIBCALL", (RTX), SYMBOL_REF)->is_libcall)
 
 /* 1 if RTX is a symbol_ref for a weak symbol.  */
 #define SYMBOL_REF_WEAK(RTX)						\

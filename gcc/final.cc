@@ -815,6 +815,8 @@ make_pass_compute_alignments (gcc::context *ctxt)
    reorg.cc, since the branch splitting exposes new instructions with delay
    slots.  */
 
+static rtx call_from_call_insn (rtx_call_insn *insn);
+
 void
 shorten_branches (rtx_insn *first)
 {
@@ -850,6 +852,20 @@ shorten_branches (rtx_insn *first)
   for (insn = get_insns (), i = 1; insn; insn = NEXT_INSN (insn))
     {
       INSN_SHUID (insn) = i++;
+
+      /* If this is a `call' instruction implementing a libcall,
+         and this machine requires an external definition for library
+         functions, write one out.  */
+      if (CALL_P (insn))
+        {
+          rtx x = call_from_call_insn (dyn_cast <rtx_call_insn *> (insn));
+          x = XEXP (x, 0);
+          if (x && MEM_P (x)
+              && SYMBOL_REF_P (XEXP (x, 0))
+              && SYMBOL_REF_LIBCALL (XEXP (x, 0)))
+            assemble_external_libcall (XEXP (x, 0));
+        }
+
       if (INSN_P (insn))
 	continue;
 
