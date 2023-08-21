@@ -34,6 +34,8 @@ along with GCC; see the file COPYING3.  If not see
 #include "lcm.h"
 #include "cfgcleanup.h"
 #include "tree-pass.h"
+#include "cfgbuild.h"
+#include "gcse.h"
 
 /* We want target macros for the mode switching code to be able to refer
    to instruction attribute values.  */
@@ -830,6 +832,49 @@ optimize_mode_switching (void)
 			emit_insn_before (mode_set, ptr->insn_ptr);
 		    }
 
+		  if (targetm.mode_switching.emit_after)
+		    {
+		      if (control_flow_insn_p (ptr->insn_ptr)
+			&& ptr->insn_ptr == BB_END (bb))
+			{
+			  edge eg;
+			  edge_iterator eg_iterator;
+
+			  FOR_EACH_EDGE (eg, eg_iterator, bb->succs)
+			    {
+			      start_sequence ();
+			      targetm.mode_switching.emit_after (entity_map[j],
+				ptr->mode, cur_mode, ptr->regs_live);
+			      mode_set = get_insns ();
+			      end_sequence ();
+
+			      if (mode_set != NULL_RTX)
+				{
+				  if (eg->flags & EDGE_ABNORMAL)
+				    insert_insn_end_basic_block (mode_set, bb);
+				  else
+				    insert_insn_on_edge (mode_set, eg);
+
+				  emitted = true;
+				  need_commit = true;
+				}
+			    }
+			}
+		      else
+			{
+			  start_sequence ();
+			  targetm.mode_switching.emit_after (entity_map[j],
+			    ptr->mode, cur_mode, ptr->regs_live);
+			  mode_set = get_insns ();
+			  end_sequence ();
+
+			  if (mode_set != NULL_RTX)
+			    {
+			      emit_insn_after (mode_set, ptr->insn_ptr);
+			      emitted = true;
+			    }
+			}
+		    }
 		  default_rtl_profile ();
 		}
 

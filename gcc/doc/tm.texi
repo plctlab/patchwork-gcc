@@ -10315,8 +10315,8 @@ return nonzero for any @var{entity} that needs mode-switching.
 If you define this macro, you also have to define
 @code{NUM_MODES_FOR_MODE_SWITCHING}, @code{TARGET_MODE_NEEDED},
 @code{TARGET_MODE_PRIORITY} and @code{TARGET_MODE_EMIT}.
-@code{TARGET_MODE_AFTER}, @code{TARGET_MODE_ENTRY}, and @code{TARGET_MODE_EXIT}
-are optional.
+@code{TARGET_MODE_AFTER}, @code{TARGET_MODE_ENTRY}, @code{TARGET_MODE_EMIT_AFTER},
+and @code{TARGET_MODE_EXIT} are optional.
 @end defmac
 
 @defmac NUM_MODES_FOR_MODE_SWITCHING
@@ -10336,6 +10336,14 @@ switch is needed / supplied.
 Generate one or more insns to set @var{entity} to @var{mode}.
 @var{hard_reg_live} is the set of hard registers live at the point where
 the insn(s) are to be inserted. @var{prev_moxde} indicates the mode
+to switch from. Sets of a lower numbered entity will be emitted before
+sets of a higher numbered entity to a mode of the same or lower priority.
+@end deftypefn
+
+@deftypefn {Target Hook} void TARGET_MODE_EMIT_AFTER (int @var{entity}, int @var{mode}, int @var{prev_mode}, HARD_REG_SET @var{regs_live})
+Generate one or more insns to set @var{entity} to @var{mode}.
+@var{hard_reg_live} is the set of hard registers live at the point where
+the insn(s) are to be inserted after. @var{prev_moxde} indicates the mode
 to switch from. Sets of a lower numbered entity will be emitted before
 sets of a higher numbered entity to a mode of the same or lower priority.
 @end deftypefn
