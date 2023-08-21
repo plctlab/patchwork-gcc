@@ -27,6 +27,7 @@ typedef std::basic_string<char_t, traits_t, allocator_t> string_t;
 
 int main()
 {
+  __gnu_test::counter::enter();
   {
     string_t s;
     s += "bayou bend";
@@ -34,5 +35,7 @@ int main()
 
   if (__gnu_test::counter::count() != 0)
     throw std::runtime_error("count not zero");
+
+  __gnu_test::counter::exit();
   return 0;
 }

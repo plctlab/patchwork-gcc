@@ -28,11 +28,11 @@ namespace __gnu_test
 
   struct counter
   {
-    std::size_t _M_count;
+    std::size_t _M_count, _M_pre_enter_count;
     std::size_t _M_increments, _M_decrements;
     bool	_M_throw;
 
-    counter() : _M_count(0), _M_throw(true) { }
+    counter() : _M_count(0), _M_pre_enter_count(0), _M_throw(true) { }
 
     ~counter() THROW (counter_error)
     {
@@ -75,17 +75,35 @@ namespace __gnu_test
       counter& cntr = get();
       cntr._M_increments = cntr._M_decrements = 0;
     }
+
+    static void
+    enter()
+    {
+      counter& cntr = get();
+      cntr._M_pre_enter_count = cntr._M_count;
+      cntr._M_count = 0;
+    }
+
+    static void
+    exit()
+    {
+      counter& cntr = get();
+      cntr._M_count = cntr._M_pre_enter_count;
+      cntr._M_pre_enter_count = 0;
+    }
   };
 
   template<typename Alloc, bool uses_global_new>
     bool
     check_new(Alloc a = Alloc())
     {
+      __gnu_test::counter::enter();
       __gnu_test::counter::exceptions(false);
       (void) a.allocate(10);
       const bool __b((__gnu_test::counter::count() > 0) == uses_global_new);
       if (!__b)
 	throw std::logic_error("counter not incremented");
+      __gnu_test::counter::exit();
       return __b;
     }
 

@@ -61,7 +61,9 @@ test02()
 int
 main()
 {
+  __gnu_test::counter::enter();
   test01();
   test02();
+  __gnu_test::counter::exit();
   return 0;
 }

@@ -268,6 +268,7 @@ test03()
 int
 main()
 {
+  __gnu_test::counter::enter();
   test01();
   test02();
   test11();
@@ -275,5 +276,6 @@ main()
   test21();
   test22();
   test03();
+  __gnu_test::counter::exit();
   return 0;
 }
