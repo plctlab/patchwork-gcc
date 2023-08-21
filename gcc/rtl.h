@@ -332,6 +332,7 @@ struct GTY((desc("0"), tag("0"),
      1 in a CALL_INSN logically equivalent to
        ECF_LOOPING_CONST_OR_PURE and DECL_LOOPING_CONST_OR_PURE_P.
      1 in a VALUE is SP_DERIVED_VALUE_P in cselib.cc.
+     1 in a SYMBOL_REF if it is the target of a libcall.
      Dumped as "/c" in RTL dumps.  */
   unsigned int call : 1;
   /* 1 in a REG, MEM, or CONCAT if the value is set at most once, anywhere.
@@ -2731,6 +2732,10 @@ do {								        \
    emit_library_call.  */
 #define SYMBOL_REF_USED(RTX)						\
   (RTL_FLAG_CHECK1 ("SYMBOL_REF_USED", (RTX), SYMBOL_REF)->used)
+
+/* 1 if RTX is a symbol_ref that represents a libcall target.  */
+#define SYMBOL_REF_LIBCALL(RTX)                                         \
+  (RTL_FLAG_CHECK1 ("SYMBOL_REF_LIBCALL", (RTX), SYMBOL_REF)->call)
 
 /* 1 if RTX is a symbol_ref for a weak symbol.  */
 #define SYMBOL_REF_WEAK(RTX)						\

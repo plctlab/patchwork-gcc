@@ -804,6 +804,8 @@ make_pass_compute_alignments (gcc::context *ctxt)
 }
 
 
+static rtx call_from_call_insn (rtx_call_insn *insn);
+
 /* Make a pass over all insns and compute their actual lengths by shortening
    any branches of variable length if possible.  */
 
@@ -850,6 +852,34 @@ shorten_branches (rtx_insn *first)
   for (insn = get_insns (), i = 1; insn; insn = NEXT_INSN (insn))
     {
       INSN_SHUID (insn) = i++;
+
+      /* If this is a `call' instruction implementing a libcall, and
+         this machine requires an external definition for library
+         functions, write one out.  */
+      if (CALL_P (insn))
+        {
+          rtx x;
+
+          if ((x = call_from_call_insn (dyn_cast <rtx_call_insn *> (insn)))
+              && (x = XEXP (x, 0))
+              && MEM_P (x)
+              && (x = XEXP (x, 0))
+              && SYMBOL_REF_P (x)
+              && SYMBOL_REF_LIBCALL (x))
+            {
+              /* Direct call.  */
+              assemble_external_libcall (x);
+            }
+          else if ((x = find_reg_note (insn, REG_CALL_DECL, NULL_RTX))
+                   && (x = XEXP (x, 0)))
+            {
+              /* Indirect call with REG_CALL_DECL note.  */
+              gcc_assert (SYMBOL_REF_P (x));
+              if (SYMBOL_REF_LIBCALL (x))
+                assemble_external_libcall (x);
+            }
+        }
+
       if (INSN_P (insn))
 	continue;
 

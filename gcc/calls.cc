@@ -4384,9 +4384,10 @@ emit_library_call_value_1 (int retval, rtx orgfun, rtx value,
 	|| argvec[i].partial != 0)
       update_stack_alignment_for_call (&argvec[i].locate);
 
-  /* If this machine requires an external definition for library
-     functions, write one out.  */
-  assemble_external_libcall (fun);
+  /* Mark the emitted target as a libcall.  This will be used by final
+     in order to emit an external symbol declaration if the libcall is
+     ever used.  */
+  SYMBOL_REF_LIBCALL (fun) = 1;
 
   original_args_size = args_size;
   args_size.constant = (aligned_upper_bound (args_size.constant
@@ -4731,7 +4732,7 @@ emit_library_call_value_1 (int retval, rtx orgfun, rtx value,
 	       valreg,
 	       old_inhibit_defer_pop + 1, call_fusage, flags, args_so_far);
 
-  if (flag_ipa_ra)
+  if (flag_ipa_ra || SYMBOL_REF_LIBCALL (orgfun))
     {
       rtx datum = orgfun;
       gcc_assert (GET_CODE (datum) == SYMBOL_REF);
