@@ -16734,6 +16734,7 @@ check_data_variable (gfc_data_variable *var, locus *where)
   ar_type mark = AR_UNKNOWN;
   int i;
   mpz_t section_index[GFC_MAX_DIMENSIONS];
+  int vector_offset[GFC_MAX_DIMENSIONS];
   gfc_ref *ref;
   gfc_array_ref *ar;
   gfc_symbol *sym;
@@ -16842,7 +16843,7 @@ check_data_variable (gfc_data_variable *var, locus *where)
 	case AR_SECTION:
 	  ar = &ref->u.ar;
 	  /* Get the start position of array section.  */
-	  gfc_get_section_index (ar, section_index, &offset);
+	  gfc_get_section_index (ar, section_index, &offset, vector_offset);
 	  mark = AR_SECTION;
 	  break;
 
@@ -16925,7 +16926,7 @@ check_data_variable (gfc_data_variable *var, locus *where)
 	  /* Modify the array section indexes and recalculate the offset
 	     for next element.  */
 	  else if (mark == AR_SECTION)
-	    gfc_advance_section (section_index, ar, &offset);
+	    gfc_advance_section (section_index, ar, &offset, vector_offset);
 	}
     }
 
