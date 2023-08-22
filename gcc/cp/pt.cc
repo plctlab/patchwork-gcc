@@ -151,7 +151,7 @@ static tree get_partial_spec_bindings (tree, tree, tree);
 static void tsubst_enum	(tree, tree, tree);
 static bool check_instantiated_args (tree, tree, tsubst_flags_t);
 static int check_non_deducible_conversion (tree, tree, unification_kind_t, int,
-					   struct conversion **, bool);
+					   struct conversion **, bool, bool);
 static int maybe_adjust_types_for_deduction (tree, unification_kind_t,
 					     tree*, tree*, tree);
 static int type_unification_real (tree, tree, tree, const tree *,
@@ -22256,7 +22256,8 @@ pack_deducible_p (tree parm, tree fn)
 static int
 check_non_deducible_conversions (tree parms, const tree *args, unsigned nargs,
 				 tree fn, unification_kind_t strict, int flags,
-				 struct conversion **convs, bool explain_p)
+				 struct conversion **convs, bool explain_p,
+				 bool noninst_only_p)
 {
   /* Non-constructor methods need to leave a conversion for 'this', which
      isn't included in nargs here.  */
@@ -22292,7 +22293,7 @@ check_non_deducible_conversions (tree parms, const tree *args, unsigned nargs,
 	  int lflags = conv_flags (ia, nargs, fn, arg, flags);
 
 	  if (check_non_deducible_conversion (parm, arg, strict, lflags,
-					      conv_p, explain_p))
+					      conv_p, explain_p, noninst_only_p))
 	    return 1;
 	}
 
@@ -22592,6 +22593,16 @@ fn_type_unification (tree fn,
 
  deduced:
 
+  /* As a refinement of CWG2369, check first and foremost non-dependent
+     conversions that we know are not going to induce template instantiation
+     (PR99599).  */
+  if (strict == DEDUCE_CALL
+      && incomplete
+      && check_non_deducible_conversions (parms, args, nargs, fn, strict, flags,
+					  convs, explain_p,
+					  /*noninst_only_p=*/true))
+    goto fail;
+
   /* CWG2369: Check satisfaction before non-deducible conversions.  */
   if (!constraints_satisfied_p (fn, targs))
     {
@@ -22605,7 +22616,8 @@ fn_type_unification (tree fn,
      as the standard says that we substitute explicit args immediately.  */
   if (incomplete
       && check_non_deducible_conversions (parms, args, nargs, fn, strict, flags,
-					  convs, explain_p))
+					  convs, explain_p,
+					  /*noninst_only_p=*/false))
     goto fail;
 
   /* All is well so far.  Now, check:
@@ -22839,7 +22851,7 @@ maybe_adjust_types_for_deduction (tree tparms,
 static int
 check_non_deducible_conversion (tree parm, tree arg, unification_kind_t strict,
 				int flags, struct conversion **conv_p,
-				bool explain_p)
+				bool explain_p, bool noninst_only_p)
 {
   tree type;
 
@@ -22861,6 +22873,50 @@ check_non_deducible_conversion (tree parm, tree arg, unification_kind_t strict,
     {
       bool ok = false;
       tree conv_arg = TYPE_P (arg) ? NULL_TREE : arg;
+      if (conv_p && *conv_p)
+	{
+	  /* This conversion was already computed earlier (when
+	     computing only non-instantiating conversions).  */
+	  gcc_checking_assert (!noninst_only_p);
+	  return unify_success (explain_p);
+	}
+      if (noninst_only_p)
+	{
+	  /* We're checking only non-instantiating conversions.
+	     A conversion may instantiate only if it's to/from a
+	     class type that has a constructor template/conversion
+	     function template.  */
+	  tree parm_nonref = non_reference (parm);
+	  tree type_nonref = non_reference (type);
+
+	  if (CLASS_TYPE_P (parm_nonref))
+	    {
+	      if (!COMPLETE_TYPE_P (parm_nonref)
+		  && CLASSTYPE_TEMPLATE_INSTANTIATION (parm_nonref))
+		return unify_success (explain_p);
+
+	      tree ctors = get_class_binding (parm_nonref,
+					      complete_ctor_identifier);
+	      for (tree ctor : lkp_range (ctors))
+		if (TREE_CODE (ctor) == TEMPLATE_DECL)
+		  return unify_success (explain_p);
+	    }
+
+	  if (CLASS_TYPE_P (type_nonref))
+	    {
+	      if (!COMPLETE_TYPE_P (type_nonref)
+		  && CLASSTYPE_TEMPLATE_INSTANTIATION (type_nonref))
+		return unify_success (explain_p);
+
+	      tree convs = lookup_conversions (type_nonref);
+	      for (; convs; convs = TREE_CHAIN (convs))
+		if (TREE_CODE (TREE_VALUE (convs)) == TEMPLATE_DECL)
+		  return unify_success (explain_p);
+	    }
+
+	  /* Checking this conversion definitely won't induce a template
+	     instantiation.  */
+	}
       if (conv_p)
 	/* Avoid recalculating this in add_function_candidate.  */
 	ok = (*conv_p

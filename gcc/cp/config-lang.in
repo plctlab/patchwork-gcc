@@ -52,6 +52,7 @@ gtfiles="\
 \$(srcdir)/cp/name-lookup.cc \
 \$(srcdir)/cp/parser.cc \$(srcdir)/cp/pt.cc \
 \$(srcdir)/cp/rtti.cc \
+\$(srcdir)/cp/search.cc \
 \$(srcdir)/cp/semantics.cc \
 \$(srcdir)/cp/tree.cc \$(srcdir)/cp/typeck2.cc \
 \$(srcdir)/cp/vtable-class-hierarchy.cc \
