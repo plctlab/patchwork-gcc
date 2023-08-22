@@ -583,9 +583,16 @@ enum class aarch64_feature : unsigned char {
 /* Output assembly strings after .cfi_startproc is emitted.  */
 #define ASM_POST_CFI_STARTPROC  aarch64_post_cfi_startproc
 
-/* For EH returns X4 contains the stack adjustment.  */
+/* For EH returns X4 is a flag that is set in the EH return
+   code paths and then X5 and X6 contain the stack adjustment
+   and return address respectively.  */
 #define EH_RETURN_STACKADJ_RTX	gen_rtx_REG (Pmode, R4_REGNUM)
-#define EH_RETURN_HANDLER_RTX  aarch64_eh_return_handler_rtx ()
+#define AARCH64_EH_RETURN_STACKADJ_REGNUM	R5_REGNUM
+#define AARCH64_EH_RETURN_STACKADJ_RTX	\
+  gen_rtx_REG (Pmode, AARCH64_EH_RETURN_STACKADJ_REGNUM)
+#define AARCH64_EH_RETURN_HANDLER_REGNUM	R6_REGNUM
+#define AARCH64_EH_RETURN_HANDLER_RTX	\
+  gen_rtx_REG (Pmode, AARCH64_EH_RETURN_HANDLER_REGNUM)
 
 #undef TARGET_COMPUTE_FRAME_LAYOUT
 #define TARGET_COMPUTE_FRAME_LAYOUT aarch64_layout_frame
