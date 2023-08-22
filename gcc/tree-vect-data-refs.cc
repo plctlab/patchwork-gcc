@@ -2834,6 +2834,33 @@ vect_analyze_group_access_1 (vec_info *vinfo, dr_vec_info *dr_info)
   return true;
 }
 
+/* Given vectorization information VINFO, set the last element in the
+   group led by FIRST_STMT_INFO.  For now, it's only used for loop
+   vectorization and stores, since for loop-vect the grouped stores
+   are only transformed till encounting its last one.  */
+
+void
+vect_set_group_last_element (vec_info *vinfo, stmt_vec_info first_stmt_info)
+{
+  if (first_stmt_info
+      && is_a<loop_vec_info> (vinfo)
+      && DR_IS_WRITE (STMT_VINFO_DATA_REF (first_stmt_info)))
+    {
+      stmt_vec_info stmt_info = DR_GROUP_NEXT_ELEMENT (first_stmt_info);
+      stmt_vec_info last_stmt_info = first_stmt_info;
+      while (stmt_info)
+	{
+	  gimple *stmt = stmt_info->stmt;
+	  gimple *last_stmt = last_stmt_info->stmt;
+	  gcc_assert (gimple_bb (stmt) == gimple_bb (last_stmt));
+	  if (gimple_uid (stmt) > gimple_uid (last_stmt))
+	    last_stmt_info = stmt_info;
+	  stmt_info = DR_GROUP_NEXT_ELEMENT (stmt_info);
+	}
+      DR_GROUP_LAST_ELEMENT (first_stmt_info) = last_stmt_info;
+    }
+}
+
 /* Analyze groups of accesses: check that DR_INFO belongs to a group of
    accesses of legal size, step, etc.  Detect gaps, single element
    interleaving, and other special cases. Set grouped access info.
@@ -2855,6 +2882,9 @@ vect_analyze_group_access (vec_info *vinfo, dr_vec_info *dr_info)
 	}
       return false;
     }
+
+  stmt_vec_info first_stmt_info = DR_GROUP_FIRST_ELEMENT (dr_info->stmt);
+  vect_set_group_last_element (vinfo, first_stmt_info);
   return true;
 }
 

@@ -1235,11 +1235,12 @@ public:
   stmt_vec_info first_element;
   /* Pointer to the next element in the group.  */
   stmt_vec_info next_element;
+  /* Pointer to the last element in the group, for now it's only used
+     for loop-vect stores since they only get transformed till the
+     last one is being transformed.  */
+  stmt_vec_info last_element;
   /* The size of the group.  */
   unsigned int size;
-  /* For stores, number of stores from this group seen. We vectorize the last
-     one.  */
-  unsigned int store_count;
   /* For loads only, the gap from the previous load. For consecutive loads, GAP
      is 1.  */
   unsigned int gap;
@@ -1450,10 +1451,10 @@ struct gather_scatter_info {
   (gcc_checking_assert ((S)->dr_aux.dr), (S)->first_element)
 #define DR_GROUP_NEXT_ELEMENT(S) \
   (gcc_checking_assert ((S)->dr_aux.dr), (S)->next_element)
+#define DR_GROUP_LAST_ELEMENT(S) \
+  (gcc_checking_assert ((S)->dr_aux.dr), (S)->last_element)
 #define DR_GROUP_SIZE(S) \
   (gcc_checking_assert ((S)->dr_aux.dr), (S)->size)
-#define DR_GROUP_STORE_COUNT(S) \
-  (gcc_checking_assert ((S)->dr_aux.dr), (S)->store_count)
 #define DR_GROUP_GAP(S) \
   (gcc_checking_assert ((S)->dr_aux.dr), (S)->gap)
 
@@ -2268,6 +2269,7 @@ extern tree vect_get_new_ssa_name (tree, enum vect_var_kind,
 extern tree vect_create_addr_base_for_vector_ref (vec_info *,
 						  stmt_vec_info, gimple_seq *,
 						  tree);
+extern void vect_set_group_last_element (vec_info *, stmt_vec_info);
 
 /* In tree-vect-loop.cc.  */
 extern tree neutral_op_for_reduction (tree, code_helper, tree);

@@ -8120,9 +8120,6 @@ vectorizable_store (vec_info *vinfo,
   else if (STMT_VINFO_SIMD_LANE_ACCESS_P (stmt_info) >= 3)
     return vectorizable_scan_store (vinfo, stmt_info, gsi, vec_stmt, ncopies);
 
-  if (STMT_VINFO_GROUPED_ACCESS (stmt_info))
-    DR_GROUP_STORE_COUNT (DR_GROUP_FIRST_ELEMENT (stmt_info))++;
-
   if (grouped_store)
     {
       /* FORNOW */
@@ -8130,8 +8127,8 @@ vectorizable_store (vec_info *vinfo,
 
       /* We vectorize all the stmts of the interleaving group when we
 	 reach the last stmt in the group.  */
-      if (DR_GROUP_STORE_COUNT (first_stmt_info)
-	  < DR_GROUP_SIZE (first_stmt_info)
+      if (STMT_VINFO_GROUPED_ACCESS (stmt_info)
+	  && stmt_info != DR_GROUP_LAST_ELEMENT (first_stmt_info)
 	  && !slp)
 	{
 	  *vec_stmt = NULL;
@@ -11671,7 +11668,7 @@ vect_transform_stmt (vec_info *vinfo,
 	     one are skipped, and there vec_stmt_info shouldn't be freed
 	     meanwhile.  */
 	  stmt_vec_info group_info = DR_GROUP_FIRST_ELEMENT (stmt_info);
-	  if (DR_GROUP_STORE_COUNT (group_info) == DR_GROUP_SIZE (group_info))
+	  if (stmt_info == DR_GROUP_LAST_ELEMENT (group_info))
 	    is_store = true;
 	}
       else

@@ -2804,7 +2804,8 @@ vect_find_first_scalar_stmt_in_slp (slp_tree node)
    Return the first stmt in the second group.  */
 
 static stmt_vec_info
-vect_split_slp_store_group (stmt_vec_info first_vinfo, unsigned group1_size)
+vect_split_slp_store_group (vec_info *vinfo, stmt_vec_info first_vinfo,
+			    unsigned group1_size)
 {
   gcc_assert (DR_GROUP_FIRST_ELEMENT (first_vinfo) == first_vinfo);
   gcc_assert (group1_size > 0);
@@ -2836,6 +2837,9 @@ vect_split_slp_store_group (stmt_vec_info first_vinfo, unsigned group1_size)
 
   /* DR_GROUP_GAP of the first group now has to skip over the second group too.  */
   DR_GROUP_GAP (first_vinfo) += group2_size;
+
+  vect_set_group_last_element (vinfo, first_vinfo);
+  vect_set_group_last_element (vinfo, group2);
 
   if (dump_enabled_p ())
     dump_printf_loc (MSG_NOTE, vect_location, "Split group into %d and %d\n",
@@ -3279,7 +3283,7 @@ vect_build_slp_instance (vec_info *vinfo,
 	      if (dump_enabled_p ())
 		dump_printf_loc (MSG_NOTE, vect_location,
 				 "Splitting SLP group at stmt %u\n", i);
-	      stmt_vec_info rest = vect_split_slp_store_group (stmt_info,
+	      stmt_vec_info rest = vect_split_slp_store_group (vinfo, stmt_info,
 							       group1_size);
 	      bool res = vect_analyze_slp_instance (vinfo, bst_map, stmt_info,
 						    kind, max_tree_size,
@@ -3292,7 +3296,8 @@ vect_build_slp_instance (vec_info *vinfo,
 		      || i - group1_size > 1))
 		{
 		  stmt_vec_info rest2 = rest;
-		  rest = vect_split_slp_store_group (rest, i - group1_size);
+		  rest = vect_split_slp_store_group (vinfo, rest,
+						     i - group1_size);
 		  if (i - group1_size > 1)
 		    res |= vect_analyze_slp_instance (vinfo, bst_map, rest2,
 						      kind, max_tree_size,
@@ -3319,7 +3324,7 @@ vect_build_slp_instance (vec_info *vinfo,
 	    dump_printf_loc (MSG_NOTE, vect_location,
 			     "Splitting SLP group at stmt %u\n", i);
 
-	  stmt_vec_info rest = vect_split_slp_store_group (stmt_info,
+	  stmt_vec_info rest = vect_split_slp_store_group (vinfo, stmt_info,
 							   group1_size);
 	  /* Loop vectorization cannot handle gaps in stores, make sure
 	     the split group appears as strided.  */
