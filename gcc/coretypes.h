@@ -100,6 +100,10 @@ struct gimple;
 typedef gimple *gimple_seq;
 struct gimple_stmt_iterator;
 
+/* Forward declare rtx_code, so that we can use it in target hooks without
+   needing to pull in rtl.h.  */
+enum rtx_code : unsigned;
+
 /* Forward decls for leaf gimple subclasses (for individual gimple codes).
    Keep this in the same order as the corresponding codes in gimple.def.  */
 
