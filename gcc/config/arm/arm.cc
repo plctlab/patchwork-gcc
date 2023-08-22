@@ -3250,6 +3250,52 @@ static sbitmap isa_all_fpubits_internal;
 static sbitmap isa_all_fpbits;
 static sbitmap isa_quirkbits;
 
+static void
+aarch_handle_no_branch_protection (void)
+{
+  aarch_ra_sign_scope = AARCH_FUNCTION_NONE;
+  aarch_enable_bti = 0;
+}
+
+static void
+aarch_handle_standard_branch_protection (void)
+{
+  aarch_ra_sign_scope = AARCH_FUNCTION_NON_LEAF;
+  aarch_enable_bti = 1;
+}
+
+static void
+aarch_handle_pac_ret_protection (void)
+{
+  aarch_ra_sign_scope = AARCH_FUNCTION_NON_LEAF;
+}
+
+static void
+aarch_handle_pac_ret_leaf (void)
+{
+  aarch_ra_sign_scope = AARCH_FUNCTION_ALL;
+}
+
+static void
+aarch_handle_bti_protection (void)
+{
+  aarch_enable_bti = 1;
+}
+
+static const struct aarch_branch_protect_type aarch_pac_ret_subtypes[] = {
+  { "leaf", false, aarch_handle_pac_ret_leaf, NULL, 0 },
+  { NULL, false, NULL, NULL, 0 }
+};
+
+const struct aarch_branch_protect_type aarch_branch_protect_types[] = {
+  { "none", true, aarch_handle_no_branch_protection, NULL, 0 },
+  { "standard", true, aarch_handle_standard_branch_protection, NULL, 0 },
+  { "pac-ret", false, aarch_handle_pac_ret_protection, aarch_pac_ret_subtypes,
+    ARRAY_SIZE (aarch_pac_ret_subtypes) },
+  { "bti", false, aarch_handle_bti_protection, NULL, 0 },
+  { NULL, false, NULL, NULL, 0 }
+};
+
 /* Configure a build target TARGET from the user-specified options OPTS and
    OPTS_SET.  If WARN_COMPATIBLE, emit a diagnostic if both the CPU and
    architecture have been specified, but the two are not identical.  */
@@ -3299,12 +3345,6 @@ arm_configure_build_target (struct arm_build_target *target,
     {
       aarch_validate_mbranch_protection (opts->x_arm_branch_protection_string,
 					 "-mbranch-protection=");
-
-      if (aarch_ra_sign_key != AARCH_KEY_A)
-	{
-	  warning (0, "invalid key type for %<-mbranch-protection=%>");
-	  aarch_ra_sign_key = AARCH_KEY_A;
-	}
     }
 
   if (arm_selected_arch)

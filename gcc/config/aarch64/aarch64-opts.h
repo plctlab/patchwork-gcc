@@ -102,9 +102,9 @@ enum stack_protector_guard {
 };
 
 /* The key type that -msign-return-address should use.  */
-enum aarch64_key_type {
-  AARCH64_KEY_A,
-  AARCH64_KEY_B
+enum aarch_key_type {
+  AARCH_KEY_A,
+  AARCH_KEY_B
 };
 
 #endif

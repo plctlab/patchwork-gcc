@@ -44,12 +44,7 @@ enum aarch_function_type {
   AARCH_FUNCTION_ALL
 };
 
-/* The key type that -msign-return-address should use.  */
-enum aarch_key_type {
-  AARCH_KEY_A,
-  AARCH_KEY_B
-};
-
+/* Specifies a -mbranch-protection= argument.  */
 struct aarch_branch_protect_type
 {
   /* The type's name that the user passes to the branch-protection option
@@ -63,5 +58,9 @@ struct aarch_branch_protect_type
   const struct aarch_branch_protect_type* subtypes;
   unsigned int num_subtypes;
 };
+
+/* Target specific data and callbacks for parsing -mbranch-protection=.
+   The first item is used to reset the branch-protection settings.  */
+extern const struct aarch_branch_protect_type aarch_branch_protect_types[];
 
 #endif /* GCC_AARCH_COMMON_H */
