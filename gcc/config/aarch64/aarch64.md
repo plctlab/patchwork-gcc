@@ -874,6 +874,14 @@
   "
 )
 
+(define_expand "eh_return"
+  [(use (match_operand 0 "general_operand"))]
+  ""
+{
+  aarch64_eh_return (operands[0]);
+  DONE;
+})
+
 (define_insn "*do_return"
   [(return)]
   ""
