@@ -6144,6 +6144,11 @@ thread_prologue_and_epilogue_insns (void)
 		  && returnjump_p (BB_END (e->src)))
 		e->flags &= ~EDGE_FALLTHRU;
 	    }
+
+	  auto_sbitmap blocks (last_basic_block_for_fn (cfun));
+	  bitmap_clear (blocks);
+	    bitmap_set_bit (blocks, BLOCK_FOR_INSN (epilogue_seq)->index);
+	  find_many_sub_basic_blocks (blocks);
 	}
       else if (next_active_insn (BB_END (exit_fallthru_edge->src)))
 	{
@@ -6242,6 +6247,11 @@ thread_prologue_and_epilogue_insns (void)
 	  set_insn_locations (seq, epilogue_location);
 
 	  emit_insn_before (seq, insn);
+
+	  auto_sbitmap blocks (last_basic_block_for_fn (cfun));
+	  bitmap_clear (blocks);
+	  bitmap_set_bit (blocks, BLOCK_FOR_INSN (insn)->index);
+	  find_many_sub_basic_blocks (blocks);
 	}
     }
 
