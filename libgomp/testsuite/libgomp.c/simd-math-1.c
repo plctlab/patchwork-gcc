@@ -6,6 +6,9 @@
 /* { dg-additional-options -foffload-options=amdgcn-amdhsa=-mstack-size=3000000 { target offload_target_amdgcn } } */
 /* { dg-additional-options -foffload-options=-lm } */
 
+/* Newlib's version of tgammaf is known to have poor accuracy.  */
+/* { dg-additional-options "-DXFAIL_TGAMMA=1" { target { nvptx*-*-* amdgcn*-*-* } } } */
+
 #undef PRINT_RESULT
 #define VERBOSE 0
 #define EARLY_EXIT 1
@@ -145,6 +148,42 @@ void test_##FUN (void) \
 }\
 test_##FUN ();
 
+#define TEST_FUN2INT(TFLOAT, LOW1, HIGH1, TINT, LOW2, HIGH2, FUN) \
+__attribute__((optimize("no-tree-vectorize"))) \
+__attribute__((optimize("no-unsafe-math-optimizations"))) \
+void check_##FUN (TFLOAT res[N], TFLOAT a[N], TINT b[N]) \
+{ \
+  int failed = 0; \
+  for (int i = 0; i < N; i++) { \
+    TFLOAT expected = FUN (a[i], b[i]); \
+    TFLOAT diff = __builtin_fabs (expected - res[i]); \
+    int deviation = deviation_##TFLOAT (expected, res[i]); \
+    int fail = isnan (res[i]) != isnan (expected) \
+	       || isinf (res[i]) != isinf (expected) \
+	       || (diff > EPSILON_##TFLOAT && deviation > 10); \
+    failed |= fail; \
+    if (VERBOSE || fail) \
+      PRINTF (#FUN "(%f,%ld) = %f, expected = %f, diff = %f, deviation = %d %s\n", \
+	      a[i], (long) b[i], res[i], expected, diff, deviation, fail ? "(!)" : ""); \
+    if (EARLY_EXIT && fail) \
+      exit (1); \
+  } \
+} \
+void test_##FUN (void) \
+{ \
+  TFLOAT res[N], a[N]; \
+  TINT b[N]; \
+  for (int i = 0; i < N; i++) { \
+    a[i] = LOW1 + ((HIGH1 - LOW1) / N) * i; \
+    b[i] = LOW1 + (i * (HIGH1 - LOW1)) / N; \
+  } \
+  _Pragma ("omp target parallel for simd map(to:a) map(from:res)") \
+    for (int i = 0; i < N; i++) \
+      res[i] = FUN (a[i], b[i]); \
+  check_##FUN (res, a, b); \
+}\
+test_##FUN ();
+
 int main (void)
 {
   TEST_FUN (float, -1.1, 1.1, acosf);
@@ -170,6 +209,8 @@ int main (void)
   TEST_FUN2 (float, -100.0, 100.0, 100.0, -100.0, powf);
   TEST_FUN2 (float, -50.0, 100.0, -2.0, 40.0, remainderf);
   TEST_FUN (float, -50.0, 50.0, rintf);
+  TEST_FUN2INT (float, -50.0, 50.0, int, -10, 32, __builtin_scalbnf);
+  TEST_FUN2INT (float, -50.0, 50.0, long, -10L, 32L, __builtin_scalblnf);
   TEST_FUN2 (float, -50.0, 50.0, -10.0, 32.0, __builtin_scalbf);
   TEST_FUN (float, -10.0, 10.0, __builtin_significandf);
   TEST_FUN (float, -3.14159265359, 3.14159265359, sinf);
@@ -177,8 +218,12 @@ int main (void)
   TEST_FUN (float, -0.1, 10000.0, sqrtf);
   TEST_FUN (float, -5.0, 5.0, tanf);
   TEST_FUN (float, -3.14159265359, 3.14159265359, tanhf);
-  /* Newlib's version of tgammaf is known to have poor accuracy.  */
+
+#ifdef XFAIL_TGAMMA
   TEST_FUN_XFAIL (float, -10.0, 10.0, tgammaf);
+#else
+  TEST_FUN (float, -10.0, 10.0, tgammaf);
+#endif
 
   TEST_FUN (double, -1.1, 1.1, acos);
   TEST_FUN (double, -10, 10, acosh);
@@ -203,6 +248,8 @@ int main (void)
   TEST_FUN2 (double, -100.0, 100.0, 100.0, -100.0, pow);
   TEST_FUN2 (double, -50.0, 100.0, -2.0, 40.0, remainder);
   TEST_FUN (double, -50.0, 50.0, rint);
+  TEST_FUN2INT (double, -50.0, 50.0, int, -10, 32, __builtin_scalbn);
+  TEST_FUN2INT (double, -50.0, 50.0, long, -10, 32, __builtin_scalbln);
   TEST_FUN2 (double, -50.0, 50.0, -10.0, 32.0, __builtin_scalb);
   TEST_FUN (double, -10.0, 10.0, __builtin_significand);
   TEST_FUN (double, -3.14159265359, 3.14159265359, sin);
@@ -210,8 +257,12 @@ int main (void)
   TEST_FUN (double, -0.1, 10000.0, sqrt);
   TEST_FUN (double, -5.0, 5.0, tan);
   TEST_FUN (double, -3.14159265359, 3.14159265359, tanh);
-  /* Newlib's version of tgamma is known to have poor accuracy.  */
+
+#ifdef XFAIL_TGAMMA
   TEST_FUN_XFAIL (double, -10.0, 10.0, tgamma);
+#else
+  TEST_FUN (double, -10.0, 10.0, tgamma);
+#endif
 
   return failed;
 }
