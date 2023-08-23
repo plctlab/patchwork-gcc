@@ -5090,6 +5090,8 @@ maybe_optimize_range_tests (gimple *stmt)
 	  if (bb == first_bb)
 	    break;
 	}
+      profile_probability extra_other_prob = profile_probability::never ();
+      auto_vec<basic_block, 8> bbs;
       for (bb = last_bb, idx = 0; ; bb = single_pred (bb), idx++)
 	{
 	  if (bbinfo[idx].first_idx < bbinfo[idx].last_idx
@@ -5097,6 +5099,8 @@ maybe_optimize_range_tests (gimple *stmt)
 	      && ops[bbinfo[idx].first_idx]->op != NULL_TREE)
 	    {
 	      gcond *cond_stmt = as_a <gcond *> (*gsi_last_bb (bb));
+	      edge true_e, false_e;
+	      extract_true_false_edges_from_block (bb, &true_e, &false_e);
 
 	      if (idx > max_idx)
 		max_idx = idx;
@@ -5107,24 +5111,49 @@ maybe_optimize_range_tests (gimple *stmt)
 		{
 		  gimple_cond_make_false (cond_stmt);
 		  cfg_cleanup_needed = true;
+		  if (true_e->dest == other_bb)
+		    extra_other_prob += true_e->probability;
+		  false_e->probability = profile_probability::always ();
+		  true_e->probability = profile_probability::never ();
 		}
 	      else if (integer_onep (ops[bbinfo[idx].first_idx]->op))
 		{
 		  gimple_cond_make_true (cond_stmt);
 		  cfg_cleanup_needed = true;
+		  if (false_e->dest == other_bb)
+		    extra_other_prob += false_e->probability;
+		  true_e->probability = profile_probability::always ();
+		  false_e->probability = profile_probability::never ();
 		}
 	      else
 		{
+		  gcc_assert (bb = first_bb);
 		  gimple_cond_set_code (cond_stmt, NE_EXPR);
 		  gimple_cond_set_lhs (cond_stmt,
 				       ops[bbinfo[idx].first_idx]->op);
 		  gimple_cond_set_rhs (cond_stmt, boolean_false_node);
+		  if (bb->count.initialized_p () && bb->count.nonzero_p ())
+		    {
+		      edge e_to_other = true_e->dest == other_bb
+					? true_e : false_e;
+		      edge e_to_tests = true_e->dest == other_bb
+					? false_e : true_e;
+		      e_to_other->probability += extra_other_prob;
+		      e_to_tests->probability
+			      = e_to_other->probability.invert ();
+		    }
 		}
 	      update_stmt (cond_stmt);
 	    }
 	  if (bb == first_bb)
 	    break;
+	  bbs.safe_push (bb);
+	  extra_other_prob *= single_pred_edge (bb)->probability;
 	}
+
+      /* Finaly update counts of basic blocks in the chain.  */
+      for (basic_block bb : bbs)
+	bb->count = single_pred_edge (bb)->count ();
 
       /* The above changes could result in basic blocks after the first
 	 modified one, up to and including last_bb, to be executed even if
