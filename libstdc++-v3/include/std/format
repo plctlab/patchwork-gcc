@@ -3216,11 +3216,11 @@ namespace __format
   template<typename _Context, typename... _Args>
     class __format::_Arg_store
     {
-      friend std::basic_format_args<_Context>;
+      friend _GLIBCXX_STD_V::basic_format_args<_Context>;
 
       template<typename _Ctx, typename... _Argz>
 	friend auto
-	std::make_format_args(_Argz&&...) noexcept;
+	_GLIBCXX_STD_V::make_format_args(_Argz&&...) noexcept;
 
       // For a sufficiently small number of arguments we only store values.
       // basic_format_args can get the types from the _Args pack.

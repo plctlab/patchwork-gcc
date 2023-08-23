@@ -447,6 +447,7 @@ _GLIBCXX_END_NAMESPACE_VERSION
 // of some nested namespace within it corresponding to the active mode.
 // _GLIBCXX_STD_A
 // _GLIBCXX_STD_C
+// _GLIBCXX_STD_V
 //
 // Macros for opening/closing conditional namespaces.
 // _GLIBCXX_BEGIN_NAMESPACE_ALGO
@@ -473,6 +474,12 @@ _GLIBCXX_END_NAMESPACE_VERSION
 # define _GLIBCXX_STD_A std
 # define _GLIBCXX_BEGIN_NAMESPACE_ALGO
 # define _GLIBCXX_END_NAMESPACE_ALGO
+#endif
+
+#if _GLIBCXX_INLINE_VERSION
+# define _GLIBCXX_STD_V std::__8
+#else
+# define _GLIBCXX_STD_V std
 #endif
 
 // GLIBCXX_ABI Deprecated
