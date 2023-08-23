@@ -24843,10 +24843,11 @@ aarch64_copy_one_block_and_progress_pointers (rtx *src, rtx *dst,
   *dst = aarch64_progress_pointer (*dst);
 }
 
-/* Expand a cpymem using the MOPS extension.  OPERANDS are taken
-   from the cpymem pattern.  Return true iff we succeeded.  */
+/* Expand a cpymem/movmem using the MOPS extension.  OPERANDS are taken
+   from the cpymem/movmem pattern.  IS_MEMMOVE is true if this is a memmove
+   rather than memcpy.  Return true iff we succeeded.  */
 static bool
-aarch64_expand_cpymem_mops (rtx *operands)
+aarch64_expand_cpymem_mops (rtx *operands, bool is_memmove)
 {
   if (!TARGET_MOPS)
     return false;
@@ -24858,17 +24859,19 @@ aarch64_expand_cpymem_mops (rtx *operands)
   rtx dst_mem = replace_equiv_address (operands[0], dst_addr);
   rtx src_mem = replace_equiv_address (operands[1], src_addr);
   rtx sz_reg = copy_to_mode_reg (DImode, operands[2]);
-  emit_insn (gen_aarch64_cpymemdi (dst_mem, src_mem, sz_reg));
-
+  if (is_memmove)
+    emit_insn (gen_aarch64_movmemdi (dst_mem, src_mem, sz_reg));
+  else
+    emit_insn (gen_aarch64_cpymemdi (dst_mem, src_mem, sz_reg));
   return true;
 }
 
-/* Expand cpymem, as if from a __builtin_memcpy.  Return true if
-   we succeed, otherwise return false, indicating that a libcall to
-   memcpy should be emitted.  */
-
+/* Expand cpymem/movmem, as if from a __builtin_memcpy/memmove.
+   OPERANDS are taken from the cpymem/movmem pattern.  IS_MEMMOVE is true
+   if this is a memmove rather than memcpy.  Return true if we succeed,
+   otherwise return false, indicating that a libcall should be emitted.  */
 bool
-aarch64_expand_cpymem (rtx *operands)
+aarch64_expand_cpymem (rtx *operands, bool is_memmove)
 {
   int mode_bits;
   rtx dst = operands[0];
@@ -24876,25 +24879,23 @@ aarch64_expand_cpymem (rtx *operands)
   rtx base;
   machine_mode cur_mode = BLKmode;
 
-  /* Variable-sized memcpy can go through the MOPS expansion if available.  */
-  if (!CONST_INT_P (operands[2]))
-    return aarch64_expand_cpymem_mops (operands);
+  /* Variable-sized or strict align copies may use the MOPS expansion.  */
+  if (!CONST_INT_P (operands[2]) || STRICT_ALIGNMENT)
+    return aarch64_expand_cpymem_mops (operands, is_memmove);
 
   unsigned HOST_WIDE_INT size = INTVAL (operands[2]);
 
-  /* Try to inline up to 256 bytes or use the MOPS threshold if available.  */
-  unsigned HOST_WIDE_INT max_copy_size
-    = TARGET_MOPS ? aarch64_mops_memcpy_size_threshold : 256;
+  /* Set inline limits for memmove/memcpy.  MOPS has a separate threshold.  */
+  unsigned HOST_WIDE_INT max_copy_size = is_memmove ? 0 : 256;
+  unsigned HOST_WIDE_INT max_mops_size = max_copy_size;
 
-  bool size_p = optimize_function_for_size_p (cfun);
+  if (TARGET_MOPS)
+    max_mops_size = is_memmove ? aarch64_mops_memmove_size_threshold
+			       : aarch64_mops_memcpy_size_threshold;
 
-  /* Large constant-sized cpymem should go through MOPS when possible.
-     It should be a win even for size optimization in the general case.
-     For speed optimization the choice between MOPS and the SIMD sequence
-     depends on the size of the copy, rather than number of instructions,
-     alignment etc.  */
-  if (size > max_copy_size)
-    return aarch64_expand_cpymem_mops (operands);
+  /* Large copies use library call or MOPS when available.  */
+  if (size > max_copy_size || size > max_mops_size)
+    return aarch64_expand_cpymem_mops (operands, is_memmove);
 
   int copy_bits = 256;
 
@@ -24962,6 +24963,8 @@ aarch64_expand_cpymem (rtx *operands)
      the constant size into a register.  */
   unsigned mops_cost = 3 + 1;
 
+  bool size_p = optimize_function_for_size_p (cfun);
+
   /* If MOPS is available at this point we don't consider the libcall as it's
      not a win even on code size.  At this point only consider MOPS if
      optimizing for size.  For speed optimizations we will have chosen between
@@ -24969,7 +24972,7 @@ aarch64_expand_cpymem (rtx *operands)
   if (TARGET_MOPS)
     {
       if (size_p && mops_cost < nops)
-	return aarch64_expand_cpymem_mops (operands);
+	return aarch64_expand_cpymem_mops (operands, is_memmove);
       emit_insn (seq);
       return true;
     }

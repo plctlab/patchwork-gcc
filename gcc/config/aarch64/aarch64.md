@@ -1632,15 +1632,30 @@
    (match_operand:BLK 1 "memory_operand")
    (match_operand:DI 2 "general_operand")
    (match_operand:DI 3 "immediate_operand")]
-   "!STRICT_ALIGNMENT || TARGET_MOPS"
+   ""
 {
-  if (aarch64_expand_cpymem (operands))
+  if (aarch64_expand_cpymem (operands, false))
     DONE;
   FAIL;
 }
 )
 
-(define_insn "aarch64_movmemdi"
+(define_expand "aarch64_movmemdi"
+  [(parallel
+     [(set (match_operand 2) (const_int 0))
+      (clobber (match_dup 3))
+      (clobber (match_dup 4))
+      (clobber (reg:CC CC_REGNUM))
+      (set (match_operand 0)
+	   (unspec:BLK [(match_operand 1) (match_dup 2)] UNSPEC_MOVMEM))])]
+  "TARGET_MOPS"
+  {
+    operands[3] = XEXP (operands[0], 0);
+    operands[4] = XEXP (operands[1], 0);
+  }
+)
+
+(define_insn "*aarch64_movmemdi"
   [(parallel [
    (set (match_operand:DI 2 "register_operand" "+&r") (const_int 0))
    (clobber (match_operand:DI 0 "register_operand" "+&r"))
@@ -1663,27 +1678,11 @@
    (match_operand:BLK 1 "memory_operand")
    (match_operand:DI 2 "general_operand")
    (match_operand:DI 3 "immediate_operand")]
-   "TARGET_MOPS"
+   ""
 {
-   rtx sz_reg = operands[2];
-   /* For constant-sized memmoves check the threshold.
-      FIXME: We should add a non-MOPS memmove expansion for smaller,
-      constant-sized memmove to avoid going to a libcall.  */
-   if (CONST_INT_P (sz_reg)
-       && INTVAL (sz_reg) < aarch64_mops_memmove_size_threshold)
-     FAIL;
-
-   rtx addr_dst = XEXP (operands[0], 0);
-   rtx addr_src = XEXP (operands[1], 0);
-
-   if (!REG_P (sz_reg))
-     sz_reg = force_reg (DImode, sz_reg);
-   if (!REG_P (addr_dst))
-     addr_dst = force_reg (DImode, addr_dst);
-   if (!REG_P (addr_src))
-     addr_src = force_reg (DImode, addr_src);
-   emit_insn (gen_aarch64_movmemdi (addr_dst, addr_src, sz_reg));
-   DONE;
+  if (aarch64_expand_cpymem (operands, true))
+    DONE;
+  FAIL;
 }
 )
 
