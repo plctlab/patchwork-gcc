@@ -1,5 +1,7 @@
 // { dg-options "-std=c++11" }
 // // { dg-do run }
+// { dg-skip-if "LoongArch vshuf/xvshuf insn result is undefined when 6 or 7 bit of vector's element is set." { loongarch*-*-* } }
+
 #if __SIZEOF_DOUBLE__ == 8 && __SIZEOF_LONG_LONG__ == 8
 typedef double V __attribute__((vector_size(16)));
 typedef unsigned long long VI __attribute__((vector_size(16)));
