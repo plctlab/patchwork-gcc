@@ -3840,8 +3840,10 @@ exploded_graph::maybe_create_dynamic_call (const gcall *call,
 class impl_path_context : public path_context
 {
 public:
-  impl_path_context (const program_state *cur_state)
+  impl_path_context (const program_state *cur_state,
+		     logger *logger)
   : m_cur_state (cur_state),
+    m_logger (logger),
     m_terminate_path (false)
   {
   }
@@ -3860,6 +3862,9 @@ public:
   void
   bifurcate (std::unique_ptr<custom_edge_info> info) final override
   {
+    if (m_logger)
+      m_logger->log ("bifurcating path");
+
     if (m_state_at_bifurcation)
       /* Verify that the state at bifurcation is consistent when we
 	 split into multiple out-edges.  */
@@ -3876,6 +3881,8 @@ public:
 
   void terminate_path () final override
   {
+    if (m_logger)
+      m_logger->log ("terminating path");
     m_terminate_path = true;
   }
 
@@ -3891,6 +3898,8 @@ public:
 
 private:
   const program_state *m_cur_state;
+
+  logger *m_logger;
 
   /* Lazily-created copy of the state before the split.  */
   std::unique_ptr<program_state> m_state_at_bifurcation;
@@ -4036,7 +4045,7 @@ exploded_graph::process_node (exploded_node *node)
 	   exactly one stmt, the one that caused the change. */
 	program_state next_state (state);
 
-	impl_path_context path_ctxt (&next_state);
+	impl_path_context path_ctxt (&next_state, logger);
 
 	uncertainty_t uncertainty;
 	const supernode *snode = point.get_supernode ();
