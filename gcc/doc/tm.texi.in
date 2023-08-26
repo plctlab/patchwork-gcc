@@ -6909,8 +6909,8 @@ return nonzero for any @var{entity} that needs mode-switching.
 If you define this macro, you also have to define
 @code{NUM_MODES_FOR_MODE_SWITCHING}, @code{TARGET_MODE_NEEDED},
 @code{TARGET_MODE_PRIORITY} and @code{TARGET_MODE_EMIT}.
-@code{TARGET_MODE_AFTER}, @code{TARGET_MODE_ENTRY}, and @code{TARGET_MODE_EXIT}
-are optional.
+@code{TARGET_MODE_AFTER}, @code{TARGET_MODE_ENTRY}, @code{TARGET_MODE_EMIT_AFTER},
+and @code{TARGET_MODE_EXIT} are optional.
 @end defmac
 
 @defmac NUM_MODES_FOR_MODE_SWITCHING
@@ -6927,6 +6927,8 @@ switch is needed / supplied.
 @end defmac
 
 @hook TARGET_MODE_EMIT
+
+@hook TARGET_MODE_EMIT_AFTER
 
 @hook TARGET_MODE_NEEDED
 
