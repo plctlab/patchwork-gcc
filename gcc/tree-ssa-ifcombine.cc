@@ -651,6 +651,103 @@ ifcombine_ifandif (basic_block inner_cond_bb, bool inner_inv,
   return false;
 }
 
+/* Function to remove an outer condition if two inner basic blocks have the same condition and both empty otherwise. */
+
+static bool
+ifcombine_bb_same (basic_block cond_bb, basic_block outer_cond_bb,
+		   basic_block then_bb, basic_block else_bb)
+{
+  basic_block inner_cond_bbt = nullptr, inner_cond_bbf = nullptr;
+
+  /* See if the the outer condition is a condition. */
+  if (!recognize_if_then_else (outer_cond_bb, &inner_cond_bbt, &inner_cond_bbf))
+    return false;
+  basic_block other_cond_bb;
+  if (cond_bb == inner_cond_bbt)
+    other_cond_bb = inner_cond_bbf;
+  else
+    other_cond_bb = inner_cond_bbt;
+
+  /* The other bb has to have a single predecessor too. */
+  if (!single_pred_p (other_cond_bb))
+    return false;
+
+  /* Other inner conditional bb needs to go to the same then and else blocks. */
+  if (!recognize_if_then_else (other_cond_bb, &then_bb, &else_bb))
+    return false;
+
+  /* Both edges of both inner basic blocks need to have the same values for the incoming phi for both then and else basic blocks. */
+  if (!same_phi_args_p (cond_bb, other_cond_bb, else_bb))
+    return false;
+
+  if (!same_phi_args_p (cond_bb, other_cond_bb, then_bb))
+    return false;
+
+  /* Both inner bbs need to be empty (besides the condition). */
+  if (!gsi_one_before_end_p (gsi_start_nondebug_after_labels_bb (cond_bb)))
+    return false;
+  if (!gsi_one_before_end_p (gsi_start_nondebug_after_labels_bb (other_cond_bb)))
+    return false;
+
+  /* All 3 basic blocks need to have a GIMPLE_COND as the last statement. */
+  gcond *cond = safe_dyn_cast <gcond *> (*gsi_last_bb (cond_bb));
+  if (!cond)
+    return false;
+
+  gcond *other_cond = safe_dyn_cast <gcond *> (*gsi_last_bb (other_cond_bb));
+  if (!other_cond)
+    return false;
+
+  gcond *outer_cond = safe_dyn_cast <gcond *> (*gsi_last_bb (outer_cond_bb));
+  if (!outer_cond)
+    return false;
+
+  /* If already done the transformation, don't need to do it again. */
+  if (gimple_cond_true_p (outer_cond))
+    return false;
+  if (gimple_cond_false_p (outer_cond))
+    return false;
+
+  /* Both inner bb have to have the same condition. */
+  if (gimple_cond_code (cond) != gimple_cond_code (other_cond)
+      || !operand_equal_p (gimple_cond_lhs (cond), gimple_cond_lhs (other_cond))
+      || !operand_equal_p (gimple_cond_rhs (cond), gimple_cond_rhs (other_cond)))
+    return false;
+
+  /* Both inner bbs need not to have phi nodes.  */
+  if (!gimple_seq_empty_p (phi_nodes (cond_bb)))
+    return false;
+
+  if (!gimple_seq_empty_p (phi_nodes (other_cond_bb)))
+    return false;
+
+  if (dump_file)
+    {
+      fprintf (dump_file, "optimized away the test from bb #%d.\n", outer_cond_bb->index);
+    }
+
+  /* It does not matter which basic block we use here as both
+     are the same. Remove the one which we are processing now as
+     the other one will be processed afterwards and maybe merged in. */
+  bool remove_true_cond = inner_cond_bbt == cond_bb;
+
+  /* Remove the bb which is not reachable any more
+     so the other one could be merged. */
+  edge remove_edge = find_edge (outer_cond_bb, remove_true_cond ? inner_cond_bbt : inner_cond_bbf);
+  edge keep_edge = find_edge (outer_cond_bb, remove_true_cond ? inner_cond_bbf : inner_cond_bbt);
+  keep_edge->flags |= EDGE_FALLTHRU;
+  keep_edge->flags &= ~(EDGE_TRUE_VALUE | EDGE_FALSE_VALUE);
+  keep_edge->probability = profile_probability::always ();
+  delete_basic_block (remove_edge->dest);
+
+  /* Eliminate the COND_EXPR at the end of COND_BLOCK.  */
+  gimple_stmt_iterator gsi = gsi_last_bb (outer_cond_bb);
+  gsi_remove (&gsi, true);
+  /* Now merge the outer conditional block with the (old exectued) inner one. */
+  merge_blocks (outer_cond_bb, remove_true_cond ? inner_cond_bbf : inner_cond_bbt);
+  return true;
+}
+
 /* Helper function for tree_ssa_ifcombine_bb.  Recognize a CFG pattern and
    dispatch to the appropriate if-conversion helper for a particular
    set of INNER_COND_BB, OUTER_COND_BB, THEN_BB and ELSE_BB.
@@ -764,6 +861,9 @@ tree_ssa_ifcombine_bb (basic_block inner_cond_bb)
       && bb_no_side_effects_p (inner_cond_bb))
     {
       basic_block outer_cond_bb = single_pred (inner_cond_bb);
+
+      if (ifcombine_bb_same (inner_cond_bb, outer_cond_bb, then_bb, else_bb))
+	return true;
 
       if (tree_ssa_ifcombine_bb_1 (inner_cond_bb, outer_cond_bb,
 				   then_bb, else_bb, inner_cond_bb))
