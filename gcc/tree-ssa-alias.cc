@@ -271,6 +271,38 @@ ptr_deref_may_alias_decl_p (tree ptr, tree decl)
       return ptr_deref_may_alias_decl_p (ptr, decl);
     }
 
+  if (TREE_CODE (ptr) == SSA_NAME)
+    {
+      /* First disambiguate from points-to information.  */
+      pi = SSA_NAME_PTR_INFO (ptr);
+      if (pi && !pt_solution_includes (&pi->pt, decl))
+	return false;
+
+      /* Try to find an ADDR_EXPR by walking the defining statements, so we can
+	 probably disambiguate from compare_base_decls.  */
+      gimple *def_stmt;
+      while ((def_stmt = SSA_NAME_DEF_STMT (ptr)))
+	{
+	  if (is_gimple_assign (def_stmt)
+	      && gimple_assign_rhs_code (def_stmt) == POINTER_PLUS_EXPR)
+	    {
+	      ptr = gimple_assign_rhs1 (def_stmt);
+	      if (TREE_CODE (ptr) != SSA_NAME)
+		break;
+	    }
+	  /* See if we can find a certain defining source.  */
+	  else if (gimple_code (def_stmt) == GIMPLE_PHI
+		   && gimple_phi_num_args (def_stmt) == 1)
+	    {
+	      ptr = PHI_ARG_DEF (def_stmt, 0);
+	      if (TREE_CODE (ptr) != SSA_NAME)
+		break;
+	    }
+	  else
+	    break;
+	}
+    }
+
   /* ADDR_EXPR pointers either just offset another pointer or directly
      specify the pointed-to set.  */
   if (TREE_CODE (ptr) == ADDR_EXPR)
@@ -279,7 +311,7 @@ ptr_deref_may_alias_decl_p (tree ptr, tree decl)
       if (base
 	  && (TREE_CODE (base) == MEM_REF
 	      || TREE_CODE (base) == TARGET_MEM_REF))
-	ptr = TREE_OPERAND (base, 0);
+	return ptr_deref_may_alias_decl_p (TREE_OPERAND (base, 0), decl);
       else if (base
 	       && DECL_P (base))
 	return compare_base_decls (base, decl) != 0;
@@ -294,13 +326,7 @@ ptr_deref_may_alias_decl_p (tree ptr, tree decl)
   if (!may_be_aliased (decl))
     return false;
 
-  /* If we do not have useful points-to information for this pointer
-     we cannot disambiguate anything else.  */
-  pi = SSA_NAME_PTR_INFO (ptr);
-  if (!pi)
-    return true;
-
-  return pt_solution_includes (&pi->pt, decl);
+  return true;
 }
 
 /* Return true if dereferenced PTR1 and PTR2 may alias.
