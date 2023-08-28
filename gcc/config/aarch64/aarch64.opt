@@ -190,6 +190,14 @@ msign-return-address=
 Target WarnRemoved RejectNegative Joined Enum(aarch_ra_sign_scope_t) Var(aarch_ra_sign_scope) Init(AARCH_FUNCTION_NONE) Save
 Select return address signing scope.
 
+mldp-policy=
+Target RejectNegative Joined Var(aarch64_ldp_policy_string) Save
+Fine-grained policy for load pairs.
+
+mstp-policy=
+Target RejectNegative Joined Var(aarch64_stp_policy_string) Save
+Fine-grained policy for store pairs.
+
 Enum
 Name(aarch_ra_sign_scope_t) Type(enum aarch_function_type)
 Supported AArch64 return address signing scope (for use with -msign-return-address= option):
