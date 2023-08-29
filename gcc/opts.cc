@@ -1092,6 +1092,9 @@ finish_options (struct gcc_options *opts, struct gcc_options *opts_set,
       opts->x_flag_section_anchors = 0;
     }
 
+  if (!opts_set->x_flag_auto_var_init && opts->x_flag_hardened)
+    opts->x_flag_auto_var_init = AUTO_INIT_ZERO;
+
   if (!opts->x_flag_opts_finished)
     {
       /* We initialize opts->x_flag_pie to -1 so that targets can set a
@@ -1101,7 +1104,8 @@ finish_options (struct gcc_options *opts, struct gcc_options *opts_set,
 	  /* We initialize opts->x_flag_pic to -1 so that we can tell if
 	     -fpic, -fPIC, -fno-pic or -fno-PIC is used.  */
 	  if (opts->x_flag_pic == -1)
-	    opts->x_flag_pie = DEFAULT_FLAG_PIE;
+	    opts->x_flag_pie = (opts->x_flag_hardened
+				? /*-fPIE*/ 2 : DEFAULT_FLAG_PIE);
 	  else
 	    opts->x_flag_pie = 0;
 	}
@@ -1116,9 +1120,12 @@ finish_options (struct gcc_options *opts, struct gcc_options *opts_set,
     }
 
   /* We initialize opts->x_flag_stack_protect to -1 so that targets
-     can set a default value.  */
+     can set a default value.  With --enable-default-ssp or -fhardened
+     the default is -fstack-protector-strong.  */
   if (opts->x_flag_stack_protect == -1)
-    opts->x_flag_stack_protect = DEFAULT_FLAG_SSP;
+    opts->x_flag_stack_protect = (opts->x_flag_hardened
+				  ? SPCT_FLAG_STRONG
+				  : DEFAULT_FLAG_SSP);
 
   if (opts->x_optimize == 0)
     {
@@ -2580,6 +2587,8 @@ print_help (struct gcc_options *opts, unsigned int lang_mask,
 	break;
       a = comma + 1;
     }
+
+  /* TODO --help=hardened someplace here.  */
 
   /* We started using PerFunction/Optimization for parameters and
      a warning.  We should exclude these from optimization options.  */

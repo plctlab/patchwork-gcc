@@ -1575,6 +1575,12 @@ process_options (bool no_backend)
 		  "where the stack grows from lower to higher addresses");
       flag_stack_clash_protection = 0;
     }
+  else if (flag_hardened
+	   && !flag_stack_clash_protection
+	   /* Don't enable -fstack-clash-protection when -fstack-check=
+	      is used: it would result in confusing errors.  */
+	   && flag_stack_check == NO_STACK_CHECK)
+    flag_stack_clash_protection = 1;
 
   /* We cannot support -fstack-check= and -fstack-clash-protection at
      the same time.  */
