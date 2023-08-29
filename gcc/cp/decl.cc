@@ -14564,6 +14564,9 @@ grokdeclarator (const cp_declarator *declarator,
 			"storage class %<thread_local%> invalid for "
 			"function %qs", name);
 	  }
+	else if (constinit_p)
+	  error_at (declspecs->locations[ds_constinit],
+		    "%<constinit%> specifier invalid for function %qs", name);
 
         if (virt_specifiers)
           error ("virt-specifiers in %qs not allowed outside a class "
