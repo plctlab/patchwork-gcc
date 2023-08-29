@@ -3095,40 +3095,34 @@ cxx_eval_call_expression (const constexpr_ctx *ctx, tree t,
 	    cxx_set_object_constness (ctx, new_obj, /*readonly_p=*/false,
 				      non_constant_p, overflow_p);
 
+	  /* If this is a constructor, we are beginning the lifetime of the
+	     object we are initialising.  */
+	  if (new_obj
+	      && DECL_CONSTRUCTOR_P (fun)
+	      && TREE_CODE (new_obj) == COMPONENT_REF
+	      && TREE_CODE (TREE_TYPE (TREE_OPERAND (new_obj, 0))) == UNION_TYPE)
+	    {
+	      tree activate = build2 (INIT_EXPR, TREE_TYPE (new_obj),
+				      new_obj,
+				      build_constructor (TREE_TYPE (new_obj),
+							 NULL));
+	      cxx_eval_constant_expression (ctx, activate,
+					    lval, non_constant_p, overflow_p);
+	      ggc_free (activate);
+	    }
+
 	  tree jump_target = NULL_TREE;
 	  cxx_eval_constant_expression (&ctx_with_save_exprs, body,
 					vc_discard, non_constant_p, overflow_p,
 					&jump_target);
 
 	  if (DECL_CONSTRUCTOR_P (fun))
-	    {
-	      /* This can be null for a subobject constructor call, in
-		 which case what we care about is the initialization
-		 side-effects rather than the value.  We could get at the
-		 value by evaluating *this, but we don't bother; there's
-		 no need to put such a call in the hash table.  */
-	      result = lval ? ctx->object : ctx->ctor;
-
-	      /* If we've just evaluated a subobject constructor call for an
-		 empty union member, it might not have produced a side effect
-		 that actually activated the union member.  So produce such a
-		 side effect now to ensure the union appears initialized.  */
-	      if (!result && new_obj
-		  && TREE_CODE (new_obj) == COMPONENT_REF
-		  && TREE_CODE (TREE_TYPE
-				(TREE_OPERAND (new_obj, 0))) == UNION_TYPE
-		  && is_really_empty_class (TREE_TYPE (new_obj),
-					    /*ignore_vptr*/false))
-		{
-		  tree activate = build2 (MODIFY_EXPR, TREE_TYPE (new_obj),
-					  new_obj,
-					  build_constructor (TREE_TYPE (new_obj),
-							     NULL));
-		  cxx_eval_constant_expression (ctx, activate, lval,
-						non_constant_p, overflow_p);
-		  ggc_free (activate);
-		}
-	    }
+	    /* This can be null for a subobject constructor call, in
+	       which case what we care about is the initialization
+	       side-effects rather than the value.  We could get at the
+	       value by evaluating *this, but we don't bother; there's
+	       no need to put such a call in the hash table.  */
+	    result = lval ? ctx->object : ctx->ctor;
 	  else if (VOID_TYPE_P (TREE_TYPE (res)))
 	    result = void_node;
 	  else
@@ -5966,6 +5960,14 @@ cxx_eval_store_expression (const constexpr_ctx *ctx, tree t,
 						  mutable_p)
 		     && const_object_being_modified == NULL_TREE)
 	      const_object_being_modified = probe;
+
+	    /* Track named member accesses for unions to validate modifications
+	       that change active member.  */
+	    if (!evaluated && TREE_CODE (probe) == COMPONENT_REF)
+	      vec_safe_push (refs, probe);
+	    else
+	      vec_safe_push (refs, NULL_TREE);
+
 	    vec_safe_push (refs, elt);
 	    vec_safe_push (refs, TREE_TYPE (probe));
 	    probe = ob;
@@ -5974,6 +5976,7 @@ cxx_eval_store_expression (const constexpr_ctx *ctx, tree t,
 
 	case REALPART_EXPR:
 	  gcc_assert (probe == target);
+	  vec_safe_push (refs, NULL_TREE);
 	  vec_safe_push (refs, probe);
 	  vec_safe_push (refs, TREE_TYPE (probe));
 	  probe = TREE_OPERAND (probe, 0);
@@ -5981,6 +5984,7 @@ cxx_eval_store_expression (const constexpr_ctx *ctx, tree t,
 
 	case IMAGPART_EXPR:
 	  gcc_assert (probe == target);
+	  vec_safe_push (refs, NULL_TREE);
 	  vec_safe_push (refs, probe);
 	  vec_safe_push (refs, TREE_TYPE (probe));
 	  probe = TREE_OPERAND (probe, 0);
@@ -6069,6 +6073,7 @@ cxx_eval_store_expression (const constexpr_ctx *ctx, tree t,
       enum tree_code code = TREE_CODE (type);
       tree reftype = refs->pop();
       tree index = refs->pop();
+      bool is_access_expr = refs->pop() != NULL_TREE;
 
       if (code == COMPLEX_TYPE)
 	{
@@ -6109,10 +6114,15 @@ cxx_eval_store_expression (const constexpr_ctx *ctx, tree t,
 
       type = reftype;
 
-      if (code == UNION_TYPE && CONSTRUCTOR_NELTS (*valp)
-	  && CONSTRUCTOR_ELT (*valp, 0)->index != index)
+      if (code == UNION_TYPE
+	  && TREE_CODE (t) == MODIFY_EXPR
+	  && (CONSTRUCTOR_NELTS (*valp) == 0
+	      || CONSTRUCTOR_ELT (*valp, 0)->index != index))
 	{
-	  if (cxx_dialect < cxx20)
+	  /* We changed the active member of a union. Ensure that this is
+	     valid.  */
+	  bool has_active_member = CONSTRUCTOR_NELTS (*valp) != 0;
+	  if (has_active_member && cxx_dialect < cxx20)
 	    {
 	      if (!ctx->quiet)
 		error_at (cp_expr_loc_or_input_loc (t),
@@ -6122,8 +6132,35 @@ cxx_eval_store_expression (const constexpr_ctx *ctx, tree t,
 			  index);
 	      *non_constant_p = true;
 	    }
-	  else if (TREE_CODE (t) == MODIFY_EXPR
-		   && CONSTRUCTOR_NO_CLEARING (*valp))
+	  else if (!is_access_expr
+		   /* FIXME: don't also check for trivial destructor.  */
+		   || !is_trivially_xible (INIT_EXPR, reftype, make_tree_vec (0)))
+	    {
+	      /* Diagnose changing active union member after initialisation
+		 without a valid member access expression, as described in
+		 [class.union.general] p5.  */
+	      if (!ctx->quiet)
+		{
+		  if (has_active_member)
+		    error_at (cp_expr_loc_or_input_loc (t),
+			      "accessing %qD member instead of initialized "
+			      "%qD member in constant expression",
+			      index, CONSTRUCTOR_ELT (*valp, 0)->index);
+		  else
+		    error_at (cp_expr_loc_or_input_loc (t),
+			      "accessing uninitialized member %qD",
+			      index);
+		  if (is_access_expr)
+		    {
+		      inform (DECL_SOURCE_LOCATION (index),
+			      "%qDs does not implicitly begin its lifetime "
+			      "because %qT does not have a trivial default "
+			      "constructor", index, reftype);
+		    }
+		}
+	      *non_constant_p = true;
+	    }
+	  else if (has_active_member && CONSTRUCTOR_NO_CLEARING (*valp))
 	    {
 	      /* Diagnose changing the active union member while the union
 		 is in the process of being initialized.  */
