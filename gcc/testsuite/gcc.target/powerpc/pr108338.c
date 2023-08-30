@@ -19,9 +19,11 @@ float  __attribute__ ((noipa)) sf_from_di_off4 (long long l)
 
 /* Under lp64, parameter 'l' is in one DI reg, then bitcast sub DI to SF. */
 /* { dg-final { scan-assembler-times {\mxscvspdpn\M} 2 { target { lp64 && has_arch_pwr8 } } } } */
-/* { dg-final { scan-assembler-times {\mmtvsrd\M} 2 { target { lp64 && has_arch_pwr8 } } } } */
+/* { dg-final { scan-assembler-times {\mmtvsrd\M} 2 { target { lp64 && { has_arch_pwr8 && { ! has_arch_pwr9 } } } } } } */
+/* { dg-final { scan-assembler-times {\msldi\M} 1 { target { lp64 && { has_arch_pwr8 && { ! has_arch_pwr9 } } } } } } */
+/* { dg-final { scan-assembler-times {\mmtvsrd\M} 1 { target { lp64 && has_arch_pwr9 } } } } */
+/* { dg-final { scan-assembler-times {\mmtvsrws\M} 1 { target { lp64 && has_arch_pwr9 } } } } */
 /* { dg-final { scan-assembler-times {\mrldicr\M} 1 { target { lp64 && has_arch_pwr8 } } } } */
-/* { dg-final { scan-assembler-times {\msldi\M} 1 { target { lp64 && has_arch_pwr8 } } } } */
 
 union di_sf_sf
 {
