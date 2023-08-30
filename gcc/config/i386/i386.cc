@@ -23584,7 +23584,16 @@ ix86_vector_costs::add_stmt_cost (int count, vect_cost_for_stmt kind,
 	  || STMT_VINFO_MEMORY_ACCESS_TYPE (stmt_info) == VMAT_GATHER_SCATTER))
     {
       stmt_cost = ix86_builtin_vectorization_cost (kind, vectype, misalign);
-      stmt_cost *= (TYPE_VECTOR_SUBPARTS (vectype) + 1);
+      /* For emulated gather/scatter, offset vector load/vec_construct has
+	 already been counted and in real case, it's probably eliminated by
+	 later optimizer.
+	 Also after decomposing, element loads from continous memory
+	 could be less bounded compared to normal elementwise load.  */
+      if (kind == vec_to_scalar
+	  && STMT_VINFO_MEMORY_ACCESS_TYPE (stmt_info) == VMAT_GATHER_SCATTER)
+	stmt_cost *= TYPE_VECTOR_SUBPARTS (vectype);
+      else
+	stmt_cost *= (TYPE_VECTOR_SUBPARTS (vectype) + 1);
     }
   else if (kind == vec_construct
 	   && node
