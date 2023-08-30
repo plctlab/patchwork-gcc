@@ -28971,10 +28971,22 @@ The default is @option{-misa-spec=20191213} unless GCC has been configured
 with @option{--with-isa-spec=} specifying a different default version.
 
 @opindex march
-@item -march=@var{ISA-string}
-Generate code for given RISC-V ISA (e.g.@: @samp{rv64im}).  ISA strings must be
-lower-case.  Examples include @samp{rv64i}, @samp{rv32g}, @samp{rv32e}, and
-@samp{rv32imaf}.
+@item -march=@var{subtarget}
+Generate code for given RISC-V ISA (e.g.@: @samp{rv64im}).  The @var{subtarget}
+string is similar to an ISA string, but has various subtle differences.
+@var{subtarget} strings must be lower case.  Extension ordering and
+dependencies may differ from the specification.  Additionally, the following
+extensions are special cases:
+@table @code
+@item V
+Enabling the V extension does not enable autovecorization, users must select
+either @samp{--param=riscv-autovec-preference=scalable} or
+@samp{--param=riscv-autovec-preference=fixed-vlmax} to decide between VLA and
+VLS autovectorization.
+@item Zihintpause
+This extension is always enabled.
+@end table
+Examples include @samp{rv64i}, @samp{rv32g}, @samp{rv32e}, and @samp{rv32imaf}.
 
 When @option{-march=} is not specified, use the setting from @option{-mcpu}.
 
