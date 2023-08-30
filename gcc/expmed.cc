@@ -1857,8 +1857,22 @@ extract_bit_field_1 (rtx str_rtx, poly_uint64 bitsize, poly_uint64 bitnum,
      but is useful for things like vector booleans.  */
   if (MEM_P (op0) && !bitnum.is_constant ())
     {
-      bytenum = bits_to_bytes_round_down (bitnum);
-      bitnum = num_trailing_bits (bitnum);
+      /* bits_to_bytes_round_down tries to align to a byte (BITS_PER_UNIT)
+	 boundary and asserts that bitnum.coeffs[1] % BITS_PER_UNIT == 0.
+	 For modes with precision < BITS_PER_UNIT this fails but we can
+	 still extract from the first byte.  */
+      poly_uint16 prec = GET_MODE_PRECISION (outermode);
+      if (prec.coeffs[1] < BITS_PER_UNIT && bitnum.coeffs[1] < BITS_PER_UNIT)
+	{
+	  bytenum = 0;
+	  bitnum = bitnum.coeffs[0] & (BITS_PER_UNIT - 1);
+	}
+      else
+	{
+	  bytenum = bits_to_bytes_round_down (bitnum);
+	  bitnum = num_trailing_bits (bitnum);
+	}
+
       poly_uint64 bytesize = bits_to_bytes_round_up (bitnum + bitsize);
       op0 = adjust_bitfield_address_size (op0, BLKmode, bytenum, bytesize);
       op0_mode = opt_scalar_int_mode ();
