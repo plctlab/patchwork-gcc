@@ -38,6 +38,7 @@
   UNSPEC_FMAX
   UNSPEC_FMIN
   UNSPEC_FCOPYSIGN
+  UNSPEC_COPYSIGNF128
   UNSPEC_FTINT
   UNSPEC_FTINTRM
   UNSPEC_FTINTRP
@@ -2007,6 +2008,38 @@
 	(const_int 0))]
   ""
   "movgr2cf\t%0,$r0")
+
+;; Implement __builtin_copysignf128 function.
+
+(define_insn_and_split "copysigntf3"
+  [(set (match_operand:TF 0 "register_operand" "=&r")
+	(unspec:TF [(match_operand:TF 1 "register_operand" "r")
+		    (match_operand:TF 2 "register_operand" "r")]
+		    UNSPEC_COPYSIGNF128))]
+  "TARGET_64BIT"
+  "#"
+  "reload_completed"
+ [(const_int 0)]
+{
+  rtx op0_lo = gen_rtx_REG (DImode,REGNO (operands[0]) + 0);
+  rtx op0_hi = gen_rtx_REG (DImode,REGNO (operands[0]) + 1);
+  rtx op1_lo = gen_rtx_REG (DImode,REGNO (operands[1]) + 0);
+  rtx op1_hi = gen_rtx_REG (DImode,REGNO (operands[1]) + 1);
+  rtx op2_hi = gen_rtx_REG (DImode,REGNO (operands[2]) + 1);
+
+  if (REGNO (operands[1]) == REGNO (operands[2]))
+    {
+      loongarch_emit_move (operands[0], operands[1]);
+      DONE;
+    }
+  else
+    {
+      loongarch_emit_move (op0_hi, op2_hi);
+      loongarch_emit_move (op0_lo, op1_lo);
+      emit_insn (gen_insvdi (op0_hi, GEN_INT (63), GEN_INT (0), op1_hi));
+      DONE;
+    }
+})
 
 ;; Conditional move instructions.
 
