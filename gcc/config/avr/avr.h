@@ -280,12 +280,13 @@ enum reg_class {
 
 #define REGNO_REG_CLASS(R) avr_regno_reg_class(R)
 
-#define MODE_CODE_BASE_REG_CLASS(mode, as, outer_code, index_code)   \
+#define MODE_CODE_BASE_REG_CLASS(mode, as, outer_code, index_code, insn)   \
   avr_mode_code_base_reg_class (mode, as, outer_code, index_code)
 
 #define INDEX_REG_CLASS NO_REGS
 
-#define REGNO_MODE_CODE_OK_FOR_BASE_P(num, mode, as, outer_code, index_code) \
+#define REGNO_MODE_CODE_OK_FOR_BASE_P(num, mode, as, outer_code,	  \
+				      index_code, insn)			  \
   avr_regno_mode_code_ok_for_base_p (num, mode, as, outer_code, index_code)
 
 #define REGNO_OK_FOR_INDEX_P(NUM) 0

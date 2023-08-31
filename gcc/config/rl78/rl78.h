@@ -375,10 +375,12 @@ enum reg_class
 
 #define REGNO_OK_FOR_INDEX_P(regno)	REGNO_OK_FOR_BASE_P (regno)
 
-#define REGNO_MODE_CODE_OK_FOR_BASE_P(regno, mode, address_space, outer_code, index_code) \
+#define REGNO_MODE_CODE_OK_FOR_BASE_P(regno, mode, address_space, outer_code, \
+				      index_code, insn)			      \
   rl78_regno_mode_code_ok_for_base_p (regno, mode, address_space, outer_code, index_code)
 
-#define MODE_CODE_BASE_REG_CLASS(mode, address_space, outer_code, index_code) \
+#define MODE_CODE_BASE_REG_CLASS(mode, address_space, outer_code, index_code, \
+				 insn) 					      \
   rl78_mode_code_base_reg_class (mode, address_space, outer_code, index_code)
 
 #define RETURN_ADDR_RTX(COUNT, FRAMEADDR)				\
