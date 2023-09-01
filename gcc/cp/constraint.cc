@@ -3767,6 +3767,9 @@ diagnose_trait_expr (tree expr, tree args)
     case CPTK_IS_AGGREGATE:
       inform (loc, "  %qT is not an aggregate", t1);
       break;
+    case CPTK_IS_ARITHMETIC:
+      inform (loc, "  %qT is not an arithmetic type", t1);
+      break;
     case CPTK_IS_TRIVIALLY_COPYABLE:
       inform (loc, "  %qT is not trivially copyable", t1);
       break;
