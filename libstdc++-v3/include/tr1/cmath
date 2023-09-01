@@ -307,7 +307,7 @@ namespace tr1
 
   /// Function template definitions [8.16.3].
   template<typename _Tp>
-    inline typename __gnu_cxx::__enable_if<__is_arithmetic<_Tp>::__value,
+    inline typename __gnu_cxx::__enable_if<__is_arith<_Tp>::__value,
 					   int>::__type
     fpclassify(_Tp __f)
     {
@@ -317,7 +317,7 @@ namespace tr1
     }
 
   template<typename _Tp>
-    inline typename __gnu_cxx::__enable_if<__is_arithmetic<_Tp>::__value,
+    inline typename __gnu_cxx::__enable_if<__is_arith<_Tp>::__value,
 					   int>::__type
     isfinite(_Tp __f)
     {
@@ -326,7 +326,7 @@ namespace tr1
     }
 
   template<typename _Tp>
-    inline typename __gnu_cxx::__enable_if<__is_arithmetic<_Tp>::__value,
+    inline typename __gnu_cxx::__enable_if<__is_arith<_Tp>::__value,
 					   int>::__type
     isinf(_Tp __f)
     {
@@ -335,7 +335,7 @@ namespace tr1
     }
 
   template<typename _Tp>
-    inline typename __gnu_cxx::__enable_if<__is_arithmetic<_Tp>::__value,
+    inline typename __gnu_cxx::__enable_if<__is_arith<_Tp>::__value,
 					   int>::__type
     isnan(_Tp __f)
     {
@@ -344,7 +344,7 @@ namespace tr1
     }
 
   template<typename _Tp>
-    inline typename __gnu_cxx::__enable_if<__is_arithmetic<_Tp>::__value,
+    inline typename __gnu_cxx::__enable_if<__is_arith<_Tp>::__value,
 					   int>::__type
     isnormal(_Tp __f)
     {
@@ -353,7 +353,7 @@ namespace tr1
     }
 
   template<typename _Tp>
-    inline typename __gnu_cxx::__enable_if<__is_arithmetic<_Tp>::__value,
+    inline typename __gnu_cxx::__enable_if<__is_arith<_Tp>::__value,
 					   int>::__type
     signbit(_Tp __f)
     {
@@ -362,7 +362,7 @@ namespace tr1
     }
 
   template<typename _Tp>
-    inline typename __gnu_cxx::__enable_if<__is_arithmetic<_Tp>::__value,
+    inline typename __gnu_cxx::__enable_if<__is_arith<_Tp>::__value,
 					   int>::__type
     isgreater(_Tp __f1, _Tp __f2)
     {
@@ -371,7 +371,7 @@ namespace tr1
     }
 
   template<typename _Tp>
-    inline typename __gnu_cxx::__enable_if<__is_arithmetic<_Tp>::__value,
+    inline typename __gnu_cxx::__enable_if<__is_arith<_Tp>::__value,
 					   int>::__type
     isgreaterequal(_Tp __f1, _Tp __f2)
     {
@@ -380,7 +380,7 @@ namespace tr1
     }
 
   template<typename _Tp>
-    inline typename __gnu_cxx::__enable_if<__is_arithmetic<_Tp>::__value,
+    inline typename __gnu_cxx::__enable_if<__is_arith<_Tp>::__value,
 					   int>::__type
     isless(_Tp __f1, _Tp __f2)
     {
@@ -389,7 +389,7 @@ namespace tr1
     }
 
   template<typename _Tp>
-    inline typename __gnu_cxx::__enable_if<__is_arithmetic<_Tp>::__value,
+    inline typename __gnu_cxx::__enable_if<__is_arith<_Tp>::__value,
 					   int>::__type
     islessequal(_Tp __f1, _Tp __f2)
     {
@@ -398,7 +398,7 @@ namespace tr1
     }
 
   template<typename _Tp>
-    inline typename __gnu_cxx::__enable_if<__is_arithmetic<_Tp>::__value,
+    inline typename __gnu_cxx::__enable_if<__is_arith<_Tp>::__value,
 					   int>::__type
     islessgreater(_Tp __f1, _Tp __f2)
     {
@@ -407,7 +407,7 @@ namespace tr1
     }
 
   template<typename _Tp>
-    inline typename __gnu_cxx::__enable_if<__is_arithmetic<_Tp>::__value,
+    inline typename __gnu_cxx::__enable_if<__is_arith<_Tp>::__value,
 					   int>::__type
     isunordered(_Tp __f1, _Tp __f2)
     {
