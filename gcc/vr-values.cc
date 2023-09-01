@@ -903,7 +903,7 @@ simplify_using_ranges::simplify_bit_ops_using_ranges
   return true;
 }
 
-/* We are comparing trees OP0 and OP1 using COND_CODE.  OP0 has
+/* We are comparing trees OP1 and OP2 using COND_CODE.  OP1 has
    a known value range VR.
 
    If there is one and only one value which will satisfy the
@@ -913,8 +913,8 @@ simplify_using_ranges::simplify_bit_ops_using_ranges
    the conditional, then set *STRICT_OVERFLOW_P to true.  */
 
 static tree
-test_for_singularity (enum tree_code cond_code, tree op0,
-		      tree op1, const value_range *vr)
+test_for_singularity (enum tree_code cond_code, tree op1,
+		      tree op2, const value_range *vr)
 {
   tree min = NULL;
   tree max = NULL;
@@ -923,13 +923,13 @@ test_for_singularity (enum tree_code cond_code, tree op0,
      written.  */
   if (cond_code == LE_EXPR || cond_code == LT_EXPR)
     {
-      min = TYPE_MIN_VALUE (TREE_TYPE (op0));
+      min = TYPE_MIN_VALUE (TREE_TYPE (op1));
 
-      max = op1;
+      max = op2;
       if (cond_code == LT_EXPR)
 	{
-	  tree one = build_int_cst (TREE_TYPE (op0), 1);
-	  max = fold_build2 (MINUS_EXPR, TREE_TYPE (op0), max, one);
+	  tree one = build_int_cst (TREE_TYPE (op1), 1);
+	  max = fold_build2 (MINUS_EXPR, TREE_TYPE (op1), max, one);
 	  /* Signal to compare_values_warnv this expr doesn't overflow.  */
 	  if (EXPR_P (max))
 	    suppress_warning (max, OPT_Woverflow);
@@ -937,13 +937,13 @@ test_for_singularity (enum tree_code cond_code, tree op0,
     }
   else if (cond_code == GE_EXPR || cond_code == GT_EXPR)
     {
-      max = TYPE_MAX_VALUE (TREE_TYPE (op0));
+      max = TYPE_MAX_VALUE (TREE_TYPE (op1));
 
-      min = op1;
+      min = op2;
       if (cond_code == GT_EXPR)
 	{
-	  tree one = build_int_cst (TREE_TYPE (op0), 1);
-	  min = fold_build2 (PLUS_EXPR, TREE_TYPE (op0), min, one);
+	  tree one = build_int_cst (TREE_TYPE (op1), 1);
+	  min = fold_build2 (PLUS_EXPR, TREE_TYPE (op1), min, one);
 	  /* Signal to compare_values_warnv this expr doesn't overflow.  */
 	  if (EXPR_P (min))
 	    suppress_warning (min, OPT_Woverflow);
@@ -951,10 +951,10 @@ test_for_singularity (enum tree_code cond_code, tree op0,
     }
 
   /* Now refine the minimum and maximum values using any
-     value range information we have for op0.  */
+     value range information we have for op1.  */
   if (min && max)
     {
-      tree type = TREE_TYPE (op0);
+      tree type = TREE_TYPE (op1);
       tree tmin = wide_int_to_tree (type, vr->lower_bound ());
       tree tmax = wide_int_to_tree (type, vr->upper_bound ());
       if (compare_values (tmin, min) == 1)
