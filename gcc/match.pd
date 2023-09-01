@@ -942,6 +942,37 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
 #endif
    ))))
 
+/* (nop_cast)-var -> -(nop_cast)(var)
+   if -var is known to not overflow; that is does not include
+   the signed integer MIN. */
+(simplify
+ (convert (negate:s @0))
+ (if (INTEGRAL_TYPE_P (type)
+      && tree_nop_conversion_p (type, TREE_TYPE (@0)))
+  (with {
+    /* If the top is not set, there is no overflow happening. */
+    bool contains_signed_min = !wi::ges_p (tree_nonzero_bits (@0), 0);
+#if GIMPLE
+    int_range_max vr;
+    if (contains_signed_min
+        && TREE_CODE (@0) == SSA_NAME
+	&& get_range_query (cfun)->range_of_expr (vr, @0)
+	&& !vr.undefined_p ())
+      {
+        tree stype = signed_type_for (type);
+	auto minvalue = wi::min_value (stype);
+	int_range_max valid_range (TREE_TYPE (@0), minvalue, minvalue);
+	vr.intersect (valid_range);
+	/* If the range does not include min value,
+	   then we can do this change around. */
+	if (vr.undefined_p ())
+	  contains_signed_min = false;
+      }
+#endif
+   }
+   (if (!contains_signed_min)
+    (negate (convert @0))))))
+
 (for op (negate abs)
  /* Simplify cos(-x) and cos(|x|) -> cos(x).  Similarly for cosh.  */
  (for coss (COS COSH)
