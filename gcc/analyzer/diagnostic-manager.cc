@@ -877,6 +877,87 @@ saved_diagnostic::add_duplicate (saved_diagnostic *other)
   m_duplicates.safe_push (other);
 }
 
+/* Walk up the two paths to each of their common conditional
+   branching.  At each branching, make sure both diagnostics'
+   paths branched similarly.  If there is at least one where
+   both paths go down a different outcome, then the paths
+   are incompatible and this function returns FALSE.
+   Otherwise return TRUE.
+
+   Incompatible paths:
+
+       <cond Y>
+       /      \
+      /        \
+    true      false
+     |          |
+    ...        ...
+     |          |
+    ...       stmt x
+     |
+   stmt x
+
+   Both LHS_PATH and RHS_PATH final enodes should be
+   over the same gimple statement.  */
+
+static bool
+compatible_epath_p (const exploded_path *lhs_path,
+		    const exploded_path *rhs_path)
+{
+  gcc_assert (lhs_path);
+  gcc_assert (rhs_path);
+  int i;
+  const exploded_edge *outer_eedge;
+  FOR_EACH_VEC_ELT_REVERSE (lhs_path->m_edges, i, outer_eedge)
+    {
+      const superedge *outer_sedge = outer_eedge->m_sedge;
+      if (!outer_sedge || !outer_eedge->m_src)
+	continue;
+      const program_point &outer_src_point = outer_eedge->m_src->get_point ();
+      switch (outer_src_point.get_kind ())
+	{
+	  case PK_AFTER_SUPERNODE:
+	    if (const cfg_superedge *cfg_outer_sedge
+		= outer_sedge->dyn_cast_cfg_superedge ())
+	      {
+		int j;
+		const exploded_edge *inner_eedge;
+		FOR_EACH_VEC_ELT_REVERSE (rhs_path->m_edges, j, inner_eedge)
+		  {
+		    const superedge *inner_sedge = inner_eedge->m_sedge;
+		    if (!inner_sedge || !inner_eedge->m_src)
+		      continue;
+		    const program_point &inner_src_point
+		      = inner_eedge->m_src->get_point ();
+		    switch (inner_src_point.get_kind ())
+		      {
+			case PK_AFTER_SUPERNODE:
+			  if (inner_src_point.get_stmt ()
+			      != outer_src_point.get_stmt ())
+			    continue;
+			  if (const cfg_superedge *cfg_inner_sedge
+			      = inner_sedge->dyn_cast_cfg_superedge ())
+			    {
+			      if (cfg_inner_sedge->true_value_p ()
+				  != cfg_outer_sedge->true_value_p ())
+				return false;
+			    }
+			  break;
+			default:
+			  break;
+		      }
+		  }
+	      }
+	    break;
+
+	  default:
+	    break;
+	}
+    }
+    return true;
+}
+
+
 /* Return true if this diagnostic supercedes OTHER, and that OTHER should
    therefore not be emitted.  */
 
@@ -886,7 +967,13 @@ saved_diagnostic::supercedes_p (const saved_diagnostic &other) const
   /* They should be at the same stmt.  */
   if (m_stmt != other.m_stmt)
     return false;
-  return m_d->supercedes_p (*other.m_d);
+  /* return early if OTHER won't be superseded anyway.  */
+  if (!m_d->supercedes_p (*other.m_d))
+    return false;
+
+  /* If the two saved_diagnostics' path are not compatible
+     then they cannot supersede one another.  */
+  return compatible_epath_p (m_best_epath.get (), other.m_best_epath.get ());
 }
 
 /* Emit any pending notes owned by this diagnostic.  */
