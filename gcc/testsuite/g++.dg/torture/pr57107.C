@@ -25,9 +25,9 @@ namespace std __attribute__ ((__visibility__ ("default"))) {
 	enum {
 	    __value = 0 };
     };
-    template<typename _Tp>     struct __is_arithmetic     : public __traitor<__is_integer<_Tp>, __is_floating<_Tp> >     {
+    template<typename _Tp>     struct __is_arith     : public __traitor<__is_integer<_Tp>, __is_floating<_Tp> >     {
     };
-    template<typename _Tp>     struct __is_scalar     : public __traitor<__is_arithmetic<_Tp>, __is_pointer<_Tp> >     {
+    template<typename _Tp>     struct __is_scalar     : public __traitor<__is_arith<_Tp>, __is_pointer<_Tp> >     {
     };
 }
 namespace __gnu_cxx __attribute__ ((__visibility__ ("default"))) {
