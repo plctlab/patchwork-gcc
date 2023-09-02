@@ -2733,11 +2733,15 @@
   [(set_attr "type" "branch")])
 
 
+;; Branches operate on XLEN-sized quantities, but for LoongArch64 we accept
+;; QImode values so we can force zero-extension.
+(define_mode_iterator BR [(QI "TARGET_64BIT") SI (DI "TARGET_64BIT")])
+
 (define_expand "cbranch<mode>4"
   [(set (pc)
 	(if_then_else (match_operator 0 "comparison_operator"
-			[(match_operand:GPR 1 "register_operand")
-			 (match_operand:GPR 2 "nonmemory_operand")])
+			[(match_operand:BR 1 "register_operand")
+			 (match_operand:BR 2 "nonmemory_operand")])
 		      (label_ref (match_operand 3 ""))
 		      (pc)))]
   ""
