@@ -524,10 +524,11 @@ ssa_name_has_boolean_range (tree op)
     {
       int_range<2> r;
       if (get_range_query (cfun)->range_of_expr (r, op)
-	  && r == range_true_and_false (TREE_TYPE (op)))
+	  && !r.undefined_p ()
+	  && wi::leu_p (r.get_nonzero_bits (), 1))
 	return true;
 
-      if (wi::eq_p (get_nonzero_bits (op), 1))
+      if (wi::leu_p (get_nonzero_bits (op), 1))
 	return true;
     }
 
