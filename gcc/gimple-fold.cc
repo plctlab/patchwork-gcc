@@ -8681,10 +8681,19 @@ rewrite_to_defined_overflow (gimple *stmt, bool in_place /* = false */)
 	op = gimple_convert (&stmts, type, op);
 	gimple_set_op (stmt, i, op);
       }
-  gimple_assign_set_lhs (stmt, make_ssa_name (type, stmt));
+  bool needs_cast_back = false;
+  if (!useless_type_conversion_p (type, TREE_TYPE (lhs)))
+    {
+      gimple_assign_set_lhs (stmt, make_ssa_name (type, stmt));
+      needs_cast_back = true;
+    }
+
   if (gimple_assign_rhs_code (stmt) == POINTER_PLUS_EXPR)
     gimple_assign_set_rhs_code (stmt, PLUS_EXPR);
-  gimple_set_modified (stmt, true);
+
+  if (needs_cast_back || stmts)
+    gimple_set_modified (stmt, true);
+
   if (in_place)
     {
       gimple_stmt_iterator gsi = gsi_for_stmt (stmt);
@@ -8694,6 +8703,10 @@ rewrite_to_defined_overflow (gimple *stmt, bool in_place /* = false */)
     }
   else
     gimple_seq_add_stmt (&stmts, stmt);
+
+  if (!needs_cast_back)
+    return stmts;
+
   gimple *cvt = gimple_build_assign (lhs, NOP_EXPR, gimple_assign_lhs (stmt));
   if (in_place)
     {
