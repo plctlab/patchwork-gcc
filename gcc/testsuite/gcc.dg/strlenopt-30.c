@@ -44,6 +44,12 @@ _Bool f6(char *s, char *t)
   return __builtin_strstr (s, t) == s;
 }
 
+__attribute__((no_icf))
+_Bool f6plus(char *s, char *t)
+{
+  return __builtin_strstr (s, t) == s && __builtin_strlen(t) > 10;
+}
+
 /* Do not perform transform in this case, since
    t1 doesn't have single use.  */
 
@@ -57,4 +63,5 @@ _Bool f7(char *s)
   return (t1 == s);
 }
 
-/* { dg-final { scan-tree-dump-times "__builtin_strncmp" 6 "strlen1" } } */
+/* { dg-final { scan-tree-dump-times "__builtin_strlen" 2 "strlen1" } } */
+/* { dg-final { scan-tree-dump-times "__builtin_strncmp" 7 "strlen1" } } */
