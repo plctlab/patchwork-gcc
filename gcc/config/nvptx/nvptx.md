@@ -636,7 +636,7 @@
 
 (define_insn "bitrev<mode>2"
   [(set (match_operand:SDIM 0 "nvptx_register_operand" "=R")
-	(unspec:SDIM [(match_operand:SDIM 1 "nvptx_register_operand" "R")]
+	(unspec:SDIM [(match_operand:SDIM 1 "nvptx_nonmemory_operand" "Ri")]
 		     UNSPEC_BITREV))]
   ""
   "%.\\tbrev.b%T0\\t%0, %1;")
