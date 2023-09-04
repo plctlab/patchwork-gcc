@@ -3302,6 +3302,7 @@ function body for unoptimized code.
 
 The first line of the expected output for a function @var{fn} has the form:
 
+@c TODO
 @smallexample
 @var{prefix} @var{fn}:  [@{ target/xfail @var{selector} @}]
 @end smallexample
@@ -3309,6 +3310,7 @@ The first line of the expected output for a function @var{fn} has the form:
 Subsequent lines of the expected output also start with @var{prefix}.
 In both cases, whitespace after @var{prefix} is not significant.
 
+@c TODO
 The test discards assembly directives such as @code{.cfi_startproc}
 and local label definitions such as @code{.LFB0} from the compiler's
 assembly output.  It then matches the result against the expected

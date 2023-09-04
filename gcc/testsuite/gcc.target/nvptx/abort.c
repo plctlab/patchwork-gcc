@@ -1,4 +1,6 @@
 /* { dg-do compile} */
+/* { dg-final { check-function-bodies {**} {} } } */
+
 /* Annotate no return functions with a trailing 'trap'.  */
 
 extern void abort ();
@@ -9,5 +11,18 @@ int main (int argc, char **argv)
     abort ();
   return 0;
 }
-
-/* { dg-final { scan-assembler "call abort;\[\r\n\t \]+trap;" } } */
+/*
+** // BEGIN GLOBAL FUNCTION DEF: main
+**     ...
+**     \.reg\.pred (%r[0-9]+);
+**     ...
+**     @\1	bra	(\$L[0-9]+);
+**     {
+**     \tcall abort;
+**     \ttrap; // \(noreturn\)
+**     \texit; // \(noreturn\)
+**     }
+TODO**     \2:
+TODO This label currently cannot be matched.
+**     ...
+*/

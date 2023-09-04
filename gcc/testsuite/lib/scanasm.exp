@@ -785,13 +785,16 @@ proc parse_function_bodies { filename result } {
     upvar $result up_result
 
     # Regexp for the start of a function definition (name in \1).
-    set label {^([a-zA-Z_]\S+):$}
+    #TODO
+    set label {^// BEGIN GLOBAL FUNCTION DEF: ([a-zA-Z_]\S+)$}
 
     # Regexp for the end of a function definition.
-    set terminator {^\s*\.size}
+    #TODO
+    set terminator {^\}$}
 
     # Regexp for lines that aren't interesting.
-    set fluff {^\s*(?:\.|//|@|$)}
+    #TODO n/a -- or still TODO
+    set fluff {^\s*$}
 
     set fd [open $filename r]
     set in_function 0
@@ -801,6 +804,7 @@ proc parse_function_bodies { filename result } {
 	    set function_body ""
 	} elseif { $in_function } {
 	    if { [regexp $terminator $line] } {
+		#verbose -log "parse_function_bodies: $function_name\n$function_body"
 		set up_result($function_name) $function_body
 		set in_function 0
 	    } elseif { ![regexp $fluff $line] } {
@@ -907,7 +911,8 @@ proc check-function-bodies { args } {
 
     set count 0
     set function_regexp ""
-    set label {^(\S+):$}
+    #TODO
+    set label {^// BEGIN GLOBAL FUNCTION DEF: ([a-zA-Z_]\S+)$}
 
     set lineno 1
     set fd [open $input_filename r]
@@ -937,7 +942,15 @@ proc check-function-bodies { args } {
 	    } elseif { [string equal $line "..."] } {
 		append function_regexp ".*"
 	    } else {
+		#TODO
+		# Certain (predicable) nvptx instructions are emitted with additional whitespace prefixed.
+		# Prune that here, or include in expected output lines?
+		# On the other hand, labels are emitted in column zero (for no particular reason as far as I can tell; could be changed).
+		# (Whitespace is not significant there.)
+		# But: labels are also in column zero for x86_64 assembly, for example, so that's a pre-existing issue, to be solved generally.
+		# Actually, they're filtered out as "fluff", so that's generally a non-issue vs. TODO item.
 		append function_regexp "\t" $line "\n"
+		#append function_regexp {\s*} $line {\n}
 	    }
 	} elseif { [string equal -length $terminator_len $line $terminator] } {
 	    if { ![string equal $selector "N"] } {
