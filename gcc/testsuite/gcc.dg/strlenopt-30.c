@@ -38,9 +38,6 @@ void f5(char *s)
     foo_f5();
 }
 
-/* Do not perform transform, since strlen (t)
-   is unknown.  */
-
 __attribute__((no_icf))
 _Bool f6(char *s, char *t)
 {
@@ -60,4 +57,4 @@ _Bool f7(char *s)
   return (t1 == s);
 }
 
-/* { dg-final { scan-tree-dump-times "__builtin_strncmp" 5 "strlen1" } } */
+/* { dg-final { scan-tree-dump-times "__builtin_strncmp" 6 "strlen1" } } */
