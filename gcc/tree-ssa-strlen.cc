@@ -5272,6 +5272,7 @@ fold_strstr_to_strncmp (tree rhs1, tree rhs2, gimple *stmt)
 	  tree arg1 = gimple_call_arg (call_stmt, 1);
 	  tree arg1_len = NULL_TREE;
 	  int idx = get_stridx (arg1, call_stmt);
+	  gimple_stmt_iterator gsi = gsi_for_stmt (call_stmt);
 
 	  if (idx)
 	    {
@@ -5285,51 +5286,57 @@ fold_strstr_to_strncmp (tree rhs1, tree rhs2, gimple *stmt)
 		}
 	    }
 
-	  if (arg1_len != NULL_TREE)
+	  if (arg1_len == NULL_TREE)
 	    {
-	      gimple_stmt_iterator gsi = gsi_for_stmt (call_stmt);
-	      tree strncmp_decl = builtin_decl_explicit (BUILT_IN_STRNCMP);
+	      tree strlen_decl = builtin_decl_explicit (BUILT_IN_STRLEN);
+	      gcall *strlen_call = gimple_build_call (strlen_decl, 1, arg1);
+	      tree strlen_lhs = make_ssa_name (size_type_node, strlen_call);
 
-	      if (!is_gimple_val (arg1_len))
+	      gimple_call_set_lhs (strlen_call, strlen_lhs);
+	      gimple_set_vuse (strlen_call, gimple_vuse (call_stmt));
+	      gsi_insert_before (&gsi, strlen_call, GSI_SAME_STMT);
+	      arg1_len = strlen_lhs;
+	    }
+	  else if (!is_gimple_val (arg1_len))
+	    {
+	      tree arg1_len_tmp = make_ssa_name (TREE_TYPE (arg1_len));
+	      gassign *arg1_stmt = gimple_build_assign (arg1_len_tmp,
+							arg1_len);
+	      gsi_insert_before (&gsi, arg1_stmt, GSI_SAME_STMT);
+	      arg1_len = arg1_len_tmp;
+	    }
+
+	  tree strncmp_decl = builtin_decl_explicit (BUILT_IN_STRNCMP);
+	  gcall *strncmp_call = gimple_build_call (strncmp_decl, 3,
+						   arg0, arg1, arg1_len);
+	  tree strncmp_lhs = make_ssa_name (integer_type_node);
+	  gimple_set_vuse (strncmp_call, gimple_vuse (call_stmt));
+	  gimple_call_set_lhs (strncmp_call, strncmp_lhs);
+	  gsi_remove (&gsi, true);
+	  gsi_insert_before (&gsi, strncmp_call, GSI_SAME_STMT);
+	  tree zero = build_zero_cst (TREE_TYPE (strncmp_lhs));
+
+	  if (is_gimple_assign (stmt))
+	    {
+	      if (gimple_assign_rhs_code (stmt) == COND_EXPR)
 		{
-		  tree arg1_len_tmp = make_ssa_name (TREE_TYPE (arg1_len));
-		  gassign *arg1_stmt = gimple_build_assign (arg1_len_tmp,
-							    arg1_len);
-		  gsi_insert_before (&gsi, arg1_stmt, GSI_SAME_STMT);
-		  arg1_len = arg1_len_tmp;
-		}
-
-	      gcall *strncmp_call = gimple_build_call (strncmp_decl, 3,
-						      arg0, arg1, arg1_len);
-	      tree strncmp_lhs = make_ssa_name (integer_type_node);
-	      gimple_set_vuse (strncmp_call, gimple_vuse (call_stmt));
-	      gimple_call_set_lhs (strncmp_call, strncmp_lhs);
-	      gsi_remove (&gsi, true);
-	      gsi_insert_before (&gsi, strncmp_call, GSI_SAME_STMT);
-	      tree zero = build_zero_cst (TREE_TYPE (strncmp_lhs));
-
-	      if (is_gimple_assign (stmt))
-		{
-		  if (gimple_assign_rhs_code (stmt) == COND_EXPR)
-		    {
-		      tree cond = gimple_assign_rhs1 (stmt);
-		      TREE_OPERAND (cond, 0) = strncmp_lhs;
-		      TREE_OPERAND (cond, 1) = zero;
-		    }
-		  else
-		    {
-		      gimple_assign_set_rhs1 (stmt, strncmp_lhs);
-		      gimple_assign_set_rhs2 (stmt, zero);
-		    }
+		  tree cond = gimple_assign_rhs1 (stmt);
+		  TREE_OPERAND (cond, 0) = strncmp_lhs;
+		  TREE_OPERAND (cond, 1) = zero;
 		}
 	      else
 		{
-		  gcond *cond = as_a<gcond *> (stmt);
-		  gimple_cond_set_lhs (cond, strncmp_lhs);
-		  gimple_cond_set_rhs (cond, zero);
+		  gimple_assign_set_rhs1 (stmt, strncmp_lhs);
+		  gimple_assign_set_rhs2 (stmt, zero);
 		}
-	      update_stmt (stmt);
 	    }
+	  else
+	    {
+	      gcond *cond = as_a<gcond *> (stmt);
+	      gimple_cond_set_lhs (cond, strncmp_lhs);
+	      gimple_cond_set_rhs (cond, zero);
+	    }
+	  update_stmt (stmt);
 	}
     }
 }
