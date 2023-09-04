@@ -252,7 +252,6 @@ public:
   bool handle_assign (tree lhs, bool *zero_write);
   bool handle_store (bool *zero_write);
   void handle_pointer_plus ();
-  void handle_builtin_strlen ();
   void handle_builtin_strchr ();
   void handle_builtin_strcpy (built_in_function);
   void handle_integral_assign (bool *cleanup_eh);
@@ -2211,10 +2210,10 @@ strlen_pass::maybe_warn_overflow (gimple *stmt, bool call_lhs,
    the strlen call with the known value, otherwise remember that strlen
    of the argument is stored in the lhs SSA_NAME.  */
 
-void
-strlen_pass::handle_builtin_strlen ()
+static void
+handle_builtin_strlen (gimple_stmt_iterator gsi)
 {
-  gimple *stmt = gsi_stmt (m_gsi);
+  gimple *stmt = gsi_stmt (gsi);
   tree lhs = gimple_call_lhs (stmt);
 
   if (lhs == NULL_TREE)
@@ -2268,8 +2267,8 @@ strlen_pass::handle_builtin_strlen ()
 	  if (bound)
 	    rhs = fold_build2_loc (loc, MIN_EXPR, TREE_TYPE (rhs), rhs, bound);
 
-	  gimplify_and_update_call_from_tree (&m_gsi, rhs);
-	  stmt = gsi_stmt (m_gsi);
+	  gimplify_and_update_call_from_tree (&gsi, rhs);
+	  stmt = gsi_stmt (gsi);
 	  update_stmt (stmt);
 	  if (dump_file && (dump_flags & TDF_DETAILS) != 0)
 	    {
@@ -2367,8 +2366,8 @@ strlen_pass::handle_builtin_strlen ()
 	      }
 	    if (!useless_type_conversion_p (TREE_TYPE (lhs), TREE_TYPE (ret)))
 	      ret = fold_convert_loc (loc, TREE_TYPE (lhs), ret);
-	    gimplify_and_update_call_from_tree (&m_gsi, ret);
-	    stmt = gsi_stmt (m_gsi);
+	    gimplify_and_update_call_from_tree (&gsi, ret);
+	    stmt = gsi_stmt (gsi);
 	    update_stmt (stmt);
 	    if (dump_file && (dump_flags & TDF_DETAILS) != 0)
 	      {
@@ -5271,8 +5270,9 @@ fold_strstr_to_strncmp (tree rhs1, tree rhs2, gimple *stmt)
 	{
 	  tree arg1 = gimple_call_arg (call_stmt, 1);
 	  tree arg1_len = NULL_TREE;
-	  int idx = get_stridx (arg1, call_stmt);
 	  gimple_stmt_iterator gsi = gsi_for_stmt (call_stmt);
+again:
+	  int idx = get_stridx (arg1, call_stmt);
 
 	  if (idx)
 	    {
@@ -5295,7 +5295,8 @@ fold_strstr_to_strncmp (tree rhs1, tree rhs2, gimple *stmt)
 	      gimple_call_set_lhs (strlen_call, strlen_lhs);
 	      gimple_set_vuse (strlen_call, gimple_vuse (call_stmt));
 	      gsi_insert_before (&gsi, strlen_call, GSI_SAME_STMT);
-	      arg1_len = strlen_lhs;
+	      handle_builtin_strlen (gsi_for_stmt (strlen_call));
+	      goto again;
 	    }
 	  else if (!is_gimple_val (arg1_len))
 	    {
@@ -5392,7 +5393,7 @@ strlen_pass::check_and_optimize_call (bool *zero_write)
     {
     case BUILT_IN_STRLEN:
     case BUILT_IN_STRNLEN:
-      handle_builtin_strlen ();
+      handle_builtin_strlen (m_gsi);
       break;
     case BUILT_IN_STRCHR:
       handle_builtin_strchr ();
