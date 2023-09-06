@@ -1,0 +1,12 @@
+LA_DEFAULT_MULTIDIR = $(shell $(CXX) --print-multi-directory)
+TOPLEV_HEADERS = $(DESTDIR)${gxx_include_dir}/${host_alias}/$(LA_DEFAULT_MULTIDIR)
+
+.PHONY: install-toplevel-link
+install: install-toplevel-link
+install-toplevel-link:
+	if test x$(MULTIDO) != xtrue && \
+	   test x$(LA_DEFAULT_MULTIDIR) != x.; then \
+	    $(MKDIR_P) "$(dir $(TOPLEV_HEADERS))"; \
+	    rm -rf "$(TOPLEV_HEADERS)"; \
+	    $(LN_S) ../ "$(TOPLEV_HEADERS)"; \
+	fi
