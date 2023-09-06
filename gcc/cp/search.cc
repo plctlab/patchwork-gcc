@@ -2582,6 +2582,10 @@ lookup_conversions_r (tree binfo, int virtual_depth, int virtualness,
   return my_virtualness;
 }
 
+/* A cache of the result of lookup_conversions.  */
+
+static GTY((cache)) type_tree_cache_map *lookup_conversions_cache;
+
 /* Return a TREE_LIST containing all the non-hidden user-defined
    conversion functions for TYPE (and its base-classes).  The
    TREE_VALUE of each node is the FUNCTION_DECL of the conversion
@@ -2596,9 +2600,13 @@ lookup_conversions (tree type)
 {
   tree convs;
 
+  type = TYPE_MAIN_VARIANT (type);
   complete_type (type);
   if (!CLASS_TYPE_P (type) || !TYPE_BINFO (type))
     return NULL_TREE;
+
+  if (tree *c = hash_map_safe_get (lookup_conversions_cache, type))
+    return *c;
 
   lookup_conversions_r (TYPE_BINFO (type), 0, 0, NULL_TREE, NULL_TREE, &convs);
 
@@ -2618,6 +2626,7 @@ lookup_conversions (tree type)
 	}
     }
 
+  hash_map_safe_put<hm_ggc> (lookup_conversions_cache, type, list);
   return list;
 }
 
@@ -2798,3 +2807,5 @@ any_dependent_bases_p (tree type)
 
   return false;
 }
+
+#include "gt-cp-search.h"
