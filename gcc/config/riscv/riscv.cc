@@ -7378,7 +7378,7 @@ vector_zero_call_used_regs (HARD_REG_SET need_zeroed_hardregs)
     {
       if (TEST_HARD_REG_BIT (need_zeroed_hardregs, regno))
 	{
-	  rtx target = regno_reg_rtx[regno];
+	  rtx target = gen_rtx_REG (RVVM1SImode, regno);
 	  machine_mode mode = GET_MODE (target);
 	  poly_uint16 nunits = GET_MODE_NUNITS (mode);
 	  machine_mode mask_mode
