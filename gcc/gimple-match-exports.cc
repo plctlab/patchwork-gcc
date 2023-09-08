@@ -236,7 +236,8 @@ maybe_resimplify_conditional_op (gimple_seq *seq, gimple_match_op *res_op,
   if (!res_op->cond.cond)
     return false;
 
-  if (!res_op->cond.else_value
+  if (!res_op->cond.len
+      && !res_op->cond.else_value
       && res_op->code.is_tree_code ())
     {
       /* The "else" value doesn't matter.  If the "then" value is a
@@ -275,9 +276,12 @@ maybe_resimplify_conditional_op (gimple_seq *seq, gimple_match_op *res_op,
 
   /* If the "then" value is a gimple value and the "else" value matters,
      create a VEC_COND_EXPR between them, then see if it can be further
-     simplified.  */
+     simplified.
+     Don't do this if we have a COND_LEN_ as that would make us lose the
+     length masking.  */
   gimple_match_op new_op;
-  if (res_op->cond.else_value
+  if (!res_op->cond.len
+      && res_op->cond.else_value
       && VECTOR_TYPE_P (res_op->type)
       && gimple_simplified_result_is_gimple_val (res_op))
     {
@@ -288,7 +292,7 @@ maybe_resimplify_conditional_op (gimple_seq *seq, gimple_match_op *res_op,
       return gimple_resimplify3 (seq, res_op, valueize);
     }
 
-  /* Otherwise try rewriting the operation as an IFN_COND_* call.
+  /* Otherwise try rewriting the operation as an IFN_COND_(LEN_)* call.
      Again, this isn't a simplification in itself, since it's what
      RES_OP already described.  */
   if (convert_conditional_op (res_op, &new_op))
