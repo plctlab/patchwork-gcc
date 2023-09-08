@@ -168,31 +168,42 @@ delete_root (gfc_bbt *t)
    Returns the new root node of the tree.  */
 
 static gfc_bbt *
-delete_treap (gfc_bbt *old, gfc_bbt *t, compare_fn compare)
+delete_treap (gfc_bbt *old, gfc_bbt *t, compare_fn compare, gfc_bbt **removed)
 {
   int c;
 
-  if (t == NULL)
-    return NULL;
+  if (t == nullptr)
+    {
+      if (removed)
+	*removed = nullptr;
+      return nullptr;
+    }
 
   c = (*compare) (old, t);
 
   if (c < 0)
-    t->left = delete_treap (old, t->left, compare);
+    t->left = delete_treap (old, t->left, compare, removed);
   if (c > 0)
-    t->right = delete_treap (old, t->right, compare);
+    t->right = delete_treap (old, t->right, compare, removed);
   if (c == 0)
-    t = delete_root (t);
+    {
+      if (removed)
+	*removed = t;
+      t = delete_root (t);
+    }
 
   return t;
 }
 
 
-void
+void *
 gfc_delete_bbt (void *root, void *old, compare_fn compare)
 {
   gfc_bbt **t;
+  gfc_bbt *removed;
 
   t = (gfc_bbt **) root;
-  *t = delete_treap ((gfc_bbt *) old, *t, compare);
+  *t = delete_treap ((gfc_bbt *) old, *t, compare, &removed);
+
+  return (void *) removed;
 }
