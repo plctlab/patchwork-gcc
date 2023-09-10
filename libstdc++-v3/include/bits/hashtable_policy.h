@@ -327,18 +327,22 @@ namespace __detail
 
       __gnu_cxx::__aligned_buffer<_Value> _M_storage;
 
+      [[__gnu__::__always_inline__]]
       _Value*
       _M_valptr() noexcept
       { return _M_storage._M_ptr(); }
 
+      [[__gnu__::__always_inline__]]
       const _Value*
       _M_valptr() const noexcept
       { return _M_storage._M_ptr(); }
 
+      [[__gnu__::__always_inline__]]
       _Value&
       _M_v() noexcept
       { return *_M_valptr(); }
 
+      [[__gnu__::__always_inline__]]
       const _Value&
       _M_v() const noexcept
       { return *_M_valptr(); }
@@ -372,7 +376,7 @@ namespace __detail
     : _Hash_node_base
     , _Hash_node_value<_Value, _Cache_hash_code>
     {
-      _Hash_node*
+      constexpr _Hash_node*
       _M_next() const noexcept
       { return static_cast<_Hash_node*>(this->_M_nxt); }
     };
