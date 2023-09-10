@@ -19,6 +19,7 @@
 
 // We need to be pedantic about reallocations for this testcase to be correct.
 // { dg-options "-D_GLIBCXX_DEBUG_PEDANTIC" }
+// { dg-require-thread-fence "" } // needed by __gnu_debug::_Safe_sequence_base::_M_detach_all()
 
 #ifndef _GLIBCXX_DEBUG_PEDANTIC
 #  define _GLIBCXX_DEBUG_PEDANTIC 1

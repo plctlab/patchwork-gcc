@@ -18,6 +18,7 @@
 // { dg-options "-std=gnu++2a -D_GLIBCXX_ASSERTIONS" }
 // { dg-do run { target c++2a } }
 // { dg-xfail-run-if "__glibcxx_assert in bit_ceil should fail" { *-*-* } }
+// { dg-require-thread-fence "" } // needed by __gnu_debug::_Safe_sequence_base::_M_detach_all()
 
 #include <bit>
 #include <limits>

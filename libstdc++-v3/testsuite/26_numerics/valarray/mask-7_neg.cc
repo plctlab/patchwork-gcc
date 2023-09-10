@@ -1,5 +1,6 @@
 // { dg-options "-D_GLIBCXX_ASSERTIONS" }
 // { dg-do run { xfail *-*-* } }
+// { dg-require-thread-fence "" } // needed by __gnu_debug::_Safe_sequence_base::_M_detach_all()
 
 #include <valarray>
 

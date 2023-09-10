@@ -18,6 +18,7 @@
 // { dg-do run { target c++14 } }
 // { dg-add-options libatomic }
 // { dg-xfail-if "poll not available" { *-*-rtems* } }
+// { dg-require-thread-fence "" } // needed by __gnu_debug::_Safe_sequence_base::_M_detach_all()
 
 #include <experimental/timer>
 #include <testsuite_hooks.h>

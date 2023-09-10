@@ -1,5 +1,6 @@
 // { dg-do run { target c++11 } }
 // { dg-require-string-conversions "" }
+// { dg-require-thread-fence "" } // needed by __gnu_debug::_Safe_sequence_base::_M_detach_all()
 
 // Copyright (C) 2009-2023 Free Software Foundation, Inc.
 //

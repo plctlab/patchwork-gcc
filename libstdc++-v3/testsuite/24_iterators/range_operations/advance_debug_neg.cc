@@ -18,6 +18,7 @@
 // { dg-options "-std=gnu++2a -D_GLIBCXX_ASSERTIONS" }
 // { dg-do run { xfail *-*-* } }
 // { dg-require-effective-target c++2a }
+// { dg-require-thread-fence "" } // needed by __gnu_debug::_Safe_sequence_base::_M_detach_all()
 
 #include <iterator>
 #include <testsuite_iterators.h>

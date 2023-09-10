@@ -16,6 +16,7 @@
 // <http://www.gnu.org/licenses/>.
 //
 // { dg-do run { target c++11 xfail *-*-* } }
+// { dg-require-thread-fence "" } // needed by __gnu_debug::_Safe_sequence_base::_M_detach_all()
 
 #include <debug/unordered_map>
 

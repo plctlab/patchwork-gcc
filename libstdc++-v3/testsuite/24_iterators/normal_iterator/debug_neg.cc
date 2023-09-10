@@ -18,6 +18,7 @@
 // Requires C++11 because we check for correct output of
 // __gnu_cxx::__normal_iterator which is improved in this mode.
 // { dg-do run { target c++11 xfail *-*-* } }
+// { dg-require-thread-fence "" } // needed by __gnu_debug::_Safe_sequence_base::_M_detach_all()
 
 #include <debug/vector>
 

@@ -1,5 +1,6 @@
 // { dg-do run { target c++11 } }
 // { dg-require-cstdint "" }
+// { dg-require-thread-fence "" } // needed by __gnu_debug::_Safe_sequence_base::_M_detach_all()
 
 // 2009-09-14  Benjamin Kosnik  <benjamin@redhat.com>
 

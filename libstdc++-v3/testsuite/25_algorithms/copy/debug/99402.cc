@@ -17,6 +17,7 @@
 
 // { dg-options "-D_GLIBCXX_DEBUG" }
 // { dg-do run }
+// { dg-require-thread-fence "" } // needed by __gnu_debug::_Safe_sequence_base::_M_detach_all()
 
 #include <algorithm>
 #include <set>

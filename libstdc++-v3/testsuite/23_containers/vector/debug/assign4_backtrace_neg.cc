@@ -1,6 +1,7 @@
 // { dg-do run { xfail *-*-* } }
 // { dg-options "-D_GLIBCXX_DEBUG_BACKTRACE -lstdc++_libbacktrace" }
 // { dg-require-effective-target stacktrace }
+// { dg-require-thread-fence "" } // needed by __gnu_debug::_Safe_sequence_base::_M_detach_all()
 
 #include <debug/vector>
 #include <debug/checks.h>
