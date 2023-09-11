@@ -12058,6 +12058,9 @@ trait_expr_value (cp_trait_kind kind, tree type1, tree type2)
     case CPTK_IS_TRIVIALLY_COPYABLE:
       return trivially_copyable_p (type1);
 
+    case CPTK_IS_UNBOUNDED_ARRAY:
+      return array_of_unknown_bound_p (type1);
+
     case CPTK_IS_UNION:
       return type_code1 == UNION_TYPE;
 
@@ -12239,6 +12242,7 @@ finish_trait_expr (location_t loc, cp_trait_kind kind, tree type1, tree type2)
     case CPTK_IS_ENUM:
     case CPTK_IS_UNION:
     case CPTK_IS_SAME:
+    case CPTK_IS_UNBOUNDED_ARRAY:
       break;
 
     case CPTK_IS_LAYOUT_COMPATIBLE:

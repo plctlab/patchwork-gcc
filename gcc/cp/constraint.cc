@@ -3773,6 +3773,9 @@ diagnose_trait_expr (tree expr, tree args)
     case CPTK_IS_ASSIGNABLE:
       inform (loc, "  %qT is not assignable from %qT", t1, t2);
       break;
+    case CPTK_IS_UNBOUNDED_ARRAY:
+      inform (loc, "  %qT is not an unbounded array", t1);
+      break;
     case CPTK_IS_TRIVIALLY_ASSIGNABLE:
       inform (loc, "  %qT is not trivially assignable from %qT", t1, t2);
       break;
