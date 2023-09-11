@@ -12073,6 +12073,9 @@ trait_expr_value (cp_trait_kind kind, tree type1, tree type2)
     case CPTK_IS_NOTHROW_CONSTRUCTIBLE:
       return is_nothrow_xible (INIT_EXPR, type1, type2);
 
+    case CPTK_IS_MEMBER_FUNCTION_POINTER:
+      return TYPE_PTRMEMFUNC_P (type1);
+
     case CPTK_IS_CONVERTIBLE:
       return is_convertible (type1, type2);
 
@@ -12239,6 +12242,7 @@ finish_trait_expr (location_t loc, cp_trait_kind kind, tree type1, tree type2)
     case CPTK_IS_ENUM:
     case CPTK_IS_UNION:
     case CPTK_IS_SAME:
+    case CPTK_IS_MEMBER_FUNCTION_POINTER:
       break;
 
     case CPTK_IS_LAYOUT_COMPATIBLE:
