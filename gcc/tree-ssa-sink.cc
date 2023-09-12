@@ -173,7 +173,8 @@ nearest_common_dominator_of_uses (def_operand_p def_p, bool *debug_stmts)
 
 /* Given EARLY_BB and LATE_BB, two blocks in a path through the dominator
    tree, return the best basic block between them (inclusive) to place
-   statements.
+   statements. The best basic block should be an immediate dominator of
+   best basic block if the use stmt is after the call.
 
    We want the most control dependent block in the shallowest loop nest.
 
@@ -190,36 +191,12 @@ nearest_common_dominator_of_uses (def_operand_p def_p, bool *debug_stmts)
 static basic_block
 select_best_block (basic_block early_bb,
 		   basic_block late_bb,
-		   gimple *stmt)
+		   gimple *stmt,
+		   gimple *use)
 {
   basic_block best_bb = late_bb;
   basic_block temp_bb = late_bb;
   int threshold;
-
-  while (temp_bb != early_bb)
-    {
-      /* If we've moved into a lower loop nest, then that becomes
-	 our best block.  */
-      if (bb_loop_depth (temp_bb) < bb_loop_depth (best_bb))
-	best_bb = temp_bb;
-
-      /* Walk up the dominator tree, hopefully we'll find a shallower
- 	 loop nest.  */
-      temp_bb = get_immediate_dominator (CDI_DOMINATORS, temp_bb);
-    }
-
-  /* Placing a statement before a setjmp-like function would be invalid
-     (it cannot be reevaluated when execution follows an abnormal edge).
-     If we selected a block with abnormal predecessors, just punt.  */
-  if (bb_has_abnormal_pred (best_bb))
-    return early_bb;
-
-  /* If we found a shallower loop nest, then we always consider that
-     a win.  This will always give us the most control dependent block
-     within that loop nest.  */
-  if (bb_loop_depth (best_bb) < bb_loop_depth (early_bb))
-    return best_bb;
-
   /* Get the sinking threshold.  If the statement to be moved has memory
      operands, then increase the threshold by 7% as those are even more
      profitable to avoid, clamping at 100%.  */
@@ -230,6 +207,38 @@ select_best_block (basic_block early_bb,
       if (threshold > 100)
 	threshold = 100;
     }
+
+  while (temp_bb != early_bb)
+    {
+      /* If we've moved into a lower loop nest, then that becomes
+	 our best block.  */
+      if (bb_loop_depth (temp_bb) < bb_loop_depth (best_bb))
+	best_bb = temp_bb;
+
+      /* Placing a statement before a setjmp-like function would be invalid
+	 (it cannot be reevaluated when execution follows an abnormal edge).
+	 If we selected a block with abnormal predecessors, just punt.  */
+      if (bb_has_abnormal_pred (temp_bb))
+	return early_bb;
+
+      /* if we have temp_bb post dominated by use block block then immediate
+       * dominator would be our best block.  */
+      if (use
+	  && bb_loop_depth(temp_bb) == bb_loop_depth (early_bb)
+	  && !(temp_bb->count * 100 >= early_bb->count * threshold)
+	  && dominated_by_p (CDI_POST_DOMINATORS, temp_bb, gimple_bb (use)))
+	best_bb = temp_bb;
+
+      /* Walk up the dominator tree, hopefully we'll find a shallower
+ 	 loop nest.  */
+      temp_bb = get_immediate_dominator (CDI_DOMINATORS, temp_bb);
+    }
+
+  /* If we found a shallower loop nest, then we always consider that
+     a win.  This will always give us the most control dependent block
+     within that loop nest.  */
+  if (bb_loop_depth (best_bb) < bb_loop_depth (early_bb))
+    return best_bb;
 
   /* If BEST_BB is at the same nesting level, then require it to have
      significantly lower execution frequency to avoid gratuitous movement.  */
@@ -439,7 +448,7 @@ statement_sink_location (gimple *stmt, basic_block frombb,
       if (!dominated_by_p (CDI_DOMINATORS, commondom, frombb))
 	return false;
 
-      commondom = select_best_block (frombb, commondom, stmt);
+      commondom = select_best_block (frombb, commondom, stmt, NULL);
 
       if (commondom == frombb)
 	return false;	
@@ -456,19 +465,17 @@ statement_sink_location (gimple *stmt, basic_block frombb,
 	    continue;
 	  break;
 	}
+
       use = USE_STMT (one_use);
 
       if (gimple_code (use) != GIMPLE_PHI)
 	{
-	  sinkbb = select_best_block (frombb, gimple_bb (use), stmt);
+	  sinkbb = select_best_block (frombb, gimple_bb (use), stmt, use);
 
 	  if (sinkbb == frombb)
 	    return false;
 
-	  if (sinkbb == gimple_bb (use))
-	    *togsi = gsi_for_stmt (use);
-	  else
-	    *togsi = gsi_after_labels (sinkbb);
+	  *togsi = gsi_after_labels (sinkbb);
 
 	  return true;
 	}
@@ -480,7 +487,7 @@ statement_sink_location (gimple *stmt, basic_block frombb,
   if (!sinkbb)
     return false;
   
-  sinkbb = select_best_block (frombb, sinkbb, stmt);
+  sinkbb = select_best_block (frombb, sinkbb, stmt, NULL);
   if (!sinkbb || sinkbb == frombb)
     return false;
 
