@@ -121,6 +121,7 @@ size_t gomp_affinity_format_len;
 char *goacc_device_type;
 int goacc_device_num;
 int goacc_default_dims[GOMP_DIM_MAX];
+int gomp_reverse_offload_threads = 8;  /* Reasonable default.  */
 
 #ifndef LIBGOMP_OFFLOADED_ONLY
 
@@ -2313,6 +2314,11 @@ initialize_env (void)
     }
 
   handle_omp_display_env ();
+
+  /* Control the number of background threads reverse offload is permitted
+     to use.  */
+  parse_int_secure ("GOMP_REVERSE_OFFLOAD_THREADS",
+		    &gomp_reverse_offload_threads, false);
 
   /* OpenACC.  */
 

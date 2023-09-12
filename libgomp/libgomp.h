@@ -616,6 +616,7 @@ extern struct gomp_offload_icv_list *gomp_offload_icv_list;
 extern int goacc_device_num;
 extern char *goacc_device_type;
 extern int goacc_default_dims[GOMP_DIM_MAX];
+extern int gomp_reverse_offload_threads;
 
 enum gomp_task_kind
 {
@@ -1130,7 +1131,7 @@ extern void gomp_init_targets_once (void);
 extern int gomp_get_num_devices (void);
 extern bool gomp_target_task_fn (void *);
 extern void gomp_target_rev (uint64_t, uint64_t, uint64_t, uint64_t, uint64_t,
-			     int, struct goacc_asyncqueue *);
+			     int, volatile int *, bool);
 
 /* Splay tree definitions.  */
 typedef struct splay_tree_node_s *splay_tree_node;
