@@ -80,6 +80,10 @@ public:
 
   /* The decl itself.  */
   tree GTY ((skip)) decl;
+
+  /* True if the decl represents an overloaded function that needs to be
+     resolved by function_resolver.  */
+  bool overloaded_p;
 };
 
 /* Hash traits for registered_function.  */
@@ -2923,6 +2927,77 @@ function_instance::could_trap_p () const
   return false;
 }
 
+/* Try to get the non-overloaded function instance.
+   After we register the overloaded the functions, the registered functions
+   table may look like:
+
+   +--------+---------------------------+-------------------+
+   | index  | name                      | kind              |
+   +--------+---------------------------+-------------------+
+   | 124733 | __riscv_vmv_v             | Overloaded        | <- Hook fun code
+   +--------+---------------------------+-------------------+
+   | 124735 | __riscv_vmv_v_v_i8mf8     | Non-overloaded    |
+   +--------+---------------------------+-------------------+
+   | 124737 | __riscv_vmv_v             | Placeholder       |
+   +--------+---------------------------+-------------------+
+   | 124739 | __riscv_vmv_v             | Overloaded        |
+   +--------+---------------------------+-------------------+
+   | 124741 | __riscv_vmv_v_v_i8mf4     | Non-overloaded    |
+   +--------+---------------------------+-------------------+
+   | 124743 | __riscv_vmv_v             | Placeholder       |
+   +--------+---------------------------+-------------------+
+   | 124745 | __riscv_vmv_v             | Overloaded        |
+   +--------+---------------------------+-------------------+
+   | 124747 | __riscv_vmv_v_v_i8mf2     | Non-overloaded    |
+   +--------+---------------------------+-------------------+
+   | 124749 | __riscv_vmv_v             | Placeholder       |
+   +--------+---------------------------+-------------------+
+   | 124751 | __riscv_vmv_v             | Overloaded        |
+   +--------+---------------------------+-------------------+
+   | 124753 | __riscv_vmv_v_v_i8m1      | Non-overloaded    |
+   +--------+---------------------------+-------------------+
+   | 124755 | __riscv_vmv_v             | Placeholder       |
+   +--------+---------------------------+-------------------+
+
+   When we resolve the overloaded API from the hook, we always get the first
+   function code of one API group (aka vmv_v as above table). We will search
+   start from that index to find the only one non-overloaded API with exactly
+   the same arglist. Or NULL instance will be returned.
+ */
+function_instance *
+function_base::get_non_overloaded_instance (unsigned int code,
+					    vec<tree, va_gc> &arglist) const
+{
+  unsigned int code_limit = vec_safe_length (registered_functions);
+
+  for (unsigned fun_code = code; fun_code < code_limit; fun_code++)
+    {
+      registered_function *rfun = (*registered_functions)[fun_code];
+      function_instance instance = rfun->instance;
+
+      if (rfun->overloaded_p)
+	continue;
+
+      unsigned k;
+      const rvv_arg_type_info *args = instance.op_info->args;
+
+      for (k = 0; args[k].base_type != NUM_BASE_TYPES; k++)
+	{
+	  if (k >= arglist.length ())
+	    break;
+
+	  if (TYPE_MODE (instance.get_arg_type (k))
+	    != TYPE_MODE (TREE_TYPE (arglist[k])))
+	    break;
+	}
+
+	if (args[k].base_type == NUM_BASE_TYPES)
+	  return &rfun->instance;
+    }
+
+  return NULL;
+}
+
 function_builder::function_builder ()
 {
   m_direct_overloads = lang_GNU_CXX ();
@@ -3080,7 +3155,8 @@ function_builder::get_attributes (const function_instance &instance)
 registered_function &
 function_builder::add_function (const function_instance &instance,
 				const char *name, tree fntype, tree attrs,
-				bool placeholder_p)
+				bool placeholder_p,
+				bool overloaded_p = false)
 {
   unsigned int code = vec_safe_length (registered_functions);
   code = (code << RISCV_BUILTIN_SHIFT) + RISCV_BUILTIN_VECTOR;
@@ -3106,6 +3182,7 @@ function_builder::add_function (const function_instance &instance,
   registered_function &rfn = *ggc_alloc<registered_function> ();
   rfn.instance = instance;
   rfn.decl = decl;
+  rfn.overloaded_p = overloaded_p;
   vec_safe_push (registered_functions, &rfn);
 
   return rfn;
@@ -3153,6 +3230,26 @@ function_builder::add_unique_function (const function_instance &instance,
       add_function (instance, overload_name, fntype, attrs, placeholder_p);
     }
   obstack_free (&m_string_obstack, name);
+}
+
+void
+function_builder::add_overloaded_function (const function_instance &instance,
+					   const function_shape *shape)
+{
+  if (!check_required_extensions (instance))
+    return;
+
+  char *name = shape->get_name (*this, instance, true);
+
+  if (name)
+    {
+      /* To avoid API conflicting, take void return type and void argument
+	 for the overloaded function.  */
+      tree fntype = build_function_type (void_type_node, void_list_node);
+      add_function (instance, name, fntype, NULL_TREE, m_direct_overloads,
+		    true);
+      obstack_free (&m_string_obstack, name);
+    }
 }
 
 function_call_info::function_call_info (location_t location_in,
@@ -3510,6 +3607,13 @@ function_checker::function_checker (location_t location,
     m_nargs (nargs), m_args (args)
 {}
 
+function_resolver::function_resolver (location_t location,
+				      const function_instance &instance,
+				      tree fndecl,
+				      vec<tree, va_gc> &arglist)
+  : function_call_info (location, instance, fndecl), m_arglist (arglist)
+{}
+
 /* Report that LOCATION has a call to FNDECL in which argument ARGNO
    was not an integer constant expression.  ARGNO counts from zero.  */
 void
@@ -3582,6 +3686,39 @@ bool
 function_checker::check ()
 {
   return shape->check (*this);
+}
+
+unsigned int
+function_resolver::get_sub_code ()
+{
+  unsigned int fun_code = DECL_MD_FUNCTION_CODE (fndecl);
+
+  return fun_code >> RISCV_BUILTIN_SHIFT;
+}
+
+tree
+function_resolver::resolve ()
+{
+  return shape->resolve (*this);
+}
+
+tree
+function_resolver::lookup ()
+{
+  unsigned int fun_code = get_sub_code ();
+  function_instance *instance
+    = base->get_non_overloaded_instance (fun_code, m_arglist);
+
+  if (!instance)
+    return NULL_TREE;
+
+  hashval_t hash = instance->hash ();
+  registered_function *rfun = function_table->find_with_hash (*instance, hash);
+
+  if (!rfun)
+    return NULL_TREE;
+
+  return rfun->decl;
 }
 
 inline hashval_t
@@ -3771,6 +3908,22 @@ check_builtin_call (location_t location, vec<location_t>, unsigned int code,
   const registered_function &rfn = *(*registered_functions)[code];
   return function_checker (location, rfn.instance, fndecl,
 			   TREE_TYPE (rfn.decl), nargs, args).check ();
+}
+
+tree
+resolve_overloaded_builtin (location_t loc, unsigned int code,
+			    vec<tree, va_gc> *arglist)
+{
+  if (code >= vec_safe_length (registered_functions))
+    return NULL_TREE;
+
+  const registered_function *rfun = (*registered_functions)[code];
+
+  if (!rfun || !rfun->overloaded_p)
+    return NULL_TREE;
+
+  return function_resolver (loc, rfun->instance, rfun->decl, *arglist)
+    .resolve ();
 }
 
 function_instance

@@ -49,6 +49,8 @@ build_one (function_builder &b, const function_group_info &group,
     group.ops_infos.types[vec_type_idx].index);
   b.allocate_argument_types (function_instance, argument_types);
   b.apply_predication (function_instance, return_type, argument_types);
+
+  b.add_overloaded_function (function_instance, *group.shape);
   b.add_unique_function (function_instance, (*group.shape), return_type,
 			 argument_types);
 }
@@ -82,6 +84,22 @@ struct build_base : public function_shape
 	      const function_group_info &group) const override
   {
     build_all (b, group);
+  }
+};
+
+struct overloaded_base : public build_base
+{
+  tree resolve (function_resolver &r) const override
+  {
+    return r.lookup ();
+  }
+};
+
+struct non_overloaded_base : public build_base
+{
+  tree resolve (function_resolver &) const override
+  {
+    gcc_unreachable ();
   }
 };
 
@@ -316,7 +334,7 @@ struct narrow_alu_def : public build_base
 };
 
 /* move_def class. Handle vmv.v.v/vmv.v.x.  */
-struct move_def : public build_base
+struct move_def : public overloaded_base
 {
   char *get_name (function_builder &b, const function_instance &instance,
 		  bool overloaded_p) const override
