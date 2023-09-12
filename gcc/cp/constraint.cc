@@ -3770,6 +3770,9 @@ diagnose_trait_expr (tree expr, tree args)
     case CPTK_IS_TRIVIALLY_COPYABLE:
       inform (loc, "  %qT is not trivially copyable", t1);
       break;
+    case CPTK_IS_MEMBER_POINTER:
+      inform (loc, "  %qT is not a member pointer", t1);
+      break;
     case CPTK_IS_ASSIGNABLE:
       inform (loc, "  %qT is not assignable from %qT", t1, t2);
       break;
