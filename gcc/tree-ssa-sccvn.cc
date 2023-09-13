@@ -7339,7 +7339,8 @@ eliminate_dom_walker::before_dom_children (basic_block b)
 	      || virtual_operand_p (arg))
 	    continue;
 	  tree sprime = eliminate_avail (b, arg);
-	  if (sprime && may_propagate_copy (arg, sprime))
+	  if (sprime && may_propagate_copy (arg, sprime,
+					    !(e->flags & EDGE_ABNORMAL)))
 	    propagate_value (use_p, sprime);
 	}
 
@@ -8132,7 +8133,7 @@ process_bb (rpo_elim &avail, basic_block bb,
 					    arg);
 	  if (sprime
 	      && sprime != arg
-	      && may_propagate_copy (arg, sprime))
+	      && may_propagate_copy (arg, sprime, !(e->flags & EDGE_ABNORMAL)))
 	    propagate_value (use_p, sprime);
 	}
 
