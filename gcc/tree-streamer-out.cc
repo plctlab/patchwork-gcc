@@ -105,6 +105,7 @@ pack_ts_base_value_fields (struct bitpack_d *bp, tree expr)
     bp_pack_value (bp, TYPE_ARTIFICIAL (expr), 1);
   else
     bp_pack_value (bp, TREE_NO_WARNING (expr), 1);
+  bp_pack_value (bp, TREE_USED (expr), 1);
   bp_pack_value (bp, TREE_NOTHROW (expr), 1);
   bp_pack_value (bp, TREE_STATIC (expr), 1);
   if (TREE_CODE (expr) != TREE_BINFO)

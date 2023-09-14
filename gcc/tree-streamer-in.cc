@@ -132,6 +132,7 @@ unpack_ts_base_value_fields (struct bitpack_d *bp, tree expr)
     TYPE_ARTIFICIAL (expr) = (unsigned) bp_unpack_value (bp, 1);
   else
     TREE_NO_WARNING (expr) = (unsigned) bp_unpack_value (bp, 1);
+  TREE_USED (expr) = (unsigned) bp_unpack_value (bp, 1);
   TREE_NOTHROW (expr) = (unsigned) bp_unpack_value (bp, 1);
   TREE_STATIC (expr) = (unsigned) bp_unpack_value (bp, 1);
   if (TREE_CODE (expr) != TREE_BINFO)
