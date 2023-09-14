@@ -3244,6 +3244,19 @@ L2:
 	.uleb128 0x8000000000000000
 ],
 [[
+case "$target" in
+  loongarch*-*-*)
+    if test "x$gcc_cv_ld" != x; then
+      ac_try='$gcc_cv_ld conftest.o -o conftest -e 0x0 >&5'
+      { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_try\""; } >&5
+      (eval $ac_try) 2>&5
+      ac_status=$?
+      $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+      test $ac_status = 0
+      mv conftest conftest.o
+    fi
+esac
+
 if test "x$gcc_cv_objdump" != x; then
   if $gcc_cv_objdump -s conftest.o 2>/dev/null \
      | grep '04800a8e 78808080 80808080 808001' >/dev/null; then
