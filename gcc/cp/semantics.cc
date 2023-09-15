@@ -11479,6 +11479,14 @@ finish_decltype_type (tree expr, bool id_expression_or_member_access_p,
         case TEMPLATE_PARM_INDEX:
 	  expr = mark_type_use (expr);
           type = TREE_TYPE (expr);
+	  if (VAR_P (expr) && DECL_NTTP_OBJECT_P (expr))
+	    {
+	      /* decltype of an NTTP object is the type of the template
+		 parameter, which never has cv-quals.  */
+	      int quals = cp_type_quals (type);
+	      gcc_checking_assert (quals & TYPE_QUAL_CONST);
+	      type = cv_unqualified (type);
+	    }
           break;
 
         case ERROR_MARK:
