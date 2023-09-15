@@ -65,6 +65,9 @@
 #if !__has_builtin (__is_class)
 # error "__has_builtin (__is_class) failed"
 #endif
+#if !__has_builtin (__is_const)
+# error "__has_builtin (__is_const) failed"
+#endif
 #if !__has_builtin (__is_constructible)
 # error "__has_builtin (__is_constructible) failed"
 #endif
