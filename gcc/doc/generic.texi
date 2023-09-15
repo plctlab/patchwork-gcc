@@ -43,6 +43,7 @@ seems inelegant.
 * Functions::           	Function bodies, linkage, and other aspects.
 * Language-dependent trees::    Topics and trees specific to language front ends.
 * C and C++ Trees::     	Trees specific to C and C++.
+* Portability issues::          Portability summary for languages.
 @end menu
 
 @c ---------------------------------------------------------------------
@@ -3655,3 +3656,89 @@ In either case, the expression is void.
 
 
 @end table
+
+
+@node Portability issues
+@section Portability issues
+
+This section summarizes portability issues when translating source languages
+to GENERIC.  Everything written here also applies to GIMPLE.  This section
+heavily relies on interpretation according to the C standard.
+
+@menu
+* Undefined behavior::          Undefined behavior.
+@end menu
+
+@node Undefined behavior
+@subsection Undefined behavior
+
+The following is a list of circumstances that invoke undefined behavior.
+
+@itemize @bullet
+@item
+When the result of negation, addition, subtraction or division of two signed
+integers or signed integer vectors not subject to @option{-fwrapv} cannot be
+represented in the type.
+
+@item
+The value of the second operand of any of the division or modulo operators
+is zero.
+
+@item
+When incrementing or decrementing a pointer not subject to
+@option{-fwrapv-pointer} wraps around zero.
+
+@item
+An expression is shifted by a negative number or by an amount greater
+than or equal to the width of the shifted operand.
+
+@item
+Pointers that do not point to the same object are compared using
+relational operators.
+
+@item
+An object which has been modified is accessed through a restrict-qualified
+pointer and another pointer that are not both based on the same object.
+
+@item
+The @} that terminates a function is reached, and the value of the function
+call is used by the caller.
+
+@item
+When program execution reaches __builtin_unreachable.
+
+@item
+When an object has its stored value accessed by an lvalue that
+does not have one of the following types:
+@itemize @minus
+@item
+a (qualified) type compatible with the effective type of the object
+@item
+a type that is the (qualified) signed or unsigned type corresponding to
+the effective type of the object
+@item
+a character type, a ref-all qualified type or a type subject to
+@option{-fno-strict-aliasing}
+@item
+a pointer to void with the same level of indirection as the accessed
+pointer object
+@end itemize
+
+@item
+Addition or subtraction of a pointer into, or just beyond, an object
+and an integer type produces a result that does not point into, or just
+beyond when not dereferenced, the same object.
+
+@item
+Pointers that do not point into, or just beyond, the same object are
+subtracted.
+
+@item
+When a pointer not pointing to actual storage is dereferenced.
+
+@item
+An array subscript is out of range, even if an object is apparently accessible
+with the given subscript (as in the lvalue expression a[1][7] given the
+declaration int a[4][5]).
+
+@end itemize
