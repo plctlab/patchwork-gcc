@@ -1995,6 +1995,21 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
  (if (INTEGRAL_TYPE_P (type))
   (bit_and @0 @1)))
 
+/* (a * b@[0,1]) == CST
+     ->
+       CST == 0 ? (a == CST | b == 0) : (a == CST & b != 0)
+   (a * b@[0,1]) != CST
+     ->
+       CST != 0 ? (a != CST | b == 0) : (a != CST & b != 0)  */
+(for cmp (ne eq)
+ (simplify
+  (cmp (mult:cs @0 zero_one_valued_p@1) INTEGER_CST@2)
+  (if ((cmp == EQ_EXPR) ^ (wi::to_wide (@2) != 0))
+   (bit_ior
+    (cmp @0 @2)
+    (convert (bit_xor @1 { build_one_cst (TREE_TYPE (@1)); })))
+   (bit_and (cmp @0 @2) (convert @1)))))
+
 (for cmp (tcc_comparison)
      icmp (inverted_tcc_comparison)
  /* Fold (((a < b) & c) | ((a >= b) & d)) into (a < b ? c : d) & 1.  */
