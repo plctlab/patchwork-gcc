@@ -181,10 +181,16 @@ expand_fn_using_insn (gcall *stmt, insn_code icode, unsigned int noutputs,
       tree rhs = gimple_call_arg (stmt, i);
       tree rhs_type = TREE_TYPE (rhs);
       rtx rhs_rtx = expand_normal (rhs);
+      rtx scratch = gen_rtx_SCRATCH (TYPE_MODE (rhs_type));
       if (INTEGRAL_TYPE_P (rhs_type))
 	create_convert_operand_from (&ops[opno], rhs_rtx,
 				     TYPE_MODE (rhs_type),
 				     TYPE_UNSIGNED (rhs_type));
+      else if (TREE_CODE (rhs) == SSA_NAME
+	       && SSA_NAME_IS_DEFAULT_DEF (rhs)
+	       && VAR_P (SSA_NAME_VAR (rhs))
+	       && insn_operand_matches (icode, opno, scratch))
+	create_input_operand (&ops[opno], scratch, TYPE_MODE (rhs_type));
       else
 	create_input_operand (&ops[opno], rhs_rtx, TYPE_MODE (rhs_type));
       opno += 1;
