@@ -7995,6 +7995,21 @@ maybe_legitimize_operand (enum insn_code icode, unsigned int opno,
 	  goto input;
 	}
       break;
+
+    case EXPAND_UNDEFINED:
+      {
+	mode = insn_data[(int) icode].operand[opno].mode;
+	rtx scratch = gen_rtx_SCRATCH (mode);
+	/* For SCRATCH rtx which is converted from uninitialized
+	   SSA, we convert it as fresh pseudo when target doesn't
+	   allow scratch rtx in predicate. Otherwise, return true.  */
+	if (!insn_operand_matches (icode, opno, scratch))
+	  {
+	    op->value = gen_reg_rtx (mode);
+	    goto input;
+	  }
+	return true;
+      }
     }
   return insn_operand_matches (icode, opno, op->value);
 }
@@ -8040,6 +8055,7 @@ can_reuse_operands_p (enum insn_code icode,
     case EXPAND_INPUT:
     case EXPAND_ADDRESS:
     case EXPAND_INTEGER:
+    case EXPAND_UNDEFINED:
       return true;
 
     case EXPAND_CONVERT_TO:
