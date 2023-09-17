@@ -611,7 +611,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	if (_M_bucket_count < __l_bkt_count)
 	  rehash(__l_bkt_count);
 
-	this->_M_insert_range(__l.begin(), __l.end(), __roan, __unique_keys{});
+	this->_M_insert_range(__l.begin(), __l.end(), __roan);
 	return *this;
       }
 
@@ -1253,8 +1253,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  }
 
 	__alloc_node_gen_t __node_gen(*this);
-	for (; __f != __l; ++__f)
-	  _M_insert(*__f, __node_gen, __uks);
+	this->_M_insert_range(__f, __l, __node_gen);
       }
 
   template<typename _Key, typename _Value, typename _Alloc,

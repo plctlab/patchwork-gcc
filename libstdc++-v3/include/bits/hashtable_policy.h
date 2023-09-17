@@ -902,12 +902,17 @@ namespace __detail
       template<typename _InputIterator, typename _NodeGetter>
 	void
 	_M_insert_range(_InputIterator __first, _InputIterator __last,
-			const _NodeGetter&, true_type __uks);
+			const _NodeGetter&);
 
-      template<typename _InputIterator, typename _NodeGetter>
+      template<typename _InputIterator>
 	void
 	_M_insert_range(_InputIterator __first, _InputIterator __last,
-			const _NodeGetter&, false_type __uks);
+			true_type __uks);
+
+      template<typename _InputIterator>
+	void
+	_M_insert_range(_InputIterator __first, _InputIterator __last,
+			false_type __uks);
 
     public:
       using iterator = _Node_iterator<_Value, __constant_iterators::value,
@@ -966,11 +971,7 @@ namespace __detail
       template<typename _InputIterator>
 	void
 	insert(_InputIterator __first, _InputIterator __last)
-	{
-	  __hashtable& __h = _M_conjure_hashtable();
-	  __node_gen_type __node_gen(__h);
-	  return _M_insert_range(__first, __last, __node_gen, __unique_keys{});
-	}
+	{ _M_insert_range(__first, __last, __unique_keys{}); }
     };
 
   template<typename _Key, typename _Value, typename _Alloc,
@@ -983,24 +984,41 @@ namespace __detail
 		   _Hash, _RangeHash, _Unused,
 		   _RehashPolicy, _Traits>::
       _M_insert_range(_InputIterator __first, _InputIterator __last,
-		      const _NodeGetter& __node_gen, true_type __uks)
+		      const _NodeGetter& __node_gen)
       {
 	__hashtable& __h = _M_conjure_hashtable();
 	for (; __first != __last; ++__first)
-	  __h._M_insert(*__first, __node_gen, __uks);
+	  __h._M_insert(*__first, __node_gen, __unique_keys{});
       }
 
   template<typename _Key, typename _Value, typename _Alloc,
 	   typename _ExtractKey, typename _Equal,
 	   typename _Hash, typename _RangeHash, typename _Unused,
 	   typename _RehashPolicy, typename _Traits>
-    template<typename _InputIterator, typename _NodeGetter>
+    template<typename _InputIterator>
       void
       _Insert_base<_Key, _Value, _Alloc, _ExtractKey, _Equal,
 		   _Hash, _RangeHash, _Unused,
 		   _RehashPolicy, _Traits>::
       _M_insert_range(_InputIterator __first, _InputIterator __last,
-		      const _NodeGetter& __node_gen, false_type __uks)
+		      true_type /* __uks */)
+      {
+	__hashtable& __h = _M_conjure_hashtable();
+	__node_gen_type __node_gen(__h);
+	_M_insert_range(__first, __last, __node_gen);
+      }
+
+  template<typename _Key, typename _Value, typename _Alloc,
+	   typename _ExtractKey, typename _Equal,
+	   typename _Hash, typename _RangeHash, typename _Unused,
+	   typename _RehashPolicy, typename _Traits>
+    template<typename _InputIterator>
+      void
+      _Insert_base<_Key, _Value, _Alloc, _ExtractKey, _Equal,
+		   _Hash, _RangeHash, _Unused,
+		   _RehashPolicy, _Traits>::
+      _M_insert_range(_InputIterator __first, _InputIterator __last,
+		      false_type /* __uks */)
       {
 	using __rehash_type = typename __hashtable::__rehash_type;
 	using __rehash_state = typename __hashtable::__rehash_state;
@@ -1020,8 +1038,8 @@ namespace __detail
 	if (__do_rehash.first)
 	  __h._M_rehash(__do_rehash.second, __saved_state);
 
-	for (; __first != __last; ++__first)
-	  __h._M_insert(*__first, __node_gen, __uks);
+	__node_gen_type __node_gen(__h);
+	_M_insert_range(__first, __last, __node_gen);
       }
 
   /**
