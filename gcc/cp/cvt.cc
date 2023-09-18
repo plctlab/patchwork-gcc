@@ -1251,12 +1251,9 @@ convert_to_void (tree expr, impl_conv_void implicit, tsubst_flags_t complain)
       {
 	tree type = TREE_TYPE (expr);
 	int is_volatile = TYPE_VOLATILE (type);
-	if (is_volatile)
-	  complete_type (type);
-	int is_complete = COMPLETE_TYPE_P (type);
 
 	/* Can't load the value if we don't know the type.  */
-	if (is_volatile && !is_complete)
+	if (is_volatile && !COMPLETE_TYPE_P (complete_type (type)))
           {
             if (complain & tf_warning)
 	      switch (implicit)
@@ -1298,50 +1295,7 @@ convert_to_void (tree expr, impl_conv_void implicit, tsubst_flags_t complain)
 		    gcc_unreachable ();
 		}
           }
-	/* Don't load the value if this is an implicit dereference, or if
-	   the type needs to be handled by ctors/dtors.  */
-	else if (is_volatile && is_reference)
-          {
-            if (complain & tf_warning)
-	      switch (implicit)
-		{
-	      	  case ICV_CAST:
-		    warning_at (loc, 0, "conversion to void will not access "
-				"object of type %qT", type);
-		    break;
-		  case ICV_SECOND_OF_COND:
-		    warning_at (loc, 0, "implicit dereference will not access "
-				"object of type %qT in second operand of "
-				"conditional expression", type);
-		    break;
-		  case ICV_THIRD_OF_COND:
-		    warning_at (loc, 0, "implicit dereference will not access "
-				"object of type %qT in third operand of "
-				"conditional expression", type);
-		    break;
-		  case ICV_RIGHT_OF_COMMA:
-		    warning_at (loc, 0, "implicit dereference will not access "
-				"object of type %qT in right operand of "
-				"comma operator", type);
-		    break;
-		  case ICV_LEFT_OF_COMMA:
-		    warning_at (loc, 0, "implicit dereference will not access "
-				"object of type %qT in left operand of comma "
-				"operator", type);
-		    break;
-		  case ICV_STATEMENT:
-		    warning_at (loc, 0, "implicit dereference will not access "
-				"object of type %qT in statement",  type);
-		     break;
-		  case ICV_THIRD_IN_FOR:
-		    warning_at (loc, 0, "implicit dereference will not access "
-				"object of type %qT in for increment expression",
-				type);
-		    break;
-		  default:
-		    gcc_unreachable ();
-		}
-          }
+	/* Don't load the value if the type needs to be handled by cdtors.  */
 	else if (is_volatile && TREE_ADDRESSABLE (type))
 	  {
 	    if (complain & tf_warning)
@@ -1386,7 +1340,7 @@ convert_to_void (tree expr, impl_conv_void implicit, tsubst_flags_t complain)
 		    gcc_unreachable ();
 		}
 	  }
-	if (is_reference || !is_volatile || !is_complete || TREE_ADDRESSABLE (type))
+	if (!is_volatile || !COMPLETE_TYPE_P (type))
           {
             /* Emit a warning (if enabled) when the "effect-less" INDIRECT_REF
                operation is stripped off. Note that we don't warn about
@@ -1397,8 +1351,8 @@ convert_to_void (tree expr, impl_conv_void implicit, tsubst_flags_t complain)
             if (warn_unused_value
 		&& implicit != ICV_CAST
                 && (complain & tf_warning)
-                && !warning_suppressed_p (expr, OPT_Wunused_value)
-                && !is_reference)
+		&& !warning_suppressed_p (expr, OPT_Wunused_value)
+		&& !REFERENCE_REF_P (expr))
               warning_at (loc, OPT_Wunused_value, "value computed is not used");
             expr = TREE_OPERAND (expr, 0);
 	    if (TREE_CODE (expr) == CALL_EXPR

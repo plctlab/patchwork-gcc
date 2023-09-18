@@ -12,6 +12,5 @@ extern volatile Holder<Incomplete, 2>* c;
 int main() {
   a; // { dg-message "required from here" }
   b; // { dg-message "required from here" }
-  // { dg-warning "implicit dereference will not access object" "" { target *-*-* } .-1 }
   *c; // { dg-message "required from here" }
 }

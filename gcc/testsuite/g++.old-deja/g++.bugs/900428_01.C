@@ -46,16 +46,16 @@ void int_test (int i, int *p, volatile int *vp, int &r, volatile int &vr)
   (void)(i ? r : j);	        // ok, no warning
   (void)((void)1, r);	        // ok, no warning
 
-  vr;				// { dg-warning "" } reference not accessed
-  (void)vr;			// { dg-warning "" } reference not accessed
-  (void)(i ? vj : vr);	        // { dg-warning "" } reference not accessed
-  (void)(i ? vr : vj);	        // { dg-warning "" } reference not accessed
-  (void)((void)1, vr);          // { dg-warning "" } reference not accessed
+  vr;				// ok, no warning
+  (void)vr;			// ok, no warning
+  (void)(i ? vj : vr);	        // ok, no warning
+  (void)(i ? vr : vj);	        // ok, no warning
+  (void)((void)1, vr);          // ok, no warning
   
   *ip_fn ();			// ok, no warning
   *vip_fn ();			// ok, no warning
   ir_fn ();			// ok, no warning
-  vir_fn ();			// { dg-warning "" } reference not accessed
+  vir_fn ();			// ok, no warning
 }
 
 struct S;
@@ -128,16 +128,16 @@ void complete_test (int i, T *p, volatile T *vp, T &r, volatile T &vr)
   (void)(i ? r : j);	        // ok, no warning
   (void)((void)1, r);	        // ok, no warning
 
-  vr;				// { dg-warning "" } reference not accessed
-  (void)vr;			// { dg-warning "" } reference not accessed
-  (void)(i ? vj : vr);	        // { dg-warning "" } reference not accessed
-  (void)(i ? vr : vj);	        // { dg-warning "" } reference not accessed
-  (void)((void)1, vr);          // { dg-warning "" } reference not accessed
+  vr;				// ok, no warning
+  (void)vr;			// ok, no warning
+  (void)(i ? vj : vr);	        // ok, no warning
+  (void)(i ? vr : vj);	        // ok, no warning
+  (void)((void)1, vr);          // ok, no warning
   
   *tp_fn ();			// ok, no warning
   *vtp_fn ();			// ok, no warning
   tr_fn ();			// ok, no warning
-  vtr_fn ();			// ok, no warning{ dg-warning "" } reference not accessed
+  vtr_fn ();			// ok, no warning
 }
 
 void extern_test ()
@@ -160,5 +160,5 @@ void extern_test ()
   esr;				// ok, no warning
   vesr;				// { dg-warning "" } incomplete not accessed
   etr;				// ok, no warning
-  vetr;				// { dg-warning "" } reference not accessed
+  vetr;				// ok, no warning
 }
