@@ -1250,9 +1250,10 @@ convert_to_void (tree expr, impl_conv_void implicit, tsubst_flags_t complain)
     case INDIRECT_REF:
       {
 	tree type = TREE_TYPE (expr);
-	int is_reference = TYPE_REF_P (TREE_TYPE (TREE_OPERAND (expr, 0)));
 	int is_volatile = TYPE_VOLATILE (type);
-	int is_complete = COMPLETE_TYPE_P (complete_type (type));
+	if (is_volatile)
+	  complete_type (type);
+	int is_complete = COMPLETE_TYPE_P (type);
 
 	/* Can't load the value if we don't know the type.  */
 	if (is_volatile && !is_complete)
@@ -1412,9 +1413,10 @@ convert_to_void (tree expr, impl_conv_void implicit, tsubst_flags_t complain)
       {
 	/* External variables might be incomplete.  */
 	tree type = TREE_TYPE (expr);
-	int is_complete = COMPLETE_TYPE_P (complete_type (type));
 
-	if (TYPE_VOLATILE (type) && !is_complete && (complain & tf_warning))
+	if (TYPE_VOLATILE (type)
+	    && !COMPLETE_TYPE_P (complete_type (type))
+	    && (complain & tf_warning))
 	  switch (implicit)
 	    {
 	      case ICV_CAST:
