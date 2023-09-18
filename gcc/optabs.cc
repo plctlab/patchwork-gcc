@@ -7995,6 +7995,17 @@ maybe_legitimize_operand (enum insn_code icode, unsigned int opno,
 	  goto input;
 	}
       break;
+
+    case EXPAND_UNDEFINED_INPUT:
+      /* For SCRATCH rtx which is converted from uninitialized
+	 SSA, we convert it as fresh pseudo when target doesn't
+	 allow scratch rtx in predicate. Otherwise, return true.  */
+      if (!insn_operand_matches (icode, opno, op->value))
+	{
+	  op->value = gen_reg_rtx (op->mode);
+	  goto input;
+	}
+      return true;
     }
   return insn_operand_matches (icode, opno, op->value);
 }
@@ -8033,7 +8044,8 @@ can_reuse_operands_p (enum insn_code icode,
   switch (op1->type)
     {
     case EXPAND_OUTPUT:
-      /* Outputs must remain distinct.  */
+    case EXPAND_UNDEFINED_INPUT:
+      /* Outputs and undefined intputs must remain distinct.  */
       return false;
 
     case EXPAND_FIXED:
