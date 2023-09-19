@@ -6874,8 +6874,22 @@ riscv_slow_unaligned_access (machine_mode, unsigned int)
 /* Implement TARGET_CAN_CHANGE_MODE_CLASS.  */
 
 static bool
-riscv_can_change_mode_class (machine_mode, machine_mode, reg_class_t rclass)
+riscv_can_change_mode_class (machine_mode from, machine_mode to, reg_class_t rclass)
 {
+  /* We have RVV VLS modes and VLA modes sharing same REG_CLASS.
+     In 'cprop_hardreg' stage, we will try to do hard reg copy propagation
+     between wider mode (FROM) and narrow mode (TO).
+
+     E.g. We should not allow copy propagation
+	- RVVMF8BI (precision = [16, 16]) -> V32BI (precision = [32, 0])
+     since such propagation cause ICE and execution FAIL.
+
+     However, we could allow copy propagation
+	- RVVMF4 (precision = [32, 32]) -> V32BI (precision = [32, 0])
+     since RVVMF4 always >= RV32BI.  */
+  if (reg_classes_intersect_p (V_REGS, rclass)
+      && maybe_lt (GET_MODE_PRECISION (from), GET_MODE_PRECISION (to)))
+    return false;
   return !reg_classes_intersect_p (FP_REGS, rclass);
 }
 
