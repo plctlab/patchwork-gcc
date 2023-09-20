@@ -2605,6 +2605,24 @@
 }
   [(set_attr "type" "vecperm")])
 
+(define_expand "cbranchti4"
+  [(use (match_operator 0 "equality_operator"
+	[(match_operand:TI 1 "memory_operand")
+	 (match_operand:TI 2 "memory_operand")]))
+   (use (match_operand 3))]
+  "VECTOR_UNIT_ALTIVEC_P (V16QImode)"
+{
+  rtx op1 = simplify_subreg (V16QImode, operands[1], TImode, 0);
+  rtx op2 = simplify_subreg (V16QImode, operands[2], TImode, 0);
+  operands[1] = force_reg (V16QImode, op1);
+  operands[2] = force_reg (V16QImode, op2);
+  rtx_code code = GET_CODE (operands[0]);
+  operands[0] = gen_rtx_fmt_ee (code, V16QImode, operands[1],
+				operands[2]);
+  rs6000_emit_cbranch (TImode, operands);
+  DONE;
+})
+
 ;; Compare vectors producing a vector result and a predicate, setting CR6 to
 ;; indicate a combined status
 (define_insn "altivec_vcmpequ<VI_char>_p"
