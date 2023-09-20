@@ -477,7 +477,9 @@ grok_array_decl (location_t loc, tree array_expr, tree index_exp,
 		{
 		  /* If it would be valid albeit deprecated expression in
 		     C++20, just pedwarn on it and treat it as if wrapped
-		     in ().  */
+		     in () unless we're in a SFINAE context.  */
+		  if (!(complain & tf_error))
+		    return error_mark_node;
 		  pedwarn (loc, OPT_Wcomma_subscript,
 			   "top-level comma expression in array subscript "
 			   "changed meaning in C++23");
@@ -487,7 +489,7 @@ grok_array_decl (location_t loc, tree array_expr, tree index_exp,
 			= build_x_compound_expr_from_vec (orig_index_exp_list,
 							  NULL, complain);
 		      if (orig_index_exp == error_mark_node)
-			expr = error_mark_node;
+			return error_mark_node;
 		      release_tree_vector (orig_index_exp_list);
 		    }
 		}
@@ -512,22 +514,29 @@ grok_array_decl (location_t loc, tree array_expr, tree index_exp,
 	{
 	  if ((*index_exp_list)->is_empty ())
 	    {
-	      error_at (loc, "built-in subscript operator without expression "
-			     "list");
+	      if (complain & tf_error)
+		error_at (loc, "built-in subscript operator without expression "
+			       "list");
 	      return error_mark_node;
 	    }
 	  tree idx = build_x_compound_expr_from_vec (*index_exp_list, NULL,
 						     tf_none);
 	  if (idx != error_mark_node)
-	    /* If it would be valid albeit deprecated expression in C++20,
-	       just pedwarn on it and treat it as if wrapped in ().  */
-	    pedwarn (loc, OPT_Wcomma_subscript,
-		     "top-level comma expression in array subscript "
-		     "changed meaning in C++23");
+	    {
+	      /* If it would be valid albeit deprecated expression in C++20,
+		 just pedwarn on it and treat it as if wrapped in () unless
+		 we're in a SFINAE context.  */
+	      if (!(complain & tf_error))
+		return error_mark_node;
+	      pedwarn (loc, OPT_Wcomma_subscript,
+		       "top-level comma expression in array subscript "
+		       "changed meaning in C++23");
+	    }
 	  else
 	    {
-	      error_at (loc, "built-in subscript operator with more than one "
-			     "expression in expression list");
+	      if (complain & tf_error)
+		error_at (loc, "built-in subscript operator with more than one "
+			       "expression in expression list");
 	      return error_mark_node;
 	    }
 	  index_exp = idx;
@@ -561,8 +570,9 @@ grok_array_decl (location_t loc, tree array_expr, tree index_exp,
 	swapped = true, array_expr = p2, index_exp = i1;
       else
 	{
-	  error_at (loc, "invalid types %<%T[%T]%> for array subscript",
-		    type, TREE_TYPE (index_exp));
+	  if (complain & tf_error)
+	    error_at (loc, "invalid types %<%T[%T]%> for array subscript",
+		      type, TREE_TYPE (index_exp));
 	  return error_mark_node;
 	}
 
