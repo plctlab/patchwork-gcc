@@ -1733,7 +1733,9 @@ minmax_replacement (basic_block cond_bb, basic_block middle_bb, basic_block alt_
       arg_false = arg0;
     }
 
-  if (empty_block_p (middle_bb))
+  if (empty_block_p (middle_bb)
+      && (!threeway_p
+	  || empty_block_p (alt_middle_bb)))
     {
       if ((operand_equal_for_phi_arg_p (arg_true, smaller)
 	   || (alt_smaller
@@ -1913,7 +1915,9 @@ minmax_replacement (basic_block cond_bb, basic_block middle_bb, basic_block alt_
 
       return true;
     }
-  else
+  else if (middle_bb == alt_middle_bb
+           && (!threeway_p
+	       || empty_block_p (alt_middle_bb)))
     {
       /* Recognize the following case, assuming d <= u:
 
@@ -2089,6 +2093,8 @@ minmax_replacement (basic_block cond_bb, basic_block middle_bb, basic_block alt_
 							  SSA_OP_DEF));
       gsi_move_before (&gsi_from, &gsi);
     }
+  else
+    return false;
 
   /* Emit the statement to compute min/max.  */
   gimple_seq stmts = NULL;
