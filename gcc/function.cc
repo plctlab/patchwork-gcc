@@ -3117,8 +3117,29 @@ assign_parm_setup_block (struct assign_parm_data_all *all,
 	  emit_move_insn (mem, entry_parm);
 	}
       else
-	move_block_from_reg (REGNO (entry_parm), mem,
-			     size_stored / UNITS_PER_WORD);
+	{
+	  int regno = REGNO (entry_parm);
+	  int nregs = size_stored / UNITS_PER_WORD;
+	  move_block_from_reg (regno, mem, nregs);
+
+	  rtx *tmps = XALLOCAVEC (rtx, nregs);
+	  machine_mode mode = word_mode;
+	  HOST_WIDE_INT word_size = GET_MODE_SIZE (mode).to_constant ();
+	  for (int i = 0; i < nregs; i++)
+	    {
+	      rtx reg = gen_rtx_REG (mode, regno + i);
+	      rtx off = GEN_INT (word_size * i);
+	      tmps[i] = gen_rtx_EXPR_LIST (VOIDmode, reg, off);
+	    }
+
+	  rtx regs = gen_rtx_PARALLEL (BLKmode, gen_rtvec_v (nregs, tmps));
+	  if (scalarizable_aggregate (parm, regs))
+	    {
+	      rtx pseudos = gen_group_rtx (regs);
+	      emit_group_move (pseudos, regs);
+	      stack_parm = pseudos;
+	    }
+	}
     }
   else if (data->stack_parm == 0 && !TYPE_EMPTY_P (data->arg.type))
     {
@@ -3730,6 +3751,14 @@ assign_parms (tree fndecl)
       if (cfun->stdarg && !DECL_CHAIN (parm))
 	assign_parms_setup_varargs (&all, &data, false);
 
+      rtx incoming = DECL_INCOMING_RTL (parm);
+      if (GET_CODE (incoming) == PARALLEL
+	  && scalarizable_aggregate (parm, incoming))
+	{
+	  rtx pseudos = gen_group_rtx (incoming);
+	  emit_group_move (pseudos, incoming);
+	  set_parm_rtl (parm, pseudos);
+	}
       /* Update info on where next arg arrives in registers.  */
       targetm.calls.function_arg_advance (all.args_so_far, data.arg);
     }
@@ -5163,6 +5192,7 @@ expand_function_start (tree subr)
 	    {
 	      gcc_assert (GET_CODE (hard_reg) == PARALLEL);
 	      set_parm_rtl (res, gen_group_rtx (hard_reg));
+	      set_scalar_rtx_for_returns ();
 	    }
 	}
 
