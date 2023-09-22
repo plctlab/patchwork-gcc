@@ -3792,6 +3792,13 @@ expand_integer_pack (tree call, tree args, tsubst_flags_t complain,
     {
       if (hi != ohi)
 	{
+	  /* Work around maybe_convert_nontype_argument not doing this for
+	     dependent arguments.  Don't use IMPLICIT_CONV_EXPR_NONTYPE_ARG
+	     because that will make tsubst_copy_and_build ignore it.  */
+	  tree type = tsubst (TREE_TYPE (ohi), args, complain, in_decl);
+	  if (!TREE_TYPE (hi) || !same_type_p (type, TREE_TYPE (hi)))
+	    hi = build1 (IMPLICIT_CONV_EXPR, type, hi);
+
 	  call = copy_node (call);
 	  CALL_EXPR_ARG (call, 0) = hi;
 	}
