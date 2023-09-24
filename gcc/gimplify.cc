@@ -4389,6 +4389,14 @@ gimplify_cond_expr (tree *expr_p, gimple_seq *pre_p, fallback_t fallback)
   enum tree_code pred_code;
   gimple_seq seq = NULL;
 
+  if (TREE_OPERAND (expr, 2) == NULL_TREE)
+  {
+      tree var = build_decl (UNKNOWN_LOCATION, VAR_DECL, get_identifier
+			    ("__mcdc_barrier"), integer_type_node);
+      tree val = build_int_cst (integer_type_node, 0);
+      TREE_OPERAND (expr, 2) = build2 (INIT_EXPR, TREE_TYPE (var), var, val);
+  }
+
   /* If this COND_EXPR has a value, copy the values into a temporary within
      the arms.  */
   if (!VOID_TYPE_P (type))
