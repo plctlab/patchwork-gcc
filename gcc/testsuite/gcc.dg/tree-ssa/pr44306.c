@@ -8,10 +8,10 @@ int LevelScale8x8Luma_Inter[6][8][8];
 int InvLevelScale8x8Luma_Intra[6][8][8];
 int InvLevelScale8x8Luma_Inter[6][8][8];
 short UseDefaultScalingMatrix8x8Flag[2];
-void CalculateQuant8Param()
+int present[2];
+void CalculateQuant8Param(int j)
 {
- int i, j, k, temp;
- int present[2];
+ int i, k, temp;
  for(k=0; j<8; j++)
    for(i=0; i<8; i++)
      {
