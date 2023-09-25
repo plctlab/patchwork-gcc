@@ -12900,6 +12900,8 @@ grokdeclarator (const cp_declarator *declarator,
   if (attrlist)
     diagnose_misapplied_contracts (*attrlist);
 
+  /* Skip over build_memfn_type when a FUNCTION_DECL is an xobj memfn.  */
+  bool is_xobj_member_function = false;
   /* Determine the type of the entity declared by recurring on the
      declarator.  */
   for (; declarator; declarator = declarator->declarator)
@@ -12995,6 +12997,19 @@ grokdeclarator (const cp_declarator *declarator,
 
 	case cdk_function:
 	  {
+	    auto get_xobj_parm = [](tree parm_list)
+	      {
+		if (!parm_list)
+		  return NULL_TREE;
+		if (TREE_VALUE (parm_list) == void_type_node)
+		  return NULL_TREE;
+		if (TREE_PURPOSE (parm_list) != this_identifier)
+		  return NULL_TREE;
+		/* Non-null 'purpose' usually means the param has a default
+		   argument, we don't want to violate this assumption.  */
+		TREE_PURPOSE (parm_list) = NULL_TREE;
+		return TREE_VALUE (parm_list);
+	      };
 	    tree arg_types;
 	    int funcdecl_p;
 
@@ -13014,6 +13029,10 @@ grokdeclarator (const cp_declarator *declarator,
 	       there wasn't one.  */
 	    if (raises == error_mark_node)
 	      raises = NULL_TREE;
+
+	    tree xobj_parm
+	      = get_xobj_parm (declarator->u.function.parameters);
+	    is_xobj_member_function = xobj_parm;
 
 	    if (reqs)
 	      error_at (location_of (reqs), "requires-clause on return type");
@@ -14079,6 +14098,8 @@ grokdeclarator (const cp_declarator *declarator,
     }
 
   if (ctype && TREE_CODE (type) == FUNCTION_TYPE && staticp < 2
+      /* Don't convert xobj member functions to METHOD_TYPE.  */
+      && !is_xobj_member_function
       && !(unqualified_id
 	   && identifier_p (unqualified_id)
 	   && IDENTIFIER_NEWDEL_OP_P (unqualified_id)))
@@ -14307,6 +14328,7 @@ grokdeclarator (const cp_declarator *declarator,
             decl = set_virt_specifiers (decl, virt_specifiers);
 	    if (decl == NULL_TREE)
 	      return error_mark_node;
+	    DECL_FUNC_XOBJ_FLAG (decl) = is_xobj_member_function;
 #if 0
 	    /* This clobbers the attrs stored in `decl' from `attrlist'.  */
 	    /* The decl and setting of decl_attr is also turned off.  */
@@ -14630,6 +14652,7 @@ grokdeclarator (const cp_declarator *declarator,
 			   id_loc);
 	if (decl == NULL_TREE)
 	  return error_mark_node;
+	DECL_FUNC_XOBJ_FLAG (decl) = is_xobj_member_function;
 
 	if (explicitp == 2)
 	  DECL_NONCONVERTING_P (decl) = 1;

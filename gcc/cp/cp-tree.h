@@ -2931,8 +2931,9 @@ struct GTY(()) lang_decl_fn {
   unsigned maybe_deleted : 1;
   unsigned coroutine_p : 1;
   unsigned implicit_constexpr : 1;
+  unsigned xobj_func : 1;
 
-  unsigned spare : 9;
+  unsigned spare : 8;
 
   /* 32-bits padding on 64-bit host.  */
 
@@ -4392,6 +4393,15 @@ get_vec_init_expr (tree t)
 /* Nonzero if DECL was declared with '= default' (maybe implicitly).  */
 #define DECL_DEFAULTED_FN(DECL) \
   (LANG_DECL_FN_CHECK (DECL)->defaulted_p)
+
+/* Simple member access, only valid for FUNCTION_DECL nodes.  */
+#define DECL_FUNC_XOBJ_FLAG(NODE)	\
+  (LANG_DECL_FN_CHECK (NODE)->xobj_func)
+/* Nonzero if NODE is a FUNCTION_DECL that is an xobj member function,
+   safely evaluates to false for all non FUNCTION_DECL decls.  */
+#define DECL_IS_XOBJ_MEMBER_FUNC(NODE)			\
+  (TREE_CODE (STRIP_TEMPLATE (NODE)) == FUNCTION_DECL	\
+   && DECL_FUNC_XOBJ_FLAG (NODE) == 1)
 
 /* Nonzero if DECL is explicitly defaulted in the class body.  */
 #define DECL_DEFAULTED_IN_CLASS_P(DECL)					\
@@ -6222,11 +6232,13 @@ enum cp_storage_class {
 
 /* An individual decl-specifier.  This is used to index the array of
    locations for the declspecs in struct cp_decl_specifier_seq
-   below.  */
+   below.
+   A subset of these enums also corresponds to elements of
+   cp_parser_set_decl_spec_type:decl_spec_names in parser.cc.  */
 
 enum cp_decl_spec {
   ds_first,
-  ds_signed = ds_first,
+  ds_signed = ds_first, /* Index of first element of decl_spec_names.  */
   ds_unsigned,
   ds_short,
   ds_long,
@@ -6243,6 +6255,7 @@ enum cp_decl_spec {
   ds_complex,
   ds_constinit,
   ds_consteval,
+  ds_this, /* Index of last element of decl_spec_names.  */
   ds_thread,
   ds_type_spec,
   ds_redefined_builtin_type_spec,

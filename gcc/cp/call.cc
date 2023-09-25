@@ -6541,7 +6541,8 @@ add_candidates (tree fns, tree first_arg, const vec<tree, va_gc> *args,
       tree fn_first_arg = NULL_TREE;
       const vec<tree, va_gc> *fn_args = args;
 
-      if (DECL_NONSTATIC_MEMBER_FUNCTION_P (fn))
+      if (DECL_NONSTATIC_MEMBER_FUNCTION_P (fn)
+	  || DECL_IS_XOBJ_MEMBER_FUNC (fn))
 	{
 	  /* Figure out where the object arg comes from.  If this
 	     function is a non-static member and we didn't get an
@@ -9959,7 +9960,8 @@ build_over_call (struct z_candidate *cand, int flags, tsubst_flags_t complain)
 	}
     }
   /* Bypass access control for 'this' parameter.  */
-  else if (TREE_CODE (TREE_TYPE (fn)) == METHOD_TYPE)
+  else if (TREE_CODE (TREE_TYPE (fn)) == METHOD_TYPE
+	   || DECL_IS_XOBJ_MEMBER_FUNC (fn))
     {
       tree arg = build_this (first_arg != NULL_TREE
 			     ? first_arg
