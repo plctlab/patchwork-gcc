@@ -3025,7 +3025,7 @@ check_address_or_pointer_of_packed_member (tree type, tree rhs)
       if (TREE_CODE (rhs) == CALL_EXPR)
 	{
 	  rhs = CALL_EXPR_FN (rhs);	/* Pointer expression.  */
-	  if (rhs == NULL_TREE)
+	  if (rhs == NULL_TREE || TREE_CODE (rhs) == IDENTIFIER_NODE)
 	    return NULL_TREE;
 	  rhs = TREE_TYPE (rhs);	/* Pointer type.  */
 	  /* We could be called while processing a template and RHS could be
