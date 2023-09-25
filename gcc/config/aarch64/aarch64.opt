@@ -322,3 +322,11 @@ Constant memset size in bytes from which to start using MOPS sequence.
 -param=aarch64-vect-unroll-limit=
 Target Joined UInteger Var(aarch64_vect_unroll_limit) Init(4) Param
 Limit how much the autovectorizer may unroll a loop.
+
+-param=aarch64-ldp-policy=
+Target Joined UInteger Var(aarch64_ldp_policy) Init(0) IntegerRange(0, 3) Param
+Fine-grained policy for load pairs.
+
+-param=aarch64-stp-policy=
+Target Joined UInteger Var(aarch64_stp_policy) Init(0) IntegerRange(0, 3) Param
+Fine-grained policy for store pairs.
