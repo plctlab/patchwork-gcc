@@ -8386,7 +8386,10 @@ expand_builtin (tree exp, rtx target, rtx subtarget, machine_mode mode,
       break;
 
     case BUILT_IN_ATOMIC_TEST_AND_SET:
-      return expand_builtin_atomic_test_and_set (exp, target);
+      target = expand_builtin_atomic_test_and_set (exp, target);
+      if (target)
+	return target;
+      break;
 
     case BUILT_IN_ATOMIC_CLEAR:
       return expand_builtin_atomic_clear (exp);
