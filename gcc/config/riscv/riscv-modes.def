@@ -318,6 +318,12 @@ RVV_TUPLE_PARTIAL_MODES (6)
 RVV_TUPLE_PARTIAL_MODES (7)
 RVV_TUPLE_PARTIAL_MODES (8)
 
+/* Opaque integer modes 3, 4, 6 or 8 general double registers.  */
+INT_MODE (EI, 24);
+INT_MODE (OI, 32);
+INT_MODE (CI, 48);
+INT_MODE (XI, 64);
+
 /* TODO: According to RISC-V 'V' ISA spec, the maximun vector length can
    be 65536 for a single vector register which means the vector mode in
    GCC can be maximum = 65536 * 8 bits (LMUL=8).
