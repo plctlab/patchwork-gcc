@@ -1295,6 +1295,31 @@ function_info::insert_temp_clobber (obstack_watermark &watermark,
   return insert_access (watermark, clobber, old_defs);
 }
 
+// See the comment above the declaration.
+bool
+function_info::remains_available_on_exit (const set_info *set, bb_info *bb)
+{
+  if (HARD_REGISTER_NUM_P (set->regno ())
+      && TEST_HARD_REG_BIT (m_clobbered_by_calls, set->regno ()))
+    {
+      insn_info *search_insn = (set->bb () == bb
+				? set->insn ()
+				: bb->head_insn ());
+      for (ebb_call_clobbers_info *call_group : bb->ebb ()->call_clobbers ())
+	{
+	  if (!call_group->clobbers (set->resource ()))
+	    continue;
+
+	  insn_info *insn = next_call_clobbers (*call_group, search_insn);
+	  if (insn && insn->bb () == bb)
+	    return false;
+	}
+    }
+
+  return (set->is_last_def ()
+	  || *set->next_def ()->insn () > *bb->end_insn ());
+}
+
 // A subroutine of make_uses_available.  Try to make USE's definition
 // available at the head of BB.  WILL_BE_DEBUG_USE is true if the
 // definition will be used only in debug instructions.
@@ -1316,6 +1341,9 @@ function_info::make_use_available (use_info *use, bb_info *bb,
 {
   set_info *def = use->def ();
   if (!def)
+    return use;
+
+  if (reload_completed && def->ebb () == bb->ebb ())
     return use;
 
   if (is_single_dominating_def (def))
@@ -1504,6 +1532,19 @@ rtl_ssa::insert_access_base (obstack_watermark &watermark,
 }
 
 // See the comment above the declaration.
+use_array
+rtl_ssa::remove_uses_of_def (obstack_watermark &watermark, use_array uses,
+			     def_info *def)
+{
+  access_array_builder uses_builder (watermark);
+  uses_builder.reserve (uses.size ());
+  for (use_info *use : uses)
+    if (use->def () != def)
+      uses_builder.quick_push (use);
+  return use_array (uses_builder.finish ());
+}
+
+// See the comment above the declaration.
 access_array
 rtl_ssa::remove_note_accesses_base (obstack_watermark &watermark,
 				    access_array accesses)
@@ -1519,6 +1560,56 @@ rtl_ssa::remove_note_accesses_base (obstack_watermark &watermark,
 	return builder.finish ();
       }
   return accesses;
+}
+
+// See the comment above the declaration.
+bool
+rtl_ssa::accesses_reference_same_resource (access_array accesses1,
+					   access_array accesses2)
+{
+  auto i1 = accesses1.begin ();
+  auto end1 = accesses1.end ();
+  auto i2 = accesses2.begin ();
+  auto end2 = accesses2.end ();
+
+  while (i1 != end1 && i2 != end2)
+    {
+      access_info *access1 = *i1;
+      access_info *access2 = *i2;
+
+      unsigned int regno1 = access1->regno ();
+      unsigned int regno2 = access2->regno ();
+      if (regno1 == regno2)
+	return true;
+
+      if (regno1 < regno2)
+	++i1;
+      else
+	++i2;
+    }
+  return false;
+}
+
+// See the comment above the declaration.
+bool
+rtl_ssa::insn_clobbers_resources (insn_info *insn, access_array accesses)
+{
+  if (accesses_reference_same_resource (insn->defs (), accesses))
+    return true;
+
+  if (insn->is_call () && accesses_include_hard_registers (accesses))
+    {
+      function_abi abi = insn_callee_abi (insn->rtl ());
+      for (const access_info *access : accesses)
+	{
+	  if (!HARD_REGISTER_NUM_P (access->regno ()))
+	    break;
+	  if (abi.clobbers_reg_p (access->mode (), access->regno ()))
+	    return true;
+	}
+    }
+
+  return false;
 }
 
 // Print RESOURCE to PP.
