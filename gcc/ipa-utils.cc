@@ -658,13 +658,17 @@ ipa_merge_profiles (struct cgraph_node *dst,
 		{
 		  edge srce = EDGE_SUCC (srcbb, i);
 		  edge dste = EDGE_SUCC (dstbb, i);
-		  dste->probability = 
+		  profile_probability merged =
 		    dste->probability * dstbb->count.ipa ().probability_in
 						 (dstbb->count.ipa ()
 						  + srccount.ipa ())
 		    + srce->probability * srcbb->count.ipa ().probability_in
 						 (dstbb->count.ipa ()
 						  + srccount.ipa ());
+		  /* We produce uninitialized probabilities when
+		     denominator is zero: https://gcc.gnu.org/PR111559.  */
+		  if (merged.initialized_p ())
+		    dste->probability = merged;
 		}
 	      dstbb->count = dstbb->count.ipa () + srccount.ipa ();
 	    }
