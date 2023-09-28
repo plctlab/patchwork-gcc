@@ -91,11 +91,11 @@
 /* Define this macro if jump tables (for `tablejump' insns) should be
    output in the text section, along with the assembler instructions.
    Otherwise, the readonly data section is used.  */
-/* We put ARM and Thumb-2 jump tables in the text section, because it makes
-   the code more efficient, but for Thumb-1 it's better to put them out of
+/* We put Thumb-2 jump tables in the text section, because it makes
+   the code more efficient, but for Thumb-1 and ARM it's better to put them out of
    band unless we are generating compressed tables.  */
 #define JUMP_TABLES_IN_TEXT_SECTION					\
-   ((TARGET_32BIT || (TARGET_THUMB && (optimize_size || flag_pic))) \
+   ((TARGET_THUMB2 || (TARGET_THUMB && (optimize_size || flag_pic))) \
     && !target_pure_code)
 
 #ifndef LINK_SPEC

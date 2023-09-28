@@ -9514,7 +9514,8 @@
    (match_operand:SI 2 "const_int_operand")	; total range
    (match_operand:SI 3 "" "")			; table label
    (match_operand:SI 4 "" "")]			; Out of range label
-  "(TARGET_32BIT || optimize_size || flag_pic) && !target_pure_code"
+  "TARGET_ARM || ((TARGET_THUMB2 || optimize_size || flag_pic) &&
+		  (!target_pure_code))"
   "
   {
     enum insn_code code;
@@ -9557,13 +9558,13 @@
 		(label_ref:SI (match_operand 3 ""))))
 	      (clobber (reg:CC CC_REGNUM))
 	      (clobber (match_scratch:SI 5))
-	      (clobber (match_scratch:SI 6))
 	      (use (label_ref:SI (match_operand 2 "")))])]
   "TARGET_ARM"
 {
+  rtx tmp = force_reg (SImode, gen_rtx_LABEL_REF (SImode, operands[2]));
   operands[4] = gen_rtx_MULT (SImode, operands[0], GEN_INT (4));
   operands[4] = gen_rtx_PLUS (SImode, operands[4],
-			      gen_rtx_LABEL_REF (SImode, operands[2]));
+			      tmp);
   operands[4] = gen_rtx_MEM (SImode, operands[4]);
   MEM_READONLY_P (operands[4]) = 1;
   MEM_NOTRAP_P (operands[4]) = 1;
@@ -9575,12 +9576,11 @@
 		(leu (match_operand:SI 0 "s_register_operand" "r")
 		     (match_operand:SI 1 "arm_rhs_operand" "rI"))
 		(mem:SI (plus:SI (mult:SI (match_dup 0) (const_int 4))
-				 (label_ref:SI (match_operand 2 "" ""))))
+				 (match_operand:SI 5 "s_register_operand" "r")))
 		(label_ref:SI (match_operand 3 "" ""))))
 	      (clobber (reg:CC CC_REGNUM))
-	      (clobber (match_scratch:SI 4 "=&r"))
-	      (clobber (match_scratch:SI 5 "=r"))
-	      (use (label_ref:SI (match_dup 2)))])]
+	      (clobber (match_scratch:SI 4 "=r"))
+	      (use (label_ref:SI (match_operand 2 "")))])]
   "TARGET_ARM"
   {
     return arm_output_casesi (operands);
