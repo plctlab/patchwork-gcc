@@ -1054,36 +1054,44 @@ const pass_data pass_data_early_vrp =
   ( TODO_cleanup_cfg | TODO_update_ssa | TODO_verify_all ),
 };
 
-static int vrp_pass_num = 0;
+static bool run_warning_pass = true;
 class pass_vrp : public gimple_opt_pass
 {
 public:
   pass_vrp (gcc::context *ctxt, const pass_data &data_)
-    : gimple_opt_pass (data_, ctxt), data (data_), warn_array_bounds_p (false),
-      my_pass (vrp_pass_num++)
-  {}
+    : gimple_opt_pass (data_, ctxt), data (data_),
+      warn_array_bounds_p (false), final_p (false)
+  {
+    // Only the frst VRP pass should run warnings.
+    if (&data == &pass_data_vrp)
+      {
+	warn_array_bounds_p = run_warning_pass;
+	run_warning_pass = false;
+      }
+  }
 
   /* opt_pass methods: */
   opt_pass * clone () final override { return new pass_vrp (m_ctxt, data); }
   void set_pass_param (unsigned int n, bool param) final override
     {
       gcc_assert (n == 0);
-      warn_array_bounds_p = param;
+      final_p = param;
     }
   bool gate (function *) final override { return flag_tree_vrp != 0; }
   unsigned int execute (function *fun) final override
     {
       // Early VRP pass.
-      if (my_pass == 0)
-	return execute_ranger_vrp (fun, /*warn_array_bounds_p=*/false, false);
+      if (&data == &pass_data_early_vrp)
+	return execute_ranger_vrp (fun, /*warn_array_bounds_p=*/false,
+				   /*final_p=*/false);
 
-      return execute_ranger_vrp (fun, warn_array_bounds_p, my_pass == 2);
+      return execute_ranger_vrp (fun, warn_array_bounds_p, final_p);
     }
 
  private:
   const pass_data &data;
   bool warn_array_bounds_p;
-  int my_pass;
+  bool final_p;
 }; // class pass_vrp
 
 const pass_data pass_data_assumptions =
