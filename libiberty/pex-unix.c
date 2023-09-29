@@ -58,6 +58,9 @@ extern int errno;
 #ifdef HAVE_PROCESS_H
 #include <process.h>
 #endif
+#ifdef HAVE_SPAWN_H
+#include <spawn.h>
+#endif
 
 #ifdef vfork /* Autoconf may define this to fork for us. */
 # define VFORK_STRING "fork"
@@ -559,6 +562,75 @@ pex_unix_exec_child (struct pex_obj *obj ATTRIBUTE_UNUSED,
   return (pid_t) -1;
 }
 
+#elif defined(HAVE_POSIX_SPAWN) && defined(HAVE_POSIX_SPAWNP)
+/* Implementation of pex->exec_child using posix_spawn.            */
+
+static pid_t
+pex_unix_exec_child (struct pex_obj *obj ATTRIBUTE_UNUSED,
+		     int flags, const char *executable,
+		     char * const * argv, char * const * env,
+		     int in, int out, int errdes,
+		     int toclose, const char **errmsg, int *err)
+{
+  pid_t pid = -1;
+  posix_spawnattr_t attr;
+  posix_spawn_file_actions_t actions;
+  int attr_initialized = 0, actions_initialized = 0;
+
+  #define ERR_ON_FAILURE(ret, func) \
+    do { if (ret) { *err = ret; *errmsg = func; goto exit; } else {} } while (0)
+
+  ERR_ON_FAILURE (posix_spawnattr_init (&attr), "posix_spawnattr_init");
+  attr_initialized = 1;
+
+  /* Use vfork() on glibc <=2.24. */
+#ifdef POSIX_SPAWN_USEVFORK
+  ERR_ON_FAILURE (posix_spawnattr_setflags (&attr, POSIX_SPAWN_USEVFORK), "posix_spawnattr_setflags");
+#endif
+
+  ERR_ON_FAILURE (posix_spawn_file_actions_init (&actions), "posix_spawn_file_actions_init");
+  actions_initialized = 1;
+
+  if (in != STDIN_FILE_NO)
+    {
+      ERR_ON_FAILURE (posix_spawn_file_actions_adddup2 (&actions, in, STDIN_FILE_NO), "posix_spawn_file_actions_adddup2");
+      ERR_ON_FAILURE (posix_spawn_file_actions_addclose (&actions, in), "posix_spawn_file_actions_addclose");
+    }
+  if (out != STDOUT_FILE_NO)
+    {
+      ERR_ON_FAILURE (posix_spawn_file_actions_adddup2 (&actions, out, STDOUT_FILE_NO), "posix_spawn_file_actions_adddup2");
+      ERR_ON_FAILURE (posix_spawn_file_actions_addclose (&actions, out), "posix_spawn_file_actions_addclose");
+    }
+  if (errdes != STDERR_FILE_NO)
+    {
+      ERR_ON_FAILURE (posix_spawn_file_actions_adddup2 (&actions, errdes, STDERR_FILE_NO), "posix_spawn_file_actions_adddup2");
+      ERR_ON_FAILURE (posix_spawn_file_actions_addclose (&actions, errdes), "posix_spawn_file_actions_addclose");
+    }
+  if (toclose >= 0)
+    ERR_ON_FAILURE (posix_spawn_file_actions_addclose (&actions, toclose), "posix_spawn_file_actions_addclose");
+  if ((flags & PEX_STDERR_TO_STDOUT) != 0)
+    ERR_ON_FAILURE (posix_spawn_file_actions_adddup2 (&actions, STDOUT_FILE_NO, STDERR_FILE_NO), "posix_spawn_file_actions_adddup2");
+
+  if ((flags & PEX_SEARCH) != 0)
+    ERR_ON_FAILURE (posix_spawnp (&pid, executable, &actions, &attr, argv, env ? env : environ), "posix_spawnp");
+  else
+    ERR_ON_FAILURE (posix_spawn (&pid, executable, &actions, &attr, argv, env ? env : environ), "posix_spawn");
+
+#undef ERR_ON_FAILURE
+exit:
+  if (in != STDIN_FILE_NO)
+    close (in);
+  if (out != STDOUT_FILE_NO)
+    close (out);
+  if (errdes != STDERR_FILE_NO)
+    close (errdes);
+
+  if (actions_initialized)
+    posix_spawn_file_actions_destroy (&actions);
+  if (attr_initialized)
+    posix_spawnattr_destroy (&attr);
+  return pid;
+}
 #else
 /* Implementation of pex->exec_child using standard vfork + exec.  */
 
