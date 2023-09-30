@@ -228,24 +228,14 @@ test_uncond_jump ()
 		      jump_insn);
 }
 
-template<unsigned int N>
-struct const_poly_int_tests
-{
-  static void run ();
-};
-
-template<>
-struct const_poly_int_tests<1>
-{
-  static void run () {}
-};
-
 /* Test various CONST_POLY_INT properties.  */
 
-template<unsigned int N>
-void
-const_poly_int_tests<N>::run ()
+static void
+const_poly_int_tests ()
 {
+  /* `poly_int64` call with two parameters requires target with at
+   least 2 COEFFs.  */
+#if NUM_POLY_INT_COEFFS > 1
   rtx x1 = gen_int_mode (poly_int64 (1, 1), QImode);
   rtx x255 = gen_int_mode (poly_int64 (1, 255), QImode);
 
@@ -282,6 +272,7 @@ const_poly_int_tests<N>::run ()
 	     gen_int_mode (poly_int64 (5, -2), QImode));
   ASSERT_EQ (plus_constant (QImode, x1, poly_int64 (4, -2)),
 	     gen_int_mode (poly_int64 (5, -1), QImode));
+#endif
 }
 
 /* Check dumping of repeated RTL vectors.  */
@@ -317,7 +308,7 @@ rtl_tests_cc_tests ()
   test_dumping_rtx_reuse ();
   test_single_set ();
   test_uncond_jump ();
-  const_poly_int_tests<NUM_POLY_INT_COEFFS>::run ();
+  const_poly_int_tests ();
   test_dumping_repeat ();
 
   /* Purge state.  */
