@@ -8561,24 +8561,14 @@ test_vector_ops ()
     }
 }
 
-template<unsigned int N>
-struct simplify_const_poly_int_tests
-{
-  static void run ();
-};
-
-template<>
-struct simplify_const_poly_int_tests<1>
-{
-  static void run () {}
-};
-
 /* Test various CONST_POLY_INT properties.  */
 
-template<unsigned int N>
 void
-simplify_const_poly_int_tests<N>::run ()
+simplify_const_poly_int_tests ()
 {
+  /* `poly_int64` call with two parameters requires target with at
+   least 2 COEFFs.  */
+#if NUM_POLY_INT_COEFFS > 1
   rtx x1 = gen_int_mode (poly_int64 (1, 1), QImode);
   rtx x2 = gen_int_mode (poly_int64 (-80, 127), QImode);
   rtx x3 = gen_int_mode (poly_int64 (-79, -128), QImode);
@@ -8606,6 +8596,7 @@ simplify_const_poly_int_tests<N>::run ()
   ASSERT_EQ (simplify_binary_operation (IOR, QImode, x4, two), x7);
   ASSERT_EQ (simplify_subreg (HImode, x5, QImode, 0), x8);
   ASSERT_EQ (simplify_subreg (QImode, x8, HImode, offset), x5);
+#endif
 }
 
 /* Run all of the selftests within this file.  */
@@ -8615,7 +8606,7 @@ simplify_rtx_cc_tests ()
 {
   test_scalar_ops ();
   test_vector_ops ();
-  simplify_const_poly_int_tests<NUM_POLY_INT_COEFFS>::run ();
+  simplify_const_poly_int_tests ();
 }
 
 } // namespace selftest
