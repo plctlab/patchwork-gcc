@@ -16209,6 +16209,15 @@ With @option{--param=openacc-privatization=quiet}, don't diagnose.
 This is the current default.
 With @option{--param=openacc-privatization=noisy}, do diagnose.
 
+@item omp-unroll-full-max-iterations
+The maximum number of iterations of a loop for which an OpenMP @samp{omp unroll}
+directive on the loop without a clause is turned into an
+@samp{omp unroll full}.
+
+@item omp-unroll-default-factor
+The unroll factor used for loops that have an OpenMP @samp{omp unroll partial}
+directive without an explicit unroll factor.
+
 @end table
 
 The following choices of @var{name} are available on AArch64 targets:
