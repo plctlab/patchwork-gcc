@@ -88,6 +88,8 @@
 /* This file should be included last.  */
 #include "target-def.h"
 
+#include "aarch64.h"
+
 /* Defined for convenience.  */
 #define POINTER_BYTES (POINTER_SIZE / BITS_PER_UNIT)
 
@@ -2760,6 +2762,59 @@ static const struct processor all_cores[] =
    feature_deps::V8A ().enable, &generic_tunings},
   {NULL, aarch64_none, aarch64_none, aarch64_no_arch, 0, NULL}
 };
+
+/* Database of system register names.  */
+const char *sysreg_names[] =
+{
+#define SYSREG(NAME, ENC, FLAGS, ARCH) NAME,
+#include "aarch64-sys-regs.def"
+#undef SYSREG
+};
+
+const char *sysreg_names_generic[] =
+{
+#define CPENC(SN, OP1, CN, CM, OP2) "s"#SN"_"#OP1"_c"#CN"_c"#CM"_"#OP2
+#define SYSREG(NAME, ENC, FLAGS, ARCH) ENC,
+#include "aarch64-sys-regs.def"
+#undef SYSREG
+};
+
+/* An aarch64_feature_set initializer for a single feature,
+   AARCH64_FEATURE_<FEAT>.  */
+#define AARCH64_FEATURE(FEAT) AARCH64_FL_##FEAT
+
+/* Used by AARCH64_FEATURES.  */
+#define AARCH64_OR_FEATURES_1(X, F1) \
+  AARCH64_FEATURE (F1)
+#define AARCH64_OR_FEATURES_2(X, F1, F2) \
+  (AARCH64_FEATURE (F1) | AARCH64_OR_FEATURES_1 (X, F2))
+#define AARCH64_OR_FEATURES_3(X, F1, ...) \
+  (AARCH64_FEATURE (F1) | AARCH64_OR_FEATURES_2 (X, __VA_ARGS__))
+
+/* An aarch64_feature_set initializer for the N features listed in "...".  */
+#define AARCH64_FEATURES(N, ...) \
+  AARCH64_OR_FEATURES_##N (0, __VA_ARGS__)
+
+/* Database of system register architectural requirements.  */
+const unsigned long long sysreg_reqs[] =
+{
+#define SYSREG(NAME, ENC, FLAGS, ARCH) ARCH,
+#include "aarch64-sys-regs.def"
+#undef SYSREG
+};
+
+/* Database of system register properties.  Properties assigned unique
+   bits in bitfield and combined via bitwise-OR.  */
+const unsigned sysreg_properties[] =
+{
+#define SYSREG(NAME, ENC, FLAGS, ARCH) FLAGS,
+#include "aarch64-sys-regs.def"
+#undef SYSREG
+};
+
+#define TOTAL_ITEMS (sizeof sysreg_reqs / sizeof sysreg_reqs[0])
+const unsigned nsysreg = TOTAL_ITEMS;
+#undef TOTAL_ITEMS
 
 /* The current tuning set.  */
 struct tune_params aarch64_tune_params = generic_tunings;
