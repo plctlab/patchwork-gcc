@@ -449,6 +449,9 @@ struct GTY((desc("0"), tag("0"),
     struct fixed_value fv;
     struct hwivec_def hwiv;
     struct const_poly_int_def cpi;
+#if defined(__GNUC__) && GCC_VERSION < 5000
+    u () {}
+#endif
   } GTY ((special ("rtx_def"), desc ("GET_CODE (&%0)"))) u;
 };
 
