@@ -55,8 +55,12 @@ main (void)
 }
 
 /* { dg-final { scan-tree-dump-times {vectorizing stmts using SLP} 4 "vect" { target vect_double_cond_arith } } } */
-/* { dg-final { scan-tree-dump-times { = \.COND_ADD} 1 "optimized" { target vect_double_cond_arith } } } */
-/* { dg-final { scan-tree-dump-times { = \.COND_SUB} 1 "optimized" { target vect_double_cond_arith } } } */
-/* { dg-final { scan-tree-dump-times { = \.COND_MUL} 1 "optimized" { target vect_double_cond_arith } } } */
-/* { dg-final { scan-tree-dump-times { = \.COND_RDIV} 1 "optimized" { target vect_double_cond_arith } } } */
+/* { dg-final { scan-tree-dump-times { = \.COND_ADD} 1 "optimized" { target { vect_double_cond_arith && { ! riscv_v } } } } } */
+/* { dg-final { scan-tree-dump-times { = \.COND_SUB} 1 "optimized" { target { vect_double_cond_arith && { ! riscv_v } } } } } */
+/* { dg-final { scan-tree-dump-times { = \.COND_MUL} 1 "optimized" { target { vect_double_cond_arith && { ! riscv_v } } } } } */
+/* { dg-final { scan-tree-dump-times { = \.COND_RDIV} 1 "optimized" { target { vect_double_cond_arith && { ! riscv_v } } } } } */
+/* { dg-final { scan-tree-dump-times { = \.COND_LEN_ADD} 1 "optimized" { target { vect_double_cond_arith && riscv_v } } } } */
+/* { dg-final { scan-tree-dump-times { = \.COND_LEN_SUB} 1 "optimized" { target { vect_double_cond_arith && riscv_v } } } } */
+/* { dg-final { scan-tree-dump-times { = \.COND_LEN_MUL} 1 "optimized" { target { vect_double_cond_arith && riscv_v } } } } */
+/* { dg-final { scan-tree-dump-times { = \.COND_LEN_RDIV} 1 "optimized" { target { vect_double_cond_arith && riscv_v } } } } */
 /* { dg-final { scan-tree-dump-not {VEC_COND_EXPR} "optimized" { target vect_double_cond_arith } } } */

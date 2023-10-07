@@ -41,5 +41,7 @@ neg_xi (double *x)
   return res_3;
 }
 
-/* { dg-final { scan-tree-dump { = \.COND_ADD} "vect" { target { vect_double_cond_arith && vect_fully_masked } } } } */
-/* { dg-final { scan-tree-dump { = \.COND_SUB} "optimized" { target { vect_double_cond_arith && vect_fully_masked } } } } */
+/* { dg-final { scan-tree-dump { = \.COND_ADD} "vect" { target { vect_double_cond_arith && { vect_fully_masked && { ! riscv_v } } } } } } */
+/* { dg-final { scan-tree-dump { = \.COND_SUB} "optimized" { target { vect_double_cond_arith && { vect_fully_masked && { ! riscv_v } } } } } } */
+/* { dg-final { scan-tree-dump { = \.COND_LEN_ADD} "vect" { target { vect_double_cond_arith && { vect_fully_masked && riscv_v } } } } } */
+/* { dg-final { scan-tree-dump { = \.COND_LEN_SUB} "optimized" { target { vect_double_cond_arith && { vect_fully_masked && riscv_v } } } } } */
