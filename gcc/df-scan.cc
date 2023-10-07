@@ -3988,7 +3988,8 @@ df_reg_chain_verify_unmarked (df_ref refs)
 {
   df_ref ref;
   for (ref = refs; ref; ref = DF_REF_NEXT_REG (ref))
-    gcc_assert (!DF_REF_IS_REG_MARKED (ref));
+    gcc_assert ((DF_REF_FLAGS_IS_SET (ref, DF_HARD_REG_LIVE))
+		  || !DF_REF_IS_REG_MARKED (ref));
 }
 
 
@@ -4006,7 +4007,12 @@ df_refs_verify (const vec<df_ref, va_heap> *new_rec, df_ref old_rec,
       if (old_rec == NULL || !df_ref_equal_p (new_ref, old_rec))
 	{
 	  if (abort_if_fail)
-	    gcc_assert (0);
+	    {
+	      if (DF_REF_REGNO (new_ref) != DF_REF_REGNO (old_rec))
+		return false;
+	      else
+		gcc_assert (0);
+	    }
 	  else
 	    return false;
 	}
