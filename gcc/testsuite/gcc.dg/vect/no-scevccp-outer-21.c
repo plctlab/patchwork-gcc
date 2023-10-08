@@ -58,4 +58,4 @@ int main (void)
   return 0;
 }
 
-/* { dg-final { scan-tree-dump-times "OUTER LOOP VECTORIZED." 1 "vect" { xfail { ! { vect_pack_trunc } } } } } */
+/* { dg-final { scan-tree-dump-times "OUTER LOOP VECTORIZED." 1 "vect" { xfail { { ! {vect_pack_trunc } } && { ! {riscv_v } } } } } } */
