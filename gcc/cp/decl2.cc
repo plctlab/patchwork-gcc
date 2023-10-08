@@ -1715,6 +1715,12 @@ cplus_decl_attributes (tree *decl, tree attributes, int flags)
 		attributes
 		  = tree_cons (get_identifier ("omp declare target nohost"),
 			       NULL_TREE, attributes);
+	      if (last.indirect
+		  && !lookup_attribute ("omp declare target indirect",
+					attributes))
+		attributes
+		  = tree_cons (get_identifier ("omp declare target indirect"),
+			       NULL_TREE, attributes);
 	    }
 	}
     }

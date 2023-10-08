@@ -62,6 +62,7 @@ struct GTY(()) language_function {
 
 struct GTY(()) c_omp_declare_target_attr {
   int device_type;
+  int indirect;
 };
 
 /* If non-zero, implicit "omp declare target" attribute is added into the
