@@ -783,7 +783,7 @@ read_original_filename (cpp_reader *pfile)
 	      penult[1].reason = penult[0].reason;
 	      penult[0] = penult[1];
 	      pfile->line_table->info_ordinary.used--;
-	      pfile->line_table->info_ordinary.cache = 0;
+	      pfile->line_table->info_ordinary.m_cache = 0;
 	    }
 
 	  return true;
