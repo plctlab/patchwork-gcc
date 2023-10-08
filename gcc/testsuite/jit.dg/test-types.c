@@ -485,11 +485,15 @@ verify_code (gcc_jit_context *ctxt, gcc_jit_result *result)
 
   CHECK_VALUE (z.m_FILE_ptr, stderr);
 
+  gcc_jit_type *long_type = gcc_jit_context_get_type (ctxt, GCC_JIT_TYPE_LONG);
+  gcc_jit_type *int64_type = gcc_jit_context_get_type (ctxt, GCC_JIT_TYPE_INT64_T);
   if (sizeof(long) == 8)
-    CHECK (gcc_jit_compatible_types (
-      gcc_jit_context_get_type (ctxt, GCC_JIT_TYPE_LONG),
-      gcc_jit_context_get_type (ctxt, GCC_JIT_TYPE_INT64_T)));
+    CHECK (gcc_jit_compatible_types (long_type, int64_type));
 
   CHECK_VALUE (gcc_jit_type_get_size (gcc_jit_context_get_type (ctxt, GCC_JIT_TYPE_FLOAT)), sizeof (float));
   CHECK_VALUE (gcc_jit_type_get_size (gcc_jit_context_get_type (ctxt, GCC_JIT_TYPE_DOUBLE)), sizeof (double));
+
+  gcc_jit_type *aligned_long = gcc_jit_type_get_aligned (long_type, 4);
+  gcc_jit_type *aligned_int64 = gcc_jit_type_get_aligned (int64_type, 4);
+  CHECK (gcc_jit_compatible_types (aligned_long, aligned_int64));
 }
