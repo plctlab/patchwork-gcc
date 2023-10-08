@@ -53,8 +53,8 @@ main (void)
   return 0;
 }
 
-/* { dg-final { scan-tree-dump { = \.COND_ADD} "optimized" { target { vect_double_cond_arith && vect_masked_store } } } } */
-/* { dg-final { scan-tree-dump { = \.COND_SUB} "optimized" { target { vect_double_cond_arith && vect_masked_store } } } } */
-/* { dg-final { scan-tree-dump { = \.COND_MUL} "optimized" { target { vect_double_cond_arith && vect_masked_store } } } } */
-/* { dg-final { scan-tree-dump { = \.COND_RDIV} "optimized" { target { vect_double_cond_arith && vect_masked_store } } } } */
+/* { dg-final { scan-tree-dump { = \.COND_L?E?N?_?ADD} "optimized" { target { vect_double_cond_arith && vect_masked_store } } } } */
+/* { dg-final { scan-tree-dump { = \.COND_L?E?N?_?SUB} "optimized" { target { vect_double_cond_arith && vect_masked_store } } } } */
+/* { dg-final { scan-tree-dump { = \.COND_L?E?N?_?MUL} "optimized" { target { vect_double_cond_arith && vect_masked_store } } } } */
+/* { dg-final { scan-tree-dump { = \.COND_L?E?N?_?RDIV} "optimized" { target { vect_double_cond_arith && vect_masked_store } } } } */
 /* { dg-final { scan-tree-dump-not {VEC_COND_EXPR} "optimized" { target { vect_double_cond_arith && vect_masked_store } } } } */

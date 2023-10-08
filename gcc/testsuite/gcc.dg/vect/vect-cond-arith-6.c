@@ -55,8 +55,8 @@ main (void)
 }
 
 /* { dg-final { scan-tree-dump-times {vectorizing stmts using SLP} 4 "vect" { target vect_double_cond_arith } } } */
-/* { dg-final { scan-tree-dump-times { = \.COND_ADD} 1 "optimized" { target vect_double_cond_arith } } } */
-/* { dg-final { scan-tree-dump-times { = \.COND_SUB} 1 "optimized" { target vect_double_cond_arith } } } */
-/* { dg-final { scan-tree-dump-times { = \.COND_MUL} 1 "optimized" { target vect_double_cond_arith } } } */
-/* { dg-final { scan-tree-dump-times { = \.COND_RDIV} 1 "optimized" { target vect_double_cond_arith } } } */
+/* { dg-final { scan-tree-dump-times { = \.COND_L?E?N?_?ADD} 1 "optimized" { target vect_double_cond_arith } } } */
+/* { dg-final { scan-tree-dump-times { = \.COND_L?E?N?_?SUB} 1 "optimized" { target vect_double_cond_arith } } } */
+/* { dg-final { scan-tree-dump-times { = \.COND_L?E?N?_?MUL} 1 "optimized" { target vect_double_cond_arith } } } */
+/* { dg-final { scan-tree-dump-times { = \.COND_L?E?N?_?RDIV} 1 "optimized" { target vect_double_cond_arith } } } */
 /* { dg-final { scan-tree-dump-not {VEC_COND_EXPR} "optimized" { target vect_double_cond_arith } } } */
