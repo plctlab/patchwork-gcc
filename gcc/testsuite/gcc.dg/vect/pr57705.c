@@ -61,5 +61,5 @@ main ()
   return 0;
 }
 
-/* { dg-final { scan-tree-dump-times "vectorized 1 loop" 3 "vect" { target vect_pack_trunc } } } */
-/* { dg-final { scan-tree-dump-times "vectorized 1 loop" 2 "vect" { target { ! vect_pack_trunc } } } } */
+/* { dg-final { scan-tree-dump-times "vectorized 1 loop" 3 "vect" { target { vect_pack_trunc || riscv_v } } } } */
+/* { dg-final { scan-tree-dump-times "vectorized 1 loop" 2 "vect" { target { { ! vect_pack_trunc } && { ! riscv_v } } } } } */
