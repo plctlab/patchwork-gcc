@@ -7647,6 +7647,7 @@ proc check_effective_target_vect_pack_trunc { } {
 		 && [check_effective_target_arm_little_endian])
 	     || ([istarget mips*-*-*]
 		 && [et-is-effective-target mips_msa])
+	     || [istarget riscv*-*-*]
 	     || ([istarget s390*-*-*]
 		 && [check_effective_target_s390_vx])
              || [istarget amdgcn*-*-*] }}]
