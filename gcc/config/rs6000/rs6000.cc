@@ -15215,6 +15215,15 @@ rs6000_generate_compare (rtx cmp, machine_mode mode)
 	  else
 	    emit_insn (gen_stack_protect_testsi (compare_result, op0, op1b));
 	}
+      else if (mode == V16QImode)
+	{
+	  gcc_assert (code == EQ || code == NE);
+
+	  rtx result_vector = gen_reg_rtx (V16QImode);
+	  compare_result = gen_rtx_REG (CCmode, CR6_REGNO);
+	  emit_insn (gen_altivec_vcmpequb_p (result_vector, op0, op1));
+	  code = (code == NE) ? GE : LT;
+	}
       else
 	emit_insn (gen_rtx_SET (compare_result,
 				gen_rtx_COMPARE (comp_mode, op0, op1)));
