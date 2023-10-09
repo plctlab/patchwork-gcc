@@ -27,7 +27,8 @@
 
 (define_insn_reservation "generic_alu" 1
   (and (eq_attr "tune" "generic")
-       (eq_attr "type" "unknown,const,arith,shift,slt,multi,auipc,nop,logical,move,bitmanip,min,max,minu,maxu,clz,ctz,cpop"))
+       (eq_attr "type" "unknown,const,arith,shift,slt,multi,auipc,nop,
+	  logical,move,bitmanip,min,max,minu,maxu,clz,ctz,cpop,trap,cbo"))
   "alu")
 
 (define_insn_reservation "generic_load" 3

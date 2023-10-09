@@ -12,6 +12,8 @@
 (define_cpu_unit "sifive_7_idiv" "sifive_7")
 (define_cpu_unit "sifive_7_fpu" "sifive_7")
 
+(define_cpu_unit "sifive_7_abort" "sifive_7")
+
 (define_insn_reservation "sifive_7_load" 3
   (and (eq_attr "tune" "sifive_7")
        (eq_attr "type" "load"))
@@ -105,6 +107,11 @@
   (and (eq_attr "tune" "sifive_7")
        (eq_attr "type" "mfc"))
   "sifive_7_A")
+
+(define_insn_reservation "sifive_7_other" 3
+  (and (eq_attr "tune" "sifive_7")
+       (eq_attr "type" "trap,cbo"))
+  "sifive_7_abort")
 
 (define_bypass 1 "sifive_7_load,sifive_7_alu,sifive_7_mul,sifive_7_f2i,sifive_7_sfb_alu"
   "sifive_7_alu,sifive_7_branch")
