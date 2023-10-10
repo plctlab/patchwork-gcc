@@ -61,6 +61,7 @@
 
 #include "secure_getenv.h"
 #include "environ.h"
+#include "omphook.h"
 
 /* Default values of ICVs according to the OpenMP standard.  */
 const struct gomp_default_icv gomp_default_icv_values = {
@@ -2326,5 +2327,7 @@ initialize_env (void)
   goacc_runtime_initialize ();
 
   goacc_profiling_initialize ();
+
+  RUNOMPHOOK ();
 }
 #endif /* LIBGOMP_OFFLOADED_ONLY */
