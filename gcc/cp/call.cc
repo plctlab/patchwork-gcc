@@ -9865,7 +9865,15 @@ build_over_call (struct z_candidate *cand, int flags, tsubst_flags_t complain)
   if (DECL_DELETED_FN (fn))
     {
       if (complain & tf_error)
-	mark_used (fn);
+	{
+	  mark_used (fn);
+	  /* Note the other candidates we considered unless we selected a
+	     special member function since the mismatch reasons for other
+	     candidates are usually uninteresting, e.g. rvalue vs lvalue
+	     reference binding .  */
+	  if (cand->next && !special_memfn_p (fn))
+	    print_z_candidates (input_location, cand, /*only_viable_p=*/false);
+	}
       return error_mark_node;
     }
 
