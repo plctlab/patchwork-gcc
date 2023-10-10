@@ -24,5 +24,7 @@ extern tree gimple_assign_rhs_to_tree (gimple *);
 extern HOST_WIDE_INT estimated_stack_frame_size (struct cgraph_node *);
 extern void set_parm_rtl (tree, rtx);
 
+extern bool scalarizable_aggregate (tree, rtx);
+extern void set_scalar_rtx_for_returns ();
 
 #endif /* GCC_CFGEXPAND_H */
