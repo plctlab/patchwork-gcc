@@ -3960,6 +3960,7 @@ static void
 write_template_param (const tree parm)
 {
   int parm_index;
+  int level;
 
   MANGLE_TRACE_TREE ("template-parm", parm);
 
@@ -3969,10 +3970,12 @@ write_template_param (const tree parm)
     case TEMPLATE_TEMPLATE_PARM:
     case BOUND_TEMPLATE_TEMPLATE_PARM:
       parm_index = TEMPLATE_TYPE_IDX (parm);
+      level = TEMPLATE_TYPE_LEVEL (parm);
       break;
 
     case TEMPLATE_PARM_INDEX:
       parm_index = TEMPLATE_PARM_IDX (parm);
+      level = TEMPLATE_PARM_LEVEL (parm);
       break;
 
     default:
@@ -3980,6 +3983,16 @@ write_template_param (const tree parm)
     }
 
   write_char ('T');
+  if (level > 1)
+    {
+      if (abi_warn_or_compat_version_crosses (19))
+	G.need_abi_warning = 1;
+      if (abi_version_at_least (19))
+	{
+	  write_char ('L');
+	  write_compact_number (level - 1);
+	}
+    }
   /* NUMBER as it appears in the mangling is (-1)-indexed, with the
      earliest template param denoted by `_'.  */
   write_compact_number (parm_index);
