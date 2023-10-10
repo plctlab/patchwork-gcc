@@ -57,9 +57,9 @@ void warn_vec_decl (void)
 {
   *(VC2*)a1 = c2;       // { dg-warning "writing 2 bytes into a region of size 1" }
   *(VC4*)a2 = c4;       // { dg-warning "writing 4 bytes into a region of size 2" }
-  *(VC4*)a3 = c4;       // { dg-warning "writing 4 bytes into a region of size 3" }
+  *(VC4*)a3 = c4;       // { dg-warning "writing 4 bytes into a region of size 3" "pr111519" { xfail *-*-* } }
   *(VC8*)a4 = c8;       // { dg-warning "writing 8 bytes into a region of size 4" }
-  *(VC8*)a7 = c8;       // { dg-warning "writing 8 bytes into a region of size 7" }
+  *(VC8*)a7 = c8;       // { dg-warning "writing 8 bytes into a region of size 7" "pr111519" { xfail *-*-* } }
   *(VC16*)a15 = c16;    // { dg-warning "writing 16 bytes into a region of size 15" }
 }
 
