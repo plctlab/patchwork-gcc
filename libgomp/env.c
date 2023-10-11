@@ -61,6 +61,7 @@
 
 #include "secure_getenv.h"
 #include "environ.h"
+#include "spincount.h"
 
 /* Default values of ICVs according to the OpenMP standard.  */
 const struct gomp_default_icv gomp_default_icv_values = {
@@ -2261,7 +2262,10 @@ initialize_env (void)
       if (wait_policy > 0)
 	gomp_spin_count_var = 30000000000LL;
       else if (wait_policy < 0)
-	gomp_spin_count_var = 300000LL;
+	{
+	  gomp_spin_count_var = 300000LL;
+	  do_adjust_default_spincount ();
+	}
     }
   /* gomp_throttled_spin_count_var is used when there are more libgomp
      managed threads than available CPUs.  Use very short spinning.  */
