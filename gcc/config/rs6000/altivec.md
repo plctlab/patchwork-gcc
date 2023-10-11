@@ -2605,6 +2605,42 @@
 }
   [(set_attr "type" "vecperm")])
 
+(define_expand "cbranchv16qi4"
+  [(use (match_operator 0 "equality_operator"
+	[(match_operand:V16QI 1 "reg_or_mem_operand")
+	 (match_operand:V16QI 2 "reg_or_mem_operand")]))
+   (use (match_operand 3))]
+  "VECTOR_UNIT_ALTIVEC_P (V16QImode)
+   && TARGET_VSX"
+{
+  if (!TARGET_P9_VECTOR
+      && !BYTES_BIG_ENDIAN
+      && MEM_P (operands[1])
+      && !altivec_indexed_or_indirect_operand (operands[1], V16QImode)
+      && MEM_P (operands[2])
+      && !altivec_indexed_or_indirect_operand (operands[2], V16QImode))
+    {
+      /* Use direct move for P8 little endian to skip bswap, as the byte
+	 order doesn't matter for equality compare.  */
+      rtx reg_op1 = gen_reg_rtx (V16QImode);
+      rtx reg_op2 = gen_reg_rtx (V16QImode);
+      rs6000_emit_le_vsx_permute (reg_op1, operands[1], V16QImode);
+      rs6000_emit_le_vsx_permute (reg_op2, operands[2], V16QImode);
+      operands[1] = reg_op1;
+      operands[2] = reg_op2;
+    }
+  else
+    {
+      operands[1] = force_reg (V16QImode, operands[1]);
+      operands[2] = force_reg (V16QImode, operands[2]);
+    }
+
+  rtx_code code = GET_CODE (operands[0]);
+  operands[0] = gen_rtx_fmt_ee (code, V16QImode, operands[1], operands[2]);
+  rs6000_emit_cbranch (V16QImode, operands);
+  DONE;
+})
+
 ;; Compare vectors producing a vector result and a predicate, setting CR6 to
 ;; indicate a combined status
 (define_insn "altivec_vcmpequ<VI_char>_p"
