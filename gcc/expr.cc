@@ -992,8 +992,9 @@ alignment_for_piecewise_move (unsigned int max_pieces, unsigned int align)
    that is narrower than SIZE bytes.  */
 
 static fixed_size_mode
-widest_fixed_size_mode_for_size (unsigned int size, bool qi_vector)
+widest_fixed_size_mode_for_size (unsigned int size, by_pieces_operation op)
 {
+  bool qi_vector = ((op == COMPARE_BY_PIECES) || op == SET_BY_PIECES);
   fixed_size_mode result = NARROWEST_INT_MODE;
 
   gcc_checking_assert (size > 1);
@@ -1009,8 +1010,13 @@ widest_fixed_size_mode_for_size (unsigned int size, bool qi_vector)
 	  {
 	    if (GET_MODE_SIZE (candidate) >= size)
 	      break;
-	    if (optab_handler (vec_duplicate_optab, candidate)
-		!= CODE_FOR_nothing)
+	    if ((op == SET_BY_PIECES
+		 && optab_handler (vec_duplicate_optab, candidate)
+		   != CODE_FOR_nothing)
+		 || (op == COMPARE_BY_PIECES
+		     && optab_handler (mov_optab, mode)
+			!= CODE_FOR_nothing
+		     && can_compare_p (EQ, mode, ccp_jump)))
 	      result = candidate;
 	  }
 
@@ -1061,8 +1067,7 @@ by_pieces_ninsns (unsigned HOST_WIDE_INT l, unsigned int align,
     {
       /* NB: Round up L and ALIGN to the widest integer mode for
 	 MAX_SIZE.  */
-      mode = widest_fixed_size_mode_for_size (max_size,
-					      op == SET_BY_PIECES);
+      mode = widest_fixed_size_mode_for_size (max_size, op);
       if (optab_handler (mov_optab, mode) != CODE_FOR_nothing)
 	{
 	  unsigned HOST_WIDE_INT up = ROUND_UP (l, GET_MODE_SIZE (mode));
@@ -1076,8 +1081,7 @@ by_pieces_ninsns (unsigned HOST_WIDE_INT l, unsigned int align,
 
   while (max_size > 1 && l > 0)
     {
-      mode = widest_fixed_size_mode_for_size (max_size,
-					      op == SET_BY_PIECES);
+      mode = widest_fixed_size_mode_for_size (max_size, op);
       enum insn_code icode;
 
       unsigned int modesize = GET_MODE_SIZE (mode);
@@ -1327,6 +1331,12 @@ class op_by_pieces_d
   virtual void finish_mode (machine_mode)
   {
   }
+  virtual fixed_size_mode widest_fixed_size_mode_for_size (unsigned int size)
+    = 0;
+  virtual bool optab_checking (fixed_size_mode)
+  {
+    return false;
+  }
 
  public:
   op_by_pieces_d (unsigned int, rtx, bool, rtx, bool, by_pieces_constfn,
@@ -1375,8 +1385,7 @@ op_by_pieces_d::op_by_pieces_d (unsigned int max_pieces, rtx to,
     {
       /* Find the mode of the largest comparison.  */
       fixed_size_mode mode
-	= widest_fixed_size_mode_for_size (m_max_size,
-					   m_qi_vector_mode);
+	= ::widest_fixed_size_mode_for_size (m_max_size, COMPARE_BY_PIECES);
 
       m_from.decide_autoinc (mode, m_reverse, len);
       m_to.decide_autoinc (mode, m_reverse, len);
@@ -1401,7 +1410,7 @@ op_by_pieces_d::get_usable_mode (fixed_size_mode mode, unsigned int len)
       if (len >= size && prepare_mode (mode, m_align))
 	break;
       /* widest_fixed_size_mode_for_size checks SIZE > 1.  */
-      mode = widest_fixed_size_mode_for_size (size, m_qi_vector_mode);
+      mode = widest_fixed_size_mode_for_size (size);
     }
   while (1);
   return mode;
@@ -1427,8 +1436,7 @@ op_by_pieces_d::smallest_fixed_size_mode_for_size (unsigned int size)
 	      break;
 
 	    if (GET_MODE_SIZE (candidate) >= size
-		&& (optab_handler (vec_duplicate_optab, candidate)
-		    != CODE_FOR_nothing))
+		&& optab_checking (candidate))
 	      return candidate;
 	  }
     }
@@ -1451,7 +1459,7 @@ op_by_pieces_d::run ()
 
   /* widest_fixed_size_mode_for_size checks M_MAX_SIZE > 1.  */
   fixed_size_mode mode
-    = widest_fixed_size_mode_for_size (m_max_size, m_qi_vector_mode);
+    = widest_fixed_size_mode_for_size (m_max_size);
   mode = get_usable_mode (mode, length);
 
   by_pieces_prev to_prev = { nullptr, mode };
@@ -1516,8 +1524,7 @@ op_by_pieces_d::run ()
       else
 	{
 	  /* widest_fixed_size_mode_for_size checks SIZE > 1.  */
-	  mode = widest_fixed_size_mode_for_size (size,
-						  m_qi_vector_mode);
+	  mode = widest_fixed_size_mode_for_size (size);
 	  mode = get_usable_mode (mode, length);
 	}
     }
@@ -1538,6 +1545,8 @@ class move_by_pieces_d : public op_by_pieces_d
   insn_gen_fn m_gen_fun;
   void generate (rtx, rtx, machine_mode) final override;
   bool prepare_mode (machine_mode, unsigned int) final override;
+  fixed_size_mode widest_fixed_size_mode_for_size (unsigned int)
+    final override;
 
  public:
   move_by_pieces_d (rtx to, rtx from, unsigned HOST_WIDE_INT len,
@@ -1626,14 +1635,24 @@ move_by_pieces (rtx to, rtx from, unsigned HOST_WIDE_INT len,
     return to;
 }
 
+fixed_size_mode
+move_by_pieces_d::widest_fixed_size_mode_for_size (unsigned int size)
+{
+  return ::widest_fixed_size_mode_for_size (size, MOVE_BY_PIECES);
+}
+
 /* Derived class from op_by_pieces_d, providing support for block move
    operations.  */
 
 class store_by_pieces_d : public op_by_pieces_d
 {
   insn_gen_fn m_gen_fun;
+
   void generate (rtx, rtx, machine_mode) final override;
   bool prepare_mode (machine_mode, unsigned int) final override;
+  fixed_size_mode widest_fixed_size_mode_for_size (unsigned int)
+    final override;
+  bool optab_checking (fixed_size_mode) final override;
 
  public:
   store_by_pieces_d (rtx to, by_pieces_constfn cfn, void *cfn_data,
@@ -1670,6 +1689,18 @@ store_by_pieces_d::generate (rtx op0, rtx op1, machine_mode)
   emit_insn (m_gen_fun (op0, op1));
 }
 
+bool
+store_by_pieces_d::optab_checking (fixed_size_mode mode)
+{
+  /* optab checking for memset.  */
+  if (m_qi_vector_mode
+      && optab_handler (vec_duplicate_optab, mode) != CODE_FOR_nothing)
+     return true;
+   else
+     return false;
+}
+
+
 /* Perform the final adjustment at the end of a string to obtain the
    correct return value for the block operation.
    Return value is based on RETMODE argument.  */
@@ -1684,6 +1715,13 @@ store_by_pieces_d::finish_retmode (memop_ret retmode)
       --m_offset;
     }
   return m_to.adjust (QImode, m_offset);
+}
+
+fixed_size_mode
+store_by_pieces_d::widest_fixed_size_mode_for_size (unsigned int size)
+{
+  return ::widest_fixed_size_mode_for_size (size,
+	     m_qi_vector_mode ? SET_BY_PIECES : STORE_BY_PIECES);
 }
 
 /* Determine whether the LEN bytes generated by CONSTFUN can be
@@ -1730,7 +1768,8 @@ can_store_by_pieces (unsigned HOST_WIDE_INT len,
       while (max_size > 1 && l > 0)
 	{
 	  fixed_size_mode mode
-	    = widest_fixed_size_mode_for_size (max_size, memsetp);
+	    = widest_fixed_size_mode_for_size (max_size,
+		memsetp ? SET_BY_PIECES : STORE_BY_PIECES);
 
 	  icode = optab_handler (mov_optab, mode);
 	  if (icode != CODE_FOR_nothing
@@ -1832,12 +1871,16 @@ class compare_by_pieces_d : public op_by_pieces_d
   void generate (rtx, rtx, machine_mode) final override;
   bool prepare_mode (machine_mode, unsigned int) final override;
   void finish_mode (machine_mode) final override;
+  fixed_size_mode widest_fixed_size_mode_for_size (unsigned int)
+    final override;
+  bool optab_checking (fixed_size_mode) final override;
+
  public:
   compare_by_pieces_d (rtx op0, rtx op1, by_pieces_constfn op1_cfn,
 		       void *op1_cfn_data, HOST_WIDE_INT len, int align,
 		       rtx_code_label *fail_label)
     : op_by_pieces_d (COMPARE_MAX_PIECES, op0, true, op1, true, op1_cfn,
-		      op1_cfn_data, len, align, false)
+		      op1_cfn_data, len, align, false, true)
   {
     m_fail_label = fail_label;
   }
@@ -1943,6 +1986,23 @@ compare_by_pieces (rtx arg0, rtx arg1, unsigned HOST_WIDE_INT len,
 
   return target;
 }
+
+fixed_size_mode
+compare_by_pieces_d::widest_fixed_size_mode_for_size (unsigned int size)
+{
+  return ::widest_fixed_size_mode_for_size (size, COMPARE_BY_PIECES);
+}
+
+bool
+compare_by_pieces_d::optab_checking (fixed_size_mode mode)
+{
+  if (optab_handler (mov_optab, mode) != CODE_FOR_nothing
+      && can_compare_p (EQ, mode, ccp_jump))
+    return true;
+  else
+    return false;
+}
+
 
 /* Emit code to move a block Y to a block X.  This may be done with
    string-move instructions, with multiple scalar move instructions,
