@@ -7995,6 +7995,28 @@ grokdeclarator (const struct c_declarator *declarator,
 		TREE_THIS_VOLATILE (decl) = 1;
 	      }
 	  }
+
+	/* C99 6.2.2p7: It is invalid (compile-time undefined
+	   behavior) to create an 'extern' declaration for a
+	   function if there is a global declaration that is
+	   'static' and the global declaration is not visible.
+	   (If the static declaration _is_ currently visible,
+	   the 'extern' declaration is taken to refer to that decl.) */
+	if (!initialized
+	    && storage_class != csc_static
+	    && storage_class != csc_auto
+	    && current_scope != file_scope)
+	  {
+	    tree global_decl  = identifier_global_value (declarator->u.id.id);
+	    tree visible_decl = lookup_name (declarator->u.id.id);
+
+	    if (global_decl
+		&& global_decl != visible_decl
+		&& VAR_OR_FUNCTION_DECL_P (global_decl)
+		&& !TREE_PUBLIC (global_decl))
+	      error_at (loc, "function previously declared %<static%> "
+			"redeclared %<extern%>");
+	  }
       }
     else
       {
