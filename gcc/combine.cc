@@ -8449,6 +8449,9 @@ make_compound_operation (rtx x, enum rtx_code in_code)
 					    new_rtx, GET_MODE (XEXP (x, 0)));
       if (tem)
 	return tem;
+      /* Avoid creating a ZERO_EXTEND of a ZERO_EXTEND.  */
+      if (GET_CODE (new_rtx) == ZERO_EXTEND)
+	new_rtx = XEXP (new_rtx, 0);
       SUBST (XEXP (x, 0), new_rtx);
       return x;
     }
