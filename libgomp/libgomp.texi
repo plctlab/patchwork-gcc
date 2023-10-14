@@ -3785,13 +3785,11 @@ The variables @env{ACC_DEVICE_TYPE} and @env{ACC_DEVICE_NUM}
 are defined by section 4 of the OpenACC specification in version 2.0.
 The variable @env{ACC_PROFLIB}
 is defined by section 4 of the OpenACC specification in version 2.6.
-The variable @env{GCC_ACC_NOTIFY} is used for diagnostic purposes.
 
 @menu
 * ACC_DEVICE_TYPE::
 * ACC_DEVICE_NUM::
 * ACC_PROFLIB::
-* GCC_ACC_NOTIFY::
 @end menu
 
 
@@ -3799,6 +3797,17 @@ The variable @env{GCC_ACC_NOTIFY} is used for diagnostic purposes.
 @node ACC_DEVICE_TYPE
 @section @code{ACC_DEVICE_TYPE}
 @table @asis
+@item @emph{Description}:
+Control the default device type to use when executing compute regions.
+If unset, the code can be run on any device type, favoring a non-host
+device type.
+
+Supported value in GCC (if compiled in) are
+@itemize
+@item @code{host}
+@item @code{nvidia}
+@item @code{radeon}
+@end itemize
 @item @emph{Reference}:
 @uref{https://www.openacc.org, OpenACC specification v2.6}, section
 4.1.
@@ -3809,6 +3818,10 @@ The variable @env{GCC_ACC_NOTIFY} is used for diagnostic purposes.
 @node ACC_DEVICE_NUM
 @section @code{ACC_DEVICE_NUM}
 @table @asis
+@item @emph{Description}:
+Control which device, identified by device number, is the default device.
+The number must be a nonnegative integer number less that the number of
+devices.  If unset, device number zero is used.
 @item @emph{Reference}:
 @uref{https://www.openacc.org, OpenACC specification v2.6}, section
 4.2.
@@ -3819,21 +3832,17 @@ The variable @env{GCC_ACC_NOTIFY} is used for diagnostic purposes.
 @node ACC_PROFLIB
 @section @code{ACC_PROFLIB}
 @table @asis
+@item @emph{Description}:
+Semicolon separated list of dynamic libraries to be loaded as profiling library.
+The library file is found as described by the documentation of @code{dlopen} of
+your operating system.  Each library must implement at least the routine
+@code{acc_register_library} routine.
 @item @emph{See also}:
 @ref{acc_register_library}, @ref{OpenACC Profiling Interface}
 
 @item @emph{Reference}:
 @uref{https://www.openacc.org, OpenACC specification v2.6}, section
 4.3.
-@end table
-
-
-
-@node GCC_ACC_NOTIFY
-@section @code{GCC_ACC_NOTIFY}
-@table @asis
-@item @emph{Description}:
-Print debug information pertaining to the accelerator.
 @end table
 
 
