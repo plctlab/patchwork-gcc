@@ -136,14 +136,21 @@ changed to GNU Offloading and Multi Processing Runtime Library.
 @node Enabling OpenMP
 @chapter Enabling OpenMP
 
-To activate the OpenMP extensions for C/C++ and Fortran, the compile-time 
-flag @command{-fopenmp} must be specified.  This enables the OpenMP directive
-@code{#pragma omp} in C/C++ and @code{!$omp} directives in free form, 
-@code{c$omp}, @code{*$omp} and @code{!$omp} directives in fixed form, 
-@code{!$} conditional compilation sentinels in free form and @code{c$},
-@code{*$} and @code{!$} sentinels in fixed form, for Fortran.  The flag also
-arranges for automatic linking of the OpenMP runtime library 
+To activate the OpenMP extensions for C/C++ and Fortran, the compile-time
+flag @command{-fopenmp} must be specified.  For C and C++, this enables
+the handling of the OpenMP directives using @code{#pragma omp} and the
+@code{[[omp::directive(...)]]}, @code{[[omp::sequence(...)]]} and
+@code{[[omp::decl(...)]]} attributes.  For Fortran, it enables for
+free source form the @code{!$omp} sentinel for directives and the
+@code{!$} conditional compilation sentinel and for fixed source form the
+@code{c$omp}, @code{*$omp} and @code{!$omp} sentinels for directives and
+the @code{c$}, @code{*$} and @code{!$} conditional compilation sentinels.
+The flag also arranges for automatic linking of the OpenMP runtime library
 (@ref{Runtime Library Routines}).
+
+The @command{-fopenmp-simd} flag can be used to enable a subset of
+OpenMP directives, which do not require the linking of neither the
+OpenMP runtime library nor the POSIX threads library.
 
 A complete description of all OpenMP directives may be found in the
 @uref{https://www.openmp.org, OpenMP Application Program Interface} manuals.
