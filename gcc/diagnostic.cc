@@ -222,7 +222,7 @@ diagnostic_initialize (diagnostic_context *context, int n_opts)
   context->min_margin_width = 0;
   context->show_ruler_p = false;
   context->report_bug = false;
-
+  context->extra_output_kind = EXTRA_DIAGNOSTIC_OUTPUT_none;
   if (const char *var = getenv ("GCC_EXTRA_DIAGNOSTIC_OUTPUT"))
     {
       if (!strcmp (var, "fixits-v1"))
