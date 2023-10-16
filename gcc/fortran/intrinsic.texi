@@ -13168,10 +13168,10 @@ end program test_sign
 @table @asis
 @item @emph{Description}:
 @code{SIGNAL(NUMBER, HANDLER [, STATUS])} causes external subroutine
-@var{HANDLER} to be executed with a single integer argument when signal
-@var{NUMBER} occurs.  If @var{HANDLER} is an integer, it can be used to
-turn off handling of signal @var{NUMBER} or revert to its default
-action.  See @code{signal(2)}.
+@var{HANDLER} to be executed with a single integer argument passed by
+value when signal @var{NUMBER} occurs.  If @var{HANDLER} is an integer,
+it can be used to turn off handling of signal @var{NUMBER} or revert to
+its default action.  See @code{signal(2)}.
 
 If @code{SIGNAL} is called as a subroutine and the @var{STATUS} argument
 is supplied, it is set to the value returned by @code{signal(2)}.
