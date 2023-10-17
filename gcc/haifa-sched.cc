@@ -4249,6 +4249,17 @@ remove_notes (rtx_insn *head, rtx_insn *tail)
 		  && NOTE_KIND (next) == NOTE_INSN_BASIC_BLOCK
 		  && next != next_tail)
 		next = NEXT_INSN (next);
+
+	      /* Skip over any NOTE_INSN_DELETED at the start of the epilogue.
+	       */
+	      while (NOTE_P (next)
+		     && NOTE_KIND (next) == NOTE_INSN_DELETED)
+		{
+		  auto tmp = NEXT_INSN (next);
+		  delete_insn (next);
+		  next = tmp;
+		}
+
 	      gcc_assert (INSN_P (next));
 	      add_reg_note (next, REG_SAVE_NOTE,
 			    GEN_INT (NOTE_INSN_EPILOGUE_BEG));
