@@ -175,6 +175,9 @@ nearest_common_dominator_of_uses (def_operand_p def_p, bool *debug_stmts)
    tree, return the best basic block between them (inclusive) to place
    statements.
 
+   The best basic block should be an immediate dominator of
+   best basic block if we've moved to same loop nest.
+
    We want the most control dependent block in the shallowest loop nest.
 
    If the resulting block is in a shallower loop nest, then use it.  Else
@@ -203,11 +206,16 @@ select_best_block (basic_block early_bb,
       if (bb_loop_depth (temp_bb) < bb_loop_depth (best_bb))
 	best_bb = temp_bb;
 
+      /* If we've moved into same loop nest, then that becomes
+	 our best block.  */
+      if (!gimple_vuse (stmt)
+	  && bb_loop_depth (temp_bb) == bb_loop_depth (best_bb))
+	 best_bb = temp_bb;
+
       /* Walk up the dominator tree, hopefully we'll find a shallower
  	 loop nest.  */
       temp_bb = get_immediate_dominator (CDI_DOMINATORS, temp_bb);
     }
-
   /* Placing a statement before a setjmp-like function would be invalid
      (it cannot be reevaluated when execution follows an abnormal edge).
      If we selected a block with abnormal predecessors, just punt.  */
@@ -456,6 +464,7 @@ statement_sink_location (gimple *stmt, basic_block frombb,
 	    continue;
 	  break;
 	}
+
       use = USE_STMT (one_use);
 
       if (gimple_code (use) != GIMPLE_PHI)
@@ -465,10 +474,7 @@ statement_sink_location (gimple *stmt, basic_block frombb,
 	  if (sinkbb == frombb)
 	    return false;
 
-	  if (sinkbb == gimple_bb (use))
-	    *togsi = gsi_for_stmt (use);
-	  else
-	    *togsi = gsi_after_labels (sinkbb);
+	  *togsi = gsi_after_labels (sinkbb);
 
 	  return true;
 	}
