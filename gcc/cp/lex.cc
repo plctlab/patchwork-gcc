@@ -35,6 +35,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "langhooks.h"
 
 static int interface_strcmp (const char *);
+static void init_cp_traits (void);
 static void init_cp_pragma (void);
 
 static tree parse_strconst_pragma (const char *, int);
@@ -283,6 +284,25 @@ init_reswords (void)
     }
 }
 
+/* Initialize the C++ traits.  */
+static void
+init_cp_traits (void)
+{
+  tree id;
+
+  for (unsigned int i = 0; i < num_cp_traits; ++i)
+    {
+      id = get_identifier (cp_traits[i].name);
+      IDENTIFIER_CP_INDEX (id) = cp_traits[i].kind;
+      set_identifier_kind (id, cik_trait);
+    }
+
+  /* An alias for __is_same.  */
+  id = get_identifier ("__is_same_as");
+  IDENTIFIER_CP_INDEX (id) = CPTK_IS_SAME;
+  set_identifier_kind (id, cik_trait);
+}
+
 static void
 init_cp_pragma (void)
 {
@@ -324,6 +344,7 @@ cxx_init (void)
   input_location = BUILTINS_LOCATION;
 
   init_reswords ();
+  init_cp_traits ();
   init_tree ();
   init_cp_semantics ();
   init_operators ();
