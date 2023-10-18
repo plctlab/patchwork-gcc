@@ -66,10 +66,6 @@ create_dispatcher_calls (struct cgraph_node *node)
 {
   ipa_ref *ref;
 
-  if (!DECL_FUNCTION_VERSIONED (node->decl)
-      || !is_function_default_version (node->decl))
-    return;
-
   if (!targetm.has_ifunc_p ())
     {
       error_at (DECL_SOURCE_LOCATION (node->decl),
@@ -377,6 +373,7 @@ expand_target_clones (struct cgraph_node *node, bool definition)
       return false;
     }
 
+  const char *new_attr_name = targetm.target_option.expanded_clones_attribute;
   cgraph_function_version_info *decl1_v = NULL;
   cgraph_function_version_info *decl2_v = NULL;
   cgraph_function_version_info *before = NULL;
@@ -392,7 +389,7 @@ expand_target_clones (struct cgraph_node *node, bool definition)
       char *attr = attrs[i];
 
       /* Create new target clone.  */
-      tree attributes = make_attribute ("target", attr,
+      tree attributes = make_attribute (new_attr_name, attr,
 					DECL_ATTRIBUTES (node->decl));
 
       char *suffix = XNEWVEC (char, strlen (attr) + 1);
@@ -430,7 +427,7 @@ expand_target_clones (struct cgraph_node *node, bool definition)
   XDELETEVEC (attr_str);
 
   /* Setting new attribute to initial function.  */
-  tree attributes = make_attribute ("target", "default",
+  tree attributes = make_attribute (new_attr_name, "default",
 				    DECL_ATTRIBUTES (node->decl));
   DECL_ATTRIBUTES (node->decl) = attributes;
   node->local = false;
