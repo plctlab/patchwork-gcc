@@ -1233,8 +1233,9 @@ make_dispatcher_decl (const tree decl)
   return func_decl;  
 }
 
-/* Returns true if decl is multi-versioned and DECL is the default function,
-   that is it is not tagged with target specific optimization.  */
+/* Returns true if DECL is multi-versioned using the target attribute, and this
+   is the default version.  This function can only be used for targets that do
+   not support the "target_version" attribute.  */
 
 bool
 is_function_default_version (const tree decl)
