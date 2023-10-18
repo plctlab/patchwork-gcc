@@ -657,7 +657,8 @@ decl_attributes (tree *node, tree attributes, int flags,
      options to the attribute((target(...))) list.  */
   if (TREE_CODE (*node) == FUNCTION_DECL
       && current_target_pragma
-      && targetm.target_option.valid_attribute_p (*node, NULL_TREE,
+      && targetm.target_option.valid_attribute_p (*node,
+						  get_identifier("target"),
 						  current_target_pragma, 0))
     {
       tree cur_attr = lookup_attribute ("target", attributes);

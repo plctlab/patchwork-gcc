@@ -19115,11 +19115,70 @@ aarch64_process_target_attr (tree args)
   return true;
 }
 
+/* Parse the tree in ARGS that contains the targeti_version attribute
+   information and update the global target options space.  */
+
+bool
+aarch64_process_target_version_attr (tree args)
+{
+  if (TREE_CODE (args) == TREE_LIST)
+    {
+      if (TREE_CHAIN (args))
+	{
+	  error ("attribute %<target_version%> has multiple values");
+	  return false;
+	}
+      args = TREE_VALUE (args);
+    }
+
+  if (!args || TREE_CODE (args) != STRING_CST)
+    {
+      error ("attribute %<target_version%> argument not a string");
+      return false;
+    }
+
+  const char *str = TREE_STRING_POINTER (args);
+  if (strcmp (str, "default") == 0)
+    return true;
+
+  auto with_plus = std::string ("+") + str;
+  enum aarch_parse_opt_result parse_res;
+  auto isa_flags = aarch64_asm_isa_flags;
+
+  std::string invalid_extension;
+  parse_res = aarch64_parse_extension (with_plus.c_str(), &isa_flags,
+				       &invalid_extension);
+
+  if (parse_res == AARCH_PARSE_OK)
+    {
+      aarch64_set_asm_isa_flags (isa_flags);
+      return true;
+    }
+
+  switch (parse_res)
+    {
+      case AARCH_PARSE_MISSING_ARG:
+	error ("missing value in %<target_version%> attribute");
+	break;
+
+      case AARCH_PARSE_INVALID_FEATURE:
+	error ("invalid feature modifier %qs of value %qs in "
+	       "%<target_version%> attribute", invalid_extension.c_str (),
+	       with_plus.c_str());
+	break;
+
+      default:
+	gcc_unreachable ();
+    }
+
+  return false;
+}
+
 /* Implement TARGET_OPTION_VALID_ATTRIBUTE_P.  This is used to
    process attribute ((target ("..."))).  */
 
 static bool
-aarch64_option_valid_attribute_p (tree fndecl, tree, tree args, int)
+aarch64_option_valid_attribute_p (tree fndecl, tree name, tree args, int)
 {
   struct cl_target_option cur_target;
   bool ret;
@@ -19127,13 +19186,22 @@ aarch64_option_valid_attribute_p (tree fndecl, tree, tree args, int)
   tree new_target, new_optimize;
   tree existing_target = DECL_FUNCTION_SPECIFIC_TARGET (fndecl);
 
+  bool target_version_p;
+  const char *attr_name = IDENTIFIER_POINTER (name);
+  if (strcmp (attr_name, "target") == 0)
+    target_version_p = false;
+  else if (strcmp (attr_name, "target_version") == 0)
+    target_version_p = true;
+  else
+    gcc_assert (false);
+
   /* If what we're processing is the current pragma string then the
      target option node is already stored in target_option_current_node
      by aarch64_pragma_target_parse in aarch64-c.cc.  Use that to avoid
      having to re-parse the string.  This is especially useful to keep
      arm_neon.h compile times down since that header contains a lot
      of intrinsics enclosed in pragmas.  */
-  if (!existing_target && args == current_target_pragma)
+  if (!target_version_p && !existing_target && args == current_target_pragma)
     {
       DECL_FUNCTION_SPECIFIC_TARGET (fndecl) = target_option_current_node;
       return true;
@@ -19169,7 +19237,25 @@ aarch64_option_valid_attribute_p (tree fndecl, tree, tree args, int)
     cl_target_option_restore (&global_options, &global_options_set,
 			      TREE_TARGET_OPTION (target_option_current_node));
 
-  ret = aarch64_process_target_attr (args);
+  if (!target_version_p)
+    {
+      ret = aarch64_process_target_attr (args);
+      if (ret)
+	{
+	  tree version_attr = lookup_attribute ("target_version",
+						DECL_ATTRIBUTES (fndecl));
+	  if (version_attr != NULL_TREE)
+	    {
+	      /* Reapply any target_version attribute after target attribute.
+		 This should be equivalent to applying the target_version once
+		 after processing all target attributes.  */
+	      tree version_args = TREE_VALUE (version_attr);
+	      ret = aarch64_process_target_version_attr (version_args);
+	    }
+	}
+    }
+  else
+    ret = aarch64_process_target_version_attr (args);
 
   /* Set up any additional state.  */
   if (ret)
@@ -19199,6 +19285,730 @@ aarch64_option_valid_attribute_p (tree fndecl, tree, tree args, int)
 			     TREE_OPTIMIZATION (old_optimize));
   return ret;
 }
+
+/* This enum needs to match the enum used in libgcc cpuinfo.c.  */
+//TODO: Does this clash with or overlap an existing list of target features?
+enum CPUFeatures {
+  FEAT_RNG,
+  FEAT_FLAGM,
+  FEAT_FLAGM2,
+  FEAT_FP16FML,
+  FEAT_DOTPROD,
+  FEAT_SM4,
+  FEAT_RDM,
+  FEAT_LSE,
+  FEAT_FP,
+  FEAT_SIMD,
+  FEAT_CRC,
+  FEAT_SHA1,
+  FEAT_SHA2,
+  FEAT_SHA3,
+  FEAT_AES,
+  FEAT_PMULL,
+  FEAT_FP16,
+  FEAT_DIT,
+  FEAT_DPB,
+  FEAT_DPB2,
+  FEAT_JSCVT,
+  FEAT_FCMA,
+  FEAT_RCPC,
+  FEAT_RCPC2,
+  FEAT_FRINTTS,
+  FEAT_DGH,
+  FEAT_I8MM,
+  FEAT_BF16,
+  FEAT_EBF16,
+  FEAT_RPRES,
+  FEAT_SVE,
+  FEAT_SVE_BF16,
+  FEAT_SVE_EBF16,
+  FEAT_SVE_I8MM,
+  FEAT_SVE_F32MM,
+  FEAT_SVE_F64MM,
+  FEAT_SVE2,
+  FEAT_SVE_AES,
+  FEAT_SVE_PMULL128,
+  FEAT_SVE_BITPERM,
+  FEAT_SVE_SHA3,
+  FEAT_SVE_SM4,
+  FEAT_SME,
+  FEAT_MEMTAG,
+  FEAT_MEMTAG2,
+  FEAT_MEMTAG3,
+  FEAT_SB,
+  FEAT_PREDRES,
+  FEAT_SSBS,
+  FEAT_SSBS2,
+  FEAT_BTI,
+  FEAT_LS64,
+  FEAT_LS64_V,
+  FEAT_LS64_ACCDATA,
+  FEAT_WFXT,
+  FEAT_SME_F64,
+  FEAT_SME_I64,
+  FEAT_SME2,
+  FEAT_RCPC3, //TODO: Check this index - needs to agree with LLVM.
+  FEAT_MAX
+};
+
+typedef struct
+{
+  const char *name;
+  int priority;
+  unsigned long long feature_mask;
+} aarch64_fmv_feature_datum;
+
+/* List these in priority order, to make it easier to sort target strings.  */
+static aarch64_fmv_feature_datum aarch64_fmv_feature_data[] = {
+  {"default",        0, 0ULL},
+  {"rng",            10, 1ULL << FEAT_RNG},
+  {"flagm",          20, 1ULL << FEAT_FLAGM},
+  {"flagm2",         30, 1ULL << FEAT_FLAGM2},
+  {"fp16fml",        40, 1ULL << FEAT_FP16FML},
+  {"dotprod",        50, 1ULL << FEAT_DOTPROD},
+  {"sm4",            60, 1ULL << FEAT_SM4},
+  {"rdm",            70, 1ULL << FEAT_RDM},
+  {"lse",            80, 1ULL << FEAT_LSE},
+  {"fp",             90, 1ULL << FEAT_FP},
+  {"simd",          100, 1ULL << FEAT_SIMD},
+  {"crc",           110, 1ULL << FEAT_CRC},
+  {"sha1",          120, 1ULL << FEAT_SHA1},
+  {"sha2",          130, 1ULL << FEAT_SHA2},
+  {"sha3",          140, 1ULL << FEAT_SHA3},
+  {"aes",           150, 1ULL << FEAT_AES},
+  {"pmull",         160, 1ULL << FEAT_PMULL},
+  {"fp16",          170, 1ULL << FEAT_FP16},
+  {"dit",           180, 1ULL << FEAT_DIT},
+  {"dpb",           190, 1ULL << FEAT_DPB},
+  {"dpb2",          200, 1ULL << FEAT_DPB2},
+  {"jscvt",         210, 1ULL << FEAT_JSCVT},
+  {"fcma",          220, 1ULL << FEAT_FCMA},
+  {"rcpc",          230, 1ULL << FEAT_RCPC},
+  {"rcpc2",         240, 1ULL << FEAT_RCPC2},
+  {"rcpc3",         241, 1ULL << FEAT_RCPC3},
+  {"frintts",       250, 1ULL << FEAT_FRINTTS},
+  {"dgh",           260, 1ULL << FEAT_DGH},
+  {"i8mm",          270, 1ULL << FEAT_I8MM},
+  {"bf16",          280, 1ULL << FEAT_BF16},
+  {"ebf16",         290, 1ULL << FEAT_EBF16},
+  {"rpres",         300, 1ULL << FEAT_RPRES},
+  {"sve",           310, 1ULL << FEAT_SVE},
+  {"sve-bf16",      320, 1ULL << FEAT_SVE_BF16},
+  {"sve-ebf16",     330, 1ULL << FEAT_SVE_EBF16},
+  {"sve-i8mm",      340, 1ULL << FEAT_SVE_I8MM},
+  {"f32mm",         350, 1ULL << FEAT_SVE_F32MM},
+  {"f64mm",         360, 1ULL << FEAT_SVE_F64MM},
+  {"sve2",          370, 1ULL << FEAT_SVE2},
+  {"sve2-aes",      380, 1ULL << FEAT_SVE_AES},
+  {"sve2-pmull128", 390, 1ULL << FEAT_SVE_PMULL128},
+  {"sve2-bitperm",  400, 1ULL << FEAT_SVE_BITPERM},
+  {"sve2-sha3",     410, 1ULL << FEAT_SVE_SHA3},
+  {"sve2-sm4",      420, 1ULL << FEAT_SVE_SM4},
+  {"sme",           430, 1ULL << FEAT_SME},
+  {"memtag",        440, 1ULL << FEAT_MEMTAG},
+  {"memtag2",       450, 1ULL << FEAT_MEMTAG2},
+  {"memtag3",       460, 1ULL << FEAT_MEMTAG3},
+  {"sb",            470, 1ULL << FEAT_SB},
+  {"predres",       480, 1ULL << FEAT_PREDRES},
+  {"ssbs",          490, 1ULL << FEAT_SSBS},
+  {"ssbs2",         500, 1ULL << FEAT_SSBS2},
+  {"bti",           510, 1ULL << FEAT_BTI},
+  {"ls64",          520, 1ULL << FEAT_LS64},
+  {"ls64_v",        530, 1ULL << FEAT_LS64_V},
+  {"ls64_accdata",  540, 1ULL << FEAT_LS64_ACCDATA},
+  {"wfxt",          550, 1ULL << FEAT_WFXT},
+  {"sme-f64f64",    560, 1ULL << FEAT_SME_F64},
+  {"sme-i16i64",    570, 1ULL << FEAT_SME_I64},
+  {"sme2",          580, 1ULL << FEAT_SME2}
+};
+
+/* Look up a single feature name, and return the bitmask.  */
+unsigned long long
+get_feature_bit (char *name)
+{
+  /* Skip default entry here.  */
+  for (int i = 1; i < FEAT_MAX; i++)
+      if (strcmp(aarch64_fmv_feature_data[i].name, name) == 0)
+	return aarch64_fmv_feature_data[i].feature_mask;
+  return 0;
+}
+
+/* This parses the attribute arguments to target_version in DECL and the
+   feature mask required to select those targets.  No adjustments are made to
+   add or remove redundant feature requirements.  */
+
+unsigned long long
+get_feature_mask_for_version (tree decl)
+{
+  tree version_attr = lookup_attribute ("target_version", DECL_ATTRIBUTES (decl));
+  if (version_attr == NULL)
+    return 0;
+
+  const char *version_string = TREE_STRING_POINTER (TREE_VALUE (TREE_VALUE
+						    (version_attr)));
+  if (strcmp (version_string, "default") == 0
+      || strcmp (version_string, "") == 0)
+    return 0;
+
+  int attr_len = strlen (version_string);
+
+  char *feature_string = XNEWVEC (char, attr_len+ 1);
+  strcpy (feature_string, version_string);
+
+  int count = 1;
+  for (int i = 0; i < attr_len; i++)
+    {
+      if (feature_string[i] == '+')
+	{
+	  feature_string[i] = '\0';
+	  count++;
+	}
+    }
+
+  unsigned long long feature_mask = 0ULL;
+  char *cur_feature = feature_string;
+  for (int i = 0; i < count; i++)
+    {
+      unsigned long long feature_bit = get_feature_bit (cur_feature);
+      if (feature_bit == 0)
+	{
+	  /* TODO: For target_clones, we should just ignore this version
+	     instead.  */
+	  error_at (DECL_SOURCE_LOCATION (decl), 0,
+		      "Unrecognised feature %s in function version string",
+		      cur_feature);
+	  feature_mask = -1ULL;
+	}
+      feature_mask |= feature_bit;
+      cur_feature += strlen(cur_feature) + 1;
+    }
+  XDELETEVEC (feature_string);
+  return feature_mask;
+}
+
+/* Compare priorities of two feature masks. Return:
+     1: mask1 is higher priority
+    -1: mask2 is higher priority
+     0: masks are equal.  */
+
+int
+compare_feature_masks (unsigned long long mask1, unsigned long long mask2)
+{
+  int pop1 = __builtin_popcountll(mask1);
+  int pop2 = __builtin_popcountll(mask2);
+  if (pop1 > pop2)
+    return 1;
+  if (pop2 > pop1)
+    return -1;
+
+  unsigned long long diff_mask = mask1 ^ mask2;
+  if (diff_mask == 0ULL)
+    return 0;
+  for (int i = FEAT_MAX - 1; i > 0; i--)
+    {
+      unsigned long long bit_mask = aarch64_fmv_feature_data[i].feature_mask;
+      if (diff_mask & bit_mask)
+	return (mask1 & bit_mask) ? 1 : -1;
+    }
+  gcc_unreachable();
+}
+
+int
+aarch64_compare_version_priority (tree decl1, tree decl2)
+{
+  unsigned long long mask1 = get_feature_mask_for_version (decl1);
+  unsigned long long mask2 = get_feature_mask_for_version (decl2);
+
+  return compare_feature_masks (mask1, mask2);
+}
+
+/* Make the resolver function decl to dispatch the versions of
+   a multi-versioned function,  DEFAULT_DECL.  IFUNC_ALIAS_DECL is
+   ifunc alias that will point to the created resolver.  Create an
+   empty basic block in the resolver and store the pointer in
+   EMPTY_BB.  Return the decl of the resolver function.  */
+
+static tree
+make_resolver_func (const tree default_decl,
+		    const tree ifunc_alias_decl,
+		    basic_block *empty_bb)
+{
+  tree decl, type, t;
+
+  /* Create resolver function name based on default_decl.  */
+  tree decl_name = clone_function_name (default_decl, "resolver");
+  const char *resolver_name = IDENTIFIER_POINTER (decl_name);
+
+  /* The resolver function should return a (void *). */
+  type = build_function_type_list (ptr_type_node, NULL_TREE);
+
+  decl = build_fn_decl (resolver_name, type);
+  SET_DECL_ASSEMBLER_NAME (decl, decl_name);
+
+  DECL_NAME (decl) = decl_name;
+  TREE_USED (decl) = 1;
+  DECL_ARTIFICIAL (decl) = 1;
+  DECL_IGNORED_P (decl) = 1;
+  TREE_PUBLIC (decl) = 0;
+  DECL_UNINLINABLE (decl) = 1;
+
+  /* Resolver is not external, body is generated.  */
+  DECL_EXTERNAL (decl) = 0;
+  DECL_EXTERNAL (ifunc_alias_decl) = 0;
+
+  DECL_CONTEXT (decl) = NULL_TREE;
+  DECL_INITIAL (decl) = make_node (BLOCK);
+  DECL_STATIC_CONSTRUCTOR (decl) = 0;
+
+  if (DECL_COMDAT_GROUP (default_decl)
+      || TREE_PUBLIC (default_decl))
+    {
+      /* In this case, each translation unit with a call to this
+	 versioned function will put out a resolver.  Ensure it
+	 is comdat to keep just one copy.  */
+      DECL_COMDAT (decl) = 1;
+      make_decl_one_only (decl, DECL_ASSEMBLER_NAME (decl));
+    }
+  else
+    TREE_PUBLIC (ifunc_alias_decl) = 0;
+
+  /* Build result decl and add to function_decl. */
+  t = build_decl (UNKNOWN_LOCATION, RESULT_DECL, NULL_TREE, ptr_type_node);
+  DECL_CONTEXT (t) = decl;
+  DECL_ARTIFICIAL (t) = 1;
+  DECL_IGNORED_P (t) = 1;
+  DECL_RESULT (decl) = t;
+
+  gimplify_function_tree (decl);
+  push_cfun (DECL_STRUCT_FUNCTION (decl));
+  *empty_bb = init_lowered_empty_function (decl, false,
+					   profile_count::uninitialized ());
+
+  cgraph_node::add_new_function (decl, true);
+  symtab->call_cgraph_insertion_hooks (cgraph_node::get_create (decl));
+
+  pop_cfun ();
+
+  gcc_assert (ifunc_alias_decl != NULL);
+  /* Mark ifunc_alias_decl as "ifunc" with resolver as resolver_name.  */
+  DECL_ATTRIBUTES (ifunc_alias_decl)
+    = make_attribute ("ifunc", resolver_name,
+		      DECL_ATTRIBUTES (ifunc_alias_decl));
+
+  /* Create the alias for dispatch to resolver here.  */
+  cgraph_node::create_same_body_alias (ifunc_alias_decl, decl);
+  return decl;
+}
+
+/* This adds a condition to the basic_block NEW_BB in function FUNCTION_DECL
+   to return a pointer to VERSION_DECL if all feature bits specified in
+   FEATURE_MASK are not set in MASK_VAR.  This function will be called during
+   version dispatch to decide which function version to execute.  It returns
+   the basic block at the end, to which more conditions can be added.  */
+static basic_block
+add_condition_to_bb (tree function_decl, tree version_decl,
+		     unsigned long long feature_mask,
+		     tree mask_var, basic_block new_bb)
+{
+  gimple *return_stmt;
+  tree convert_expr, result_var;
+  gimple *convert_stmt;
+  gimple *if_else_stmt;
+
+  basic_block bb1, bb2, bb3;
+  edge e12, e23;
+
+  gimple_seq gseq;
+
+  push_cfun (DECL_STRUCT_FUNCTION (function_decl));
+
+  gcc_assert (new_bb != NULL);
+  gseq = bb_seq (new_bb);
+
+
+  convert_expr = build1 (CONVERT_EXPR, ptr_type_node,
+			 build_fold_addr_expr (version_decl));
+  result_var = create_tmp_var (ptr_type_node);
+  convert_stmt = gimple_build_assign (result_var, convert_expr);
+  return_stmt = gimple_build_return (result_var);
+
+
+  if (feature_mask == 0)
+    {
+      /* Default version.  */
+      gimple_seq_add_stmt (&gseq, convert_stmt);
+      gimple_seq_add_stmt (&gseq, return_stmt);
+      set_bb_seq (new_bb, gseq);
+      gimple_set_bb (convert_stmt, new_bb);
+      gimple_set_bb (return_stmt, new_bb);
+      pop_cfun ();
+      return new_bb;
+    }
+
+  tree and_expr_var = create_tmp_var (long_long_unsigned_type_node);
+  tree and_expr = build2 (BIT_AND_EXPR,
+			  long_long_unsigned_type_node,
+			  mask_var,
+			  build_int_cst (long_long_unsigned_type_node,
+					 feature_mask));
+  gimple *and_stmt = gimple_build_assign (and_expr_var, and_expr);
+  gimple_set_block (and_stmt, DECL_INITIAL (function_decl));
+  gimple_set_bb (and_stmt, new_bb);
+  gimple_seq_add_stmt (&gseq, and_stmt);
+
+  tree zero_llu = build_int_cst (long_long_unsigned_type_node, 0);
+  if_else_stmt = gimple_build_cond (EQ_EXPR, and_expr_var, zero_llu,
+				    NULL_TREE, NULL_TREE);
+  gimple_set_block (if_else_stmt, DECL_INITIAL (function_decl));
+  gimple_set_bb (if_else_stmt, new_bb);
+  gimple_seq_add_stmt (&gseq, if_else_stmt);
+
+  gimple_seq_add_stmt (&gseq, convert_stmt);
+  gimple_seq_add_stmt (&gseq, return_stmt);
+  set_bb_seq (new_bb, gseq);
+
+  bb1 = new_bb;
+  e12 = split_block (bb1, if_else_stmt);
+  bb2 = e12->dest;
+  e12->flags &= ~EDGE_FALLTHRU;
+  e12->flags |= EDGE_TRUE_VALUE;
+
+  e23 = split_block (bb2, return_stmt);
+
+  gimple_set_bb (convert_stmt, bb2);
+  gimple_set_bb (return_stmt, bb2);
+
+  bb3 = e23->dest;
+  make_edge (bb1, bb3, EDGE_FALSE_VALUE);
+
+  remove_edge (e23);
+  make_edge (bb2, EXIT_BLOCK_PTR_FOR_FN (cfun), 0);
+
+  pop_cfun ();
+
+  return bb3;
+}
+
+/* Used when sorting the decls into dispatch order.  */
+static int compare_feature_version_info (const void *p1, const void *p2)
+{
+  typedef struct _function_version_info
+    {
+      tree version_decl;
+      unsigned long long feature_mask;
+    } function_version_info;
+  const function_version_info v1 = *(const function_version_info *)p1;
+  const function_version_info v2 = *(const function_version_info *)p2;
+  return - compare_feature_masks (v1.feature_mask, v2.feature_mask);
+}
+
+static int
+dispatch_function_versions (tree dispatch_decl,
+			    void *fndecls_p,
+			    basic_block *empty_bb)
+{
+  gimple *ifunc_cpu_init_stmt;
+  gimple_seq gseq;
+  int ix;
+  tree ele;
+  vec<tree> *fndecls;
+  unsigned int num_versions = 0;
+  unsigned int actual_versions = 0;
+  unsigned int i;
+
+  struct _function_version_info
+    {
+      tree version_decl;
+      unsigned long long feature_mask;
+    }*function_version_info;
+
+  gcc_assert (dispatch_decl != NULL
+	      && fndecls_p != NULL
+	      && empty_bb != NULL);
+
+  /*fndecls_p is actually a vector.  */
+  fndecls = static_cast<vec<tree> *> (fndecls_p);
+
+  /* At least one more version other than the default.  */
+  num_versions = fndecls->length ();
+  gcc_assert (num_versions >= 2);
+
+  function_version_info = (struct _function_version_info *)
+    XNEWVEC (struct _function_version_info, (num_versions));
+
+  push_cfun (DECL_STRUCT_FUNCTION (dispatch_decl));
+
+  gseq = bb_seq (*empty_bb);
+  /* Function version dispatch is via IFUNC.  IFUNC resolvers fire before
+     constructors, so explicity call __builtin_cpu_init here.  */
+  tree init_fn_type = build_function_type_list (void_type_node, NULL);
+  tree init_fn_decl = build_decl (UNKNOWN_LOCATION, FUNCTION_DECL,
+				  get_identifier ("init_cpu_features"),
+				  init_fn_type);
+  ifunc_cpu_init_stmt = gimple_build_call (init_fn_decl, 0);
+  gimple_seq_add_stmt (&gseq, ifunc_cpu_init_stmt);
+  gimple_set_bb (ifunc_cpu_init_stmt, *empty_bb);
+
+  /* Build the struct type for __aarch64_cpu_features.  */
+  tree global_type = lang_hooks.types.make_type (RECORD_TYPE);
+  tree field1 = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
+			    get_identifier ("features"),
+			    long_long_unsigned_type_node);
+  DECL_FIELD_CONTEXT (field1) = global_type;
+  TYPE_FIELDS (global_type) = field1;
+  layout_type (global_type);
+
+  tree global_var = build_decl (UNKNOWN_LOCATION, VAR_DECL, get_identifier
+				("__aarch64_cpu_features"), global_type);
+  DECL_EXTERNAL (global_var) = 1;
+  tree mask_var = create_tmp_var (long_long_unsigned_type_node);
+
+  tree component_expr = build3 (COMPONENT_REF, long_long_unsigned_type_node,
+				global_var, field1, NULL_TREE);
+  gimple *component_stmt = gimple_build_assign (mask_var, component_expr);
+  gimple_set_block (component_stmt, DECL_INITIAL (dispatch_decl));
+  gimple_set_bb (component_stmt, *empty_bb);
+  gimple_seq_add_stmt (&gseq, component_stmt);
+
+  tree not_expr = build1 (BIT_NOT_EXPR, long_long_unsigned_type_node, mask_var);
+  gimple *not_stmt = gimple_build_assign (mask_var, not_expr);
+  gimple_set_block (not_stmt, DECL_INITIAL (dispatch_decl));
+  gimple_set_bb (not_stmt, *empty_bb);
+  gimple_seq_add_stmt (&gseq, not_stmt);
+
+  set_bb_seq (*empty_bb, gseq);
+
+  pop_cfun ();
+
+  for (ix = 0; fndecls->iterate (ix, &ele); ++ix)
+    {
+      tree version_decl = ele;
+      unsigned long long feature_mask;
+      /* Get attribute string, parse it and find the right features.  */
+      feature_mask = get_feature_mask_for_version (version_decl);
+      function_version_info [actual_versions].version_decl = version_decl;
+      function_version_info [actual_versions].feature_mask = feature_mask;
+      actual_versions++;
+    }
+
+  /* Sort the versions according to descending order of dispatch priority.  */
+  qsort (function_version_info, actual_versions,
+	 sizeof (struct _function_version_info), compare_feature_version_info);
+
+  for (i = 0; i < actual_versions; ++i)
+    *empty_bb = add_condition_to_bb (dispatch_decl,
+				     function_version_info[i].version_decl,
+				     function_version_info[i].feature_mask,
+				     mask_var,
+				     *empty_bb);
+
+  free (function_version_info);
+  return 0;
+}
+
+
+tree
+aarch64_generate_version_dispatcher_body (void *node_p)
+{
+  tree resolver_decl;
+  basic_block empty_bb;
+  tree default_ver_decl;
+  struct cgraph_node *versn;
+  struct cgraph_node *node;
+
+  struct cgraph_function_version_info *node_version_info = NULL;
+  struct cgraph_function_version_info *versn_info = NULL;
+
+  node = (cgraph_node *)node_p;
+
+  node_version_info = node->function_version ();
+  gcc_assert (node->dispatcher_function
+	      && node_version_info != NULL);
+
+  if (node_version_info->dispatcher_resolver)
+    return node_version_info->dispatcher_resolver;
+
+  /* The first version in the chain corresponds to the default version.  */
+  default_ver_decl = node_version_info->next->this_node->decl;
+
+  /* node is going to be an alias, so remove the finalized bit.  */
+  node->definition = false;
+
+  resolver_decl = make_resolver_func (default_ver_decl,
+				      node->decl, &empty_bb);
+
+  node_version_info->dispatcher_resolver = resolver_decl;
+
+  push_cfun (DECL_STRUCT_FUNCTION (resolver_decl));
+
+  auto_vec<tree, 2> fn_ver_vec;
+
+  for (versn_info = node_version_info->next; versn_info;
+       versn_info = versn_info->next)
+    {
+      versn = versn_info->this_node;
+      /* Check for virtual functions here again, as by this time it should
+	 have been determined if this function needs a vtable index or
+	 not.  This happens for methods in derived classes that override
+	 virtual methods in base classes but are not explicitly marked as
+	 virtual.  */
+      if (DECL_VINDEX (versn->decl))
+	sorry ("virtual function multiversioning not supported");
+
+      fn_ver_vec.safe_push (versn->decl);
+    }
+
+  dispatch_function_versions (resolver_decl, &fn_ver_vec, &empty_bb);
+  cgraph_edge::rebuild_edges ();
+  pop_cfun ();
+  return resolver_decl;
+}
+
+/* Make a dispatcher declaration for the multi-versioned function DECL.
+   Calls to DECL function will be replaced with calls to the dispatcher
+   by the front-end.  Returns the decl of the dispatcher function.  */
+
+tree
+aarch64_get_function_versions_dispatcher (void *decl)
+{
+  tree fn = (tree) decl;
+  struct cgraph_node *node = NULL;
+  struct cgraph_node *default_node = NULL;
+  struct cgraph_function_version_info *node_v = NULL;
+  struct cgraph_function_version_info *first_v = NULL;
+
+  tree dispatch_decl = NULL;
+
+  struct cgraph_function_version_info *default_version_info = NULL;
+
+  gcc_assert (fn != NULL && DECL_FUNCTION_VERSIONED (fn));
+
+  node = cgraph_node::get (fn);
+  gcc_assert (node != NULL);
+
+  node_v = node->function_version ();
+  gcc_assert (node_v != NULL);
+
+  if (node_v->dispatcher_resolver != NULL)
+    return node_v->dispatcher_resolver;
+
+  /* Find the default version and make it the first node.  */
+  first_v = node_v;
+  /* Go to the beginning of the chain.  */
+  while (first_v->prev != NULL)
+    first_v = first_v->prev;
+  default_version_info = first_v;
+  while (default_version_info != NULL)
+    {
+      if (get_feature_mask_for_version
+	    (default_version_info->this_node->decl) == 0ULL)
+	break;
+      default_version_info = default_version_info->next;
+    }
+
+  /* If there is no default node, just return NULL.  */
+  if (default_version_info == NULL)
+    return NULL;
+
+  /* Make default info the first node.  */
+  if (first_v != default_version_info)
+    {
+      default_version_info->prev->next = default_version_info->next;
+      if (default_version_info->next)
+	default_version_info->next->prev = default_version_info->prev;
+      first_v->prev = default_version_info;
+      default_version_info->next = first_v;
+      default_version_info->prev = NULL;
+    }
+
+  default_node = default_version_info->this_node;
+
+  if (targetm.has_ifunc_p ())
+    {
+      struct cgraph_function_version_info *it_v = NULL;
+      struct cgraph_node *dispatcher_node = NULL;
+      struct cgraph_function_version_info *dispatcher_version_info = NULL;
+
+      /* Right now, the dispatching is done via ifunc.  */
+      dispatch_decl = make_dispatcher_decl (default_node->decl);
+      TREE_NOTHROW (dispatch_decl) = TREE_NOTHROW (fn);
+
+      dispatcher_node = cgraph_node::get_create (dispatch_decl);
+      gcc_assert (dispatcher_node != NULL);
+      dispatcher_node->dispatcher_function = 1;
+      dispatcher_version_info
+	= dispatcher_node->insert_new_function_version ();
+      dispatcher_version_info->next = default_version_info;
+      dispatcher_node->definition = 1;
+
+      /* Set the dispatcher for all the versions.  */
+      it_v = default_version_info;
+      while (it_v != NULL)
+	{
+	  it_v->dispatcher_resolver = dispatch_decl;
+	  it_v = it_v->next;
+	}
+    }
+  else
+    {
+      error_at (DECL_SOURCE_LOCATION (default_node->decl),
+		"multiversioning needs %<ifunc%> which is not supported "
+		"on this target");
+    }
+
+  return dispatch_decl;
+}
+
+bool
+aarch64_common_function_versions (tree fn1, tree fn2)
+{
+  if (TREE_CODE (fn1) != FUNCTION_DECL
+      || TREE_CODE (fn2) != FUNCTION_DECL)
+    return false;
+
+  return (aarch64_compare_version_priority (fn1, fn2) != 0);
+}
+
+
+tree
+aarch64_mangle_decl_assembler_name (tree decl, tree id)
+{
+  /* For function version, add the target suffix to the assembler name.  */
+  if (TREE_CODE (decl) == FUNCTION_DECL
+      && DECL_FUNCTION_VERSIONED (decl))
+    {
+      unsigned long long feature_mask = get_feature_mask_for_version (decl);
+
+      /* No suffix for the default version.  */
+      if (feature_mask == 0ULL)
+	return id;
+
+      char suffix[2048];
+      int pos = 0;
+      const char *base = IDENTIFIER_POINTER (id);
+
+      for (int i = 1; i < FEAT_MAX; i++)
+	{
+	  if (feature_mask & aarch64_fmv_feature_data[i].feature_mask)
+	    {
+	      suffix[pos] = 'M';
+	      strcpy (&suffix[pos+1], aarch64_fmv_feature_data[i].name);
+	      pos += strlen(aarch64_fmv_feature_data[i].name) + 1;
+	    }
+	}
+      suffix[pos] = '\0';
+
+      char *ret = XNEWVEC (char, strlen (base) + strlen (suffix) + 3);
+      sprintf (ret, "%s._%s", base, suffix);
+
+      if (DECL_ASSEMBLER_NAME_SET_P (decl))
+	SET_DECL_RTL (decl, NULL);
+
+      id = get_identifier (ret);
+    }
+  return id;
+}
+
 
 /* Helper for aarch64_can_inline_p.  In the case where CALLER and CALLEE are
    tri-bool options (yes, no, don't care) and the default value is
@@ -27877,6 +28687,12 @@ aarch64_libgcc_floating_mode_supported_p
 #undef TARGET_OPTION_VALID_ATTRIBUTE_P
 #define TARGET_OPTION_VALID_ATTRIBUTE_P aarch64_option_valid_attribute_p
 
+#undef TARGET_OPTION_VALID_VERSION_ATTRIBUTE_P
+#define TARGET_OPTION_VALID_VERSION_ATTRIBUTE_P aarch64_option_valid_attribute_p
+
+#undef TARGET_OPTION_EXPANDED_CLONES_ATTRIBUTE
+#define TARGET_OPTION_EXPANDED_CLONES_ATTRIBUTE "target_version"
+
 #undef TARGET_SET_CURRENT_FUNCTION
 #define TARGET_SET_CURRENT_FUNCTION aarch64_set_current_function
 
@@ -28200,6 +29016,24 @@ aarch64_libgcc_floating_mode_supported_p
 
 #undef TARGET_CONST_ANCHOR
 #define TARGET_CONST_ANCHOR 0x1000000
+
+#undef TARGET_OPTION_FUNCTION_VERSIONS
+#define TARGET_OPTION_FUNCTION_VERSIONS aarch64_common_function_versions
+
+#undef TARGET_COMPARE_VERSION_PRIORITY
+#define TARGET_COMPARE_VERSION_PRIORITY aarch64_compare_version_priority
+
+#undef TARGET_GENERATE_VERSION_DISPATCHER_BODY
+#define TARGET_GENERATE_VERSION_DISPATCHER_BODY \
+  aarch64_generate_version_dispatcher_body
+
+#undef TARGET_GET_FUNCTION_VERSIONS_DISPATCHER
+#define TARGET_GET_FUNCTION_VERSIONS_DISPATCHER \
+  aarch64_get_function_versions_dispatcher
+
+#undef TARGET_MANGLE_DECL_ASSEMBLER_NAME
+#define TARGET_MANGLE_DECL_ASSEMBLER_NAME aarch64_mangle_decl_assembler_name
+
 
 struct gcc_target targetm = TARGET_INITIALIZER;
 
