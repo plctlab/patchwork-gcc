@@ -2761,6 +2761,44 @@ static const struct processor all_cores[] =
   {NULL, aarch64_none, aarch64_none, aarch64_no_arch, 0, NULL}
 };
 
+typedef struct {
+  const char* name;
+  const char* encoding;
+  const unsigned properties;
+  const unsigned long long arch_reqs;
+} sysreg_t;
+
+/* An aarch64_feature_set initializer for a single feature,
+   AARCH64_FEATURE_<FEAT>.  */
+#define AARCH64_FEATURE(FEAT) AARCH64_FL_##FEAT
+
+/* Used by AARCH64_FEATURES.  */
+#define AARCH64_OR_FEATURES_1(X, F1) \
+  AARCH64_FEATURE (F1)
+#define AARCH64_OR_FEATURES_2(X, F1, F2) \
+  (AARCH64_FEATURE (F1) | AARCH64_OR_FEATURES_1 (X, F2))
+#define AARCH64_OR_FEATURES_3(X, F1, ...) \
+  (AARCH64_FEATURE (F1) | AARCH64_OR_FEATURES_2 (X, __VA_ARGS__))
+
+/* An aarch64_feature_set initializer for the N features listed in "...".  */
+#define AARCH64_FEATURES(N, ...) \
+  AARCH64_OR_FEATURES_##N (0, __VA_ARGS__)
+
+/* Database of system registers, their encodings and architectural
+   requirements.  */
+const sysreg_t sysreg_structs[] =
+{
+#define CPENC(SN, OP1, CN, CM, OP2) "s"#SN"_"#OP1"_c"#CN"_c"#CM"_"#OP2
+#define SYSREG(NAME, ENC, FLAGS, ARCH) \
+  { NAME, ENC, FLAGS, ARCH },
+#include "aarch64-sys-regs.def"
+#undef CPENC
+};
+
+#define TOTAL_ITEMS (sizeof sysreg_structs / sizeof sysreg_structs[0])
+const unsigned nsysreg = TOTAL_ITEMS;
+#undef TOTAL_ITEMS
+
 /* The current tuning set.  */
 struct tune_params aarch64_tune_params = generic_tunings;
 
