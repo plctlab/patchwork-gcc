@@ -391,9 +391,22 @@ add_decl_to_level (cp_binding_level *b, tree decl)
   gcc_assert (b->names != decl);
 
   /* We build up the list in reverse order, and reverse it later if
-     necessary.  */
-  TREE_CHAIN (decl) = b->names;
-  b->names = decl;
+     necessary.  If we're adding a lambda closure type to a block
+     scope as part of a local variable initializer, then make sure
+     we declare the type before the variable; modules expects that
+     we see a type declaration before a use of the type.  */
+  tree *prev = &b->names;
+  if (b->kind == sk_block
+      && !processing_template_decl
+      && TREE_CODE (decl) == TYPE_DECL
+      && LAMBDA_TYPE_P (TREE_TYPE (decl)))
+    while (*prev && VAR_P (*prev)
+	   && !DECL_EXTERNAL (*prev)
+	   && !DECL_INITIALIZED_P (*prev))
+      prev = &TREE_CHAIN (*prev);
+
+  TREE_CHAIN (decl) = *prev;
+  *prev = decl;
 
   /* If appropriate, add decl to separate list of statics.  We include
      extern variables because they might turn out to be static later.
