@@ -162,7 +162,12 @@ create_dispatcher_calls (struct cgraph_node *node)
 	}
     }
 
-  tree fname = clone_function_name (node->decl, "default");
+  /* Add version mangling to default decl name.  We assume that the target
+     hook will produce the same mangled name as it would have produced if the
+     decl had already been versioned when the hook was previously called.  */
+  tree fname = DECL_ASSEMBLER_NAME (node->decl);
+  DECL_NAME (node->decl) = fname;
+  fname = targetm.mangle_decl_assembler_name (node->decl, fname);
   symtab->change_decl_assembler_name (node->decl, fname);
 
   if (node->definition)

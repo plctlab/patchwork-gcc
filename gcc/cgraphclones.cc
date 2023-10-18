@@ -1033,11 +1033,6 @@ cgraph_node::create_version_clone_with_body
   else
     new_decl = copy_node (old_decl);
 
-  /* Generate a new name for the new version. */
-  tree fnname = (version_decl ? clone_function_name_numbered (old_decl, suffix)
-		: clone_function_name (old_decl, suffix));
-  DECL_NAME (new_decl) = fnname;
-  SET_DECL_ASSEMBLER_NAME (new_decl, fnname);
   SET_DECL_RTL (new_decl, NULL);
 
   DECL_VIRTUAL_P (new_decl) = 0;
@@ -1063,6 +1058,24 @@ cgraph_node::create_version_clone_with_body
       input_location = saved_loc;
       if (!r)
 	return NULL;
+    }
+
+  /* Generate a new name for the new version. */
+  if (version_decl)
+    {
+      tree fnname = (clone_function_name_numbered (old_decl, suffix));
+      DECL_NAME (new_decl) = fnname;
+      SET_DECL_ASSEMBLER_NAME (new_decl, fnname);
+    }
+  else
+    {
+      /* Add target version mangling.  We assume that the target hook will
+	 produce the same mangled name as it would have produced if the decl
+	 had already been versioned when the hook was previously called.  */
+      tree fnname = DECL_ASSEMBLER_NAME (old_decl);
+      DECL_NAME (new_decl) = fnname;
+      fnname = targetm.mangle_decl_assembler_name (new_decl, fnname);
+      SET_DECL_ASSEMBLER_NAME (new_decl, fnname);
     }
 
   /* When the old decl was a con-/destructor make sure the clone isn't.  */
