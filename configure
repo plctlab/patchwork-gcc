@@ -584,7 +584,8 @@ PACKAGE_URL=
 
 ac_unique_file="move-if-change"
 enable_option_checking=no
-ac_subst_vars='LTLIBOBJS
+ac_subst_vars='subdirs
+LTLIBOBJS
 LIBOBJS
 compare_exclusions
 stage2_werror_flag
@@ -898,7 +899,37 @@ READELF_FOR_TARGET
 STRIP_FOR_TARGET
 WINDRES_FOR_TARGET
 WINDMC_FOR_TARGET'
-
+ac_subdirs_all='c++tools
+fixincludes
+gcc
+gcc/m2
+gnattools
+gotools
+intl
+libada
+libatomic
+libbacktrace
+libcc1
+libcody
+libcpp
+libdecnumber
+libffi
+libgcc
+libgfortran
+libgm2
+libgo
+libgomp
+libiberty
+libitm
+libobjc
+libphobos
+libquadmath
+libsanitizer
+libssp
+libstdc++-v3
+libvtv
+lto-plugin
+zlib'
 
 # Initialize some variables set by options.
 ac_init_help=
@@ -19784,4 +19815,71 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
+
+
+# Enable top-level recursive 'autoreconf' by enumerating all relevant
+# directories here.  This is intentionally done at end of 'configure.ac',
+# *after* 'AC_OUTPUT', so that we don't attempt to prematurely 'configure'
+# these directories when the top-level 'configure' is invoked.
+subdirs="$subdirs c++tools"
+
+subdirs="$subdirs fixincludes"
+
+subdirs="$subdirs gcc"
+
+subdirs="$subdirs gcc/m2"
+
+subdirs="$subdirs gnattools"
+
+subdirs="$subdirs gotools"
+
+subdirs="$subdirs intl"
+
+subdirs="$subdirs libada"
+
+subdirs="$subdirs libatomic"
+
+subdirs="$subdirs libbacktrace"
+
+subdirs="$subdirs libcc1"
+
+subdirs="$subdirs libcody"
+
+subdirs="$subdirs libcpp"
+
+subdirs="$subdirs libdecnumber"
+
+subdirs="$subdirs libffi"
+
+subdirs="$subdirs libgcc"
+
+subdirs="$subdirs libgfortran"
+
+subdirs="$subdirs libgm2"
+
+subdirs="$subdirs libgo"
+
+subdirs="$subdirs libgomp"
+
+subdirs="$subdirs libiberty"
+
+subdirs="$subdirs libitm"
+
+subdirs="$subdirs libobjc"
+
+subdirs="$subdirs libphobos"
+
+subdirs="$subdirs libquadmath"
+
+subdirs="$subdirs libsanitizer"
+
+subdirs="$subdirs libssp"
+
+subdirs="$subdirs libstdc++-v3"
+
+subdirs="$subdirs libvtv"
+
+subdirs="$subdirs lto-plugin"
+
+subdirs="$subdirs zlib"
 

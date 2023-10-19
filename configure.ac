@@ -3808,3 +3808,39 @@ AC_CONFIG_FILES([Makefile],
    extrasub_host="$extrasub_host"
    extrasub_target="$extrasub_target"])
 AC_OUTPUT
+
+# Enable top-level recursive 'autoreconf' by enumerating all relevant
+# directories here.  This is intentionally done at end of 'configure.ac',
+# *after* 'AC_OUTPUT', so that we don't attempt to prematurely 'configure'
+# these directories when the top-level 'configure' is invoked.
+AC_CONFIG_SUBDIRS([c++tools])
+AC_CONFIG_SUBDIRS([fixincludes])
+AC_CONFIG_SUBDIRS([gcc])
+AC_CONFIG_SUBDIRS([gcc/m2])
+AC_CONFIG_SUBDIRS([gnattools])
+AC_CONFIG_SUBDIRS([gotools])
+AC_CONFIG_SUBDIRS([intl])
+AC_CONFIG_SUBDIRS([libada])
+AC_CONFIG_SUBDIRS([libatomic])
+AC_CONFIG_SUBDIRS([libbacktrace])
+AC_CONFIG_SUBDIRS([libcc1])
+AC_CONFIG_SUBDIRS([libcody])
+AC_CONFIG_SUBDIRS([libcpp])
+AC_CONFIG_SUBDIRS([libdecnumber])
+AC_CONFIG_SUBDIRS([libffi])
+AC_CONFIG_SUBDIRS([libgcc])
+AC_CONFIG_SUBDIRS([libgfortran])
+AC_CONFIG_SUBDIRS([libgm2])
+AC_CONFIG_SUBDIRS([libgo])
+AC_CONFIG_SUBDIRS([libgomp])
+AC_CONFIG_SUBDIRS([libiberty])
+AC_CONFIG_SUBDIRS([libitm])
+AC_CONFIG_SUBDIRS([libobjc])
+AC_CONFIG_SUBDIRS([libphobos])
+AC_CONFIG_SUBDIRS([libquadmath])
+AC_CONFIG_SUBDIRS([libsanitizer])
+AC_CONFIG_SUBDIRS([libssp])
+AC_CONFIG_SUBDIRS([libstdc++-v3])
+AC_CONFIG_SUBDIRS([libvtv])
+AC_CONFIG_SUBDIRS([lto-plugin])
+AC_CONFIG_SUBDIRS([zlib])
