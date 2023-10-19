@@ -23,6 +23,19 @@ For example, GCC source code should not contain calls like `error
 ("unterminated comment")' instead, as it is the `error' function's
 responsibility to translate the message before the user sees it.
 
+In general, use no markup for strings that are the immediate format string
+argument of a diagnostic function.  Use G_("str") for strings that will be
+used as the format string for a diagnostic but are e.g. assigned to a
+variable first.  Use N_("str") for other strings, particularly in a
+statically allocated array, that will be translated later by
+e.g. _(msgs[idx]).  Use _("str") for strings that will not be translated
+elsewhere.
+
+Avoid using %s to compose a diagnostic message from multiple translateable
+strings; instead, write out the full diagnostic message for each variant.
+Only use %s for message components that do not need translation, such as
+keywords.
+
 By convention, any function parameter in the GCC sources whose name
 ends in `msgid' is expected to be a message requiring translation.
 If the parameter name ends with `gmsgid', it is assumed to be a GCC
