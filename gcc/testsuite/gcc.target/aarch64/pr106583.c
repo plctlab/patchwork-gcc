@@ -3,7 +3,7 @@
 
 long f1 (void)
 {
-  return 0x7efefefefefefeff;
+  return 0x75fefefefefefeff;
 }
 
 long f2 (void)

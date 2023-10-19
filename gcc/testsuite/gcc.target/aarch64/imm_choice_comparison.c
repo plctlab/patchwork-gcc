@@ -6,7 +6,7 @@
 int
 foo (long long x)
 {
-  return x <= 0x1999999999999998;
+  return x <= 0x0000999999999998;
 }
 
 int
