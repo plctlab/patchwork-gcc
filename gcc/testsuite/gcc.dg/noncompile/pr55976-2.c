@@ -1,6 +1,6 @@
 /* PR c/55976 */
 /* { dg-do compile } */
-/* { dg-options "-Wno-return-type" } */
+/* { dg-options "-Wno-return-mismatch" } */
 
 /* Verify that -Wno-return-type turns off warnings about function return
    type.  */
