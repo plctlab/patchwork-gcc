@@ -8730,11 +8730,35 @@ vect_peel_nonlinear_iv_init (gimple_seq* stmts, tree init_expr,
 	init_expr = gimple_convert (stmts, utype, init_expr);
 	unsigned skipn = TREE_INT_CST_LOW (skip_niters);
 	wide_int begin = wi::to_wide (step_expr);
-	for (unsigned i = 0; i != skipn - 1; i++)
-	  begin = wi::mul (begin, wi::to_wide (step_expr));
-	tree mult_expr = wide_int_to_tree (utype, begin);
-	init_expr = gimple_build (stmts, MULT_EXPR, utype, init_expr, mult_expr);
-	init_expr = gimple_convert (stmts, type, init_expr);
+	int pow2_step = wi::exact_log2 (begin);
+	/* Optimize init_expr * pow (step_expr, skipn) to
+	   init_expr << (log2 (step_expr) * skipn).  */
+	if (pow2_step != -1)
+	  {
+	    if (skipn >= TYPE_PRECISION (type)
+		|| skipn > (UINT_MAX / (unsigned) pow2_step)
+		|| skipn * (unsigned) pow2_step >= TYPE_PRECISION (type))
+		init_expr = build_zero_cst (type);
+	    else
+	      {
+		tree lshc = build_int_cst (utype, skipn * (unsigned) pow2_step);
+		init_expr = gimple_build (stmts, LSHIFT_EXPR, utype,
+					  init_expr, lshc);
+	      }
+	  }
+	/* Any better way for init_expr * pow (step_expr, skipn)???.  */
+	else
+	  {
+	    gcc_assert (skipn < TYPE_PRECISION (type));
+	    auto_mpz base, exp;
+	    wi::to_mpz (begin, base, TYPE_SIGN (type));
+	    mpz_pow_ui (exp, base, skipn);
+	    begin = wi::from_mpz (type, exp, TYPE_SIGN (type));
+	    tree mult_expr = wide_int_to_tree (utype, begin);
+	    init_expr = gimple_build (stmts, MULT_EXPR, utype,
+				      init_expr, mult_expr);
+	  }
+	  init_expr = gimple_convert (stmts, type, init_expr);
       }
       break;
 
