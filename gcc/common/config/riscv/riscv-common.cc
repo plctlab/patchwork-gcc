@@ -818,7 +818,7 @@ riscv_subset_list::parse_std_ext (const char *p)
 
       add ("e", major_version, minor_version, explicit_version_p, false);
 
-      if (m_xlen > 32)
+      if (m_xlen > 64)
 	{
 	  error_at (m_loc, "%<-march=%s%>: rv%de is not a valid base ISA",
 		    m_arch, m_xlen);
