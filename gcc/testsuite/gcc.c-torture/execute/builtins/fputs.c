@@ -5,6 +5,7 @@
 
    Written by Kaveh R. Ghazi, 10/30/2000.  */
 
+#define _GNU_SOURCE /* For fputs_unlocked.  */
 #include <stdio.h>
 extern void abort(void);
 
