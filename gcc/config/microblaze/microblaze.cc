@@ -56,8 +56,6 @@
 /* This file should be included last.  */
 #include "target-def.h"
 
-#define MICROBLAZE_VERSION_COMPARE(VA,VB) strcasecmp (VA, VB)
-
 /* Classifies an address.
 
 ADDRESS_INVALID
@@ -1296,12 +1294,73 @@ microblaze_expand_block_move (rtx dest, rtx src, rtx length, rtx align_rtx)
   return false;
 }
 
+/*  Convert a version number of the form "vX.YY.Z" to an integer encoding
+    for easier range comparison.  */
+static int
+microblaze_version_to_int (const char *version)
+{
+  const char *p, *v;
+  const char *tmpl = "vXX.YY.Z";
+  int iver1 =0, iver2 =0, iver3 =0;
+
+  p = version;
+  v = tmpl;
+
+  while (*p)
+    {
+      if (*v == 'X')
+	{			/* Looking for major  */
+	  if (*p == '.')
+	    *v++;
+	  else
+	    {
+	      if (!(*p >= '0' && *p <= '9'))
+		return -1;
+	      iver1 += (int) (*p - '0');
+	      iver1 *= 1000;
+	    }
+	}
+      else if (*v == 'Y')
+	{			/* Looking for minor  */
+	  if (!(*p >= '0' && *p <= '9'))
+	    return -1;
+	  iver2 += (int) (*p - '0');
+	  iver2 *= 10;
+	}
+      else if (*v == 'Z')
+	{			/* Looking for compat  */
+	  if (!(*p >= 'a' && *p <= 'z'))
+	    return -1;
+	  iver3 = (int) (*p - 'a');
+	}
+      else
+	{
+	  if (*p != *v)
+	    return -1;
+	}
+
+      v++;
+      p++;
+    }
+
+  if (*p)
+    return -1;
+
+  return iver1 + iver2 + iver3;
+}
+
 static bool
 microblaze_rtx_costs (rtx x, machine_mode mode, int outer_code ATTRIBUTE_UNUSED,
 		      int opno ATTRIBUTE_UNUSED, int *total,
 		      bool speed ATTRIBUTE_UNUSED)
 {
   int code = GET_CODE (x);
+  int ver, ver_int;
+
+  if (microblaze_select_cpu == NULL)
+    microblaze_select_cpu = MICROBLAZE_DEFAULT_CPU;
+
+  ver_int = microblaze_version_to_int (microblaze_select_cpu);
 
   switch (code)
     {
@@ -1344,8 +1403,8 @@ microblaze_rtx_costs (rtx x, machine_mode mode, int outer_code ATTRIBUTE_UNUSED,
       {
 	if (TARGET_BARREL_SHIFT)
 	  {
-	    if (MICROBLAZE_VERSION_COMPARE (microblaze_select_cpu, "v5.00.a")
-		>= 0)
+	    ver = ver_int - microblaze_version_to_int("v5.00.a");
+	    if (ver >= 0)
 	      *total = COSTS_N_INSNS (1);
 	    else
 	      *total = COSTS_N_INSNS (2);
@@ -1406,8 +1465,8 @@ microblaze_rtx_costs (rtx x, machine_mode mode, int outer_code ATTRIBUTE_UNUSED,
 	  }
 	else if (!TARGET_SOFT_MUL)
 	  {
-	    if (MICROBLAZE_VERSION_COMPARE (microblaze_select_cpu, "v5.00.a")
-		>= 0)
+	    ver = ver_int - microblaze_version_to_int("v5.00.a");
+	    if (ver >= 0)
 	      *total = COSTS_N_INSNS (1);
 	    else
 	      *total = COSTS_N_INSNS (3);
@@ -1680,72 +1739,13 @@ function_arg_partial_bytes (cumulative_args_t cum_v,
   return 0;
 }
 
-/*  Convert a version number of the form "vX.YY.Z" to an integer encoding 
-    for easier range comparison.  */
-static int
-microblaze_version_to_int (const char *version)
-{
-  const char *p, *v;
-  const char *tmpl = "vXX.YY.Z";
-  int iver = 0;
-
-  p = version;
-  v = tmpl;
-
-  while (*p)
-    {
-      if (*v == 'X')
-	{			/* Looking for major  */
-          if (*p == '.')
-            {
-              v++;
-            }
-          else
-            {
-	      if (!(*p >= '0' && *p <= '9'))
-	        return -1;
-	      iver += (int) (*p - '0');
-              iver *= 10;
-	     }
-        }
-      else if (*v == 'Y')
-	{			/* Looking for minor  */
-	  if (!(*p >= '0' && *p <= '9'))
-	    return -1;
-	  iver += (int) (*p - '0');
-	  iver *= 10;
-	}
-      else if (*v == 'Z')
-	{			/* Looking for compat  */
-	  if (!(*p >= 'a' && *p <= 'z'))
-	    return -1;
-	  iver *= 10;
-	  iver += (int) (*p - 'a');
-	}
-      else
-	{
-	  if (*p != *v)
-	    return -1;
-	}
-
-      v++;
-      p++;
-    }
-
-  if (*p)
-    return -1;
-
-  return iver;
-}
-
-
 static void
 microblaze_option_override (void)
 {
   int i, start;
   int regno;
   machine_mode mode;
-  int ver;
+  int ver, ver_int;
 
   microblaze_section_threshold = (OPTION_SET_P (g_switch_value)
 				  ? g_switch_value
@@ -1766,29 +1766,22 @@ microblaze_option_override (void)
   /* Check the MicroBlaze CPU version for any special action to be done.  */
   if (microblaze_select_cpu == NULL)
     microblaze_select_cpu = MICROBLAZE_DEFAULT_CPU;
-  ver = microblaze_version_to_int (microblaze_select_cpu);
-  if (ver == -1)
+  ver_int = microblaze_version_to_int (microblaze_select_cpu);
+  if (ver_int == -1)
     {
       error ("%qs is an invalid argument to %<-mcpu=%>", microblaze_select_cpu);
     }
 
-  ver = MICROBLAZE_VERSION_COMPARE (microblaze_select_cpu, "v3.00.a");
+  ver = ver_int - microblaze_version_to_int("v3.00.a");
   if (ver < 0)
     {
       /* No hardware exceptions in earlier versions. So no worries.  */
-#if 0
-      microblaze_select_flags &= ~(MICROBLAZE_MASK_NO_UNSAFE_DELAY);
-#endif
       microblaze_no_unsafe_delay = 0;
       microblaze_pipe = MICROBLAZE_PIPE_3;
     }
   else if (ver == 0
-	   || (MICROBLAZE_VERSION_COMPARE (microblaze_select_cpu, "v4.00.b")
-	       == 0))
+	   || (ver_int ==  microblaze_version_to_int("v4.00.b")))
     {
-#if 0
-      microblaze_select_flags |= (MICROBLAZE_MASK_NO_UNSAFE_DELAY);
-#endif
       microblaze_no_unsafe_delay = 1;
       microblaze_pipe = MICROBLAZE_PIPE_3;
     }
@@ -1796,16 +1789,11 @@ microblaze_option_override (void)
     {
       /* We agree to use 5 pipe-stage model even on area optimized 3 
          pipe-stage variants.  */
-#if 0
-      microblaze_select_flags &= ~(MICROBLAZE_MASK_NO_UNSAFE_DELAY);
-#endif
       microblaze_no_unsafe_delay = 0;
       microblaze_pipe = MICROBLAZE_PIPE_5;
-      if (MICROBLAZE_VERSION_COMPARE (microblaze_select_cpu, "v5.00.a") == 0
-	  || MICROBLAZE_VERSION_COMPARE (microblaze_select_cpu,
-					 "v5.00.b") == 0
-	  || MICROBLAZE_VERSION_COMPARE (microblaze_select_cpu,
-					 "v5.00.c") == 0)
+      if ((ver_int == microblaze_version_to_int("v5.00.a"))
+	  || (ver_int == microblaze_version_to_int("v5.00.b"))
+	  || (ver_int == microblaze_version_to_int("v5.00.c")))
 	{
 	  /* Pattern compares are to be turned on by default only when 
  	     compiling for MB v5.00.'z'.  */
@@ -1813,7 +1801,7 @@ microblaze_option_override (void)
 	}
     }
 
-  ver = MICROBLAZE_VERSION_COMPARE (microblaze_select_cpu, "v6.00.a");
+  ver = ver_int - microblaze_version_to_int("v6.00.a");
   if (ver < 0)
     {
       if (TARGET_MULTIPLY_HIGH)
@@ -1822,7 +1810,7 @@ microblaze_option_override (void)
 		 "%<-mcpu=v6.00.a%> or greater");
     }
 
-  ver = MICROBLAZE_VERSION_COMPARE (microblaze_select_cpu, "v8.10.a");
+  ver = ver_int - microblaze_version_to_int("v8.10.a");
   microblaze_has_clz = 1;
   if (ver < 0)
     {
@@ -1831,7 +1819,7 @@ microblaze_option_override (void)
     }
 
   /* TARGET_REORDER defaults to 2 if -mxl-reorder not specified.  */
-  ver = MICROBLAZE_VERSION_COMPARE (microblaze_select_cpu, "v8.30.a");
+  ver = ver_int - microblaze_version_to_int("v8.30.a");
   if (ver < 0)
     {
         if (TARGET_REORDER == 1)
