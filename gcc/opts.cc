@@ -49,7 +49,7 @@ static void set_Wstrict_aliasing (struct gcc_options *opts, int onoff);
 
 const char *const debug_type_names[] =
 {
-  "none", "dwarf-2", "vms", "ctf", "btf"
+  "none", "dwarf-2", "vms", "ctf", "btf", "codeview"
 };
 
 /* Bitmasks of fundamental debug info formats indexed by enum
@@ -58,13 +58,13 @@ const char *const debug_type_names[] =
 static uint32_t debug_type_masks[] =
 {
   NO_DEBUG, DWARF2_DEBUG, VMS_DEBUG,
-  CTF_DEBUG, BTF_DEBUG
+  CTF_DEBUG, BTF_DEBUG, CODEVIEW_DEBUG
 };
 
 /* Names of the set of debug formats requested by user.  Updated and accessed
    via debug_set_names.  */
 
-static char df_set_names[sizeof "none dwarf-2 vms ctf btf"];
+static char df_set_names[sizeof "none dwarf-2 vms ctf btf codeview"];
 
 /* Get enum debug_info_type of the specified debug format, for error messages.
    Can be used only for individual debug format types.  */
@@ -158,6 +158,14 @@ ctf_debuginfo_p ()
   return (write_symbols & CTF_DEBUG);
 }
 
+/* Return TRUE iff CodeView debug info is enabled.  */
+
+bool
+codeview_debuginfo_p ()
+{
+  return (write_symbols & CODEVIEW_DEBUG);
+}
+
 /* Return TRUE iff dwarf2 debug info is enabled.  */
 
 bool
@@ -172,7 +180,8 @@ dwarf_debuginfo_p (struct gcc_options *opts)
 bool dwarf_based_debuginfo_p ()
 {
   return ((write_symbols & CTF_DEBUG)
-	  || (write_symbols & BTF_DEBUG));
+	  || (write_symbols & BTF_DEBUG)
+	  || (write_symbols & CODEVIEW_DEBUG));
 }
 
 /* All flag uses below need to explicitely reference the option sets
@@ -3135,6 +3144,9 @@ common_handle_option (struct gcc_options *opts,
       break;
 
     case OPT_gcodeview:
+      set_debug_level (CODEVIEW_DEBUG, false, arg, opts, opts_set, loc);
+      if (opts->x_debug_info_level < DINFO_LEVEL_NORMAL)
+	opts->x_debug_info_level = DINFO_LEVEL_NORMAL;
       break;
 
     case OPT_gbtf:
@@ -3409,7 +3421,8 @@ set_debug_level (uint32_t dinfo, int extended, const char *arg,
 	    warning_at (loc, 0, "target system does not support debug output");
 	}
       else if ((opts->x_write_symbols & CTF_DEBUG)
-	       || (opts->x_write_symbols & BTF_DEBUG))
+	       || (opts->x_write_symbols & BTF_DEBUG)
+	       || (opts->x_write_symbols & CODEVIEW_DEBUG))
 	{
 	  opts->x_write_symbols |= DWARF2_DEBUG;
 	  opts_set->x_write_symbols |= DWARF2_DEBUG;

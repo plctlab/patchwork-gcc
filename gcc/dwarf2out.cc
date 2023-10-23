@@ -80,6 +80,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "expr.h"
 #include "dwarf2out.h"
 #include "dwarf2ctf.h"
+#include "dwarf2codeview.h"
 #include "dwarf2asm.h"
 #include "toplev.h"
 #include "md5.h"
@@ -32150,6 +32151,9 @@ dwarf2out_finish (const char *filename)
   if ((ctf_debug_info_level > CTFINFO_LEVEL_NONE
        || btf_debuginfo_p ()) && lang_GNU_C ())
     ctf_debug_finish (filename);
+
+  if (codeview_debuginfo_p ())
+    codeview_debug_finish ();
 
   /* Skip emitting DWARF if not required.  */
   if (!dwarf_debuginfo_p ())
