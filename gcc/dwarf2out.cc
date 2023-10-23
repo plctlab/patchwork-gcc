@@ -1255,6 +1255,9 @@ dwarf2out_end_epilogue (unsigned int line ATTRIBUTE_UNUSED,
   if (dwarf2out_do_cfi_asm ())
     fprintf (asm_out_file, "\t.cfi_endproc\n");
 
+  if (codeview_debuginfo_p ())
+    codeview_end_epilogue ();
+
   /* Output a label to mark the endpoint of the code generated for this
      function.  */
   ASM_GENERATE_INTERNAL_LABEL (label, FUNC_END_LABEL,
@@ -1307,6 +1310,9 @@ dwarf2out_switch_text_section (void)
       fde->dw_fde_second_end = crtl->subsections.cold_section_end_label;
     }
   have_multiple_function_sections = true;
+
+  if (codeview_debuginfo_p ())
+    codeview_switch_text_section ();
 
   if (dwarf2out_do_cfi_asm ())
     fprintf (asm_out_file, "\t.cfi_endproc\n");
@@ -28554,6 +28560,9 @@ dwarf2out_source_line (unsigned int line, unsigned int column,
   unsigned int file_num;
   dw_line_info_table *table;
   static var_loc_view lvugid;
+
+  if (codeview_debuginfo_p ())
+    codeview_source_line (line, filename);
 
   /* 'line_info_table' information gathering is not needed when the debug
      info level is set to the lowest value.  Also, the current DWARF-based
