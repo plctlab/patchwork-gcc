@@ -31,6 +31,7 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 
 extern int __gcc_bcmp (const unsigned char *, const unsigned char *, size_t);
 extern void __clear_cache (void *, void *);
+extern void __valgrind_make_mem_undefined (void *ptr, unsigned long sz);
 extern void __eprintf (const char *, const char *, unsigned int, const char *)
   __attribute__ ((__noreturn__));
 

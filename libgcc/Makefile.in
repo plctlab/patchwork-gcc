@@ -428,7 +428,7 @@ ifneq ($(enable_shared),yes)
 iterator = $(patsubst %,$(srcdir)/static-object.mk,$(iter-items))
 endif
 
-LIB2ADD += enable-execute-stack.c
+LIB2ADD += enable-execute-stack.c $(srcdir)/valgrind.c
 
 # While emutls.c has nothing to do with EH, it is in LIB2ADDEH*
 # instead of LIB2ADD because that's the way to be sure on some targets

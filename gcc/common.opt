@@ -2489,6 +2489,10 @@ starts and when the destructor finishes.
 flifetime-dse=
 Common Joined RejectNegative UInteger Var(flag_lifetime_dse) Optimization IntegerRange(0, 2)
 
+fvalgrind-emit-annotations
+Common Var(flag_valgrind_annotations,1)
+Emit Valgrind annotations with respect to object's lifetime.
+
 flive-patching
 Common RejectNegative Alias(flive-patching=,inline-clone) Optimization
 
