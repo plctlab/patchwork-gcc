@@ -16,6 +16,7 @@ int foo ()
 {
   __mmask32 msk32;
   __mmask16 msk16;
+  asm volatile ("" : "=k" (msk16), "=k" (msk32));
   __m256i c256 = _mm256_popcnt_epi8 (y);
   asm volatile ("" : "+v" (c256));
   c256 = _mm256_mask_popcnt_epi8 (y_1, msk32, y);

@@ -20,6 +20,7 @@ int foo ()
 {
   __mmask16 msk;
   __mmask8 msk8;
+  asm volatile ("" : "=k" (msk), "=k" (msk8));
   __m128i a = _mm_popcnt_epi32 (x);
   asm volatile ("" : "+v" (a));
   a = _mm_mask_popcnt_epi32 (x_1, msk8, x);

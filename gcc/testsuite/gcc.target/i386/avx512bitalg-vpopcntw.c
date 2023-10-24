@@ -11,6 +11,7 @@ extern __m512i z, z1;
 int foo ()
 {
   __mmask16 msk;
+  asm volatile ("" : "=k" (msk));
   __m512i c = _mm512_popcnt_epi16 (z);
   asm volatile ("" : "+v" (c));
   c = _mm512_mask_popcnt_epi16 (z1, msk, z);
