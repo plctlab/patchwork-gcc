@@ -14848,15 +14848,33 @@ tree_single_nonnegative_warnv_p (tree t, bool *strict_overflow_p, int depth)
       return RECURSE (TREE_OPERAND (t, 1)) && RECURSE (TREE_OPERAND (t, 2));
 
     case SSA_NAME:
-      /* Limit the depth of recursion to avoid quadratic behavior.
-	 This is expected to catch almost all occurrences in practice.
-	 If this code misses important cases that unbounded recursion
-	 would not, passes that need this information could be revised
-	 to provide it through dataflow propagation.  */
-      return (!name_registered_for_update_p (t)
-	      && depth < param_max_ssa_name_query_depth
-	      && gimple_stmt_nonnegative_warnv_p (SSA_NAME_DEF_STMT (t),
-						  strict_overflow_p, depth));
+      {
+	/* For integral types, querry the global range if possible. */
+	if (INTEGRAL_TYPE_P (TREE_TYPE (t)))
+	  {
+	    value_range vr;
+	    if (get_global_range_query ()->range_of_expr (vr, t)
+		&& !vr.varying_p () && !vr.undefined_p ())
+	      {
+		/* If the range is nonnegative, return true. */
+		if (vr.nonnegative_p ())
+		  return true;
+
+		/* If the range is non-positive, then return false. */
+		if (vr.nonpositive_p ())
+		  return false;
+	      }
+	  }
+	/* Limit the depth of recursion to avoid quadratic behavior.
+	   This is expected to catch almost all occurrences in practice.
+	   If this code misses important cases that unbounded recursion
+	   would not, passes that need this information could be revised
+	   to provide it through dataflow propagation.  */
+	return (!name_registered_for_update_p (t)
+		&& depth < param_max_ssa_name_query_depth
+		&& gimple_stmt_nonnegative_warnv_p (SSA_NAME_DEF_STMT (t),
+						    strict_overflow_p, depth));
+      }
 
     default:
       return tree_simple_nonnegative_warnv_p (TREE_CODE (t), TREE_TYPE (t));
