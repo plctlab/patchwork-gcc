@@ -191,6 +191,7 @@ private:
   bool set_range_from_nonzero_bits ();
 
   bool intersect (const wide_int& lb, const wide_int& ub);
+  bool union_append (const irange &r);
   unsigned char m_num_ranges;
   const unsigned char m_max_ranges;
   tree m_type;
