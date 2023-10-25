@@ -3221,7 +3221,16 @@ riscv_extend_comparands (rtx_code code, rtx *op0, rtx *op1)
 	}
       else
 	{
-	  *op0 = gen_rtx_SIGN_EXTEND (word_mode, *op0);
+	/* A subreg promoted SI of DI could be peeled to expose DI, eliding
+	   an unnecessary sign extension.  */
+	if (GET_CODE (*op0) == SUBREG
+	    && SUBREG_PROMOTED_VAR_P (*op0)
+	    && GET_MODE_SIZE (GET_MODE (XEXP (*op0, 0))).to_constant ()
+	       == GET_MODE_SIZE (word_mode))
+	     *op0 = XEXP (*op0, 0);
+	else
+	     *op0 = gen_rtx_SIGN_EXTEND (word_mode, *op0);
+
 	  if (*op1 != const0_rtx)
 	    *op1 = gen_rtx_SIGN_EXTEND (word_mode, *op1);
 	}
