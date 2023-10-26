@@ -711,6 +711,26 @@ namespace __detail
     std::size_t	_M_next_resize;
   };
 
+  template<typename _RehashPolicy>
+    struct _RehashStateGuard
+    {
+      _RehashPolicy& _M_rehash_policy;
+      typename _RehashPolicy::_State _M_prev_state;
+      bool _M_reset = true;
+
+      _RehashStateGuard(_RehashPolicy& __policy)
+      : _M_rehash_policy(__policy)
+      , _M_prev_state(__policy._M_state())
+      { }
+      _RehashStateGuard(const _RehashStateGuard&) = delete;
+
+      ~_RehashStateGuard()
+      {
+	if (_M_reset)
+	  _M_rehash_policy._M_reset(_M_prev_state);
+      }
+    };
+
   // Base classes for std::_Hashtable.  We define these base classes
   // because in some cases we want to do different things depending on
   // the value of a policy class.  In some cases the policy class
@@ -1003,7 +1023,7 @@ namespace __detail
 		      const _NodeGetter& __node_gen, false_type __uks)
       {
 	using __rehash_type = typename __hashtable::__rehash_type;
-	using __rehash_state = typename __hashtable::__rehash_state;
+	using __rehash_guard_t = typename __hashtable::__rehash_guard_t;
 	using pair_type = std::pair<bool, std::size_t>;
 
 	size_type __n_elt = __detail::__distance_fw(__first, __last);
@@ -1012,14 +1032,15 @@ namespace __detail
 
 	__hashtable& __h = _M_conjure_hashtable();
 	__rehash_type& __rehash = __h._M_rehash_policy;
-	const __rehash_state& __saved_state = __rehash._M_state();
+	__rehash_guard_t __rehash_guard(__rehash);
 	pair_type __do_rehash = __rehash._M_need_rehash(__h._M_bucket_count,
 							__h._M_element_count,
 							__n_elt);
 
 	if (__do_rehash.first)
-	  __h._M_rehash(__do_rehash.second, __saved_state);
+	  __h._M_rehash(__do_rehash.second, __uks);
 
+	__rehash_guard._M_reset = false;
 	for (; __first != __last; ++__first)
 	  __h._M_insert(*__first, __node_gen, __uks);
       }
