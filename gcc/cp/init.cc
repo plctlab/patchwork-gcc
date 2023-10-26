@@ -3271,7 +3271,7 @@ build_new_1 (vec<tree, va_gc> **placement, tree type, tree nelts,
 	      return error_mark_node;
 	    }
 	}
-      else
+      else if (!processing_template_decl)
  	{
 	  /* When a runtime check is necessary because the array size
 	     isn't constant, keep only the top-most seven bits (starting
@@ -3456,10 +3456,15 @@ build_new_1 (vec<tree, va_gc> **placement, tree type, tree nelts,
 	}
     }
 
+  if (processing_template_decl)
+    /* We've done pretty much all we can to check this non-dependent new-expr
+       ahead of time.  Any further work is unnecessary since (build_new just
+       discards the result) and/or unsuitable inside a template context.  */
+    return void_node;
+
   /* If we found a simple case of PLACEMENT_EXPR above, then copy it
      into a temporary variable.  */
-  if (!processing_template_decl
-      && TREE_CODE (alloc_call) == CALL_EXPR
+  if (TREE_CODE (alloc_call) == CALL_EXPR
       && call_expr_nargs (alloc_call) == 2
       && TREE_CODE (TREE_TYPE (CALL_EXPR_ARG (alloc_call, 0))) == INTEGER_TYPE
       && TYPE_PTR_P (TREE_TYPE (CALL_EXPR_ARG (alloc_call, 1))))
@@ -3598,25 +3603,7 @@ build_new_1 (vec<tree, va_gc> **placement, tree type, tree nelts,
 	  explicit_value_init_p = true;
 	}
 
-      if (processing_template_decl)
-	{
-	  /* Avoid an ICE when converting to a base in build_simple_base_path.
-	     We'll throw this all away anyway, and build_new will create
-	     a NEW_EXPR.  */
-	  tree t = fold_convert (build_pointer_type (elt_type), data_addr);
-	  /* build_value_init doesn't work in templates, and we don't need
-	     the initializer anyway since we're going to throw it away and
-	     rebuild it at instantiation time, so just build up a single
-	     constructor call to get any appropriate diagnostics.  */
-	  init_expr = cp_build_fold_indirect_ref (t);
-	  if (type_build_ctor_call (elt_type))
-	    init_expr = build_special_member_call (init_expr,
-						   complete_ctor_identifier,
-						   init, elt_type,
-						   LOOKUP_NORMAL,
-						   complain);
-	}
-      else if (array_p)
+      if (array_p)
 	{
 	  tree vecinit = NULL_TREE;
 	  const size_t len = vec_safe_length (*init);
@@ -3710,8 +3697,7 @@ build_new_1 (vec<tree, va_gc> **placement, tree type, tree nelts,
 	     object being initialized, replace them now and don't try to
 	     preevaluate.  */
 	  bool had_placeholder = false;
-	  if (!processing_template_decl
-	      && TREE_CODE (init_expr) == INIT_EXPR)
+	  if (TREE_CODE (init_expr) == INIT_EXPR)
 	    TREE_OPERAND (init_expr, 1)
 	      = replace_placeholders (TREE_OPERAND (init_expr, 1),
 				      TREE_OPERAND (init_expr, 0),
@@ -3749,7 +3735,7 @@ build_new_1 (vec<tree, va_gc> **placement, tree type, tree nelts,
 		  alloc_fn,
 		  complain));
 
-      if (cleanup && init_expr && !processing_template_decl)
+      if (cleanup && init_expr)
 	/* Ack!  First we allocate the memory.  Then we set our sentry
 	   variable to true, and expand a cleanup that deletes the
 	   memory if sentry is true.  Then we run the constructor, and
