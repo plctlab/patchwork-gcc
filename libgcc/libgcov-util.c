@@ -1072,6 +1072,8 @@ compute_one_gcov (const struct gcov_info *gcov_info1,
 
   for (f_ix = 0; f_ix < gcov_info1->n_functions; f_ix++)
     {
+      double func_1 = 0.0;
+      double func_2 = 0.0;
       double func_cum_1 = 0.0;
       double func_cum_2 = 0.0;
       double func_val = 0.0;
@@ -1096,11 +1098,15 @@ compute_one_gcov (const struct gcov_info *gcov_info1,
 					       ci_ptr2->values[c_num],
 					       sum_1, sum_2);
 
-	      func_cum_1 += ci_ptr1->values[c_num] / sum_1;
-	      func_cum_2 += ci_ptr2->values[c_num] / sum_2;
+	      if (sum_1)
+		func_1 = ci_ptr1->values[c_num] / sum_1;
+	      func_cum_1 += func_1;
+	      if (sum_2)
+		func_2 = ci_ptr2->values[c_num] / sum_2;
+	      func_cum_2 += func_2;
 	      nonzero = 1;
-	      if (ci_ptr1->values[c_num] / sum_1 >= overlap_hot_threshold
-		  || ci_ptr2->values[c_num] / sum_2 >= overlap_hot_threshold)
+	      if (func_1 >= overlap_hot_threshold
+		  || func_2 >= overlap_hot_threshold)
 		hot = 1;
 	    }
 	}
@@ -1322,6 +1328,47 @@ matched_gcov_info (const struct gcov_info *info1, const struct gcov_info *info2)
   return 1;
 }
 
+static int
+accumuate_sum_counts (const struct gcov_info *gcov_info1,
+		      const struct gcov_info *gcov_info2)
+{
+  gcc_assert (gcov_info1 || gcov_info2);
+  unsigned f_ix;
+
+  if (gcov_info1)
+    {
+      gcov_type cum_1 = 0;
+      for (f_ix = 0; f_ix < gcov_info1->n_functions; f_ix++)
+	{
+	  const struct gcov_fn_info *gfi_ptr = gcov_info1->functions[f_ix];
+	  if (!gfi_ptr || gfi_ptr->key != gcov_info1)
+	    continue;
+	  const struct gcov_ctr_info *ci_ptr = gfi_ptr->ctrs;
+	  unsigned c_num;
+	  for (c_num = 0; c_num < ci_ptr->num; c_num++)
+	    cum_1 += ci_ptr->values[c_num];
+	}
+      overlap_sum_1 = cum_1;
+    }
+
+  if (gcov_info2)
+    {
+      gcov_type cum_2 = 0;
+      for (f_ix = 0; f_ix < gcov_info2->n_functions; f_ix++)
+	{
+	  const struct gcov_fn_info *gfi_ptr = gcov_info2->functions[f_ix];
+	  if (!gfi_ptr || gfi_ptr->key != gcov_info2)
+	    continue;
+	  const struct gcov_ctr_info *ci_ptr = gfi_ptr->ctrs;
+	  unsigned c_num;
+	  for (c_num = 0; c_num < ci_ptr->num; c_num++)
+	    cum_2 += ci_ptr->values[c_num];
+	}
+      overlap_sum_2 = cum_2;
+    }
+  return 0;
+}
+
 /* Compute the overlap score of two profiles with the head of GCOV_LIST1 and
    GCOV_LIST1. Return a number ranging from [0.0, 1.0], with 0.0 meaning no
    match and 1.0 meaning a perfect match.  */
@@ -1409,6 +1456,9 @@ calculate_overlap (struct gcov_info *gcov_list1,
 
       if (overlap_func_level)
         printf("\n   processing %36s:\n", filename);
+
+      overlap_sum_1 = overlap_sum_2 = 0.0;
+      accumuate_sum_counts (all_infos[i].obj1, all_infos[i].obj2);
 
       val = compute_one_gcov (all_infos[i].obj1, all_infos[i].obj2,
           overlap_sum_1, overlap_sum_2, &cum_1, &cum_2);
