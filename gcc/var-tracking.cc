@@ -5352,7 +5352,8 @@ track_loc_p (rtx loc, tree expr, poly_int64 offset, bool store_reg_p,
      because the real and imaginary parts are represented as separate
      pseudo registers, even if the whole complex value fits into one
      hard register.  */
-  if ((paradoxical_subreg_p (mode, DECL_MODE (expr))
+  if (((DECL_MODE (expr) != BLKmode
+	&& paradoxical_subreg_p (mode, DECL_MODE (expr)))
        || (store_reg_p
 	   && !COMPLEX_MODE_P (DECL_MODE (expr))
 	   && hard_regno_nregs (REGNO (loc), DECL_MODE (expr)) == 1))

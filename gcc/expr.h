@@ -360,5 +360,8 @@ extern rtx expr_size (tree);
 
 extern bool mem_ref_refers_to_non_mem_p (tree);
 extern bool non_mem_decl_p (tree);
+extern void query_position_in_parallel (HOST_WIDE_INT, HOST_WIDE_INT, rtx,
+					int &, int &, HOST_WIDE_INT &,
+					HOST_WIDE_INT &);
 
 #endif /* GCC_EXPR_H */

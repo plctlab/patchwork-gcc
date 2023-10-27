@@ -5623,7 +5623,10 @@ expand_assignment (tree to, tree from, bool nontemporal)
      Assignment of an array element at a constant index, and assignment of
      an array element in an unaligned packed structure field, has the same
      problem.  Same for (partially) storing into a non-memory object.  */
-  if (handled_component_p (to)
+  if ((handled_component_p (to)
+       && !(VAR_P (get_base_address (to))
+	    && DECL_RTL_SET_P (get_base_address (to))
+	    && GET_CODE (DECL_RTL (get_base_address (to))) == PARALLEL))
       || (TREE_CODE (to) == MEM_REF
 	  && (REF_REVERSE_STORAGE_ORDER (to)
 	      || mem_ref_refers_to_non_mem_p (to)))
@@ -8901,6 +8904,19 @@ expand_constructor (tree exp, rtx target, enum expand_modifier modifier,
       && ! mostly_zeros_p (exp))
     return NULL_RTX;
 
+  if (target && GET_CODE (target) == PARALLEL && all_zeros_p (exp))
+    {
+      int length = XVECLEN (target, 0);
+      int start = XEXP (XVECEXP (target, 0, 0), 0) ? 0 : 1;
+      for (int i = start; i < length; i++)
+	{
+	  rtx dst = XEXP (XVECEXP (target, 0, i), 0);
+	  rtx zero = CONST0_RTX (GET_MODE (dst));
+	  emit_move_insn (dst, zero);
+	}
+      return target;
+    }
+
   /* Handle calls that pass values in multiple non-contiguous
      locations.  The Irix 6 ABI has examples of this.  */
   if (target == 0 || ! safe_from_p (target, exp, 1)
@@ -10626,6 +10642,157 @@ stmt_is_replaceable_p (gimple *stmt)
   return false;
 }
 
+/* In the parallel rtx register series REGS, compute the position for given
+   {BITPOS, BITSIZE}.
+   START_INDEX, END_INDEX, LEFT_BITS and RIGHT_BITS are computed outputs.  */
+
+void
+query_position_in_parallel (HOST_WIDE_INT bitpos, HOST_WIDE_INT bitsize,
+			    rtx regs, int &start_index, int &end_index,
+			    HOST_WIDE_INT &left_bits, HOST_WIDE_INT &right_bits)
+{
+  int cur_index = XEXP (XVECEXP (regs, 0, 0), 0) ? 0 : 1;
+  for (; cur_index < XVECLEN (regs, 0); cur_index++)
+    {
+      rtx slot = XVECEXP (regs, 0, cur_index);
+      HOST_WIDE_INT off = UINTVAL (XEXP (slot, 1)) * BITS_PER_UNIT;
+      machine_mode mode = GET_MODE (XEXP (slot, 0));
+      HOST_WIDE_INT size = GET_MODE_BITSIZE (mode).to_constant ();
+      if (off <= bitpos && off + size > bitpos)
+	{
+	  start_index = cur_index;
+	  left_bits = bitpos - off;
+	}
+      if (off + size >= bitpos + bitsize)
+	{
+	  end_index = cur_index;
+	  right_bits = off + size - (bitpos + bitsize);
+	  break;
+	}
+    }
+}
+
+static rtx
+extract_sub_member (rtx regs, HOST_WIDE_INT bitpos, HOST_WIDE_INT bitsize,
+		    tree expr)
+{
+  int start_index = -1;
+  int end_index = -1;
+  HOST_WIDE_INT left_bits = 0;
+  HOST_WIDE_INT right_bits = 0;
+  query_position_in_parallel (bitpos, bitsize, regs, start_index, end_index,
+			      left_bits, right_bits);
+
+  machine_mode expr_mode = TYPE_MODE (TREE_TYPE (expr));
+  if (end_index > start_index || expr_mode == BLKmode)
+    {
+      /* TImode in multi-registers.  */
+      if (expr_mode == TImode)
+	{
+	  rtx res = gen_reg_rtx (expr_mode);
+	  HOST_WIDE_INT start;
+	  start = UINTVAL (XEXP (XVECEXP (regs, 0, start_index), 1));
+	  for (int index = start_index; index <= end_index; index++)
+	    {
+	      rtx reg = XEXP (XVECEXP (regs, 0, index), 0);
+	      machine_mode mode = GET_MODE (reg);
+	      HOST_WIDE_INT off;
+	      off = UINTVAL (XEXP (XVECEXP (regs, 0, index), 1)) - start;
+	      rtx sub = simplify_gen_subreg (mode, res, expr_mode, off);
+	      emit_move_insn (sub, reg);
+	    }
+	  return res;
+	}
+
+      /* Vector in multi-registers.  */
+      if (VECTOR_MODE_P (expr_mode))
+	{
+	  rtvec vector = rtvec_alloc (end_index - start_index + 1);
+	  machine_mode emode;
+	  emode = GET_MODE (XEXP (XVECEXP (regs, 0, start_index), 0));
+	  for (int index = start_index; index <= end_index; index++)
+	    {
+	      rtx reg = XEXP (XVECEXP (regs, 0, index), 0);
+	      gcc_assert (emode == GET_MODE (reg));
+	      RTVEC_ELT (vector, index - start_index) = reg;
+	    }
+	  scalar_int_mode imode;
+	  machine_mode vmode;
+	  int nunits = end_index - start_index + 1;
+	  if (!(int_mode_for_mode (emode).exists (&imode)
+		&& mode_for_vector (imode, nunits).exists (&vmode)))
+	    gcc_unreachable ();
+
+	  insn_code icode;
+	  icode = convert_optab_handler (vec_init_optab, vmode, imode);
+	  rtx res = gen_reg_rtx (vmode);
+	  emit_insn (GEN_FCN (icode) (res, gen_rtx_PARALLEL (vmode, vector)));
+	  if (expr_mode == vmode)
+	    return res;
+	  return simplify_gen_subreg (expr_mode, res, vmode, 0);
+	}
+
+      /* Need multi-registers in a parallel for the access.  */
+      int num_words = end_index - start_index + 1;
+      rtx *tmps = XALLOCAVEC (rtx, num_words);
+
+      int pos = 0;
+      HOST_WIDE_INT start;
+      start = UINTVAL (XEXP (XVECEXP (regs, 0, start_index), 1));
+      /* Extract whole registers.  */
+      for (; pos < num_words; pos++)
+	{
+	  int index = start_index + pos;
+	  rtx reg = XEXP (XVECEXP (regs, 0, index), 0);
+	  machine_mode mode = GET_MODE (reg);
+	  HOST_WIDE_INT off;
+	  off = UINTVAL (XEXP (XVECEXP (regs, 0, index), 1)) - start;
+	  tmps[pos] = gen_rtx_EXPR_LIST (mode, reg, GEN_INT (off));
+	}
+
+      rtx res = gen_rtx_PARALLEL (expr_mode, gen_rtvec_v (pos, tmps));
+      return res;
+    }
+
+  gcc_assert (end_index == start_index);
+
+  /* Just need one reg for the access.  */
+  if (left_bits == 0 && right_bits == 0)
+    {
+      rtx reg = XEXP (XVECEXP (regs, 0, start_index), 0);
+      if (GET_MODE (reg) != expr_mode)
+	reg = gen_lowpart (expr_mode, reg);
+      return reg;
+    }
+
+  /* Need to extract bitfield part reg for the access.
+     left_bits != 0 or right_bits != 0 */
+  rtx reg = XEXP (XVECEXP (regs, 0, start_index), 0);
+  bool sgn = TYPE_UNSIGNED (TREE_TYPE (expr));
+  scalar_int_mode imode;
+  if (!int_mode_for_mode (expr_mode).exists (&imode))
+    {
+      gcc_assert (false);
+      return NULL_RTX;
+    }
+
+  machine_mode mode = GET_MODE (reg);
+  bool reverse = false;
+  rtx bfld = extract_bit_field (reg, bitsize, left_bits, sgn, NULL_RTX, mode,
+				imode, reverse, NULL);
+
+  if (GET_MODE (bfld) != imode)
+    bfld = gen_lowpart (imode, bfld);
+
+  if (expr_mode == imode)
+    return bfld;
+
+  /* expr_mode != imode, e.g. SF != SI.  */
+  rtx result = gen_reg_rtx (imode);
+  emit_move_insn (result, bfld);
+  return gen_lowpart (expr_mode, result);
+}
+
 rtx
 expand_expr_real_1 (tree exp, rtx target, machine_mode tmode,
 		    enum expand_modifier modifier, rtx *alt_rtl,
@@ -11461,6 +11628,16 @@ expand_expr_real_1 (tree exp, rtx target, machine_mode tmode,
 	orig_op0 = op0
 	  = expand_expr_real (tem, tem_target, VOIDmode, tem_modifier, NULL,
 			      true);
+
+	/* It is scalarizable access on param which is passed by registers.  */
+	if (GET_CODE (op0) == PARALLEL
+	    && (TREE_CODE (tem) == PARM_DECL || VAR_P (tem)))
+	  {
+	    HOST_WIDE_INT pos, size;
+	    size = bitsize.to_constant ();
+	    pos = bitpos.to_constant ();
+	    return extract_sub_member (op0, pos, size, exp);
+	  }
 
 	/* If the field has a mode, we want to access it in the
 	   field's mode, not the computed mode.

@@ -15,10 +15,15 @@ struct shared_ptr_struct
 };
 typedef struct shared_ptr_struct sptr_t;
 
+void foo (sptr_t *);
+
 void
 copy_sptr (sptr_t *dest, sptr_t src)
 {
   *dest = src;
+
+  /* Prevent 'src' to be scalarized as registers.  */
+  foo (&src);
 }
 
 /* { dg-final { scan-rtl-dump "\\\(set \\\(reg:TI \[0-9\]*" "expand" } } */
