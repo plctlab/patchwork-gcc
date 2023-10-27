@@ -785,6 +785,10 @@ enum aarch64_builtins
   AARCH64_RBIT,
   AARCH64_RBITL,
   AARCH64_RBITLL,
+  AARCH64_PLD,
+  AARCH64_PLDX,
+  AARCH64_PLI,
+  AARCH64_PLIX,
   AARCH64_BUILTIN_MAX
 };
 
@@ -1765,6 +1769,33 @@ aarch64_init_rng_builtins (void)
 				   AARCH64_BUILTIN_RNG_RNDRRS);
 }
 
+/* Add builtins for data and instrution prefetch.  */
+static void
+aarch64_init_prefetch_builtin (void)
+{
+#define AARCH64_INIT_PREFETCH_BUILTIN(INDEX, N)				\
+  aarch64_builtin_decls[INDEX] =					\
+    aarch64_general_add_builtin ("__builtin_aarch64_" N, ftype, INDEX)
+
+  tree ftype;
+  tree void_const_vol_ptr_type = build_type_variant (ptr_type_node, 1, 1);
+
+  ftype = build_function_type_list (void_type_node, void_const_vol_ptr_type,
+				    NULL);
+  AARCH64_INIT_PREFETCH_BUILTIN (AARCH64_PLD, "pld");
+  AARCH64_INIT_PREFETCH_BUILTIN (AARCH64_PLI, "pli");
+
+  ftype = build_function_type_list (void_type_node, unsigned_type_node,
+				    unsigned_type_node, unsigned_type_node,
+				    void_const_vol_ptr_type, NULL);
+  AARCH64_INIT_PREFETCH_BUILTIN (AARCH64_PLDX, "pldx");
+
+  ftype = build_function_type_list (void_type_node, unsigned_type_node,
+				    unsigned_type_node, void_const_vol_ptr_type,
+				    NULL);
+  AARCH64_INIT_PREFETCH_BUILTIN (AARCH64_PLIX, "plix");
+}
+
 /* Initialize the memory tagging extension (MTE) builtins.  */
 struct
 {
@@ -1984,6 +2015,8 @@ aarch64_general_init_builtins (void)
   aarch64_init_builtin_rsqrt ();
   aarch64_init_rng_builtins ();
   aarch64_init_data_intrinsics ();
+
+  aarch64_init_prefetch_builtin ();
 
   tree ftype_jcvt
     = build_function_type_list (intSI_type_node, double_type_node, NULL);
@@ -2562,6 +2595,127 @@ aarch64_expand_rng_builtin (tree exp, rtx target, int fcode, int ignore)
   return target;
 }
 
+/* Expand a prefetch builtin EXP.  */
+void
+aarch64_expand_prefetch_builtin (tree exp, int fcode)
+{
+
+#define EXPAND_CONST_INT(IN_IDX, OUT_IDX, ERRMSG)	\
+  if (TREE_CODE (args[IN_IDX]) != INTEGER_CST)		\
+    {							\
+      error_at (EXPR_LOCATION (exp), ERRMSG);		\
+      args[IN_IDX] = integer_zero_node;			\
+    }							\
+    ops[OUT_IDX] = expand_normal (args[IN_IDX])
+
+#define WARN_INVALID(VAR, ERRMSG)			\
+  do {							\
+    warning_at (EXPR_LOCATION (exp), 0, ERRMSG);	\
+    VAR = 0;						\
+  } while (0)
+
+  unsigned narg;
+
+  tree args[4];
+  rtx ops[4];
+  int kind_id, level_id, rettn_id;
+  char prfop[11];
+
+  char kind_s[3][4] = {"PLD", "PST", "PLI"};
+  char level_s[4][4] = {"L1", "L2", "L3", "SLC"};
+  char rettn_s[2][5] = {"KEEP", "STRM"};
+
+  /* Each of the four prefetch builtins takes a different number of
+     arguments, but proceeds to call the PRFM insn which requires 4
+     pieces of information to be fully defined.
+
+     Specify the total number of arguments for each builtin and, where
+     one of these takes less than 4 arguments, set sensible defaults.  */
+  switch (fcode)
+    {
+    case AARCH64_PLDX:
+      kind_id = -1;
+      narg = 4;
+      break;
+    case AARCH64_PLIX:
+      kind_id = 2;
+      narg = 3;
+      break;
+    case AARCH64_PLI:
+    case AARCH64_PLD:
+    default:
+      kind_id  = (fcode == AARCH64_PLD) ? 0 : 2;
+      level_id = 0;
+      rettn_id = 0;
+      narg = 1;
+      break;
+    }
+
+  int addr_arg_index  = narg - 1;
+
+  /* Extract the correct number of arguments from our function call.  */
+  for (unsigned i = 0; i < narg; i++)
+    args[i] = CALL_EXPR_ARG (exp, i);
+
+  /* Check address argument.  */
+  if (!(POINTER_TYPE_P (TREE_TYPE (args[addr_arg_index])))
+      || (TREE_CODE (TREE_TYPE (TREE_TYPE (args[addr_arg_index])))
+	  != VOID_TYPE))
+    error_at (EXPR_LOCATION (exp), "invalid address type specified;"
+				   " void const volatile * required");
+
+  ops[3] = expand_expr (args[addr_arg_index], NULL_RTX, Pmode, EXPAND_NORMAL);
+
+  /* Check arguments common to both pldx and plix.  */
+  if (fcode == AARCH64_PLDX || fcode == AARCH64_PLIX)
+    {
+      int cache_index = (fcode == AARCH64_PLIX) ? 0 : 1;
+      int policy_index = cache_index + 1;
+
+      /* Cache level must be 0, 1, 2 or 3.  */
+      EXPAND_CONST_INT (cache_index, 1,
+			"Cache-level argument must be a constant");
+      level_id = INTVAL (ops[1]);
+      if (level_id < 0 || level_id > 3)
+	WARN_INVALID (level_id, "invalid cache level selected; using zero");
+
+      /* Retention policy must be either zero or one.  */
+      EXPAND_CONST_INT (policy_index, 2,
+			"Retention policy argument must be a constant");
+      rettn_id = INTVAL (ops[2]);
+      if (rettn_id != 0 && rettn_id != 1)
+	WARN_INVALID (rettn_id, "invalid retention policy selected; "
+				"using zero");
+    }
+
+  /* For PLDX, validate the access kind argument.  */
+  if (fcode == AARCH64_PLDX)
+    {
+      /* Argument 0 must be either zero or one.  */
+      EXPAND_CONST_INT (0, 0, "Access kind argument must be a constant");
+      kind_id = INTVAL (ops[0]);
+      if (kind_id != 0 && kind_id != 1)
+	WARN_INVALID (kind_id, "invalid access kind argument; using zero");
+    }
+
+  sprintf (prfop, "%s%s%s", kind_s[kind_id],
+			    level_s[level_id],
+			    rettn_s[rettn_id]);
+
+  rtx const_str = rtx_alloc (CONST_STRING);
+  PUT_CODE (const_str, CONST_STRING);
+  XSTR (const_str, 0) = xstrdup (prfop);
+
+  class expand_operand exp_ops[2];
+
+  create_fixed_operand (&exp_ops[0], const_str);
+  create_address_operand (&exp_ops[1], ops[3]);
+  maybe_expand_insn (CODE_FOR_aarch64_pldx, 2, exp_ops);
+
+  #undef EXPAND_CONST_INT
+  #undef WARN_INVALID
+}
+
 /* Expand an expression EXP that calls a MEMTAG built-in FCODE
    with result going to TARGET.  */
 static rtx
@@ -2795,6 +2949,12 @@ aarch64_general_expand_builtin (unsigned int fcode, tree exp, rtx target,
     case AARCH64_BUILTIN_RNG_RNDR:
     case AARCH64_BUILTIN_RNG_RNDRRS:
       return aarch64_expand_rng_builtin (exp, target, fcode, ignore);
+    case AARCH64_PLD:
+    case AARCH64_PLDX:
+    case AARCH64_PLI:
+    case AARCH64_PLIX:
+      aarch64_expand_prefetch_builtin (exp, fcode);
+      return target;
     }
 
   if (fcode >= AARCH64_SIMD_BUILTIN_BASE && fcode <= AARCH64_SIMD_BUILTIN_MAX)
