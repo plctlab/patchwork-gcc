@@ -44,6 +44,7 @@
 #include "aarch64-sve-builtins-shapes.h"
 #include "aarch64-sve-builtins-base.h"
 #include "aarch64-sve-builtins-functions.h"
+#include "aarch64-builtins.h"
 #include "ssa.h"
 #include "gimple-fold.h"
 
@@ -1015,6 +1016,136 @@ public:
     return simplify_gen_subreg (e.vector_mode (0), e.args[0],
 				GET_MODE (e.args[0]),
 				INTVAL (e.args[1]) * BYTES_PER_SVE_VECTOR);
+  }
+};
+
+class svget_neonq_impl : public function_base
+{
+public:
+  gimple *
+  fold (gimple_folder &f) const override
+  {
+    if (BYTES_BIG_ENDIAN)
+      return NULL;
+    tree rhs_tuple = gimple_call_arg (f.call, 0);
+    tree rhs_vector = build3 (BIT_FIELD_REF, TREE_TYPE (f.lhs),
+			     rhs_tuple, bitsize_int(128), bitsize_int(0));
+    return gimple_build_assign (f.lhs, rhs_vector);
+  }
+  rtx
+  expand (function_expander &e) const override
+  {
+    if (BYTES_BIG_ENDIAN)
+      {
+	machine_mode mode = e.vector_mode (0);
+	insn_code icode = code_for_aarch64_sve_get_neonq (mode);
+	unsigned int nunits = 128 / GET_MODE_UNIT_BITSIZE (mode);
+	rtx indices = aarch64_gen_stepped_int_parallel
+	  (nunits, (nunits - 1) , -1);
+
+	e.add_output_operand (icode);
+	e.add_input_operand (icode, e.args[0]);
+	e.add_fixed_operand (indices);
+	return e.generate_insn (icode);
+      }
+    return simplify_gen_subreg (e.vector_mode (0), e.args[0],
+				GET_MODE (e.args[0]),
+				INTVAL (e.args[1]) * BYTES_PER_SVE_VECTOR);
+  }
+};
+
+class svset_neonq_impl : public function_base
+{
+public:
+  gimple *
+  fold (gimple_folder &f) const override
+  {
+    if (BYTES_BIG_ENDIAN)
+      return NULL;
+    tree rhs_tuple = gimple_call_arg (f.call, 0);
+    tree rhs_vector = gimple_call_arg (f.call, 1);
+    gassign *copy = gimple_build_assign (unshare_expr (f.lhs), rhs_tuple);
+    tree lhs_vector = build3 (BIT_INSERT_EXPR, TREE_TYPE (rhs_vector),
+			     f.lhs, rhs_vector, bitsize_int(0));
+    gassign *update = gimple_build_assign (f.lhs, lhs_vector);
+    gsi_insert_after (f.gsi, update, GSI_SAME_STMT);
+    return copy;
+  }
+  rtx
+  expand (function_expander &e) const override
+  {
+    if (BYTES_BIG_ENDIAN)
+      {
+	return e.use_exact_insn (code_for_aarch64_sve_set_neonq (e.vector_mode (0)));
+      }
+    unsigned int index = INTVAL (e.args[1]);
+    rtx rhs_tuple = e.args[0];
+    rtx rhs_vector = e.args[2];
+    rtx lhs_tuple = e.get_nonoverlapping_reg_target ();
+    emit_move_insn (lhs_tuple, rhs_tuple);
+    rtx lhs_vector = simplify_gen_subreg (GET_MODE (rhs_vector),
+					  lhs_tuple, GET_MODE (lhs_tuple),
+					  index * BYTES_PER_SVE_VECTOR);
+    emit_move_insn (lhs_vector, rhs_vector);
+    return lhs_vector;
+  }
+};
+
+class svdup_neonq_impl : public function_base
+{
+public:
+  gimple *
+  fold (gimple_folder &f) const override
+  {
+    if (BYTES_BIG_ENDIAN)
+      {
+	return NULL;
+      }
+    tree rhs_vector = gimple_call_arg (f.call, 0);
+    unsigned int nargs = gimple_call_num_args (f.call);
+    unsigned HOST_WIDE_INT NEONnelts;
+    TYPE_VECTOR_SUBPARTS (TREE_TYPE (rhs_vector)).is_constant (&NEONnelts);
+    poly_uint64 SVEnelts;
+    SVEnelts = TYPE_VECTOR_SUBPARTS (TREE_TYPE (f.lhs));
+    vec_perm_builder builder (SVEnelts, NEONnelts, 1);
+    for (unsigned int i = 0; i < NEONnelts; i++)
+      {
+	builder.quick_push (i);
+      }
+    vec_perm_indices indices (builder, 1, NEONnelts);
+    tree perm_type = build_vector_type (ssizetype, SVEnelts);
+    return gimple_build_assign (f.lhs, VEC_PERM_EXPR,
+				rhs_vector,
+				rhs_vector,
+				vec_perm_indices_to_tree (perm_type, indices));
+  }
+  rtx
+  expand (function_expander &e) const override
+  {
+    insn_code icode;
+    machine_mode mode = e.vector_mode (0);
+    if (BYTES_BIG_ENDIAN)
+      {
+	icode = code_for_aarch64_sve_dup_neonq (mode);
+	unsigned int nunits = 128 / GET_MODE_UNIT_BITSIZE (mode);
+	rtx indices = aarch64_gen_stepped_int_parallel
+	  (nunits, (nunits - 1) , -1);
+
+	e.add_output_operand (icode);
+	e.add_input_operand (icode, e.args[0]);
+	e.add_fixed_operand (indices);
+	return e.generate_insn (icode);
+      }
+    if (valid_for_const_vector_p (GET_MODE_INNER (mode), e.args.last ()))
+      /* Duplicate the constant to fill a vector.  The pattern optimizes
+	 various cases involving constant operands, falling back to SEL
+	 if necessary.  */
+      icode = code_for_vcond_mask (mode, mode);
+    else
+      /* Use the pattern for selecting between a duplicated scalar
+	 variable and a vector fallback.  */
+      icode = code_for_aarch64_sel_dup (mode);
+    return e.use_vcond_mask_insn (icode);
   }
 };
 
@@ -2849,5 +2980,8 @@ FUNCTION (svzip1q, unspec_based_function, (UNSPEC_ZIP1Q, UNSPEC_ZIP1Q,
 FUNCTION (svzip2, svzip_impl, (1))
 FUNCTION (svzip2q, unspec_based_function, (UNSPEC_ZIP2Q, UNSPEC_ZIP2Q,
 					   UNSPEC_ZIP2Q))
+NEON_SVE_BRIDGE_FUNCTION (svget_neonq, svget_neonq_impl,)
+NEON_SVE_BRIDGE_FUNCTION (svset_neonq, svset_neonq_impl,)
+NEON_SVE_BRIDGE_FUNCTION (svdup_neonq, svdup_neonq_impl,)
 
 } /* end namespace aarch64_sve */

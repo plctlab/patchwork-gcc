@@ -15335,6 +15335,7 @@ aarch64_init_builtins ()
 {
   aarch64_general_init_builtins ();
   aarch64_sve::init_builtins ();
+  aarch64_sve::init_neon_sve_builtins ();
 #ifdef SUBTARGET_INIT_BUILTINS
   SUBTARGET_INIT_BUILTINS;
 #endif

@@ -52,6 +52,7 @@
 #include "aarch64-sve-builtins-base.h"
 #include "aarch64-sve-builtins-sve2.h"
 #include "aarch64-sve-builtins-shapes.h"
+#include "aarch64-builtins.h"
 
 namespace aarch64_sve {
 
@@ -127,7 +128,8 @@ CONSTEXPR const mode_suffix_info mode_suffixes[] = {
 
 /* Static information about each type_suffix_index.  */
 CONSTEXPR const type_suffix_info type_suffixes[NUM_TYPE_SUFFIXES + 1] = {
-#define DEF_SVE_TYPE_SUFFIX(NAME, ACLE_TYPE, CLASS, BITS, MODE) \
+#define DEF_SVE_NEON_TYPE_SUFFIX(NAME, ACLE_TYPE, CLASS, BITS, MODE, \
+				 NEON64, NEON128) \
   { "_" #NAME, \
     VECTOR_TYPE_##ACLE_TYPE, \
     TYPE_##CLASS, \
@@ -138,10 +140,15 @@ CONSTEXPR const type_suffix_info type_suffixes[NUM_TYPE_SUFFIXES + 1] = {
     TYPE_##CLASS == TYPE_float, \
     TYPE_##CLASS == TYPE_bool, \
     0, \
-    MODE },
+    MODE, \
+    NEON64, \
+    NEON128 },
+#define DEF_SVE_TYPE_SUFFIX(NAME, ACLE_TYPE, CLASS, BITS, MODE) \
+  DEF_SVE_NEON_TYPE_SUFFIX (NAME, ACLE_TYPE, CLASS, BITS, MODE, \
+			    ARM_NEON_H_TYPES_LAST, ARM_NEON_H_TYPES_LAST)
 #include "aarch64-sve-builtins.def"
   { "", NUM_VECTOR_TYPES, TYPE_bool, 0, 0, false, false, false, false,
-    0, VOIDmode }
+    0, VOIDmode, ARM_NEON_H_TYPES_LAST, ARM_NEON_H_TYPES_LAST }
 };
 
 /* Define a TYPES_<combination> macro for each combination of type
@@ -527,6 +534,13 @@ static CONSTEXPR const function_group_info function_groups[] = {
   { #NAME, &functions::NAME, &shapes::SHAPE, types_##TYPES, preds_##PREDS, \
     REQUIRED_EXTENSIONS | AARCH64_FL_SVE },
 #include "aarch64-sve-builtins.def"
+};
+
+/* A list of all NEON-SVE-Bridge ACLE functions.  */
+static CONSTEXPR const function_group_info neon_sve_function_groups[] = {
+#define DEF_NEON_SVE_FUNCTION(NAME, SHAPE, TYPES, PREDS) \
+  { #NAME, &neon_sve_bridge_functions::NAME, &shapes::SHAPE, types_##TYPES, preds_##PREDS },
+#include "aarch64-neon-sve-bridge-builtins.def"
 };
 
 /* The scalar type associated with each vector type.  */
@@ -1402,6 +1416,32 @@ function_resolver::infer_integer_vector_type (unsigned int argno)
 
   return type;
 }
+
+type_suffix_index
+function_resolver::infer_neon128_vector_type (unsigned int argno)
+{
+  tree actual = get_argument_type (argno);
+  if (actual == error_mark_node)
+    return NUM_TYPE_SUFFIXES;
+
+  for (unsigned int suffix_i = 0; suffix_i < NUM_TYPE_SUFFIXES; ++suffix_i)
+    {
+      int neon_index = type_suffixes[suffix_i].neon128_type;
+      if (neon_index != ARM_NEON_H_TYPES_LAST)
+	{
+	  tree type = aarch64_simd_types[neon_index].itype;
+	  if (type && matches_type_p (type, actual))
+	    {
+	      return type_suffix_index (suffix_i);
+	    }
+	}
+    }
+
+  error_at (location, "passing %qT to argument %d of %qE, which"
+	    " expects a 128 bit NEON vector type", actual, argno + 1, fndecl);
+  return NUM_TYPE_SUFFIXES;
+}
+
 
 /* Like infer_vector_type, but also require the type to be an unsigned
    integer.  */
@@ -3410,6 +3450,13 @@ init_builtins ()
     handle_arm_sve_h ();
 }
 
+void
+init_neon_sve_builtins ()
+{
+  if (in_lto_p)
+    handle_arm_neon_sve_bridge_h ();
+}
+
 /* Register vector type TYPE under its arm_sve.h name.  */
 static void
 register_vector_type (vector_type_index type)
@@ -3558,6 +3605,16 @@ handle_arm_sve_h ()
   function_builder builder;
   for (unsigned int i = 0; i < ARRAY_SIZE (function_groups); ++i)
     builder.register_function_group (function_groups[i]);
+}
+
+/* Implement #pragma GCC aarch64 "arm_neon_sve_bridge.h".  */
+void
+handle_arm_neon_sve_bridge_h ()
+{
+  /* Define the functions.  */
+  function_builder builder;
+  for (unsigned int i = 0; i < ARRAY_SIZE (neon_sve_function_groups); ++i)
+    builder.register_function_group (neon_sve_function_groups[i]);
 }
 
 /* Return the function decl with SVE function subcode CODE, or error_mark_node

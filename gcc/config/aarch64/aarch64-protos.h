@@ -982,7 +982,9 @@ void handle_arm_neon_h (void);
 
 namespace aarch64_sve {
   void init_builtins ();
+  void init_neon_sve_builtins ();
   void handle_arm_sve_h ();
+  void handle_arm_neon_sve_bridge_h ();
   tree builtin_decl (unsigned, bool);
   bool builtin_type_p (const_tree);
   bool builtin_type_p (const_tree, unsigned int *, unsigned int *);
