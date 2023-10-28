@@ -2584,7 +2584,12 @@ diagnose_mismatched_decls (tree newdecl, tree olddecl,
 	   && TREE_ASM_WRITTEN (olddecl) && !TREE_ASM_WRITTEN (newdecl))
       /* Don't warn about a variable definition following a declaration.  */
       && !(VAR_P (newdecl)
-	   && DECL_INITIAL (newdecl) && !DECL_INITIAL (olddecl)))
+	   && DECL_INITIAL (newdecl) && !DECL_INITIAL (olddecl))
+      /* Don't warn about external declaration following inline definition.  */
+      && !(TREE_CODE (newdecl) == FUNCTION_DECL
+	   && !DECL_INITIAL (newdecl) && !DECL_DECLARED_INLINE_P (newdecl)
+	   && DECL_EXTERNAL (newdecl) && DECL_INITIAL (olddecl)
+	   && DECL_DECLARED_INLINE_P (olddecl) && DECL_EXTERNAL (olddecl)))
     {
       warned = warning (OPT_Wredundant_decls, "redundant redeclaration of %q+D",
 			newdecl);
