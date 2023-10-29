@@ -85,6 +85,7 @@
 
 #if defined (__APPLE__)
 #include <unistd.h>
+#include <sys/attr.h>
 #endif
 
 #if defined (__hpux__)
@@ -610,11 +611,48 @@ __gnat_get_file_names_case_sensitive (void)
       else
 	{
 	  /* By default, we suppose filesystems aren't case sensitive on
-	     Windows and Darwin (but they are on arm-darwin).  */
-#if defined (WINNT) || defined (__DJGPP__) \
-  || (defined (__APPLE__) && !(defined (__arm__) || defined (__arm64__)))
+	     Windows or DOS.  */
+#if defined (WINNT) || defined (__DJGPP__)
 	  file_names_case_sensitive_cache = 0;
-#else
+#elif defined (__APPLE__)
+	  /* Determine whether the current volume is case-sensitive.  */
+	  {
+	    /* Formulate a query for the volume capabilities.  */
+	    struct attrlist attrList
+	      = {ATTR_BIT_MAP_COUNT,
+		 0,				      /* reserved.  */
+		 0,				      /* commonattr.  */
+		 ATTR_VOL_INFO | ATTR_VOL_CAPABILITIES, /* volattr.  */
+		 0,				      /* dirattr.  */
+		 0,				      /* fileattr.  */
+		 0				      /* forkattr.  */
+		};
+
+	    /* A buffer to contain just the volume capabilities.  */
+	    struct returnBuf {
+	      u_int32_t length;
+	      vol_capabilities_attr_t caps;
+	    } __attribute__ ((aligned (4), packed)) retBuf;
+
+	    /* Default to case-insensitive.  */
+	    file_names_case_sensitive_cache = 0;
+
+	    /* Query the current working directory.  */
+	    if (getattrlist (".",
+			     &attrList,
+			     &retBuf,
+			     sizeof (retBuf),
+			     0) == 0)
+	      /* The call succeeded.  */
+	      if ((retBuf.caps.valid[VOL_CAPABILITIES_FORMAT]
+		   & VOL_CAP_FMT_CASE_SENSITIVE))
+		/* The volume could be case-sensitive.  */
+		if (retBuf.caps.capabilities[VOL_CAPABILITIES_FORMAT]
+		    & VOL_CAP_FMT_CASE_SENSITIVE)
+		  /* The volume is case-sensitive.  */
+		  file_names_case_sensitive_cache = 1;
+	  }
+#else /* Neither Windows nor Apple.  */
 	  file_names_case_sensitive_cache = 1;
 #endif
 	}
