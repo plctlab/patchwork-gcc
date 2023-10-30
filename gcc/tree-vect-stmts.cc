@@ -1693,6 +1693,35 @@ vectorizable_internal_function (combined_fn cfn, tree fndecl,
   return IFN_LAST;
 }
 
+/* Return TRUE when the type size is legal for the call vectorizer,
+   or FALSE.
+   The type size of both the vectype_in and vectype_out should be
+   exactly the same when vectype_out isn't participating the optab.
+   While there is no restriction for type size when vectype_out
+   is part of the optab query.
+ */
+static bool
+vectorizable_type_size_legal_p (internal_fn ifn, tree vectype_out,
+				tree vectype_in)
+{
+  bool same_size_p = TYPE_SIZE (vectype_in) == TYPE_SIZE (vectype_out);
+
+  if (ifn == IFN_LAST || !direct_internal_fn_p (ifn))
+    return same_size_p;
+
+  const direct_internal_fn_info &difn_info = direct_internal_fn (ifn);
+
+  if (!difn_info.vectorizable)
+    return same_size_p;
+
+  /* According to vectorizable_internal_function, the type0/1 < 0 indicates
+     the vectype_out participating the optable selection.  Aka the type size
+     check can be skipped here.  */
+  if (difn_info.type0 < 0 || difn_info.type1 < 0)
+    return true;
+
+  return same_size_p;
+}
 
 static tree permute_vec_elements (vec_info *, tree, tree, tree, stmt_vec_info,
 				  gimple_stmt_iterator *);
@@ -3420,19 +3449,6 @@ vectorizable_call (vec_info *vinfo,
 
       return false;
     }
-  /* FORNOW: we don't yet support mixtures of vector sizes for calls,
-     just mixtures of nunits.  E.g. DI->SI versions of __builtin_ctz*
-     are traditionally vectorized as two VnDI->VnDI IFN_CTZs followed
-     by a pack of the two vectors into an SI vector.  We would need
-     separate code to handle direct VnDI->VnSI IFN_CTZs.  */
-  if (TYPE_SIZE (vectype_in) != TYPE_SIZE (vectype_out))
-    {
-      if (dump_enabled_p ())
-	dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location,
-			 "mismatched vector sizes %T and %T\n",
-			 vectype_in, vectype_out);
-      return false;
-    }
 
   if (VECTOR_BOOLEAN_TYPE_P (vectype_out)
       != VECTOR_BOOLEAN_TYPE_P (vectype_in))
@@ -3489,6 +3505,15 @@ vectorizable_call (vec_info *vinfo,
 					   &convert_code))))
     ifn = vectorizable_internal_function (cfn, callee, vectype_out,
 					  vectype_in);
+
+  if (!vectorizable_type_size_legal_p (ifn, vectype_out, vectype_in))
+    {
+      if (dump_enabled_p ())
+	dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location,
+			 "mismatched vector sizes %T and %T\n",
+			 vectype_in, vectype_out);
+      return false;
+    }
 
   /* If that fails, try asking for a target-specific built-in function.  */
   if (ifn == IFN_LAST)
