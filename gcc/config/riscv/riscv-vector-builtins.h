@@ -276,6 +276,8 @@ public:
   void apply_predication (const function_instance &, tree, vec<tree> &) const;
   void add_unique_function (const function_instance &, const function_shape *,
 			    tree, vec<tree> &);
+  void add_overloaded_function (const function_instance &,
+				const function_shape *);
   void register_function_group (const function_group_info &);
   void append_name (const char *);
   void append_base_name (const char *);
@@ -287,7 +289,8 @@ private:
   tree get_attributes (const function_instance &);
 
   registered_function &add_function (const function_instance &, const char *,
-				     tree, tree, bool);
+				     tree, tree, bool, const char *,
+				     const vec<tree> &, bool);
 
   /* True if we should create a separate decl for each instance of an
      overloaded function, instead of using function_builder.  */
