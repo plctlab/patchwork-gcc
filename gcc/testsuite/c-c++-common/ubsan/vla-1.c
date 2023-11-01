@@ -110,9 +110,7 @@ main (void)
 /* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -1\[^\n\r]*(\n|\r\n|\r)" } */
 /* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -5\[^\n\r]*(\n|\r\n|\r)" } */
 /* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -3\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value 0\[^\n\r]*(\n|\r\n|\r)" } */
 /* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -1\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value 0\[^\n\r]*(\n|\r\n|\r)" } */
 /* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -1\[^\n\r]*(\n|\r\n|\r)" } */
 /* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -1\[^\n\r]*(\n|\r\n|\r)" } */
 /* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -6\[^\n\r]*(\n|\r\n|\r)" } */

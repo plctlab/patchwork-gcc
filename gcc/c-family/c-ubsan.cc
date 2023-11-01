@@ -313,7 +313,7 @@ ubsan_instrument_vla (location_t loc, tree size)
   tree type = TREE_TYPE (size);
   tree t, tt;
 
-  t = fold_build2 (LE_EXPR, boolean_type_node, size, build_int_cst (type, 0));
+  t = fold_build2 (LT_EXPR, boolean_type_node, size, build_int_cst (type, 0));
   if (flag_sanitize_trap & SANITIZE_VLA)
     tt = build_call_expr_loc (loc, builtin_decl_explicit (BUILT_IN_TRAP), 0);
   else

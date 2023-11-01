@@ -7124,16 +7124,20 @@ grokdeclarator (const struct c_declarator *declarator,
 		       with known value.  */
 		    this_size_varies = size_varies = true;
 		    warn_variable_length_array (name, size);
-		    if (sanitize_flags_p (SANITIZE_VLA)
-			&& current_function_decl != NULL_TREE
-			&& decl_context == NORMAL)
+		    if (sanitize_flags_p (SANITIZE_VLA))
 		      {
 			/* Evaluate the array size only once.  */
 			size = save_expr (size);
 			size = c_fully_fold (size, false, NULL);
-		        size = fold_build2 (COMPOUND_EXPR, TREE_TYPE (size),
-					    ubsan_instrument_vla (loc, size),
-					    size);
+			tree instr = ubsan_instrument_vla (loc, size);
+			/* We have to build this in the right order, so
+			   instrumentation is done before the size can
+			   be used in other parameters.  */
+			if (*expr)
+			  *expr = build2 (COMPOUND_EXPR, TREE_TYPE (instr),
+					  *expr, instr);
+			else
+			  *expr = instr;
 		      }
 		  }
 
