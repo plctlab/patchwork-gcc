@@ -448,6 +448,9 @@ announce_snapshot() {
   SNAPSHOT_INDEX=${RELEASE}/index.html
 
   changedir "${SNAPSHOTS_DIR}"
+  # Create an index if it doesn't already exist and populate it before we add
+  # the new snapshot.
+  ${PYTHON} ${SOURCE_DIRECTORY}/contrib/generate_snapshot_index.py || error "Failed to generate snapshot index"
   echo \
 "Snapshot gcc-"${RELEASE}" is now available on
   https://gcc.gnu.org/pub/gcc/snapshots/"${RELEASE}"/
@@ -513,6 +516,9 @@ Last modified "${TEXT_DATE}"
 
   rm -f LATEST-${BRANCH}
   ln -s ${RELEASE} LATEST-${BRANCH}
+
+  # Add the snapshot we just made to the index
+  printf "${RELEASE} ${GITREV}\n" >> known_snapshots.txt
 
   inform "Sending mail"
 
@@ -617,6 +623,7 @@ GZIP="${GZIP:-gzip --best}"
 SCP="${SCP:-scp -p}"
 SSH="${SSH:-ssh}"
 TAR="${TAR:-tar}"
+PYTHON="${PYTHON:-python3}"
 
 ########################################################################
 # Command Line Processing
