@@ -179,6 +179,8 @@ enum class aarch64_feature : unsigned char {
 
 /* Macros to test ISA flags.  */
 
+#define AARCH64_ISA_V8A		   (aarch64_isa_flags & AARCH64_FL_V8A)
+#define AARCH64_ISA_V8_1A	   (aarch64_isa_flags & AARCH64_FL_V8_1A)
 #define AARCH64_ISA_CRC            (aarch64_isa_flags & AARCH64_FL_CRC)
 #define AARCH64_ISA_CRYPTO         (aarch64_isa_flags & AARCH64_FL_CRYPTO)
 #define AARCH64_ISA_FP             (aarch64_isa_flags & AARCH64_FL_FP)
@@ -215,6 +217,8 @@ enum class aarch64_feature : unsigned char {
 #define AARCH64_ISA_SB		   (aarch64_isa_flags & AARCH64_FL_SB)
 #define AARCH64_ISA_V8R		   (aarch64_isa_flags & AARCH64_FL_V8R)
 #define AARCH64_ISA_PAUTH	   (aarch64_isa_flags & AARCH64_FL_PAUTH)
+#define AARCH64_ISA_V8_7A	   (aarch64_isa_flags & AARCH64_FL_V8_7A)
+#define AARCH64_ISA_V8_8A	   (aarch64_isa_flags & AARCH64_FL_V8_8A)
 #define AARCH64_ISA_V9A		   (aarch64_isa_flags & AARCH64_FL_V9A)
 #define AARCH64_ISA_V9_1A          (aarch64_isa_flags & AARCH64_FL_V9_1A)
 #define AARCH64_ISA_V9_2A          (aarch64_isa_flags & AARCH64_FL_V9_2A)
@@ -223,6 +227,24 @@ enum class aarch64_feature : unsigned char {
 #define AARCH64_ISA_LS64	   (aarch64_isa_flags & AARCH64_FL_LS64)
 #define AARCH64_ISA_CSSC	   (aarch64_isa_flags & AARCH64_FL_CSSC)
 #define AARCH64_ISA_RCPC           (aarch64_isa_flags & AARCH64_FL_RCPC)
+
+/* AARCH64_FL options necessary for system register implementation.  */
+
+/* Define AARCH64_FL aliases for architectural features which are protected
+   by -march flags in binutils but which receive no special treatment by GCC.
+
+   Such flags are inherited from the Binutils definition of system registers
+   and are mapped to the architecture in which the feature is implemented.  */
+#define AARCH64_FL_RAS		   AARCH64_FL_V8A
+#define AARCH64_FL_LOR		   AARCH64_FL_V8_1A
+#define AARCH64_FL_PAN		   AARCH64_FL_V8_1A
+#define AARCH64_FL_AMU		   AARCH64_FL_V8_4A
+#define AARCH64_FL_SCXTNUM	   AARCH64_FL_V8_5A
+#define AARCH64_FL_ID_PFR2	   AARCH64_FL_V8_5A
+
+/* Define AARCH64_FL aliases for features note yet implemented in GCC.
+   Accept them unconditionally.  */
+#define AARCH64_FL_SME		   0
 
 /* Crypto is an optional extension to AdvSIMD.  */
 #define TARGET_CRYPTO (AARCH64_ISA_CRYPTO)
