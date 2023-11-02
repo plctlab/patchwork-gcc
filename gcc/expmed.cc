@@ -2399,8 +2399,6 @@ extract_split_bit_field (rtx op0, opt_scalar_int_mode op0_mode,
 rtx
 extract_low_bits (machine_mode mode, machine_mode src_mode, rtx src)
 {
-  scalar_int_mode int_mode, src_int_mode;
-
   if (mode == src_mode)
     return src;
 
@@ -2433,22 +2431,38 @@ extract_low_bits (machine_mode mode, machine_mode src_mode, rtx src)
         return x;
     }
 
-  if (!int_mode_for_mode (src_mode).exists (&src_int_mode)
-      || !int_mode_for_mode (mode).exists (&int_mode))
-    return NULL_RTX;
+  if (VECTOR_MODE_P (mode) && VECTOR_MODE_P (src_mode))
+    {
+      if (maybe_gt (GET_MODE_BITSIZE (mode), GET_MODE_BITSIZE (src_mode))
+	|| !targetm.modes_tieable_p (mode, src_mode))
+	return NULL_RTX;
 
-  if (!targetm.modes_tieable_p (src_int_mode, src_mode))
-    return NULL_RTX;
-  if (!targetm.modes_tieable_p (int_mode, mode))
-    return NULL_RTX;
+      /* For vector mode,  only the bitsize (mode) <= bitsize (src_mode) and
+	 tieable is allowed here.  */
+      src = gen_lowpart (mode, src);
+    }
+  else
+    {
+      scalar_int_mode int_mode, src_int_mode;
 
-  src = gen_lowpart (src_int_mode, src);
-  if (!validate_subreg (int_mode, src_int_mode, src,
-			subreg_lowpart_offset (int_mode, src_int_mode)))
-    return NULL_RTX;
+      if (!int_mode_for_mode (src_mode).exists (&src_int_mode)
+	  || !int_mode_for_mode (mode).exists (&int_mode))
+	return NULL_RTX;
 
-  src = convert_modes (int_mode, src_int_mode, src, true);
-  src = gen_lowpart (mode, src);
+      if (!targetm.modes_tieable_p (src_int_mode, src_mode))
+	return NULL_RTX;
+      if (!targetm.modes_tieable_p (int_mode, mode))
+	return NULL_RTX;
+
+      src = gen_lowpart (src_int_mode, src);
+      if (!validate_subreg (int_mode, src_int_mode, src,
+			    subreg_lowpart_offset (int_mode, src_int_mode)))
+	return NULL_RTX;
+
+      src = convert_modes (int_mode, src_int_mode, src, true);
+      src = gen_lowpart (mode, src);
+    }
+
   return src;
 }
 
