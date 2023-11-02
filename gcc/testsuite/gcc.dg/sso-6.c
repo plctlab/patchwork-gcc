@@ -3,7 +3,7 @@
 /* { dg-do run } */
 /* { dg-require-effective-target int32plus } */
 
-#pragma scalar_storage_order /* { dg-warning "missing .big-endian., .little-endian., or .default." } */
+#pragma scalar_storage_order /* { dg-warning "expected .big-endian., .little-endian., or .default." } */
 
 #pragma scalar_storage_order big-endian
 

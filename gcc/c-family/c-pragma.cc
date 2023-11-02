@@ -35,14 +35,161 @@ along with GCC; see the file COPYING3.  If not see
 #include "plugin.h"
 #include "opt-suggestions.h"
 
-#define GCC_BAD(gmsgid) \
-  do { warning (OPT_Wpragmas, gmsgid); return; } while (0)
-#define GCC_BAD2(gmsgid, arg) \
-  do { warning (OPT_Wpragmas, gmsgid, arg); return; } while (0)
-#define GCC_BAD_AT(loc, gmsgid)					\
-  do { warning_at (loc, OPT_Wpragmas, gmsgid); return; } while (0)
-#define GCC_BAD2_AT(loc, gmsgid, arg)			\
-  do { warning_at (loc, OPT_Wpragmas, gmsgid, arg); return; } while (0)
+label_text
+get_doc_url (const char *doc_url_suffix)
+{
+  if (!doc_url_suffix)
+    return label_text ();
+  return label_text::take (concat (DOCUMENTATION_ROOT_URL,
+				   doc_url_suffix,
+				   nullptr));
+}
+
+/* A class for implementing parsing within pragma-handling callbacks.
+   Provides various wrappers around pragma_lex.  */
+
+class pragma_parser
+{
+public:
+  pragma_parser (const char *space, const char *name,
+		 const char *doc_url_suffix)
+  : m_start_loc (input_location),
+    m_space (space),
+    m_name (name),
+    m_doc_url_suffix (doc_url_suffix),
+    m_last_loc (m_start_loc)
+  {
+    // SPACE can be null.
+    gcc_assert (name);
+    // DOC_URL_SUFFIX can be null
+  }
+
+  location_t
+  get_last_location () const
+  {
+    return m_last_loc;
+  }
+
+  bool
+  require_token (enum cpp_ttype required_ttype, const char *desc)
+  {
+    tree x = NULL_TREE;
+
+    enum cpp_ttype ttype = pragma_lex (&x, &m_last_loc);
+    if (ttype != required_ttype)
+      {
+	label_text doc_url (get_doc_url ());
+	if (m_space)
+	  warning_at (m_last_loc, OPT_Wpragmas,
+		      "ignoring malformed %<%{#pragma %s %s%}%>:"
+		      " expected %qs",
+		      doc_url.get (), m_space, m_name,
+		      desc);
+	else
+	  warning_at (m_last_loc, OPT_Wpragmas,
+		      "ignoring malformed %<%{#pragma %s%}%>:"
+		      " expected %qs",
+		      doc_url.get (), m_name,
+		      desc);
+	return false;
+      }
+    return true;
+  }
+
+  bool
+  require_open_paren ()
+  {
+    return require_token (CPP_OPEN_PAREN, "(");
+  }
+
+  bool
+  require_close_paren ()
+  {
+    return require_token (CPP_CLOSE_PAREN, ")");
+  }
+
+  tree require_name ()
+  {
+    tree x = NULL_TREE;
+
+    enum cpp_ttype ttype = pragma_lex (&x, &m_last_loc);
+    if (ttype != CPP_NAME)
+      {
+	label_text doc_url (get_doc_url ());
+	if (m_space)
+	  warning_at (m_last_loc, OPT_Wpragmas,
+		      "ignoring malformed %<%{#pragma %s %s%}%>:"
+		      "expected name",
+		      doc_url.get (), m_space, m_name);
+	else
+	  warning_at (m_last_loc, OPT_Wpragmas,
+		      "ignoring malformed %<%{#pragma %s%}%>:"
+		      " expected name",
+		      doc_url.get (), m_name);
+	return NULL_TREE;
+      }
+
+    return x;
+  }
+
+  tree require_symbol_name ()
+  {
+    tree x = NULL_TREE;
+
+    enum cpp_ttype ttype = pragma_lex (&x, &m_last_loc);
+    if (ttype != CPP_NAME)
+      {
+	label_text doc_url (get_doc_url ());
+	if (m_space)
+	  warning_at (m_last_loc, OPT_Wpragmas,
+		      "ignoring malformed %<%{#pragma %s %s%}%>:"
+		      " expected symbol name",
+		      doc_url.get (), m_space, m_name);
+	else
+	  warning_at (m_last_loc, OPT_Wpragmas,
+		      "ignoring malformed %<%{#pragma %s%}%>:"
+		      " expected symbol name",
+		      doc_url.get (), m_name);
+	return NULL_TREE;
+      }
+
+    return x;
+  }
+
+  void
+  check_for_trailing_junk ()
+  {
+    tree x = NULL_TREE;
+    enum cpp_ttype t = pragma_lex (&x, &m_last_loc);
+    warn_about_any_trailing_junk (t, m_last_loc);
+  }
+
+  void
+  warn_about_any_trailing_junk (enum cpp_ttype t, location_t loc) const
+  {
+    if (t == CPP_EOF)
+      return;
+    label_text doc_url (get_doc_url ());
+    if (m_space)
+      warning_at (loc, OPT_Wpragmas, "junk at end of %<%{#pragma %s %s%}%>",
+		  doc_url.get (), m_space, m_name);
+    else
+      warning_at (loc, OPT_Wpragmas, "junk at end of %<%{#pragma %s%}%>",
+		  doc_url.get (), m_name);
+  }
+
+  label_text
+  get_doc_url () const
+  {
+    return ::get_doc_url (m_doc_url_suffix);
+  }
+
+  const location_t m_start_loc;
+  const char *const m_space;
+  const char *const m_name;
+  const char *m_doc_url_suffix;
+  location_t m_last_loc;
+};
 
 struct GTY(()) align_stack {
   int		       alignment;
@@ -51,8 +198,6 @@ struct GTY(()) align_stack {
 };
 
 static GTY(()) struct align_stack * alignment_stack;
-
-static void handle_pragma_pack (cpp_reader *);
 
 /* If we have a "global" #pragma pack(<n>) in effect when the first
    #pragma pack(push,<n>) is encountered, this stores the value of
@@ -65,7 +210,7 @@ static int default_alignment;
 	: &alignment_stack->alignment) = (ALIGN))
 
 static void push_alignment (int, tree);
-static void pop_alignment (tree);
+static void pop_alignment (tree, const pragma_parser &p);
 
 /* Push an alignment value onto the stack.  */
 static void
@@ -90,13 +235,19 @@ push_alignment (int alignment, tree id)
 
 /* Undo a push of an alignment onto the stack.  */
 static void
-pop_alignment (tree id)
+pop_alignment (tree id, const pragma_parser &p)
 {
   align_stack * entry;
 
   if (alignment_stack == NULL)
-    GCC_BAD ("%<#pragma pack (pop)%> encountered without matching "
-	     "%<#pragma pack (push)%>");
+    {
+      label_text doc_url (p.get_doc_url ());
+      warning (OPT_Wpragmas,
+	       "%<%{#pragma pack (pop)%}%> encountered without matching "
+	       "%<%{#pragma pack (push)%}%>",
+	       doc_url.get (), doc_url.get ());
+      return;
+    }
 
   /* If we got an identifier, strip away everything above the target
      entry so that the next step will restore the state just below it.  */
@@ -109,10 +260,12 @@ pop_alignment (tree id)
 	    break;
 	  }
       if (entry == NULL)
-	warning (OPT_Wpragmas,
-		 "%<#pragma pack(pop, %E)%> encountered without matching "
-		 "%<#pragma pack(push, %E)%>"
-		 , id, id);
+	{
+	  warning (OPT_Wpragmas,
+		   "%<#pragma pack(pop, %E)%> encountered without matching "
+		   "%<#pragma pack(push, %E)%>",
+		   id, id);
+	}
     }
 
   entry = alignment_stack->prev;
@@ -121,6 +274,41 @@ pop_alignment (tree id)
 
   alignment_stack = entry;
 }
+
+enum class pack_action { set, push, pop };
+
+class pragma_pack_parser : public pragma_parser
+{
+public:
+  pragma_pack_parser ()
+  : pragma_parser (nullptr, "pack", "gcc/Structure-Layout-Pragmas.html")
+  {
+  }
+
+  bool require_integer (tree x, location_t loc) const
+  {
+    if (TREE_CODE (x) == INTEGER_CST)
+      return true;
+
+    label_text doc_url (get_doc_url ());
+    warning_at (loc, OPT_Wpragmas,
+		"ignoring malformed %<%{#pragma pack%}%>:"
+		" invalid constant",
+		doc_url.get ());
+    return false;
+  }
+
+  void complain_about_malformed_action (pack_action action) const
+  {
+    label_text doc_url (get_doc_url ());
+    if (action != pack_action::pop)
+      warning_at (m_last_loc, OPT_Wpragmas,
+		  "ignoring malformed %<#pragma pack(push[, id][, <n>])%>");
+    else
+      warning_at (m_last_loc, OPT_Wpragmas,
+		  "ignoring malformed %<#pragma pack(pop[, id])%>");
+  }
+};
 
 /* #pragma pack ()
    #pragma pack (N)
@@ -134,46 +322,50 @@ pop_alignment (tree id)
 static void
 handle_pragma_pack (cpp_reader *)
 {
+  pragma_pack_parser p;
+
   location_t loc;
   tree x, id = 0;
   int align = -1;
+  location_t align_loc = input_location;
   enum cpp_ttype token;
-  enum { set, push, pop } action;
+  enum pack_action action;
 
-  if (pragma_lex (&x) != CPP_OPEN_PAREN)
-    GCC_BAD ("missing %<(%> after %<#pragma pack%> - ignored");
+  if (!p.require_open_paren ())
+    return;
 
   token = pragma_lex (&x, &loc);
   if (token == CPP_CLOSE_PAREN)
     {
-      action = set;
+      action = pack_action::set;
       align = initial_max_fld_align;
     }
   else if (token == CPP_NUMBER)
     {
-      if (TREE_CODE (x) != INTEGER_CST)
-	GCC_BAD_AT (loc, "invalid constant in %<#pragma pack%> - ignored");
+      if (!p.require_integer (x, loc))
+	return;
       align = TREE_INT_CST_LOW (x);
-      action = set;
-      if (pragma_lex (&x) != CPP_CLOSE_PAREN)
-	GCC_BAD ("malformed %<#pragma pack%> - ignored");
+      align_loc = loc;
+      action = pack_action::set;
+      if (!p.require_close_paren ())
+	return;
     }
   else if (token == CPP_NAME)
     {
-#define GCC_BAD_ACTION do { if (action != pop) \
-	  GCC_BAD ("malformed %<#pragma pack(push[, id][, <n>])%> - ignored"); \
-	else \
-	  GCC_BAD ("malformed %<#pragma pack(pop[, id])%> - ignored"); \
-	} while (0)
-
       const char *op = IDENTIFIER_POINTER (x);
       if (!strcmp (op, "push"))
-	action = push;
+	action = pack_action::push;
       else if (!strcmp (op, "pop"))
-	action = pop;
+	action = pack_action::pop;
       else
-	GCC_BAD2_AT (loc, "unknown action %qE for %<#pragma pack%> - ignored",
-		     x);
+	{
+	  label_text doc_url (p.get_doc_url ());
+	  warning_at (loc, OPT_Wpragmas,
+		      "ignoring malformed %<%{#pragma pack%}%>:"
+		      " unknown action %qE",
+		      doc_url.get (), x);
+	  return;
+	}
 
       while ((token = pragma_lex (&x)) == CPP_COMMA)
 	{
@@ -182,33 +374,56 @@ handle_pragma_pack (cpp_reader *)
 	    {
 	      id = x;
 	    }
-	  else if (token == CPP_NUMBER && action == push && align == -1)
+	  else if (token == CPP_NUMBER
+		   && action == pack_action::push
+		   && align == -1)
 	    {
-	      if (TREE_CODE (x) != INTEGER_CST)
-		GCC_BAD_AT (loc,
-			    "invalid constant in %<#pragma pack%> - ignored");
+	      if (!p.require_integer (x, loc))
+		return;
 	      align = TREE_INT_CST_LOW (x);
+	      align_loc = loc;
 	      if (align == -1)
-		action = set;
+		action = pack_action::set;
 	    }
 	  else
-	    GCC_BAD_ACTION;
+	    {
+	      p.complain_about_malformed_action (action);
+	      return;
+	    }
 	}
 
       if (token != CPP_CLOSE_PAREN)
-	GCC_BAD_ACTION;
-#undef GCC_BAD_ACTION
+	{
+	  p.complain_about_malformed_action (action);
+	  return;
+	}
     }
   else
-    GCC_BAD ("malformed %<#pragma pack%> - ignored");
+    {
+      label_text doc_url (p.get_doc_url ());
+      warning_at (loc, OPT_Wpragmas,
+		  "ignoring malformed %<%{#pragma pack%}%>:"
+		  " expected %<)%>, integer, %<push%>, or %<pop%>",
+		  doc_url.get ());
+      return;
+    }
 
   if (pragma_lex (&x, &loc) != CPP_EOF)
     warning_at (loc, OPT_Wpragmas, "junk at end of %<#pragma pack%>");
 
   if (flag_pack_struct)
-    GCC_BAD ("%<#pragma pack%> has no effect with %<-fpack-struct%> - ignored");
+    {
+      label_text pragma_doc_url (p.get_doc_url ());
+      label_text option_doc_url
+	(get_doc_url ("gcc/Code-Gen-Options.html#index-fpack-struct"));
+      warning (OPT_Wpragmas,
+	       "%<%{#pragma pack%}%> has no effect with %<%{-fpack-struct%}%>"
+	       " - ignored",
+	       pragma_doc_url.get (), option_doc_url.get ());
+      return;
+    }
 
-  if (action != pop)
+  if (action != pack_action::pop)
     switch (align)
       {
       case 0:
@@ -220,21 +435,28 @@ handle_pragma_pack (cpp_reader *)
 	align *= BITS_PER_UNIT;
 	break;
       case -1:
-	if (action == push)
+	if (action == pack_action::push)
 	  {
 	    align = maximum_field_alignment;
 	    break;
 	  }
 	/* FALLTHRU */
       default:
-	GCC_BAD2 ("alignment must be a small power of two, not %d", align);
+	{
+	  label_text doc_url (p.get_doc_url ());
+	  warning_at (align_loc, OPT_Wpragmas,
+		      "ignoring malformed %<%{#pragma pack%}%>:"
+		      " alignment must be a small power of two, not %d",
+		      doc_url.get (), align);
+	  return;
+	}
       }
 
   switch (action)
     {
-    case set:   SET_GLOBAL_ALIGNMENT (align);  break;
-    case push:  push_alignment (align, id);    break;
-    case pop:   pop_alignment (id);	       break;
+    case pack_action::set:   SET_GLOBAL_ALIGNMENT (align);  break;
+    case pack_action::push:  push_alignment (align, id);    break;
+    case pack_action::pop:   pop_alignment (id, p);	       break;
     }
 }
 
@@ -357,29 +579,46 @@ maybe_apply_pending_pragma_weaks (void)
 static void
 handle_pragma_weak (cpp_reader *)
 {
-  tree name, value, x, decl;
+  pragma_parser p (nullptr, "weak", "gcc/Weak-Pragmas.html");
+
+  tree x, decl;
   enum cpp_ttype t;
+  location_t loc;
+  location_t name_loc;
 
-  value = 0;
+  tree name = p.require_name ();
+  if (!name)
+    return;
+  name_loc = p.get_last_location ();
 
-  if (pragma_lex (&name) != CPP_NAME)
-    GCC_BAD ("malformed %<#pragma weak%>, ignored");
-  t = pragma_lex (&x);
+  tree value = NULL_TREE;
+  t = pragma_lex (&x, &loc);
   if (t == CPP_EQ)
     {
-      if (pragma_lex (&value) != CPP_NAME)
-	GCC_BAD ("malformed %<#pragma weak%>, ignored");
-      t = pragma_lex (&x);
+      value = p.require_name ();
+      if (!value)
+	return;
+      t = pragma_lex (&x, &loc);
     }
-  if (t != CPP_EOF)
-    warning (OPT_Wpragmas, "junk at end of %<#pragma weak%>");
+  p.warn_about_any_trailing_junk (t, loc);
 
   decl = identifier_global_value (name);
   if (decl && DECL_P (decl))
     {
       if (!VAR_OR_FUNCTION_DECL_P (decl))
-	GCC_BAD2 ("%<#pragma weak%> declaration of %q+D not allowed,"
-		  " ignored", decl);
+	{
+	  auto_diagnostic_group d;
+	  label_text doc_url (p.get_doc_url ());
+	  if (warning_at (name_loc, OPT_Wpragmas,
+			  "%<%{#pragma weak%}%> declaration of %qD not allowed,"
+			  " ignored",
+			  doc_url.get (), decl))
+	    if (DECL_SOURCE_LOCATION (decl) != UNKNOWN_LOCATION)
+	      inform (DECL_SOURCE_LOCATION (decl),
+		      "%qD is not a variable or function",
+		      decl);
+	  return;
+	}
       apply_pragma_weak (decl, value);
       if (value)
 	{
@@ -417,12 +656,29 @@ maybe_apply_pragma_scalar_storage_order (tree type)
     gcc_unreachable ();
 }
 
+class pragma_scalar_storage_order_parser : public pragma_parser
+{
+public:
+  pragma_scalar_storage_order_parser ()
+   : pragma_parser (nullptr, "scalar_storage_order",
+		    "gcc/Structure-Layout-Pragmas.html")
+  {
+  }
+
+  void complain_about_arg (location_t arg_loc) const
+  {
+    label_text doc_url (get_doc_url ());
+    warning_at (arg_loc, OPT_Wpragmas,
+		"ignoring malformed %<%{#pragma scalar_storage_order%}%>:"
+		" expected %<big-endian%>, %<little-endian%>, or %<default%>",
+		doc_url.get ());
+  }
+};
+
 static void
 handle_pragma_scalar_storage_order (cpp_reader *)
 {
-  const char *kind_string;
-  enum cpp_ttype token;
-  tree x;
+  pragma_scalar_storage_order_parser p;
 
   if (BYTES_BIG_ENDIAN != WORDS_BIG_ENDIAN)
     {
@@ -439,11 +695,15 @@ handle_pragma_scalar_storage_order (cpp_reader *)
       return;
     }
 
-  token = pragma_lex (&x);
+  tree x;
+  location_t arg_loc;
+  enum cpp_ttype token = pragma_lex (&x, &arg_loc);
   if (token != CPP_NAME)
-    GCC_BAD ("missing %<big-endian%>, %<little-endian%>, or %<default%> after "
-	     "%<#pragma scalar_storage_order%>");
-  kind_string = IDENTIFIER_POINTER (x);
+    {
+      p.complain_about_arg (arg_loc);
+      return;
+    }
+  const char *kind_string = IDENTIFIER_POINTER (x);
   if (strcmp (kind_string, "default") == 0)
     global_sso = default_sso;
   else if (strcmp (kind_string, "big") == 0)
@@ -451,8 +711,7 @@ handle_pragma_scalar_storage_order (cpp_reader *)
   else if (strcmp (kind_string, "little") == 0)
     global_sso = SSO_LITTLE_ENDIAN;
   else
-    GCC_BAD ("expected %<big-endian%>, %<little-endian%>, or %<default%> after "
-	     "%<#pragma scalar_storage_order%>");
+    p.complain_about_arg (arg_loc);
 }
 
 /* GCC supports two #pragma directives for renaming the external
@@ -501,20 +760,19 @@ static void handle_pragma_redefine_extname (cpp_reader *);
 static void
 handle_pragma_redefine_extname (cpp_reader *)
 {
-  tree oldname, newname, decls, x;
-  enum cpp_ttype t;
-  bool found;
+  pragma_parser p (nullptr, "redefine_extname",
+		   "gcc/Symbol-Renaming-Pragmas.html");
 
-  if (pragma_lex (&oldname) != CPP_NAME)
-    GCC_BAD ("malformed %<#pragma redefine_extname%>, ignored");
-  if (pragma_lex (&newname) != CPP_NAME)
-    GCC_BAD ("malformed %<#pragma redefine_extname%>, ignored");
-  t = pragma_lex (&x);
-  if (t != CPP_EOF)
-    warning (OPT_Wpragmas, "junk at end of %<#pragma redefine_extname%>");
+  tree oldname = p.require_symbol_name ();
+  if (!oldname)
+    return;
+  tree newname = p.require_symbol_name ();
+  if (!newname)
+    return;
+  p.check_for_trailing_junk ();
 
-  found = false;
-  for (decls = c_linkage_bindings (oldname);
+  bool found = false;
+  for (tree decls = c_linkage_bindings (oldname);
        decls; )
     {
       tree decl;
@@ -535,7 +793,8 @@ handle_pragma_redefine_extname (cpp_reader *)
 	  found = true;
 	  if (DECL_ASSEMBLER_NAME_SET_P (decl))
 	    {
-	      const char *name = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (decl));
+	      const char *name
+		= IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (decl));
 	      name = targetm.strip_name_encoding (name);
 
 	      if (!id_equal (newname, name))
@@ -671,8 +930,6 @@ maybe_apply_renaming_pragma (tree decl, tree asmname)
 }
 
 
-static void handle_pragma_visibility (cpp_reader *);
-
 static vec<int> visstack;
 
 /* Push the visibility indicated by STR onto the top of the #pragma
@@ -683,7 +940,7 @@ static vec<int> visstack;
    KIND and pop using a different one.  */
 
 void
-push_visibility (const char *str, int kind)
+push_visibility (const char *str, int kind, const pragma_parser *p)
 {
   visstack.safe_push (((int) default_visibility) | (kind << 8));
   if (!strcmp (str, "default"))
@@ -695,8 +952,23 @@ push_visibility (const char *str, int kind)
   else if (!strcmp (str, "protected"))
     default_visibility = VISIBILITY_PROTECTED;
   else
-    GCC_BAD ("%<#pragma GCC visibility push()%> must specify %<default%>, "
-	     "%<internal%>, %<hidden%> or %<protected%>");
+    {
+      auto_diagnostic_group d;
+      location_t loc = p ? p->get_last_location () : input_location;
+      if (warning_at (loc,
+		      OPT_Wpragmas,
+		      "%<#pragma GCC visibility push()%> must specify"
+		      " %<default%>, %<internal%>, %<hidden%>"
+		      " or %<protected%>"))
+	if (p)
+	  {
+	    label_text doc_url (p->get_doc_url ());
+	    inform (loc,
+		    "ignoring malformed %<%{#pragma GCC visibility%}%>",
+		    doc_url.get ());
+	  }
+      return;
+    }
   visibility_options.inpragma = 1;
 }
 
@@ -723,6 +995,8 @@ pop_visibility (int kind)
 static void
 handle_pragma_visibility (cpp_reader *)
 {
+  pragma_parser p ("GCC", "visibility", "gcc/Visibility-Pragmas.html");
+
   /* Form is #pragma GCC visibility push(hidden)|pop */
   tree x;
   enum cpp_ttype token;
@@ -738,30 +1012,41 @@ handle_pragma_visibility (cpp_reader *)
 	action = pop;
     }
   if (bad == action)
-    GCC_BAD ("%<#pragma GCC visibility%> must be followed by %<push%> "
-	     "or %<pop%>");
+    {
+      label_text doc_url (p.get_doc_url ());
+      warning (OPT_Wpragmas,
+	       "%<%{#pragma GCC visibility%}%> must be followed by %<push%> "
+	       "or %<pop%>",
+	       doc_url.get ());
+      return;
+    }
   else
     {
       if (pop == action)
 	{
 	  if (! pop_visibility (0))
-	    GCC_BAD ("no matching push for %<#pragma GCC visibility pop%>");
+	    {
+	      label_text doc_url (p.get_doc_url ());
+	      warning (OPT_Wpragmas,
+		       "no matching push for"
+		       " %<%{#pragma GCC visibility pop%}%>",
+		       doc_url.get ());
+	      return;
+	    }
 	}
       else
 	{
-	  if (pragma_lex (&x) != CPP_OPEN_PAREN)
-	    GCC_BAD ("missing %<(%> after %<#pragma GCC visibility push%> - ignored");
-	  token = pragma_lex (&x);
-	  if (token != CPP_NAME)
-	    GCC_BAD ("malformed %<#pragma GCC visibility push%>");
-	  else
-	    push_visibility (IDENTIFIER_POINTER (x), 0);
-	  if (pragma_lex (&x) != CPP_CLOSE_PAREN)
-	    GCC_BAD ("missing %<(%> after %<#pragma GCC visibility push%> - ignored");
+	  if (!p.require_open_paren ())
+	    return;
+	  x = p.require_name ();
+	  if (!x)
+	    return;
+	  push_visibility (IDENTIFIER_POINTER (x), 0, &p);
+	  if (!p.require_close_paren ())
+	    return;
 	}
     }
-  if (pragma_lex (&x) != CPP_EOF)
-    warning (OPT_Wpragmas, "junk at end of %<#pragma GCC visibility%>");
+  p.check_for_trailing_junk ();
 }
 
 /* Helper routines for parsing #pragma GCC diagnostic.  */
@@ -1093,7 +1378,7 @@ handle_pragma_target(cpp_reader *)
 
   if (cfun)
     {
-      error ("%<#pragma GCC option%> is not allowed inside functions");
+      error ("%<#pragma GCC target option%> is not allowed inside functions");
       return;
     }
 
@@ -1105,7 +1390,12 @@ handle_pragma_target(cpp_reader *)
     }
 
   if (token != CPP_STRING)
-    GCC_BAD_AT (loc, "%<#pragma GCC option%> is not a string");
+    {
+      warning_at (loc, OPT_Wpragmas,
+		  "ignoring malformed %<#pragma GCC target%>:"
+		  " expected a string option");
+      return;
+    }
 
   /* Strings are user options.  */
   else
@@ -1130,8 +1420,12 @@ handle_pragma_target(cpp_reader *)
 	  if (token == CPP_CLOSE_PAREN)
 	    token = pragma_lex (&x);
 	  else
-	    GCC_BAD ("%<#pragma GCC target (string [,string]...)%> does "
-		     "not have a final %<)%>");
+	    {
+	      warning (OPT_Wpragmas,
+		       "%<#pragma GCC target (string [,string]...)%> does "
+		       "not have a final %<)%>");
+	      return;
+	    }
 	}
 
       if (token != CPP_EOF)
@@ -1177,7 +1471,11 @@ handle_pragma_optimize (cpp_reader *)
     }
 
   if (token != CPP_STRING && token != CPP_NUMBER)
-    GCC_BAD ("%<#pragma GCC optimize%> is not a string or number");
+    {
+      warning (OPT_Wpragmas,
+	       "%<#pragma GCC optimize%> is not a string or number");
+      return;
+    }
 
   /* Strings/numbers are user options.  */
   else
@@ -1201,8 +1499,12 @@ handle_pragma_optimize (cpp_reader *)
 	  if (token == CPP_CLOSE_PAREN)
 	    token = pragma_lex (&x);
 	  else
-	    GCC_BAD ("%<#pragma GCC optimize (string [,string]...)%> does "
-		     "not have a final %<)%>");
+	    {
+	      warning (OPT_Wpragmas,
+		       "%<#pragma GCC optimize (string [,string]...)%> does "
+		       "not have a final %<)%>");
+	      return;
+	    }
 	}
 
       if (token != CPP_EOF)
@@ -1373,33 +1675,50 @@ handle_pragma_reset_options (cpp_reader *)
 static void
 handle_pragma_message (cpp_reader *)
 {
+  pragma_parser p (nullptr, "message", "gcc/Diagnostic-Pragmas.html");
+
   location_t loc;
   enum cpp_ttype token;
   tree x, message = 0;
 
-  token = pragma_lex (&x);
+  token = pragma_lex (&x, &loc);
   if (token == CPP_OPEN_PAREN)
     {
-      token = pragma_lex (&x);
+      token = pragma_lex (&x, &loc);
       if (token == CPP_STRING)
         message = x;
       else
-        GCC_BAD ("expected a string after %<#pragma message%>");
-      if (pragma_lex (&x) != CPP_CLOSE_PAREN)
-        GCC_BAD ("malformed %<#pragma message%>, ignored");
+	{
+	  label_text doc_url (p.get_doc_url ());
+	  warning_at (loc, OPT_Wpragmas,
+		      "expected a string after %<%{#pragma message%}%>",
+		      doc_url.get ());
+	  return;
+	}
+      if (!p.require_close_paren ())
+	return;
     }
   else if (token == CPP_STRING)
     message = x;
   else if (token == CPP_STRING_USERDEF)
-    GCC_BAD ("string literal with user-defined suffix is invalid in this "
-	     "context");
+    {
+      warning_at (loc, OPT_Wpragmas,
+		  "string literal with user-defined suffix is invalid in this "
+		  "context");
+      return;
+    }
   else
-    GCC_BAD ("expected a string after %<#pragma message%>");
+    {
+      label_text doc_url (p.get_doc_url ());
+      warning_at (loc, OPT_Wpragmas,
+		  "expected a string after %<%{#pragma message%}%>",
+		  doc_url.get ());
+      return;
+    }
 
   gcc_assert (message);
 
-  if (pragma_lex (&x, &loc) != CPP_EOF)
-    warning_at (loc, OPT_Wpragmas, "junk at end of %<#pragma message%>");
+  p.check_for_trailing_junk ();
 
   if (TREE_STRING_LENGTH (message) > 1)
     inform (input_location, "%<#pragma message: %s%>",

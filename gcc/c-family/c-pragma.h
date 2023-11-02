@@ -202,10 +202,13 @@ enum pragma_omp_clause {
 
 extern struct cpp_reader* parse_in;
 
+class pragma_parser;
+
 /* It's safe to always leave visibility pragma enabled as if
    visibility is not supported on the host OS platform the
    statements are ignored.  */
-extern void push_visibility (const char *, int);
+extern void push_visibility (const char *, int,
+			     const pragma_parser *p = nullptr);
 extern bool pop_visibility (int);
 
 extern void init_pragma (void);

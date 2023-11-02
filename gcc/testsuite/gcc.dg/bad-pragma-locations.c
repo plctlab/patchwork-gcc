@@ -7,42 +7,42 @@
 /* pack ****************************************************************************/
 
 #pragma pack
-/* { dg-warning "missing '\\(' after '#pragma pack' - ignored" "" { target *-*-* } .-1 }
+/* { dg-warning "ignoring malformed '#pragma pack': expected '\\('" "" { target *-*-* } .-1 }
    { dg-begin-multiline-output "" }
  #pragma pack
-         ^~~~
+             ^
    { dg-end-multiline-output "" }  */
 
 #pragma pack (
-/* { dg-warning "malformed '#pragma pack' - ignored" "" { target *-*-* } .-1 }
+/* { dg-warning "ignoring malformed '#pragma pack': expected '\\)', integer, 'push', or 'pop'" "" { target *-*-* } .-1 }
    { dg-begin-multiline-output "" }
  #pragma pack (
-         ^~~~
+               ^
    { dg-end-multiline-output "" }  */
 
 #pragma pack (32
-/* { dg-warning "malformed '#pragma pack' - ignored" "" { target *-*-* } .-1 }
+/* { dg-warning "ignoring malformed '#pragma pack': expected '\\)'" "" { target *-*-* } .-1 }
    { dg-begin-multiline-output "" }
  #pragma pack (32
-         ^~~~
+                 ^
    { dg-end-multiline-output "" }  */
 
 #pragma pack (3.14159
-/* { dg-warning "invalid constant in '#pragma pack' - ignored" "" { target *-*-* } .-1 }
+/* { dg-warning "ignoring malformed '#pragma pack': invalid constant" "" { target *-*-* } .-1 }
    { dg-begin-multiline-output "" }
  #pragma pack (3.14159
                ^~~~~~~
    { dg-end-multiline-output "" }  */
 
 #pragma pack (push, 3.14159
-/* { dg-warning "invalid constant in '#pragma pack' - ignored" "" { target *-*-* } .-1 }
+/* { dg-warning "ignoring malformed '#pragma pack': invalid constant" "" { target *-*-* } .-1 }
    { dg-begin-multiline-output "" }
  #pragma pack (push, 3.14159
                      ^~~~~~~
    { dg-end-multiline-output "" }  */
 
 #pragma pack (toothbrush
-/* { dg-warning "unknown action 'toothbrush' for '#pragma pack' - ignored" "" { target *-*-* } .-1 }
+/* { dg-warning "ignoring malformed '#pragma pack': unknown action 'toothbrush'" "" { target *-*-* } .-1 }
    { dg-begin-multiline-output "" }
  #pragma pack (toothbrush
                ^~~~~~~~~~
@@ -58,14 +58,14 @@
 /* target ****************************************************************************/
 
 #pragma GCC target 42
-/* { dg-warning "#pragma GCC option' is not a string" "" { target *-*-* } .-1 }
+/* { dg-warning "ignoring malformed '#pragma GCC target': expected a string option" "" { target *-*-* } .-1 }
    { dg-begin-multiline-output "" }
  #pragma GCC target 42
                     ^~
    { dg-end-multiline-output "" }  */
 
 #pragma GCC target ( 1776
-/* { dg-warning "#pragma GCC option' is not a string" "" { target *-*-* } .-1 }
+/* { dg-warning "ignoring malformed '#pragma GCC target': expected a string option" "" { target *-*-* } .-1 }
    { dg-begin-multiline-output "" }
  #pragma GCC target ( 1776
                       ^~~~
