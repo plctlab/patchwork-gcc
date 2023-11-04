@@ -3683,6 +3683,7 @@ build_min_non_dep_op_overload (enum tree_code op,
 
   expected_nargs = cp_tree_code_length (op);
   if (TREE_CODE (TREE_TYPE (overload)) == METHOD_TYPE
+      || DECL_XOBJ_MEMBER_FUNC_P (overload)
       /* For ARRAY_REF, operator[] is either a non-static member or newly
 	 static member, never out of class and for the static member case
 	 if user uses single index the operator[] needs to have a single
@@ -3700,24 +3701,26 @@ build_min_non_dep_op_overload (enum tree_code op,
   releasing_vec args;
   va_start (p, overload);
 
-  if (TREE_CODE (TREE_TYPE (overload)) == FUNCTION_TYPE)
-    {
-      fn = overload;
-      if (op == ARRAY_REF)
-	obj = va_arg (p, tree);
-      for (int i = 0; i < nargs; i++)
-	{
-	  tree arg = va_arg (p, tree);
-	  vec_safe_push (args, arg);
-	}
-    }
-  else if (TREE_CODE (TREE_TYPE (overload)) == METHOD_TYPE)
+  if (TREE_CODE (TREE_TYPE (overload)) == METHOD_TYPE
+	   || DECL_XOBJ_MEMBER_FUNC_P (overload))
     {
       tree object = va_arg (p, tree);
       tree binfo = TYPE_BINFO (TREE_TYPE (object));
       tree method = build_baselink (binfo, binfo, overload, NULL_TREE);
       fn = build_min (COMPONENT_REF, TREE_TYPE (overload),
 		      object, method, NULL_TREE);
+      for (int i = 0; i < nargs; i++)
+	{
+	  tree arg = va_arg (p, tree);
+	  vec_safe_push (args, arg);
+	}
+    }
+  else if (TREE_CODE (TREE_TYPE (overload)) == FUNCTION_TYPE)
+    {
+      gcc_assert (!DECL_XOBJ_MEMBER_FUNC_P (overload));
+      fn = overload;
+      if (op == ARRAY_REF)
+	obj = va_arg (p, tree);
       for (int i = 0; i < nargs; i++)
 	{
 	  tree arg = va_arg (p, tree);
@@ -3752,7 +3755,8 @@ build_min_non_dep_op_overload (tree non_dep, tree overload, tree object,
 
   unsigned int nargs = call_expr_nargs (non_dep);
   tree fn = overload;
-  if (TREE_CODE (TREE_TYPE (overload)) == METHOD_TYPE)
+  if (TREE_CODE (TREE_TYPE (overload)) == METHOD_TYPE
+      || DECL_XOBJ_MEMBER_FUNC_P (overload))
     {
       tree binfo = TYPE_BINFO (TREE_TYPE (object));
       tree method = build_baselink (binfo, binfo, overload, NULL_TREE);
