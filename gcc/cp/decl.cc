@@ -10238,6 +10238,7 @@ grokfndecl (tree ctype,
 	    int publicp,
 	    int inlinep,
 	    bool deletedp,
+	    bool xobj_func_p,
 	    special_function_kind sfk,
 	    bool funcdef_flag,
 	    bool late_return_type_p,
@@ -10247,7 +10248,6 @@ grokfndecl (tree ctype,
 	    location_t location)
 {
   tree decl;
-  int staticp = ctype && TREE_CODE (type) == FUNCTION_TYPE;
   tree t;
 
   if (location == UNKNOWN_LOCATION)
@@ -10427,12 +10427,9 @@ grokfndecl (tree ctype,
 		  (IDENTIFIER_POINTER (declarator))))))
     SET_DECL_LANGUAGE (decl, lang_c);
 
-  /* Should probably propagate const out from type to decl I bet (mrs).  */
-  if (staticp)
-    {
-      DECL_STATIC_FUNCTION_P (decl) = 1;
-      DECL_CONTEXT (decl) = ctype;
-    }
+  DECL_STATIC_FUNCTION_P (decl)
+    = !xobj_func_p && ctype && TREE_CODE (type) == FUNCTION_TYPE;
+  DECL_FUNCTION_XOBJ_FLAG (decl) = xobj_func_p;
 
   if (deletedp)
     DECL_DELETED_FN (decl) = 1;
@@ -12900,6 +12897,8 @@ grokdeclarator (const cp_declarator *declarator,
   if (attrlist)
     diagnose_misapplied_contracts (*attrlist);
 
+  /* Skip over build_memfn_type when a FUNCTION_DECL is an xobj memfn.  */
+  bool is_xobj_member_function = false;
   /* Determine the type of the entity declared by recurring on the
      declarator.  */
   for (; declarator; declarator = declarator->declarator)
@@ -13014,6 +13013,25 @@ grokdeclarator (const cp_declarator *declarator,
 	       there wasn't one.  */
 	    if (raises == error_mark_node)
 	      raises = NULL_TREE;
+
+	    auto find_xobj_parm = [](tree parm_list)
+	      {
+		/* There is no need to iterate over the list,
+		   only the first parm can be a valid xobj parm.  */
+		if (!parm_list || parm_list == void_list_node)
+		  return false;
+		if (TREE_PURPOSE (parm_list) != this_identifier)
+		  return false;
+		/* If we make it here, we are looking at an xobj parm.
+
+		   Non-null 'purpose' usually means the parm has a default
+		   argument, we don't want to violate this assumption.  */
+		TREE_PURPOSE (parm_list) = NULL_TREE;
+		return true;
+	      };
+
+	    is_xobj_member_function
+	      = find_xobj_parm (declarator->u.function.parameters);
 
 	    if (reqs)
 	      error_at (location_of (reqs), "requires-clause on return type");
@@ -14079,6 +14097,8 @@ grokdeclarator (const cp_declarator *declarator,
     }
 
   if (ctype && TREE_CODE (type) == FUNCTION_TYPE && staticp < 2
+      /* Don't convert xobj member functions to METHOD_TYPE.  */
+      && !is_xobj_member_function
       && !(unqualified_id
 	   && identifier_p (unqualified_id)
 	   && IDENTIFIER_NEWDEL_OP_P (unqualified_id)))
@@ -14300,7 +14320,8 @@ grokdeclarator (const cp_declarator *declarator,
 			       friendp ? -1 : 0, friendp, publicp,
 			       inlinep | (2 * constexpr_p) | (4 * concept_p)
 				       | (8 * consteval_p),
-			       initialized == SD_DELETED, sfk,
+			       initialized == SD_DELETED,
+			       is_xobj_member_function, sfk,
 			       funcdef_flag, late_return_type_p,
 			       template_count, in_namespace,
 			       attrlist, id_loc);
@@ -14623,8 +14644,8 @@ grokdeclarator (const cp_declarator *declarator,
 			   inlinep | (2 * constexpr_p) | (4 * concept_p)
 				   | (8 * consteval_p),
 			   initialized == SD_DELETED,
-                           sfk,
-                           funcdef_flag,
+			   is_xobj_member_function, sfk,
+			   funcdef_flag,
 			   late_return_type_p,
 			   template_count, in_namespace, attrlist,
 			   id_loc);
@@ -15518,7 +15539,8 @@ grok_op_properties (tree decl, bool complain)
   /* An operator function must either be a non-static member function
      or have at least one parameter of a class, a reference to a class,
      an enumeration, or a reference to an enumeration.  13.4.0.6 */
-  if (! methodp || DECL_STATIC_FUNCTION_P (decl))
+  if ((!methodp && !DECL_XOBJ_MEMBER_FUNC_P (decl))
+      || DECL_STATIC_FUNCTION_P (decl))
     {
       if (operator_code == TYPE_EXPR
 	  || operator_code == COMPONENT_REF

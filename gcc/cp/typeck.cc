@@ -7180,6 +7180,12 @@ cp_build_addr_expr_1 (tree arg, bool strict_lvalue, tsubst_flags_t complain)
 	    && !mark_used (t, complain) && !(complain & tf_error))
 	  return error_mark_node;
 
+	/* Exception for non-overloaded explicit object member function.
+	   I am pretty sure this is not perfect, I think we aren't
+	   handling some constexpr stuff, but I am leaving it for now. */
+	if (TREE_CODE (TREE_TYPE (t)) == FUNCTION_TYPE)
+	  return build_address (t);
+
 	type = build_ptrmem_type (context_for_name_lookup (t),
 				  TREE_TYPE (t));
 	t = make_ptrmem_cst (type, t);
