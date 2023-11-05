@@ -10509,24 +10509,29 @@ grokfndecl (tree ctype,
 	TREE_TYPE (decl) = apply_memfn_quals (TREE_TYPE (decl),
 					      TYPE_UNQUALIFIED,
 					      REF_QUAL_NONE);
-
       if (quals)
-	{
-	  error (ctype
+	error (!ctype
+	       ? G_("non-member function %qD cannot have cv-qualifier")
+	       : !xobj_func_p
 		 ? G_("static member function %qD cannot have cv-qualifier")
-		 : G_("non-member function %qD cannot have cv-qualifier"),
-		 decl);
-	  quals = TYPE_UNQUALIFIED;
-	}
-
+		 : G_("explicit object member function "
+		      "%qD cannot have cv-qualifier"),
+	       decl);
       if (rqual)
-	{
-	  error (ctype
+	error (!ctype
+	       ? G_("non-member function %qD cannot have ref-qualifier")
+	       : !xobj_func_p
 		 ? G_("static member function %qD cannot have ref-qualifier")
-		 : G_("non-member function %qD cannot have ref-qualifier"),
+		 : G_("explicit object member function "
+		      "%qD cannot have ref-qualifier"),
 		 decl);
-	  rqual = REF_QUAL_NONE;
-	}
+
+      if (xobj_func_p && (quals || rqual))
+	inform (DECL_SOURCE_LOCATION (DECL_ARGUMENTS (decl)),
+		"explicit object parameter declared here");
+      quals = TYPE_UNQUALIFIED;
+      rqual = REF_QUAL_NONE;
+
     }
 
   if (deduction_guide_p (decl))
@@ -13019,19 +13024,113 @@ grokdeclarator (const cp_declarator *declarator,
 		/* There is no need to iterate over the list,
 		   only the first parm can be a valid xobj parm.  */
 		if (!parm_list || parm_list == void_list_node)
-		  return false;
+		  return NULL_TREE;
 		if (TREE_PURPOSE (parm_list) != this_identifier)
-		  return false;
+		  return NULL_TREE;
 		/* If we make it here, we are looking at an xobj parm.
 
 		   Non-null 'purpose' usually means the parm has a default
 		   argument, we don't want to violate this assumption.  */
 		TREE_PURPOSE (parm_list) = NULL_TREE;
-		return true;
+		return TREE_VALUE (parm_list);
 	      };
 
-	    is_xobj_member_function
+	    tree xobj_parm
 	      = find_xobj_parm (declarator->u.function.parameters);
+	    is_xobj_member_function = xobj_parm;
+
+	    if (xobj_parm && cxx_dialect < cxx23)
+	      pedwarn(DECL_SOURCE_LOCATION (xobj_parm), OPT_Wc__23_extensions,
+		      "explicit object member function only available "
+		      "with %<-std=c++23%> or %<-std=gnu++23%>");
+
+	    /* Error handling for explicit object member functions.  */
+	    if (!xobj_parm)
+	      /* Early escape.  */;
+	    else if (decl_context == TYPENAME)
+	      {
+		bool ptr_type = true;
+		/* If   */
+		if (!declarator->declarator)
+		  {
+		    error_at (DECL_SOURCE_LOCATION (xobj_parm),
+			      "a function type cannot "
+			      "have an explicit object parameter");
+		    ptr_type = false;
+		  }
+		else if (declarator->declarator->kind == cdk_pointer)
+		  error_at (DECL_SOURCE_LOCATION (xobj_parm),
+			    "a function pointer type cannot "
+			    "have an explicit object parameter");
+		else if (declarator->declarator->kind == cdk_ptrmem)
+		  error_at (DECL_SOURCE_LOCATION (xobj_parm),
+			    "a member function pointer type "
+			    "cannot have an explicit object parameter");
+		else
+		  gcc_unreachable ();
+
+		if (ptr_type)
+		  inform (DECL_SOURCE_LOCATION (xobj_parm),
+			  "the type of a pointer to explicit object member "
+			  "function is a regular pointer to function type");
+		else
+		  inform (DECL_SOURCE_LOCATION (xobj_parm),
+			  "the type of an explicit object "
+			  "member function is a regular function type");
+		/* Ideally we should synthesize the correct syntax
+		   for the user, perhaps this could be added later.  */
+	      }
+	    /* Free function case,
+	       surely there is a better way to identify it?  */
+	    else if (decl_context == NORMAL
+		     && (in_namespace
+			 || !declarator->declarator->u.id.qualifying_scope))
+		error_at (DECL_SOURCE_LOCATION (xobj_parm),
+			  "a free function cannot have "
+			  "an explicit object parameter");
+	    else /* if (xobj_parm) */
+	      {
+		if (virtualp)
+		  {
+		    error_at (declspecs->locations[ds_virtual],
+			      "an explicit object member function cannot be "
+			      "%<virtual%>");
+		    inform (DECL_SOURCE_LOCATION (xobj_parm),
+			    "explicit object parameter declared here");
+		    virtualp = false;
+		  }
+		if (staticp >= 2)
+		  {
+		    error_at (declspecs->locations[ds_storage_class],
+			      "an explicit object member function cannot be "
+			      "%<static%>");
+		    inform (DECL_SOURCE_LOCATION (xobj_parm),
+			    "explicit object parameter declared here");
+		  }
+	      }
+	    /* We don't need to skip over the first node even if it is an xobj
+	       parm, find_xobj_parm clears the flag so it will be treated as a
+	       normal parm, thus immediately going to the next node without
+	       emitting an errant diagnosis.  */
+	    bool bad_xobj_parm_encountered = false;
+	    for (tree parm = declarator->u.function.parameters;
+		 parm && parm != void_list_node;
+		 parm = TREE_CHAIN (parm))
+	      {
+		if (TREE_PURPOSE (parm) != this_identifier)
+		  continue;
+		bad_xobj_parm_encountered = true;
+		gcc_rich_location bad_xobj_parm
+		  (DECL_SOURCE_LOCATION (TREE_VALUE (parm)));
+		/* I'm keeping it more basic for now.  */
+		error_at (&bad_xobj_parm,
+			  "Only the first parameter of a member function "
+			  "can be declared as an explicit object parameter");
+	      }
+	    if (bad_xobj_parm_encountered && xobj_parm)
+	      inform (DECL_SOURCE_LOCATION (xobj_parm),
+		      "Valid explicit object parameter declared here");
+	    /* End of explicit object member function diagnostics.  */
 
 	    if (reqs)
 	      error_at (location_of (reqs), "requires-clause on return type");

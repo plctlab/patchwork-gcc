@@ -1833,7 +1833,9 @@ dump_function_decl (cxx_pretty_printer *pp, tree t, int flags)
 
   if (!(flags & TFF_NO_FUNCTION_ARGUMENTS))
     {
-      dump_parameters (pp, parmtypes, flags);
+      dump_parameters (pp, parmtypes,
+		       DECL_XOBJ_MEMBER_FUNC_P (t) ? TFF_XOBJ_FUNC | flags
+						    : flags);
 
       if (TREE_CODE (fntype) == METHOD_TYPE)
 	{
@@ -1912,6 +1914,8 @@ dump_parameters (cxx_pretty_printer *pp, tree parmtypes, int flags)
   for (first = 1; parmtypes != void_list_node;
        parmtypes = TREE_CHAIN (parmtypes))
     {
+      if (first && flags & TFF_XOBJ_FUNC)
+	pp_string (pp, "this ");
       if (!first)
 	pp_separate_with_comma (pp);
       first = 0;
@@ -3691,6 +3695,8 @@ function_category (tree fn)
 	return _("In destructor %qD");
       else if (LAMBDA_FUNCTION_P (fn))
 	return _("In lambda function");
+      else if (DECL_XOBJ_MEMBER_FUNC_P (fn))
+	return _("In explicit object member function %qD");
       else
 	return _("In member function %qD");
     }

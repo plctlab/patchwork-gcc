@@ -15803,6 +15803,8 @@ cp_parser_decl_specifier_seq (cp_parser* parser,
   /* Assume no class or enumeration type is declared.  */
   *declares_class_or_enum = 0;
 
+  /* Keep a token that additionally will be used for diagnostics.  */
+  cp_token *first_specifier = NULL;
   /* Keep reading specifiers until there are no more to read.  */
   while (true)
     {
@@ -15875,12 +15877,42 @@ cp_parser_decl_specifier_seq (cp_parser* parser,
 	    decl_specs->locations[ds_attribute] = token->location;
 	  continue;
 	}
+      /* We know by this point that the token is not part of an attribute.  */
+      if (!first_specifier)
+	first_specifier = token;
       /* Special case for "this" specifier, indicating a parm is an xobj parm.
 	 The "this" specifier must be the first specifier in the declaration,
 	 after any attributes.  */
       if (token->keyword == RID_THIS)
 	{
 	  cp_lexer_consume_token (parser->lexer);
+	  if (token != first_specifier)
+	    {
+	      /* Don't emit diagnostics if we have already seen "this",
+		 leave it for set_and_check_decl_spec_loc.  */
+	      if (decl_specs->locations[ds_this] == 0)
+		{
+		  gcc_rich_location richloc (token->location);
+		  /* Ideally we synthesize a full rewrite, at the moment
+		     there are issues with it though.
+		     It rewrites "f(S this & s)" correctly,
+		     but fails to rewrite "f(const this S s)" correctly.
+		     It also does not handle "f(S& this s)" correctly at all.
+
+		     It's also possible we want to wait and see if the parm
+		     could even be a valid xobj parm as it might be confusing
+		     to the user to see an error, fix it, and then see another
+		     error for something new.
+
+		     In short, this area needs improvement.  */
+		  richloc.add_fixit_insert_before
+		    (first_specifier->location, "this ");
+		  richloc.add_fixit_remove ();
+		  error_at (&richloc,
+			    "%<this%> must be the first specifier "
+			    "in a parameter declaration");
+		}
+	    }
 	  set_and_check_decl_spec_loc (decl_specs, ds_this, token);
 	  continue;
 	}
@@ -25284,6 +25316,19 @@ cp_parser_parameter_declaration (cp_parser *parser,
 
   if (decl_spec_seq_has_spec_p (&decl_specifiers, ds_this))
     {
+      if (default_argument)
+	{
+	  /* If default_argument is non-null token should always be the
+	     the location of the `=' token, this is brittle code though
+	     and should be rectified in the future.  */
+	  location_t param_with_init_loc
+	    = make_location (token->location,
+			     decl_spec_token_start->location,
+			     input_location);
+	  error_at (param_with_init_loc,
+		    "an explicit object parameter "
+		    "may not have a default argument");
+	}
       /* Xobj parameters can not have default arguments, thus
 	 we can reuse the default argument field to flag the param as such.  */
       default_argument = this_identifier;

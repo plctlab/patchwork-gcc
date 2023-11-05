@@ -3028,7 +3028,33 @@ finish_this_expr (void)
     return rvalue (result);
 
   tree fn = current_nonlambda_function ();
-  if (fn && DECL_STATIC_FUNCTION_P (fn))
+  if (fn && DECL_XOBJ_MEMBER_FUNC_P (fn))
+    {
+      /* I can imagine doing a fixit here, suggesting replacing
+	 this / *this / this-> with &name / name / "name." but it would be
+	 very difficult to get it perfect and I've been advised against
+	 making imperfect fixits.
+	 Perhaps it would be as simple as the replacements listed,
+	 even if one is move'ing/forward'ing, if the replacement is just
+	 done in the same place, it will be exactly what the user wants?
+	 Even if this is true though, there's still a problem of getting the
+	 context of the expression to find which tokens to replace.
+	 I would really like for this to be possible though.
+	 I will decide whether or not to persue this after review.  */
+      tree xobj_parm = FUNCTION_DECL_CHECK (fn)->function_decl.arguments;
+      tree parm_name = DECL_MINIMAL_CHECK (xobj_parm)->decl_minimal.name;
+	error ("%<this%> is unavailable for explicit object member "
+	       "functions");
+      if (parm_name)
+	inform (DECL_SOURCE_LOCATION (xobj_parm),
+		"use explicit object parameter %qD instead",
+		parm_name);
+      else
+	inform (DECL_SOURCE_LOCATION (xobj_parm),
+		"name and use the explicit object parameter instead");
+	/* Maybe suggest self as a name here?  */
+    }
+  else if (fn && DECL_STATIC_FUNCTION_P (fn))
     error ("%<this%> is unavailable for static member functions");
   else if (fn && processing_contract_condition && DECL_CONSTRUCTOR_P (fn))
     error ("invalid use of %<this%> before it is valid");
