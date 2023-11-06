@@ -31663,7 +31663,7 @@ $as_echo "#define ENABLE_LTO 1" >>confdefs.h
 	esac
 done
 
-check_languages=
+check_languages=check-libdiagnostics
 for language in $all_selected_languages
 do
 	check_languages="$check_languages check-$language"

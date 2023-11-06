@@ -113,10 +113,10 @@ class char_span
   size_t m_n_elts;
 };
 
+// FIXME: eliminate these; use global_dc->m_file_cache
 extern char_span location_get_source_line (const char *file_path, int line);
 extern char *get_source_text_between (location_t, location_t);
 extern char_span get_source_file_content (const char *file_path);
-
 extern bool location_missing_trailing_newline (const char *file_path);
 
 /* Forward decl of slot within file_cache, so that the definition doesn't
