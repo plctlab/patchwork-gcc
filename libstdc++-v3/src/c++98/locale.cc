@@ -216,12 +216,9 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #ifdef __GTHREADS
     if (__gthread_active_p())
       __gthread_once(&_S_once, _S_initialize_once);
-    else
 #endif
-      {
-	if (!_S_c_locale)
-	  _S_initialize_once();
-      }
+    if (__builtin_expect (!_S_c_locale, 0))
+      _S_initialize_once();
     return _S_c_locale;
   }
 
