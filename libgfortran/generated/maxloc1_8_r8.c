@@ -109,12 +109,7 @@ maxloc1_8_r8 (gfc_array_i8 * const restrict retarray,
 
       retarray->base_addr = xmallocarray (alloc_size, sizeof (GFC_INTEGER_8));
       if (alloc_size == 0)
-	{
-	  /* Make sure we have a zero-sized array.  */
-	  GFC_DIMENSION_SET(retarray->dim[0], 0, -1, 1);
-	  return;
-
-	}
+	return;
     }
   else
     {
@@ -328,11 +323,7 @@ mmaxloc1_8_r8 (gfc_array_i8 * const restrict retarray,
       retarray->dtype.rank = rank;
 
       if (alloc_size == 0)
-	{
-	  /* Make sure we have a zero-sized array.  */
-	  GFC_DIMENSION_SET(retarray->dim[0], 0, -1, 1);
-	  return;
-	}
+	return;
       else
 	retarray->base_addr = xmallocarray (alloc_size, sizeof (GFC_INTEGER_8));
 
@@ -536,11 +527,7 @@ smaxloc1_8_r8 (gfc_array_i8 * const restrict retarray,
       alloc_size = GFC_DESCRIPTOR_STRIDE(retarray,rank-1) * extent[rank-1];
 
       if (alloc_size == 0)
-	{
-	  /* Make sure we have a zero-sized array.  */
-	  GFC_DIMENSION_SET(retarray->dim[0], 0, -1, 1);
-	  return;
-	}
+	return;
       else
 	retarray->base_addr = xmallocarray (alloc_size, sizeof (GFC_INTEGER_8));
     }

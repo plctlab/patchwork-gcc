@@ -121,12 +121,7 @@ minval1_s1 (gfc_array_s1 * const restrict retarray,
 
       retarray->base_addr = xmallocarray (alloc_size, sizeof (GFC_UINTEGER_1));
       if (alloc_size == 0)
-	{
-	  /* Make sure we have a zero-sized array.  */
-	  GFC_DIMENSION_SET(retarray->dim[0], 0, -1, 1);
-	  return;
-
-	}
+	return;
     }
   else
     {
@@ -317,11 +312,7 @@ mminval1_s1 (gfc_array_s1 * const restrict retarray,
       retarray->dtype.rank = rank;
 
       if (alloc_size == 0)
-	{
-	  /* Make sure we have a zero-sized array.  */
-	  GFC_DIMENSION_SET(retarray->dim[0], 0, -1, 1);
-	  return;
-	}
+	return;
       else
 	retarray->base_addr = xmallocarray (alloc_size, sizeof (GFC_UINTEGER_1));
 
@@ -495,11 +486,7 @@ sminval1_s1 (gfc_array_s1 * const restrict retarray,
       		 * string_len;
 
       if (alloc_size == 0)
-	{
-	  /* Make sure we have a zero-sized array.  */
-	  GFC_DIMENSION_SET(retarray->dim[0], 0, -1, 1);
-	  return;
-	}
+	return;
       else
 	retarray->base_addr = xmallocarray (alloc_size, sizeof (GFC_UINTEGER_1));
     }
