@@ -1,3 +1,4 @@
+/* { dg-additional-options "-D_MODE_T_DECLARED=1" { target newlib } } */
 #ifdef _AIX
 #define _MODE_T
 #endif
