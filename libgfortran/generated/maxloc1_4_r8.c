@@ -270,8 +270,6 @@ mmaxloc1_4_r8 (gfc_array_i4 * const restrict retarray,
     }
 
   len = GFC_DESCRIPTOR_EXTENT(array,dim);
-  if (len <= 0)
-    return;
 
   mbase = mask->base_addr;
 

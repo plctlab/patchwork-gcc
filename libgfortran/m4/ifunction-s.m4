@@ -244,8 +244,6 @@ m'name`'rtype_qual`_'atype_code` ('rtype` * const restrict retarray,
     }
 
   len = GFC_DESCRIPTOR_EXTENT(array,dim);
-  if (len <= 0)
-    return;
 
   mbase = mask->base_addr;
 

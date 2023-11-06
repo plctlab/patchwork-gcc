@@ -256,8 +256,6 @@ mmaxval_r10 (gfc_array_r10 * const restrict retarray,
     }
 
   len = GFC_DESCRIPTOR_EXTENT(array,dim);
-  if (len <= 0)
-    return;
 
   mbase = mask->base_addr;
 
