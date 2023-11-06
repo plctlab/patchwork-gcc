@@ -7193,7 +7193,7 @@ changequote([,])dnl
 	esac
 done
 
-check_languages=
+check_languages=check-libdiagnostics
 for language in $all_selected_languages
 do
 	check_languages="$check_languages check-$language"
