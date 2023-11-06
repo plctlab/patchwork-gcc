@@ -242,8 +242,6 @@ mproduct_i16 (gfc_array_i16 * const restrict retarray,
     }
 
   len = GFC_DESCRIPTOR_EXTENT(array,dim);
-  if (len <= 0)
-    return;
 
   mbase = mask->base_addr;
 
