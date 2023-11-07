@@ -16876,8 +16876,6 @@ package body Sem_Ch13 is
       Sz : Unat;
 
    begin
-      Reinit_Alignment (T);
-
       --  Find the minimum standard size (8,16,32,64,128) that fits
 
       Lo := Enumeration_Rep (Entity (Type_Low_Bound (T)));
