@@ -1439,7 +1439,6 @@ package body Exp_Pakd is
             Bits_nn : constant Entity_Id := RTE (Bits_Id (Csiz));
             Set_nn  : Entity_Id;
             Subscr  : Node_Id;
-            Atyp    : Entity_Id;
             Rev_SSO : Node_Id;
 
          begin
@@ -1461,9 +1460,6 @@ package body Exp_Pakd is
 
             --  Now generate the set reference
 
-            Obj := Relocate_Node (Prefix (Lhs));
-            Convert_To_Actual_Subtype (Obj);
-            Atyp := Etype (Obj);
             Compute_Linear_Subscript (Atyp, Lhs, Subscr);
 
             --  Set indication of whether the packed array has reverse SSO
