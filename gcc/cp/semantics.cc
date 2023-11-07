@@ -11519,10 +11519,10 @@ finish_decltype_type (tree expr, bool id_expression_or_member_access_p,
 	 transformed into an access to a corresponding data member
 	 of the closure type that would have been declared if x
 	 were a use of the denoted entity.  */
-      if (outer_automatic_var_p (expr)
+      if (outer_automatic_var_p (STRIP_REFERENCE_REF (expr))
 	  && current_function_decl
 	  && LAMBDA_FUNCTION_P (current_function_decl))
-	type = capture_decltype (expr);
+	type = capture_decltype (STRIP_REFERENCE_REF (expr));
       else if (error_operand_p (expr))
 	type = error_mark_node;
       else if (expr == current_class_ptr)
