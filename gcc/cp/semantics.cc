@@ -11471,12 +11471,30 @@ finish_decltype_type (tree expr, bool id_expression_or_member_access_p,
           /* Fall through for fields that aren't bitfields.  */
 	  gcc_fallthrough ();
 
-        case FUNCTION_DECL:
         case VAR_DECL:
-        case CONST_DECL:
-        case PARM_DECL:
-        case RESULT_DECL:
-        case TEMPLATE_PARM_INDEX:
+	  if (is_capture_proxy (expr))
+	    {
+	      if (is_normal_capture_proxy (expr))
+		{
+		  expr = DECL_CAPTURED_VARIABLE (expr);
+		  type = TREE_TYPE (expr);
+		  type = non_reference (type);
+		}
+	      else
+		{
+		  expr = DECL_VALUE_EXPR (expr);
+		  gcc_assert (TREE_CODE (expr) == COMPONENT_REF);
+		  expr = TREE_OPERAND (expr, 1);
+		  type = TREE_TYPE (expr);
+		}
+	      break;
+	    }
+	  /* Fall through.  */
+	case FUNCTION_DECL:
+	case CONST_DECL:
+	case PARM_DECL:
+	case RESULT_DECL:
+	case TEMPLATE_PARM_INDEX:
 	  expr = mark_type_use (expr);
           type = TREE_TYPE (expr);
           break;
