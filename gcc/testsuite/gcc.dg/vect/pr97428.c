@@ -42,5 +42,6 @@ void foo_i2(dcmlx4_t dst[], const dcmlx_t src[], int n)
 /* { dg-final { scan-tree-dump "Detected interleaving store of size 16" "vect" } } */
 /* We're not able to peel & apply re-aligning to make accesses well-aligned for !vect_hw_misalign,
    but we could by peeling the stores for alignment and applying re-aligning loads.  */
-/* { dg-final { scan-tree-dump-times "vectorizing stmts using SLP" 2 "vect" { xfail { ! vect_hw_misalign } } } } */
+/* { dg-final { scan-tree-dump-times "vectorizing stmts using SLP" 2 "vect" { xfail { { ! vect_hw_misalign } || { vect512 } } } } } */
+/* { dg-final { scan-tree-dump-times "vectorizing stmts using SLP" 4 "vect" { xfail { { ! vect_hw_misalign } || { ! vect512 } } } } } */
 /* { dg-final { scan-tree-dump-not "gap of 6 elements" "vect" } } */
