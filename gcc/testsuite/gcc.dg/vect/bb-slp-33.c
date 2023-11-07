@@ -17,7 +17,8 @@ test(int *__restrict__ a, int *__restrict__ b)
   a[8] = 0;
 }
 
-int main()
+int __attribute__((optimize(("-fno-tree-vectorize"))))
+main()
 {
   int a[9];
   int b[4];
