@@ -6110,6 +6110,68 @@ ivopts_estimate_reg_pressure (struct ivopts_data *data, unsigned n_invs,
   return cost + n_cands;
 }
 
+/* Return regs used based on live-in and liveout of given ssa variables.  */
+static unsigned
+get_regs_used (tree ssa_name)
+{
+  unsigned regs_used = 0;
+  gimple *stmt;
+  use_operand_p use;
+  basic_block def_bb = NULL;
+  imm_use_iterator imm_iter;
+
+  stmt = SSA_NAME_DEF_STMT (ssa_name);
+  if (stmt)
+    {
+      def_bb = gimple_bb (stmt);
+      /* Mark defs in liveout bitmap temporarily.  */
+      if (def_bb)
+	regs_used++;
+    }
+  else
+    def_bb = ENTRY_BLOCK_PTR_FOR_FN (cfun);
+
+  /* An undefined local variable does not need to be very alive.  */
+  if (virtual_operand_p (ssa_name)
+      || ssa_undefined_value_p (ssa_name, false))
+    return 0;
+
+  /* Visit each use of SSA_NAME and if it isn't in the same block as the def,
+     add it to the list of live on entry blocks.  */
+  FOR_EACH_IMM_USE_FAST (use, imm_iter, ssa_name)
+    {
+      gimple *use_stmt = USE_STMT (use);
+      basic_block add_block = NULL;
+
+      if (gimple_code (use_stmt) == GIMPLE_PHI)
+	{
+	  /* Uses in PHI's are considered to be live at exit of the SRC block
+	     as this is where a copy would be inserted.  Check to see if it is
+	     defined in that block, or whether its live on entry.  */
+	  int index = PHI_ARG_INDEX_FROM_USE (use);
+	  edge e = gimple_phi_arg_edge (as_a <gphi *> (use_stmt), index);
+	  if (e->src != def_bb)
+	    add_block = e->src;
+	}
+      else if (is_gimple_debug (use_stmt))
+	continue;
+      else
+	{
+	  /* If its not defined in this block, its live on entry.  */
+	  basic_block use_bb = gimple_bb (use_stmt);
+	  if (use_bb != def_bb)
+	    add_block = use_bb;
+	}
+
+      /* If there was a live on entry use, increment register used.  */
+      if (add_block)
+	{
+	  regs_used++;
+	}
+    }
+  return regs_used;
+}
+
 /* For each size of the induction variable set determine the penalty.  */
 
 static void
@@ -6150,15 +6212,20 @@ determine_set_costs (struct ivopts_data *data)
       n++;
     }
 
+  unsigned max = 0;
   EXECUTE_IF_SET_IN_BITMAP (data->relevant, 0, j, bi)
     {
       struct version_info *info = ver_info (data, j);
-
       if (info->inv_id && info->has_nonlin_use)
-	n++;
+	{
+	  tree ssa_name = ssa_name (j);
+	  n = get_regs_used (ssa_name);
+	  if (n >= max)
+	    max = n;
+	}
     }
 
-  data->regs_used = n;
+  data->regs_used = max;
   if (dump_file && (dump_flags & TDF_DETAILS))
     fprintf (dump_file, "  regs_used %d\n", n);
 
