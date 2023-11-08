@@ -1109,9 +1109,19 @@ symtab_node::verify_base (void)
           error ("function symbol is not function");
           error_found = true;
 	}
+      /* If the ifunc attribute is present, the node must be marked as
+	 ifunc_resolver, but it may also be marked on a node that
+	 doesn't have the attribute, if it's an alias to another
+	 marked node.  The resolver node itself is an alias to the
+	 function that performs the resolution proper, and that
+	 function is not marked, but here we test other kinds of
+	 aliases, that alias the indirect function.  */
       else if ((lookup_attribute ("ifunc", DECL_ATTRIBUTES (decl))
 		!= NULL)
-	       != dyn_cast <cgraph_node *> (this)->ifunc_resolver)
+	       ? !ifunc_resolver
+	       : ifunc_resolver
+	       ? !get_alias_target ()->ifunc_resolver
+	       : (alias && analyzed && get_alias_target ()->ifunc_resolver))
 	{
 	  error ("inconsistent %<ifunc%> attribute");
           error_found = true;
@@ -1878,6 +1888,9 @@ symtab_node::resolve_alias (symtab_node *target, bool transparent)
   set_section (*target);
   if (target->implicit_section)
     call_for_symbol_and_aliases (set_implicit_section, NULL, true);
+
+  if (target->ifunc_resolver && !ifunc_resolver)
+    set_ifunc_resolver ();
 
   /* Alias targets become redundant after alias is resolved into an reference.
      We do not want to keep it around or we would have to mind updating them

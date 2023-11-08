@@ -518,7 +518,7 @@ cgraph_node::create (tree decl)
     }
 
   if (lookup_attribute ("ifunc", DECL_ATTRIBUTES (decl)))
-    node->ifunc_resolver = true;
+    node->set_ifunc_resolver ();
 
   node->register_symbol ();
   maybe_record_nested_function (node);
@@ -576,7 +576,7 @@ cgraph_node::create_alias (tree alias, tree target)
   if (lookup_attribute ("weakref", DECL_ATTRIBUTES (alias)) != NULL)
     alias_node->transparent_alias = alias_node->weakref = true;
   if (lookup_attribute ("ifunc", DECL_ATTRIBUTES (alias)))
-    alias_node->ifunc_resolver = true;
+    alias_node->set_ifunc_resolver ();
   return alias_node;
 }
 

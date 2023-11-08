@@ -6196,7 +6196,10 @@ do_assemble_alias (tree decl, tree target)
       maybe_assemble_visibility (decl);
     }
   if (TREE_CODE (decl) == FUNCTION_DECL
-      && cgraph_node::get (decl)->ifunc_resolver)
+      && cgraph_node::get (decl)->ifunc_resolver
+      /* Aliases to the ifunc decl will also have the ifunc_resolver
+	 bit set, so check that this is the ifunc declaration.  */
+      && lookup_attribute ("ifunc", DECL_ATTRIBUTES (decl)))
     {
 #if defined (ASM_OUTPUT_TYPE_DIRECTIVE)
       if (targetm.has_ifunc_p ())

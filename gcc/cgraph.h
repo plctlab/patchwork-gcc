@@ -471,6 +471,19 @@ public:
     return decl->decl_with_vis.symtab_node;
   }
 
+  /* Worked for the nonstatic set_ifunc_resolver, to vback-propagate
+     ifunc_resolver in the alias chain.  */
+  static bool set_ifunc_resolver (symtab_node *n, void * = NULL)
+  {
+    n->ifunc_resolver = true;
+    return false;
+  }
+
+  /* Set the ifunc_resolver bit in this node and in any aliases thereof.  */
+  void set_ifunc_resolver () {
+    call_for_symbol_and_aliases (set_ifunc_resolver, NULL, true);
+  }
+
   /* Try to find a symtab node for declaration DECL and if it does not
      exist or if it corresponds to an inline clone, create a new one.  */
   static inline symtab_node * get_create (tree node);

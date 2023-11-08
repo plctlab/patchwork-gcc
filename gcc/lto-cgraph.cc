@@ -1294,7 +1294,7 @@ input_node (struct lto_file_decl_data *file_data,
       node = symtab->create_empty ();
       node->decl = fn_decl;
       if (lookup_attribute ("ifunc", DECL_ATTRIBUTES (fn_decl)))
-	node->ifunc_resolver = 1;
+	node->set_ifunc_resolver ();
       node->register_symbol ();
     }
 
