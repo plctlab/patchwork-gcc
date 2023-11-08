@@ -9669,10 +9669,30 @@ vectorizable_induction (loop_vec_info loop_vinfo,
     new_name = step_expr;
   else
     {
+      gimple_seq seq = NULL;
+      if (LOOP_VINFO_USING_SELECT_VL_P (loop_vinfo))
+	{
+	  /* When we're using loop_len produced by SELEC_VL, the non-final
+	     iterations are not always processing VF elements.  So vectorize
+	     induction variable instead of
+
+	       _21 = vect_vec_iv_.6_22 + { VF, ... };
+
+	     We should generate:
+
+	       _35 = .SELECT_VL (ivtmp_33, VF);
+	       vect_cst__22 = [vec_duplicate_expr] _35;
+	       _21 = vect_vec_iv_.6_22 + vect_cst__22;  */
+	  vec_loop_lens *lens = &LOOP_VINFO_LENS (loop_vinfo);
+	  tree len
+	    = vect_get_loop_len (loop_vinfo, NULL, lens, 1, vectype, 0, 0);
+	  expr = force_gimple_operand (fold_convert (TREE_TYPE (step_expr),
+						     unshare_expr (len)),
+				       &seq, true, NULL_TREE);
+	}
       /* iv_loop is the loop to be vectorized. Generate:
 	  vec_step = [VF*S, VF*S, VF*S, VF*S]  */
-      gimple_seq seq = NULL;
-      if (SCALAR_FLOAT_TYPE_P (TREE_TYPE (step_expr)))
+      else if (SCALAR_FLOAT_TYPE_P (TREE_TYPE (step_expr)))
 	{
 	  expr = build_int_cst (integer_type_node, vf);
 	  expr = gimple_build (&seq, FLOAT_EXPR, TREE_TYPE (step_expr), expr);
@@ -9683,8 +9703,13 @@ vectorizable_induction (loop_vec_info loop_vinfo,
 			       expr, step_expr);
       if (seq)
 	{
-	  new_bb = gsi_insert_seq_on_edge_immediate (pe, seq);
-	  gcc_assert (!new_bb);
+	  if (LOOP_VINFO_USING_SELECT_VL_P (loop_vinfo))
+	    gsi_insert_seq_before (&si, seq, GSI_SAME_STMT);
+	  else
+	    {
+	      new_bb = gsi_insert_seq_on_edge_immediate (pe, seq);
+	      gcc_assert (!new_bb);
+	    }
 	}
     }
 
@@ -9692,9 +9717,9 @@ vectorizable_induction (loop_vec_info loop_vinfo,
   gcc_assert (CONSTANT_CLASS_P (new_name)
 	      || TREE_CODE (new_name) == SSA_NAME);
   new_vec = build_vector_from_val (step_vectype, t);
-  vec_step = vect_init_vector (loop_vinfo, stmt_info,
-			       new_vec, step_vectype, NULL);
-
+  vec_step
+    = vect_init_vector (loop_vinfo, stmt_info, new_vec, step_vectype,
+			LOOP_VINFO_USING_SELECT_VL_P (loop_vinfo) ? &si : NULL);
 
   /* Create the following def-use cycle:
      loop prolog:
