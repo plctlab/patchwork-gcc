@@ -514,7 +514,8 @@ get_uses (rtx_insn *insn, rtx reg)
     if (REGNO (DF_REF_REG (def)) == REGNO (reg))
       break;
 
-  gcc_assert (def != NULL);
+  if (def == NULL)
+    return NULL;
 
   ref_chain = DF_REF_CHAIN (def);
 
@@ -750,6 +751,109 @@ get_extended_src_reg (rtx src)
   return src;
 }
 
+/* Return TRUE if target mode is equal to source mode, false otherwise.  */
+
+static bool
+abi_target_promote_function_mode (machine_mode mode)
+{
+  int unsignedp;
+  machine_mode tgt_mode
+    = targetm.calls.promote_function_mode (NULL_TREE, mode, &unsignedp,
+					   NULL_TREE, 1);
+
+  return tgt_mode == mode;
+}
+
+/* Return TRUE if regno is a return register.  */
+
+static inline bool
+abi_extension_candidate_return_reg_p (int regno)
+{
+  if (targetm.calls.function_value_regno_p (regno))
+    return true;
+
+  return false;
+}
+
+/* Return TRUE if
+   reg source operand is argument register and not return register,
+   mode of source and destination operand are different,
+   if not promoted REGNO of source and destination operand are the same.  */
+static bool
+abi_extension_candidate_p (rtx_insn *insn)
+{
+  rtx set = single_set (insn);
+  machine_mode dst_mode = GET_MODE (SET_DEST (set));
+  rtx orig_src = XEXP (SET_SRC (set), 0);
+
+  if (FUNCTION_ARG_REGNO_P (REGNO (orig_src))
+      && !abi_extension_candidate_return_reg_p (REGNO (orig_src))
+      && dst_mode != GET_MODE (orig_src))
+     {
+       if (!abi_target_promote_function_mode (GET_MODE (orig_src))
+	   && REGNO (SET_DEST (set)) != REGNO (orig_src))
+	 return false;
+
+       return true;
+     }
+  return false;
+}
+
+/* Return TRUE if regno is an argument register.  */
+
+static inline bool
+abi_extension_candidate_argno_p (int regno)
+{
+  return FUNCTION_ARG_REGNO_P (regno);
+}
+
+/* Return TRUE if the candidate insn doesn't have defs and have
+ * uses without RTX_BIN_ARITH/RTX_COMM_ARITH/RTX_UNARY rtx class.  */
+
+static bool
+abi_handle_regs (rtx_insn *insn)
+{
+  if (side_effects_p (PATTERN (insn)))
+    return false;
+
+  struct df_link *uses = get_uses (insn, SET_DEST (PATTERN (insn)));
+
+  if (!uses)
+    return false;
+
+  for (df_link *use = uses; use; use = use->next)
+    {
+      if (!use->ref)
+	return false;
+
+      if (BLOCK_FOR_INSN (insn) != BLOCK_FOR_INSN (DF_REF_INSN (use->ref)))
+	return false;
+
+      rtx_insn *use_insn = DF_REF_INSN (use->ref);
+
+      if (GET_CODE (PATTERN (use_insn)) == SET)
+	{
+	  rtx_code code = GET_CODE (SET_SRC (PATTERN (use_insn)));
+
+	  if (GET_RTX_CLASS (code) == RTX_BIN_ARITH
+	      || GET_RTX_CLASS (code) == RTX_COMM_ARITH
+	      || GET_RTX_CLASS (code) == RTX_UNARY)
+	    return false;
+	}
+     }
+
+  rtx set = single_set (insn);
+
+  if (GET_CODE (SET_SRC (set)) == SIGN_EXTEND)
+    {
+      machine_mode mode = GET_MODE (XEXP (SET_SRC (set), 0));
+      bool promote_p = abi_target_promote_function_mode (mode);
+
+      return promote_p;
+    }
+  return true;
+}
+
 /* This function goes through all reaching defs of the source
    of the candidate for elimination (CAND) and tries to combine
    the extension with the definition instruction.  The changes
@@ -770,6 +874,11 @@ combine_reaching_defs (ext_cand *cand, const_rtx set_pat, ext_state *state)
 
   state->defs_list.truncate (0);
   state->copies_list.truncate (0);
+  rtx orig_src = XEXP (SET_SRC (cand->expr),0);
+
+  if (abi_extension_candidate_p (cand->insn)
+      && !get_defs (cand->insn, orig_src, NULL))
+    return abi_handle_regs (cand->insn);
 
   outcome = make_defs_and_copies_lists (cand->insn, set_pat, state);
 
@@ -1116,9 +1225,12 @@ add_removable_extension (const_rtx expr, rtx_insn *insn,
       /* Zero-extension of an undefined value is partly defined (it's
 	 completely undefined for sign-extension, though).  So if there exists
 	 a path from the entry to this zero-extension that leaves this register
-	 uninitialized, removing the extension could change the behavior of
-	 correct programs.  So first, check it is not the case.  */
-      if (code == ZERO_EXTEND && !bitmap_bit_p (init_regs, REGNO (reg)))
+	 uninitialized and not argument register, removing the extension could
+	 change the behavior of correct programs.  So first, check it is not
+	 the case.  */
+      if (code == ZERO_EXTEND
+	  && !bitmap_bit_p (init_regs, REGNO (reg))
+	  && !abi_extension_candidate_argno_p (REGNO (reg)))
 	{
 	  if (dump_file)
 	    {
@@ -1130,10 +1242,17 @@ add_removable_extension (const_rtx expr, rtx_insn *insn,
 	  return;
 	}
 
-      /* Second, make sure we can get all the reaching definitions.  */
+      /* Second, make sure we can get all the reaching definitions or reg is
+	 argument register.  */
       defs = get_defs (insn, reg, NULL);
       if (!defs)
 	{
+	  if (abi_extension_candidate_argno_p (REGNO (reg)))
+	    {
+	      ext_cand e = {expr, code, mode, insn};
+	      insn_list->safe_push (e);
+	      return;
+	    }
 	  if (dump_file)
 	    {
 	      fprintf (dump_file, "Cannot eliminate extension:\n");
@@ -1321,7 +1440,8 @@ find_and_remove_re (void)
 	      && (REGNO (SET_DEST (set)) != REGNO (XEXP (SET_SRC (set), 0))))
 	    {
               reinsn_copy_list.safe_push (curr_cand->insn);
-              reinsn_copy_list.safe_push (state.defs_list[0]);
+	      if (state.defs_list.length () != 0)
+		reinsn_copy_list.safe_push (state.defs_list[0]);
 	    }
 	  reinsn_del_list.safe_push (curr_cand->insn);
 	  state.modified[INSN_UID (curr_cand->insn)].deleted = 1;
@@ -1345,6 +1465,10 @@ find_and_remove_re (void)
   for (unsigned int i = 0; i < reinsn_copy_list.length (); i += 2)
     {
       rtx_insn *curr_insn = reinsn_copy_list[i];
+
+      if ((i+1) >= reinsn_copy_list.length ())
+	continue;
+
       rtx_insn *def_insn = reinsn_copy_list[i + 1];
 
       /* Use the mode of the destination of the defining insn
