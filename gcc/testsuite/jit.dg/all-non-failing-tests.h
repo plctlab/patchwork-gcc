@@ -374,6 +374,13 @@
 #undef create_code
 #undef verify_code
 
+/* test-ggc-bugfix.c */
+#define create_code create_code_ggc_bugfix
+#define verify_code verify_code_ggc_bugfix
+#include "test-ggc-bugfix.c"
+#undef create_code
+#undef verify_code
+
 /* Now expose the individual testcases as instances of this struct.  */
 
 struct testcase
@@ -526,7 +533,10 @@ const struct testcase testcases[] = {
    verify_code_version},
   {"volatile",
    create_code_volatile,
-   verify_code_volatile}
+   verify_code_volatile},
+  {"ggc_bugfix",
+   create_code_ggc_bugfix,
+   verify_code_ggc_bugfix},
 };
 
 const int num_testcases = (sizeof (testcases) / sizeof (testcases[0]));
