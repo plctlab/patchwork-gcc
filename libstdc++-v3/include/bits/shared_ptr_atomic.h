@@ -98,6 +98,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
    *  @{
   */
   template<typename _Tp, _Lock_policy _Lp>
+    _GLIBCXX20_DEPRECATED_SUGGEST("std::atomic<std::shared_ptr<T>>")
     inline bool
     atomic_is_lock_free(const __shared_ptr<_Tp, _Lp>* __p)
     {
@@ -109,6 +110,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp>
+    _GLIBCXX20_DEPRECATED_SUGGEST("std::atomic<std::shared_ptr<T>>")
     inline bool
     atomic_is_lock_free(const shared_ptr<_Tp>* __p)
     { return std::atomic_is_lock_free<_Tp, __default_lock_policy>(__p); }
@@ -125,6 +127,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
    *  @{
   */
   template<typename _Tp>
+    _GLIBCXX20_DEPRECATED_SUGGEST("std::atomic<std::shared_ptr<T>>")
     inline shared_ptr<_Tp>
     atomic_load_explicit(const shared_ptr<_Tp>* __p, memory_order)
     {
@@ -133,11 +136,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp>
+    _GLIBCXX20_DEPRECATED_SUGGEST("std::atomic<std::shared_ptr<T>>")
     inline shared_ptr<_Tp>
     atomic_load(const shared_ptr<_Tp>* __p)
     { return std::atomic_load_explicit(__p, memory_order_seq_cst); }
 
   template<typename _Tp, _Lock_policy _Lp>
+    _GLIBCXX20_DEPRECATED_SUGGEST("std::atomic<std::shared_ptr<T>>")
     inline __shared_ptr<_Tp, _Lp>
     atomic_load_explicit(const __shared_ptr<_Tp, _Lp>* __p, memory_order)
     {
@@ -146,6 +151,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp, _Lock_policy _Lp>
+    _GLIBCXX20_DEPRECATED_SUGGEST("std::atomic<std::shared_ptr<T>>")
     inline __shared_ptr<_Tp, _Lp>
     atomic_load(const __shared_ptr<_Tp, _Lp>* __p)
     { return std::atomic_load_explicit(__p, memory_order_seq_cst); }
@@ -161,6 +167,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
    *  @{
   */
   template<typename _Tp>
+    _GLIBCXX20_DEPRECATED_SUGGEST("std::atomic<std::shared_ptr<T>>")
     inline void
     atomic_store_explicit(shared_ptr<_Tp>* __p, shared_ptr<_Tp> __r,
 			  memory_order)
@@ -170,11 +177,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp>
+    _GLIBCXX20_DEPRECATED_SUGGEST("std::atomic<std::shared_ptr<T>>")
     inline void
     atomic_store(shared_ptr<_Tp>* __p, shared_ptr<_Tp> __r)
     { std::atomic_store_explicit(__p, std::move(__r), memory_order_seq_cst); }
 
   template<typename _Tp, _Lock_policy _Lp>
+    _GLIBCXX20_DEPRECATED_SUGGEST("std::atomic<std::shared_ptr<T>>")
     inline void
     atomic_store_explicit(__shared_ptr<_Tp, _Lp>* __p,
 			  __shared_ptr<_Tp, _Lp> __r,
@@ -185,6 +194,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp, _Lock_policy _Lp>
+    _GLIBCXX20_DEPRECATED_SUGGEST("std::atomic<std::shared_ptr<T>>")
     inline void
     atomic_store(__shared_ptr<_Tp, _Lp>* __p, __shared_ptr<_Tp, _Lp> __r)
     { std::atomic_store_explicit(__p, std::move(__r), memory_order_seq_cst); }
@@ -198,6 +208,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
    *  @{
   */
   template<typename _Tp>
+    _GLIBCXX20_DEPRECATED_SUGGEST("std::atomic<std::shared_ptr<T>>")
     inline shared_ptr<_Tp>
     atomic_exchange_explicit(shared_ptr<_Tp>* __p, shared_ptr<_Tp> __r,
 			     memory_order)
@@ -208,6 +219,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp>
+    _GLIBCXX20_DEPRECATED_SUGGEST("std::atomic<std::shared_ptr<T>>")
     inline shared_ptr<_Tp>
     atomic_exchange(shared_ptr<_Tp>* __p, shared_ptr<_Tp> __r)
     {
@@ -216,6 +228,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp, _Lock_policy _Lp>
+    _GLIBCXX20_DEPRECATED_SUGGEST("std::atomic<std::shared_ptr<T>>")
     inline __shared_ptr<_Tp, _Lp>
     atomic_exchange_explicit(__shared_ptr<_Tp, _Lp>* __p,
 			     __shared_ptr<_Tp, _Lp> __r,
@@ -227,6 +240,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp, _Lock_policy _Lp>
+    _GLIBCXX20_DEPRECATED_SUGGEST("std::atomic<std::shared_ptr<T>>")
     inline __shared_ptr<_Tp, _Lp>
     atomic_exchange(__shared_ptr<_Tp, _Lp>* __p, __shared_ptr<_Tp, _Lp> __r)
     {
@@ -247,6 +261,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
    *  @{
   */
   template<typename _Tp>
+    _GLIBCXX20_DEPRECATED_SUGGEST("std::atomic<std::shared_ptr<T>>")
     bool
     atomic_compare_exchange_strong_explicit(shared_ptr<_Tp>* __p,
 					    shared_ptr<_Tp>* __v,
@@ -269,6 +284,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp>
+    _GLIBCXX20_DEPRECATED_SUGGEST("std::atomic<std::shared_ptr<T>>")
     inline bool
     atomic_compare_exchange_strong(shared_ptr<_Tp>* __p, shared_ptr<_Tp>* __v,
 				 shared_ptr<_Tp> __w)
@@ -278,6 +294,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp>
+    _GLIBCXX20_DEPRECATED_SUGGEST("std::atomic<std::shared_ptr<T>>")
     inline bool
     atomic_compare_exchange_weak_explicit(shared_ptr<_Tp>* __p,
 					  shared_ptr<_Tp>* __v,
@@ -290,6 +307,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp>
+    _GLIBCXX20_DEPRECATED_SUGGEST("std::atomic<std::shared_ptr<T>>")
     inline bool
     atomic_compare_exchange_weak(shared_ptr<_Tp>* __p, shared_ptr<_Tp>* __v,
 				 shared_ptr<_Tp> __w)
@@ -299,6 +317,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp, _Lock_policy _Lp>
+    _GLIBCXX20_DEPRECATED_SUGGEST("std::atomic<std::shared_ptr<T>>")
     bool
     atomic_compare_exchange_strong_explicit(__shared_ptr<_Tp, _Lp>* __p,
 					    __shared_ptr<_Tp, _Lp>* __v,
@@ -321,6 +340,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp, _Lock_policy _Lp>
+    _GLIBCXX20_DEPRECATED_SUGGEST("std::atomic<std::shared_ptr<T>>")
     inline bool
     atomic_compare_exchange_strong(__shared_ptr<_Tp, _Lp>* __p,
 				   __shared_ptr<_Tp, _Lp>* __v,
@@ -331,6 +351,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp, _Lock_policy _Lp>
+    _GLIBCXX20_DEPRECATED_SUGGEST("std::atomic<std::shared_ptr<T>>")
     inline bool
     atomic_compare_exchange_weak_explicit(__shared_ptr<_Tp, _Lp>* __p,
 					  __shared_ptr<_Tp, _Lp>* __v,
@@ -343,6 +364,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   template<typename _Tp, _Lock_policy _Lp>
+    _GLIBCXX20_DEPRECATED_SUGGEST("std::atomic<std::shared_ptr<T>>")
     inline bool
     atomic_compare_exchange_weak(__shared_ptr<_Tp, _Lp>* __p,
 				 __shared_ptr<_Tp, _Lp>* __v,
