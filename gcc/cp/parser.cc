@@ -19773,6 +19773,8 @@ cp_parser_simple_type_specifier (cp_parser* parser,
 	  /* The 'auto' might be the placeholder return type for a function decl
 	     with trailing return type.  */
 	  bool have_trailing_return_fn_decl = false;
+	  /* Or it might be auto(x) or auto {x}.  */
+	  bool decay_copy = false;
 
 	  cp_parser_parse_tentatively (parser);
 	  cp_lexer_consume_token (parser->lexer);
@@ -19790,6 +19792,11 @@ cp_parser_simple_type_specifier (cp_parser* parser,
 							 /*consume_paren*/true);
 		  continue;
 		}
+	      else if (cp_lexer_next_token_is (parser->lexer, CPP_OPEN_BRACE))
+		{
+		  decay_copy = true;
+		  break;
+		}
 
 	      if (cp_lexer_next_token_is (parser->lexer, CPP_DEREF))
 		{
@@ -19801,6 +19808,11 @@ cp_parser_simple_type_specifier (cp_parser* parser,
 	    }
 	  cp_parser_abort_tentative_parse (parser);
 
+	  if (decay_copy)
+	    {
+	      type = error_mark_node;
+	      break;
+	    }
 	  if (have_trailing_return_fn_decl)
 	    {
 	      type = make_auto ();
@@ -24750,7 +24762,20 @@ cp_parser_parameter_declaration_clause (cp_parser* parser,
      parameter-declaration-list, then the entire
      parameter-declaration-clause is erroneous.  */
   if (parameters == error_mark_node)
-    return NULL_TREE;
+    {
+      /* For code like
+	  int x(auto(42));
+	  A a(auto(i), 42);
+	 we have synthesized an implicit template parameter and marked
+	 what we thought was a function as an implicit function template.
+	 But now, having seen the whole parameter list, we know it's not
+	 a function declaration, so undo that.  */
+      if (parser->fully_implicit_function_template_p
+	  /* Don't do this for the inner ().  */
+	  && parser->default_arg_ok_p)
+	abort_fully_implicit_template (parser);
+      return NULL_TREE;
+    }
 
   /* Peek at the next token.  */
   token = cp_lexer_peek_token (parser->lexer);
