@@ -1480,6 +1480,10 @@ extern void warn_for_address_or_pointer_of_packed_member (tree, tree);
 extern void warn_parm_array_mismatch (location_t, tree, tree);
 extern void maybe_warn_sizeof_array_div (location_t, tree, tree, tree, tree);
 extern void do_warn_array_compare (location_t, tree_code, tree, tree);
+extern bool pedpermerror (location_t, int, const char *,
+			  ...) ATTRIBUTE_GCC_DIAG(3,4);
+extern bool pedpermerror (rich_location *, int, const char *,
+			  ...) ATTRIBUTE_GCC_DIAG(3,4);
 
 /* Places where an lvalue, or modifiable lvalue, may be required.
    Used to select diagnostic messages in lvalue_error and

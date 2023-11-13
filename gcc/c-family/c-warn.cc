@@ -3940,3 +3940,37 @@ check_for_xor_used_as_pow (location_t lhs_loc, tree lhs_val,
 	      lhs_uhwi, lhs_uhwi);
     }
 }
+
+/* If !flag_pedantic_errors, equivalent to permerror_opt, otherwise to
+   pedwarn.  */
+
+bool
+pedpermerror (location_t location, int opt, const char *gmsgid, ...)
+{
+  auto_diagnostic_group d;
+  va_list ap;
+  va_start (ap, gmsgid);
+  rich_location richloc (line_table, location);
+  bool ret = emit_diagnostic_valist (flag_pedantic_errors
+				     ? DK_PEDWARN : DK_PERMERROR,
+				     location, opt, gmsgid, &ap);
+  va_end (ap);
+  return ret;
+}
+
+/* Same as "pedpermerror" above, but at RICHLOC.  */
+
+bool
+pedpermerror (rich_location *richloc, int opt, const char *gmsgid, ...)
+{
+  gcc_assert (richloc);
+
+  auto_diagnostic_group d;
+  va_list ap;
+  va_start (ap, gmsgid);
+  bool ret = emit_diagnostic_valist (flag_pedantic_errors
+				     ? DK_PEDWARN : DK_PERMERROR,
+				     richloc, opt, gmsgid, &ap);
+  va_end (ap);
+  return ret;
+}

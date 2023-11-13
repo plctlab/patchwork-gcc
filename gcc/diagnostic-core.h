@@ -114,6 +114,9 @@ extern bool emit_diagnostic (diagnostic_t, location_t, int,
 			     const char *, ...) ATTRIBUTE_GCC_DIAG(4,5);
 extern bool emit_diagnostic (diagnostic_t, rich_location *, int,
 			     const char *, ...) ATTRIBUTE_GCC_DIAG(4,5);
+extern bool emit_diagnostic_valist (diagnostic_t, rich_location *, int,
+				    const char *,
+				    va_list *) ATTRIBUTE_GCC_DIAG (4,0);
 extern bool emit_diagnostic_valist (diagnostic_t, location_t, int, const char *,
 				    va_list *) ATTRIBUTE_GCC_DIAG (4,0);
 extern bool seen_error (void);

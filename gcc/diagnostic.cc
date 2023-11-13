@@ -1823,6 +1823,13 @@ emit_diagnostic_valist (diagnostic_t kind, location_t location, int opt,
   return diagnostic_impl (&richloc, NULL, opt, gmsgid, ap, kind);
 }
 
+bool
+emit_diagnostic_valist (diagnostic_t kind, rich_location *richloc, int opt,
+			const char *gmsgid, va_list *ap)
+{
+  return diagnostic_impl (richloc, NULL, opt, gmsgid, ap, kind);
+}
+
 /* An informative note at LOCATION.  Use this for additional details on an error
    message.  */
 void
