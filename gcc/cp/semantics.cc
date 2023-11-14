@@ -11529,7 +11529,8 @@ finish_decltype_type (tree expr, bool id_expression_or_member_access_p,
 	/* If the expression is just "this", we want the
 	   cv-unqualified pointer for the "this" type.  */
 	type = TYPE_MAIN_VARIANT (TREE_TYPE (expr));
-      else
+
+      if (!type)
 	{
 	  /* Otherwise, where T is the type of e, if e is an lvalue,
 	     decltype(e) is defined as T&; if an xvalue, T&&; otherwise, T. */
@@ -12436,8 +12437,7 @@ capture_decltype (tree decl)
     switch (LAMBDA_EXPR_DEFAULT_CAPTURE_MODE (lam))
       {
       case CPLD_NONE:
-	error ("%qD is not captured", decl);
-	return error_mark_node;
+	return NULL_TREE;
 
       case CPLD_COPY:
 	type = TREE_TYPE (decl);
