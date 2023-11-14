@@ -454,7 +454,11 @@ extern diagnostic_context *global_dc;
 
 /* Returns whether the diagnostic framework has been intialized already and is
    ready for use.  */
-#define diagnostic_ready_p() (global_dc->printer != NULL)
+inline bool
+diagnostic_ready_p ()
+{
+  return global_dc->printer != nullptr;
+}
 
 /* The total count of a KIND of diagnostics emitted so far.  */
 #define diagnostic_kind_count(DC, DK) (DC)->diagnostic_count[(int) (DK)]
