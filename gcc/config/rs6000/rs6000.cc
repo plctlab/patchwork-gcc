@@ -4373,19 +4373,22 @@ rs6000_option_override_internal (bool global_init_p)
   /* If the ABI has support for PC-relative relocations, enable it by default.
      This test depends on the sub-target tests above setting the code model to
      medium for ELF v2 systems.  */
-  if (PCREL_SUPPORTED_BY_OS
-      && (rs6000_isa_flags_explicit & OPTION_MASK_PCREL) == 0)
-    rs6000_isa_flags |= OPTION_MASK_PCREL;
-
-  /* -mpcrel requires -mcmodel=medium, but we can't check TARGET_CMODEL until
-      after the subtarget override options are done.  */
-  else if (TARGET_PCREL && TARGET_CMODEL != CMODEL_MEDIUM)
+  if (PCREL_SUPPORTED_BY_OS)
     {
-      if ((rs6000_isa_flags_explicit & OPTION_MASK_PCREL) != 0)
+      /* PCREL on ELFv2 currently requires -mcmodel=medium, but we can't check
+	 TARGET_CMODEL until after the subtarget override options are done.  */
+      if (TARGET_PCREL && TARGET_CMODEL != CMODEL_MEDIUM)
 	error ("%qs requires %qs", "-mpcrel", "-mcmodel=medium");
 
-      rs6000_isa_flags &= ~OPTION_MASK_PCREL;
+      if (!TARGET_PCREL
+	  && (rs6000_isa_flags_explicit & OPTION_MASK_PCREL) == 0
+	  && TARGET_POWER10
+	  && TARGET_PREFIXED
+	  && TARGET_CMODEL == CMODEL_MEDIUM)
+	rs6000_isa_flags |= OPTION_MASK_PCREL;
     }
+  else if (TARGET_PCREL)
+    error ("use of %qs is invalid for this target", "-mpcrel");
 
   /* Enable -mmma by default on power10 systems.  */
   if (TARGET_POWER10 && (rs6000_isa_flags_explicit & OPTION_MASK_MMA) == 0)
@@ -9610,7 +9613,7 @@ rs6000_legitimize_tls_address (rtx addr, enum tls_model model)
 
   dest = gen_reg_rtx (Pmode);
   if (model == TLS_MODEL_LOCAL_EXEC
-      && (rs6000_tls_size == 16 || rs6000_pcrel_p ()))
+      && (rs6000_tls_size == 16 || TARGET_PCREL))
     {
       rtx tlsreg;
 
@@ -9657,7 +9660,7 @@ rs6000_legitimize_tls_address (rtx addr, enum tls_model model)
 	 them in the .got section.  So use a pointer to the .got section,
 	 not one to secondary TOC sections used by 64-bit -mminimal-toc,
 	 or to secondary GOT sections used by 32-bit -fPIC.  */
-      if (rs6000_pcrel_p ())
+      if (TARGET_PCREL)
 	got = const0_rtx;
       else if (TARGET_64BIT)
 	got = gen_rtx_REG (Pmode, 2);
@@ -9722,7 +9725,7 @@ rs6000_legitimize_tls_address (rtx addr, enum tls_model model)
 	  rtx uns = gen_rtx_UNSPEC (Pmode, vec, UNSPEC_TLS_GET_ADDR);
 	  set_unique_reg_note (get_last_insn (), REG_EQUAL, uns);
 
-	  if (rs6000_tls_size == 16 || rs6000_pcrel_p ())
+	  if (rs6000_tls_size == 16 || TARGET_PCREL)
 	    {
 	      if (TARGET_64BIT)
 		insn = gen_tls_dtprel_64 (dest, tmp1, addr);
@@ -9763,7 +9766,7 @@ rs6000_legitimize_tls_address (rtx addr, enum tls_model model)
 	  else
 	    insn = gen_tls_got_tprel_32 (tmp2, got, addr);
 	  emit_insn (insn);
-	  if (rs6000_pcrel_p ())
+	  if (TARGET_PCREL)
 	    {
 	      if (TARGET_64BIT)
 		insn = gen_tls_tls_pcrel_64 (dest, tmp2, addr);
@@ -14609,7 +14612,7 @@ rs6000_call_template_1 (rtx *operands, unsigned int funop, bool sibcall)
 	    ? "+32768" : ""));
 
   static char str[32];  /* 1 spare */
-  if (rs6000_pcrel_p ())
+  if (TARGET_PCREL)
     sprintf (str, "b%s %s@notoc%s", sibcall ? "" : "l", z, arg);
   else if (DEFAULT_ABI == ABI_AIX || DEFAULT_ABI == ABI_ELFv2)
     sprintf (str, "b%s %s%s%s", sibcall ? "" : "l", z, arg,
@@ -14749,7 +14752,7 @@ rs6000_indirect_call_template_1 (rtx *operands, unsigned int funop,
 		     rel64);
 	}
 
-      const char *notoc = rs6000_pcrel_p () ? "_NOTOC" : "";
+      const char *notoc = TARGET_PCREL ? "_NOTOC" : "";
       const char *addend = (DEFAULT_ABI == ABI_V4 && TARGET_SECURE_PLT
 			    && flag_pic == 2 ? "+32768" : "");
       if (!speculate)
@@ -14766,7 +14769,7 @@ rs6000_indirect_call_template_1 (rtx *operands, unsigned int funop,
   else if (!speculate)
     s += sprintf (s, "crset 2\n\t");
 
-  if (rs6000_pcrel_p ())
+  if (TARGET_PCREL)
     {
       if (speculate)
 	sprintf (s, "b%%T%ul", funop);
@@ -20429,7 +20432,7 @@ rs6000_longcall_ref (rtx call_ref, rtx arg)
     {
       rtx base = const0_rtx;
       int regno = 12;
-      if (rs6000_pcrel_p ())
+      if (TARGET_PCREL)
 	{
 	  rtx reg = gen_rtx_REG (Pmode, regno);
 	  rtx u = gen_rtx_UNSPEC_VOLATILE (Pmode,
@@ -25675,7 +25678,7 @@ rs6000_call_aix (rtx value, rtx func_desc, rtx tlsarg, rtx cookie)
   if (!SYMBOL_REF_P (func)
       || (DEFAULT_ABI == ABI_AIX && !SYMBOL_REF_FUNCTION_P (func)))
     {
-      if (!rs6000_pcrel_p ())
+      if (!TARGET_PCREL)
 	{
 	  /* Save the TOC into its reserved slot before the call,
 	     and prepare to restore it after the call.  */
@@ -25781,7 +25784,7 @@ rs6000_call_aix (rtx value, rtx func_desc, rtx tlsarg, rtx cookie)
   else
     {
       /* No TOC register needed for calls from PC-relative callers.  */
-      if (!rs6000_pcrel_p ())
+      if (!TARGET_PCREL)
 	/* Direct calls use the TOC: for local calls, the callee will
 	   assume the TOC register is set; for non-local calls, the
 	   PLT stub needs the TOC register.  */
@@ -25830,7 +25833,7 @@ rs6000_sibcall_aix (rtx value, rtx func_desc, rtx tlsarg, rtx cookie)
     {
       /* PCREL can do a sibling call to a longcall function
 	 because we don't need to restore the TOC register.  */
-      gcc_assert (rs6000_pcrel_p ());
+      gcc_assert (TARGET_PCREL);
       func_desc = rs6000_longcall_ref (func_desc, tlsarg);
     }
   else
@@ -25857,7 +25860,7 @@ rs6000_sibcall_aix (rtx value, rtx func_desc, rtx tlsarg, rtx cookie)
   insn = emit_call_insn (insn);
 
   /* Note use of the TOC register.  */
-  if (!rs6000_pcrel_p ())
+  if (!TARGET_PCREL)
     use_reg (&CALL_INSN_FUNCTION_USAGE (insn),
 	     gen_rtx_REG (Pmode, TOC_REGNUM));
 
@@ -26155,16 +26158,6 @@ rs6000_function_pcrel_p (struct function *fn)
 	    && TARGET_CMODEL == CMODEL_MEDIUM);
 
   return rs6000_fndecl_pcrel_p (fn->decl);
-}
-
-/* Return whether we should generate PC-relative code for the current
-   function.  */
-bool
-rs6000_pcrel_p ()
-{
-  return (DEFAULT_ABI == ABI_ELFv2
-	  && (rs6000_isa_flags & OPTION_MASK_PCREL) != 0
-	  && TARGET_CMODEL == CMODEL_MEDIUM);
 }
 
 

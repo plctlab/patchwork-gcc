@@ -1109,7 +1109,7 @@ rs6000_decl_ok_for_sibcall (tree decl)
 	 r2 for its caller's TOC.  Such a function may make sibcalls to any
 	 function, whether local or external, without restriction based on
 	 TOC-save/restore rules.  */
-      if (rs6000_pcrel_p ())
+      if (TARGET_PCREL)
 	return true;
 
       /* Otherwise, under the AIX or ELFv2 ABIs we can't allow sibcalls
@@ -2586,7 +2586,7 @@ rs6000_global_entry_point_prologue_needed_p (void)
     return false;
 
   /* PC-relative functions never generate a global entry point prologue.  */
-  if (rs6000_pcrel_p ())
+  if (TARGET_PCREL)
     return false;
 
   /* Ensure we have a global entry point for thunks.   ??? We could
@@ -4048,7 +4048,7 @@ rs6000_output_function_prologue (FILE *file)
 					       patch_area_entry == 0);
     }
 
-  else if (rs6000_pcrel_p ())
+  else if (TARGET_PCREL)
     {
       const char *name = XSTR (XEXP (DECL_RTL (current_function_decl), 0), 0);
       /* All functions compiled to use PC-relative addressing will

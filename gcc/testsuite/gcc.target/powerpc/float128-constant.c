@@ -155,6 +155,7 @@ return_longlong_neg_0 (void)
 }
 
 /* { dg-final { scan-assembler-times {\mlxvkq\M}    19 } } */
-/* { dg-final { scan-assembler-times {\mplxv\M}      3 } } */
+/* { dg-final { scan-assembler-times {\mplxv\M}      3 { target { powerpc_pcrel } } } } */
+/* { dg-final { scan-assembler-times {\mlxv\M}       3 { target { ! powerpc_pcrel } } } } */
 /* { dg-final { scan-assembler-times {\mxxspltib\M}  1 } } */
 
