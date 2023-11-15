@@ -6587,3 +6587,14 @@
   "vmsumcud %0,%1,%2,%3"
   [(set_attr "type" "veccomplex")]
 )
+
+;; For expanding internal use bif __builtin_vsx_stxsiwx
+(define_insn "vsx_stxsiwx_v4sf"
+ [(set (match_operand:SF 0 "memory_operand" "=Z")
+       (unspec:SF
+	  [(match_operand:V4SF 1 "vsx_register_operand" "wa")]
+	  UNSPEC_STFIWX))]
+ "TARGET_P9_VECTOR"
+ "stxsiwx %x1,%y0"
+ [(set_attr "type" "fpstore")])
+

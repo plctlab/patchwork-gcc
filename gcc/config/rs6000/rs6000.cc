@@ -4249,6 +4249,22 @@ rs6000_option_override_internal (bool global_init_p)
       rs6000_isa_flags &= ~OPTION_MASK_PCREL;
     }
 
+  if (TARGET_P10_SF_OPT)
+    {
+      if (!TARGET_HARD_FLOAT)
+	{
+	  if ((rs6000_isa_flags_explicit & OPTION_MASK_P10_SF_OPT) != 0)
+	    error ("%qs requires %qs", "-mp10-sf-opt", "-mhard-float");
+	  rs6000_isa_flags &= ~OPTION_MASK_P10_SF_OPT;
+	}
+      if (!TARGET_P9_VECTOR)
+	{
+	  if ((rs6000_isa_flags_explicit & OPTION_MASK_P10_SF_OPT) != 0)
+	    error ("%qs requires %qs", "-mp10-sf-opt", "-mpower9-vector");
+	  rs6000_isa_flags &= ~OPTION_MASK_P10_SF_OPT;
+	}
+    }
+
   /* Print the options after updating the defaults.  */
   if (TARGET_DEBUG_REG || TARGET_DEBUG_TARGET)
     rs6000_print_isa_options (stderr, 0, "after defaults", rs6000_isa_flags);
@@ -22045,6 +22061,17 @@ rs6000_rtx_costs (rtx x, machine_mode mode, int outer_code,
       *total = !speed ? COSTS_N_INSNS (1) + 1 : COSTS_N_INSNS (2);
       if (rs6000_slow_unaligned_access (mode, MEM_ALIGN (x)))
 	*total += COSTS_N_INSNS (100);
+      /* Specially treat vec_duplicate here, since vector splat insns
+	 {l,st}xv[wd]sx only support x-form, we should ensure reg + reg
+	 is preferred over reg + const, otherwise cprop will propagate
+	 const and result in sub-optimal code.  */
+      if (outer_code == VEC_DUPLICATE
+	  && (GET_MODE_SIZE (mode) == 4
+	    || GET_MODE_SIZE (mode) == 8)
+	  && GET_CODE (XEXP (x, 0)) == PLUS
+	  && CONST_INT_P (XEXP (XEXP (x, 0), 1))
+	  && REG_P (XEXP (XEXP (x, 0), 0)))
+	*total += COSTS_N_INSNS (1);
       return true;
 
     case LABEL_REF:
@@ -24185,6 +24212,7 @@ static struct rs6000_opt_mask const rs6000_opt_masks[] =
   { "modulo",			OPTION_MASK_MODULO,		false, true  },
   { "mulhw",			OPTION_MASK_MULHW,		false, true  },
   { "multiple",			OPTION_MASK_MULTIPLE,		false, true  },
+  { "p10-sf-opt",		OPTION_MASK_P10_SF_OPT,		false, true  },
   { "pcrel",			OPTION_MASK_PCREL,		false, true  },
   { "pcrel-opt",		OPTION_MASK_PCREL_OPT,		false, true  },
   { "popcntb",			OPTION_MASK_POPCNTB,		false, true  },

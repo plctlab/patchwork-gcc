@@ -24,6 +24,11 @@ along with GCC; see the file COPYING3.  If not see
    REPLACE_PASS (PASS, INSTANCE, TGT_PASS)
  */
 
+  /* Pass to mitigate the performance issue on scalar single precision
+     floating point load, by updating some scalar single precision
+     floating point operations with appropriate vector opeations.  */
+  INSERT_PASS_BEFORE (pass_gimple_isel, 1, pass_rs6000_p10sfopt);
+
   /* Pass to add the appropriate vector swaps on power8 little endian systems.
      The power8 does not have instructions that automaticaly do the byte swaps
      for loads and stores.  */

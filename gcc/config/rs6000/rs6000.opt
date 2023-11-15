@@ -597,6 +597,11 @@ mmma
 Target Mask(MMA) Var(rs6000_isa_flags)
 Generate (do not generate) MMA instructions.
 
+mp10-sf-opt
+Target Mask(P10_SF_OPT) Var(rs6000_isa_flags)
+Generate code to mitigate single-precision floating point loading performance
+issue.
+
 mrelative-jumptables
 Target Undocumented Var(rs6000_relative_jumptables) Init(1) Save
 
