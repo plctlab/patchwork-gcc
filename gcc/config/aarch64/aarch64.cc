@@ -14143,10 +14143,17 @@ aarch64_rtx_costs (rtx x, machine_mode mode, int outer ATTRIBUTE_UNUSED,
       return false;
 
     case CTZ:
-      *cost = COSTS_N_INSNS (2);
+      if (!TARGET_CSSC)
+	{
+	  /* Will be split to a bit-reversal + clz */
+	  *cost = COSTS_N_INSNS (2);
 
-      if (speed)
-	*cost += extra_cost->alu.clz + extra_cost->alu.rev;
+	  if (speed)
+	    *cost += extra_cost->alu.clz + extra_cost->alu.rev;
+	}
+      else
+	*cost = COSTS_N_INSNS (1);
+
       return false;
 
     case COMPARE:
@@ -15085,12 +15092,17 @@ cost_plus:
 	}
       else
 	{
-	  /* Integer ABS will either be split to
-	     two arithmetic instructions, or will be an ABS
-	     (scalar), which we don't model.  */
-	  *cost = COSTS_N_INSNS (2);
-	  if (speed)
-	    *cost += 2 * extra_cost->alu.arith;
+	  if (!TARGET_CSSC)
+	    {
+	      /* Integer ABS will either be split to
+		 two arithmetic instructions, or will be an ABS
+		 (scalar), which we don't model.  */
+	      *cost = COSTS_N_INSNS (2);
+	      if (speed)
+		*cost += 2 * extra_cost->alu.arith;
+	    }
+	  else
+	    *cost = COSTS_N_INSNS (1);
 	}
       return false;
 
@@ -15100,13 +15112,15 @@ cost_plus:
 	{
 	  if (VECTOR_MODE_P (mode))
 	    *cost += extra_cost->vect.alu;
-	  else
+	  else if (GET_MODE_CLASS (mode) == MODE_FLOAT)
 	    {
 	      /* FMAXNM/FMINNM/FMAX/FMIN.
 	         TODO: This may not be accurate for all implementations, but
 	         we do not model this in the cost tables.  */
 	      *cost += extra_cost->fp[mode == DFmode].addsub;
 	    }
+	  else if (TARGET_CSSC)
+	    *cost = COSTS_N_INSNS (1);
 	}
       return false;
 
