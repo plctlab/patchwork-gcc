@@ -1091,7 +1091,9 @@ void[] getTLSRange(size_t mod, size_t sz) nothrow @nogc
             addr = addr + cast(c_ulong)__builtin_thread_pointer();
             return addr[0 .. sz];
         }
-        else
+        else version (Shared)
             return (__tls_get_addr(&ti)-TLS_DTV_OFFSET)[0 .. sz];
+        else
+            return null;
     }
 }
