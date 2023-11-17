@@ -1050,6 +1050,8 @@ expand_tuple_move (machine_mode mask_mode, rtx *ops)
 	  offset = ops[2];
 	}
 
+      if (fractional_p)
+	emit_vlmax_vsetvl (subpart_mode, ops[4]);
       if (MEM_P (ops[1]))
 	{
 	  /* Load operations.  */
