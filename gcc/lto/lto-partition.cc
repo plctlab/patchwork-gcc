@@ -35,6 +35,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "ipa-fnsummary.h"
 #include "lto-partition.h"
 #include "sreal.h"
+#include "md5.h"
 
 #include <limits>
 #include <vector>
@@ -1516,8 +1517,36 @@ validize_symbol_for_target (symtab_node *node)
     }
 }
 
-/* Maps symbol names to unique lto clone counters.  */
-static hash_map<const char *, unsigned> *lto_clone_numbers;
+/* Maps symbol names with partition checksum to unique lto clone counters.  */
+using clone_map = hash_map<pair_hash<nofree_string_hash,
+				     int_hash_base<uint64_t>>, unsigned>;
+static clone_map *lto_clone_numbers;
+uint64_t current_partition_checksum = 0;
+
+/* Computes a quick checksum to distinguish partitions of clone numbers.  */
+void
+set_clone_partition_name_checksum (ltrans_partition part)
+{
+#define CHECKSUM_STRING(FOO) md5_process_bytes ((FOO), strlen (FOO), &ctx)
+  struct md5_ctx ctx;
+  md5_init_ctx (&ctx);
+
+  CHECKSUM_STRING (part->name);
+
+  lto_symtab_encoder_iterator lsei;
+  lto_symtab_encoder_t encoder = part->encoder;
+
+  for (lsei = lsei_start (encoder); !lsei_end_p (lsei); lsei_next (&lsei))
+    {
+      symtab_node *node = lsei_node (lsei);
+      CHECKSUM_STRING (node->name ());
+    }
+
+  uint64_t checksum[2];
+  md5_finish_ctx (&ctx, checksum);
+  current_partition_checksum = checksum[0];
+#undef CHECKSUM_STRING
+}
 
 /* Helper for privatize_symbol_name.  Mangle NODE symbol name
    represented by DECL.  */
@@ -1531,10 +1560,16 @@ privatize_symbol_name_1 (symtab_node *node, tree decl)
     return false;
 
   const char *name = maybe_rewrite_identifier (name0);
-  unsigned &clone_number = lto_clone_numbers->get_or_insert (name);
+
+  unsigned &clone_number = lto_clone_numbers->get_or_insert (
+    std::pair<const char*, uint64_t> {name, current_partition_checksum});
+
+  char lto_priv[32];
+  sprintf (lto_priv, "lto_priv.%lu", current_partition_checksum);
+
   symtab->change_decl_assembler_name (decl,
 				      clone_function_name (
-					  name, "lto_priv", clone_number));
+					  name, lto_priv, clone_number));
   clone_number++;
 
   if (node->lto_file_data)
@@ -1735,11 +1770,13 @@ lto_promote_cross_file_statics (void)
       part->encoder = compute_ltrans_boundary (part->encoder);
     }
 
-  lto_clone_numbers = new hash_map<const char *, unsigned>;
+  lto_clone_numbers = new clone_map;
 
   /* Look at boundaries and promote symbols as needed.  */
   for (i = 0; i < n_sets; i++)
     {
+      set_clone_partition_name_checksum (ltrans_partitions[i]);
+
       lto_symtab_encoder_iterator lsei;
       lto_symtab_encoder_t encoder = ltrans_partitions[i]->encoder;
 
@@ -1778,7 +1815,7 @@ lto_promote_statics_nonwpa (void)
 {
   symtab_node *node;
 
-  lto_clone_numbers = new hash_map<const char *, unsigned>;
+  lto_clone_numbers = new clone_map;
   FOR_EACH_SYMBOL (node)
     {
       rename_statics (NULL, node);
