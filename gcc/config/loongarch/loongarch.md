@@ -2983,7 +2983,7 @@
   [(const_int 2)]
   ""
 {
-  loongarch_expand_epilogue (false);
+  loongarch_expand_epilogue (0);
   DONE;
 })
 
@@ -2991,7 +2991,7 @@
   [(const_int 2)]
   ""
 {
-  loongarch_expand_epilogue (true);
+  loongarch_expand_epilogue (1);
   DONE;
 })
 
@@ -3048,6 +3048,20 @@
     emit_insn (gen_eh_set_ra_di (operands[0]));
   else
     emit_insn (gen_eh_set_ra_si (operands[0]));
+
+  emit_jump_insn (gen_eh_return_internal ());
+  emit_barrier ();
+  DONE;
+})
+
+(define_insn_and_split "eh_return_internal"
+  [(eh_return)]
+  ""
+  "#"
+  "epilogue_completed"
+  [(const_int 0)]
+{
+  loongarch_expand_epilogue (2);
   DONE;
 })
 
