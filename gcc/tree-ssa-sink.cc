@@ -175,6 +175,9 @@ nearest_common_dominator_of_uses (def_operand_p def_p, bool *debug_stmts)
    tree, return the best basic block between them (inclusive) to place
    statements.
 
+   The best basic block should be an immediate dominator of
+   best basic block if we've moved to same loop nest.
+
    We want the most control dependent block in the shallowest loop nest.
 
    If the resulting block is in a shallower loop nest, then use it.  Else
@@ -208,6 +211,18 @@ select_best_block (basic_block early_bb,
       temp_bb = get_immediate_dominator (CDI_DOMINATORS, temp_bb);
     }
 
+  temp_bb = best_bb;
+  /* If we've moved into a same loop nest, then that becomes
+     our best block.  */
+  while (best_bb == late_bb && temp_bb != early_bb
+	 && bb_loop_depth (temp_bb) == bb_loop_depth (best_bb))
+    {
+      best_bb = temp_bb;
+      /* Walk up the dominator tree, hopefully we'll find a best
+	 block to move in same loop nest.  */
+      temp_bb = get_immediate_dominator (CDI_DOMINATORS, temp_bb);
+    }
+
   /* Placing a statement before a setjmp-like function would be invalid
      (it cannot be reevaluated when execution follows an abnormal edge).
      If we selected a block with abnormal predecessors, just punt.  */
@@ -237,7 +252,13 @@ select_best_block (basic_block early_bb,
       /* If result of comparsion is unknown, prefer EARLY_BB.
 	 Thus use !(...>=..) rather than (...<...)  */
       && !(best_bb->count * 100 >= early_bb->count * threshold))
-    return best_bb;
+    {
+      /* Avoid sinking to immediate dominator if the statement to be moved
+	 has memory operand and same loop nest.  */
+      if (best_bb != late_bb && gimple_vuse (stmt))
+	return late_bb;
+      return best_bb;
+    }
 
   /* No better block found, so return EARLY_BB, which happens to be the
      statement's original block.  */
@@ -456,6 +477,7 @@ statement_sink_location (gimple *stmt, basic_block frombb,
 	    continue;
 	  break;
 	}
+
       use = USE_STMT (one_use);
 
       if (gimple_code (use) != GIMPLE_PHI)
@@ -465,10 +487,7 @@ statement_sink_location (gimple *stmt, basic_block frombb,
 	  if (sinkbb == frombb)
 	    return false;
 
-	  if (sinkbb == gimple_bb (use))
-	    *togsi = gsi_for_stmt (use);
-	  else
-	    *togsi = gsi_after_labels (sinkbb);
+	  *togsi = gsi_after_labels (sinkbb);
 
 	  return true;
 	}
