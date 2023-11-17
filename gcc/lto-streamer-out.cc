@@ -2200,7 +2200,8 @@ output_cfg (struct output_block *ob, struct function *fn)
    a function, set FN to the decl for that function.  */
 
 void
-produce_asm (struct output_block *ob, tree fn)
+produce_asm (struct output_block *ob, tree fn,
+	     hash_map<int_hash<int, -1, -2>, int>* order_remap)
 {
   enum lto_section_type section_type = ob->section_type;
   struct lto_function_header header;
@@ -2209,9 +2210,11 @@ produce_asm (struct output_block *ob, tree fn)
   if (section_type == LTO_section_function_body)
     {
       const char *name = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (fn));
-      section_name = lto_get_section_name (section_type, name,
-					   symtab_node::get (fn)->order,
-					   NULL);
+
+      int order = symtab_node::get (fn)->order;
+      if (flag_wpa && order_remap)
+	order = *order_remap->get (order);
+      section_name = lto_get_section_name (section_type, name, order, NULL);
     }
   else
     section_name = lto_get_section_name (section_type, NULL, 0, NULL);
@@ -2393,7 +2396,8 @@ streamer_write_chain (struct output_block *ob, tree t, bool ref_p)
 /* Output the body of function NODE->DECL.  */
 
 static void
-output_function (struct cgraph_node *node)
+output_function (struct cgraph_node *node,
+		 hash_map<int_hash<int, -1, -2>, int>* order_remap)
 {
   tree function;
   struct function *fn;
@@ -2470,7 +2474,7 @@ output_function (struct cgraph_node *node)
     streamer_write_uhwi (ob, 0);
 
   /* Create a section to hold the pickled output of this function.   */
-  produce_asm (ob, function);
+  produce_asm (ob, function, order_remap);
 
   destroy_output_block (ob);
   if (streamer_dump_file)
@@ -2481,7 +2485,8 @@ output_function (struct cgraph_node *node)
 /* Output the body of function NODE->DECL.  */
 
 static void
-output_constructor (struct varpool_node *node)
+output_constructor (struct varpool_node *node,
+		    hash_map<int_hash<int, -1, -2>, int>* order_remap)
 {
   tree var = node->decl;
   struct output_block *ob;
@@ -2503,7 +2508,7 @@ output_constructor (struct varpool_node *node)
   stream_write_tree (ob, DECL_INITIAL (var), true);
 
   /* Create a section to hold the pickled output of this function.   */
-  produce_asm (ob, var);
+  produce_asm (ob, var, order_remap);
 
   destroy_output_block (ob);
   if (streamer_dump_file)
@@ -2564,15 +2569,18 @@ lto_output_toplevel_asms (void)
 /* Copy the function body or variable constructor of NODE without deserializing. */
 
 static void
-copy_function_or_variable (struct symtab_node *node)
+copy_function_or_variable (struct symtab_node *node,
+			   hash_map<int_hash<int, -1, -2>, int>* order_remap)
 {
   tree function = node->decl;
   struct lto_file_decl_data *file_data = node->lto_file_data;
   const char *data;
   size_t len;
   const char *name = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (function));
+
+  int order = flag_wpa ? *order_remap->get (node->order) : node->order;
   char *section_name =
-    lto_get_section_name (LTO_section_function_body, name, node->order, NULL);
+    lto_get_section_name (LTO_section_function_body, name, order, NULL);
   size_t i, j;
   struct lto_in_decl_state *in_state;
   struct lto_out_decl_state *out_state = lto_get_out_decl_state ();
@@ -2717,6 +2725,15 @@ cmp_symbol_files (const void *pn1, const void *pn2, void *id_map_)
   return n1->order - n2->order;
 }
 
+/* Compare ints, callback for qsort.  */
+static int
+cmp_int (const void *a, const void *b)
+{
+  int ia = *(int const*) a;
+  int ib = *(int const*) b;
+  return ia - ib;
+}
+
 /* Main entry point from the pass manager.  */
 
 void
@@ -2728,6 +2745,32 @@ lto_output (void)
   unsigned int i, n_nodes;
   lto_symtab_encoder_t encoder = lto_get_out_decl_state ()->symtab_node_encoder;
   auto_vec<symtab_node *> symbols_to_copy;
+
+  hash_map<int_hash<int, -1, -2>, int> order_remap;
+  if (flag_wpa)
+    {
+      /* Remap order so that it does not depend on symbols outside of
+	 partition.  */
+      auto_vec<int> orders;
+
+      n_nodes = lto_symtab_encoder_size (encoder);
+      for (i = 0; i < n_nodes; i++)
+	{
+	  symtab_node *snode = lto_symtab_encoder_deref (encoder, i);
+	  if (cgraph_node *cnode = dyn_cast <cgraph_node *> (snode))
+	    {
+	      if (cnode->clone_of)
+		{
+		  order_remap.put (snode->order, 0);
+		  continue;
+		}
+	    }
+	  orders.safe_push (snode->order);
+	}
+      orders.qsort (cmp_int);
+      for (i = 0; i < orders.length (); i++)
+	order_remap.put (orders[i], i);
+    }
 
   prune_offload_funcs ();
 
@@ -2805,14 +2848,14 @@ lto_output (void)
 		 at WPA time.  */
 	      || DECL_ARGUMENTS (cnode->decl)
 	      || cnode->declare_variant_alt))
-	output_function (cnode);
+	output_function (cnode, &order_remap);
       else if ((vnode = dyn_cast <varpool_node *> (snode))
 	       && (DECL_INITIAL (vnode->decl) != error_mark_node
 		   || (!flag_wpa
 		       && flag_incremental_link != INCREMENTAL_LINK_LTO)))
-	output_constructor (vnode);
+	output_constructor (vnode, &order_remap);
       else
-	copy_function_or_variable (snode);
+	copy_function_or_variable (snode, &order_remap);
       gcc_assert (lto_get_out_decl_state () == decl_state);
       lto_pop_out_decl_state ();
       lto_record_function_out_decl_state (snode->decl, decl_state);
@@ -2822,7 +2865,7 @@ lto_output (void)
      be done now to make sure that all the statements in every function
      have been renumbered so that edges can be associated with call
      statements using the statement UIDs.  */
-  output_symtab ();
+  output_symtab (&order_remap);
 
   output_offload_tables ();
 

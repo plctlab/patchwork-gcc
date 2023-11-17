@@ -886,7 +886,8 @@ extern void lto_output_fn_decl_ref (struct lto_out_decl_state *,
 extern tree lto_input_var_decl_ref (lto_input_block *, lto_file_decl_data *);
 extern tree lto_input_fn_decl_ref (lto_input_block *, lto_file_decl_data *);
 extern void lto_output_toplevel_asms (void);
-extern void produce_asm (struct output_block *ob, tree fn);
+extern void produce_asm (struct output_block *ob, tree fn,
+			 hash_map<int_hash<int, -1, -2>, int>* order_remap = 0);
 extern void lto_output ();
 extern void produce_asm_for_decls ();
 void lto_output_decl_state_streams (struct output_block *,
@@ -917,7 +918,7 @@ void lto_set_symtab_encoder_in_partition (lto_symtab_encoder_t,
 
 bool lto_symtab_encoder_encode_initializer_p (lto_symtab_encoder_t,
 					      varpool_node *);
-void output_symtab (void);
+void output_symtab (hash_map<int_hash<int, -1, -2>, int>*);
 void input_symtab (void);
 void output_offload_tables (void);
 void input_offload_tables (bool);

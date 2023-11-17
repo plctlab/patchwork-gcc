@@ -381,7 +381,8 @@ reachable_from_this_partition_p (struct cgraph_node *node, lto_symtab_encoder_t 
 
 static void
 lto_output_node (struct lto_simple_output_block *ob, struct cgraph_node *node,
-		 lto_symtab_encoder_t encoder)
+		 lto_symtab_encoder_t encoder,
+		 hash_map<int_hash<int, -1, -2>, int>* order_remap)
 {
   unsigned int tag;
   struct bitpack_d bp;
@@ -405,7 +406,9 @@ lto_output_node (struct lto_simple_output_block *ob, struct cgraph_node *node,
 
   streamer_write_enum (ob->main_stream, LTO_symtab_tags, LTO_symtab_last_tag,
 		       tag);
-  streamer_write_hwi_stream (ob->main_stream, node->order);
+
+  int order = flag_wpa ? *order_remap->get (node->order) : node->order;
+  streamer_write_hwi_stream (ob->main_stream, order);
 
   /* In WPA mode, we only output part of the call-graph.  Also, we
      fake cgraph node attributes.  There are two cases that we care.
@@ -585,7 +588,8 @@ lto_output_node (struct lto_simple_output_block *ob, struct cgraph_node *node,
 
 static void
 lto_output_varpool_node (struct lto_simple_output_block *ob, varpool_node *node,
-			 lto_symtab_encoder_t encoder)
+			 lto_symtab_encoder_t encoder,
+			 hash_map<int_hash<int, -1, -2>, int>* order_remap)
 {
   bool boundary_p = !lto_symtab_encoder_in_partition_p (encoder, node);
   bool encode_initializer_p
@@ -602,7 +606,8 @@ lto_output_varpool_node (struct lto_simple_output_block *ob, varpool_node *node,
 
   streamer_write_enum (ob->main_stream, LTO_symtab_tags, LTO_symtab_last_tag,
 		       LTO_symtab_variable);
-  streamer_write_hwi_stream (ob->main_stream, node->order);
+  int order = flag_wpa ? *order_remap->get (node->order) : node->order;
+  streamer_write_hwi_stream (ob->main_stream, order);
   lto_output_var_decl_ref (ob->decl_state, ob->main_stream, node->decl);
   bp = bitpack_create (ob->main_stream);
   bp_pack_value (&bp, node->externally_visible, 1);
@@ -967,7 +972,7 @@ compute_ltrans_boundary (lto_symtab_encoder_t in_encoder)
 /* Output the part of the symtab in SET and VSET.  */
 
 void
-output_symtab (void)
+output_symtab (hash_map<int_hash<int, -1, -2>, int>* order_remap)
 {
   struct cgraph_node *node;
   struct lto_simple_output_block *ob;
@@ -994,9 +999,10 @@ output_symtab (void)
     {
       symtab_node *node = lto_symtab_encoder_deref (encoder, i);
       if (cgraph_node *cnode = dyn_cast <cgraph_node *> (node))
-        lto_output_node (ob, cnode, encoder);
+	lto_output_node (ob, cnode, encoder, order_remap);
       else
-	lto_output_varpool_node (ob, dyn_cast<varpool_node *> (node), encoder);
+	lto_output_varpool_node (ob, dyn_cast<varpool_node *> (node), encoder,
+				 order_remap);
     }
 
   /* Go over the nodes in SET again to write edges.  */
