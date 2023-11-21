@@ -1,0 +1,52 @@
+/* Example of emitting a warning.
+
+   Intended output is similar to:
+   
+/PATH/test-warning.c:15: warning: this is a warning
+   15 | PRINT "hello world!";
+      |        ^~~~~~~~~~~~
+
+   along with the equivalent in SARIF.  */
+
+#include "libdiagnostics.h"
+
+/*
+_________111111111122
+123456789012345678901
+PRINT "hello world!";
+*/
+const int line_num = __LINE__ - 2;
+
+int
+main ()
+{
+  diagnostic_manager *diag_mgr = diagnostic_manager_new ();
+
+  diagnostic_manager_add_text_sink (diag_mgr, stderr,
+				    DIAGNOSTIC_COLORIZE_IF_TTY);
+  diagnostic_manager_add_sarif_sink (diag_mgr, stderr,
+				     DIAGNOSTIC_SARIF_VERSION_2_1_0);
+
+  const diagnostic_file *file = diagnostic_manager_new_file (diag_mgr,
+							     __FILE__,
+							     "c");
+
+  const diagnostic_physical_location *loc_start
+    = diagnostic_manager_new_location_from_file_line_column (diag_mgr, file, line_num, 8);
+  const diagnostic_physical_location *loc_end
+    = diagnostic_manager_new_location_from_file_line_column (diag_mgr, file, line_num, 19);
+  const diagnostic_physical_location *loc_range
+    = diagnostic_manager_new_location_from_range (diag_mgr,
+						  loc_start,
+						  loc_start,
+						  loc_end);
+
+  diagnostic *d = diagnostic_begin (diag_mgr,
+				    DIAGNOSTIC_LEVEL_WARNING);
+  diagnostic_set_location (d, loc_range);
+  
+  diagnostic_finish (d, "this is a warning");
+  
+  diagnostic_manager_release (diag_mgr);
+  return 0;
+};
