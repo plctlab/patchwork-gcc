@@ -2169,16 +2169,17 @@ calculate_loop_reg_pressure (void)
       }
   ira_setup_eliminable_regset ();
   bitmap_initialize (&curr_regs_live, &reg_obstack);
+
+  /* Livein (loop_hdr) is live at each of the loop basic blocks.  */
+  for (auto loop : loops_list (cfun, 0))
+    if (loop->aux == NULL)
+      bitmap_ior_into (&LOOP_DATA (loop)->regs_live, DF_LR_IN (loop->header));
+
   FOR_EACH_BB_FN (bb, cfun)
     {
       curr_loop = bb->loop_father;
       if (curr_loop == current_loops->tree_root)
 	continue;
-
-      for (class loop *loop = curr_loop;
-	   loop != current_loops->tree_root;
-	   loop = loop_outer (loop))
-	bitmap_ior_into (&LOOP_DATA (loop)->regs_live, DF_LR_IN (bb));
 
       bitmap_copy (&curr_regs_live, DF_LR_IN (bb));
       for (i = 0; i < ira_pressure_classes_num; i++)
