@@ -1,7 +1,7 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -fdump-rtl-loop2_unroll -funroll-loops" } */
 struct a {int a[7];};
-int t(struct a *a, int n)
+void t(struct a *a, int n)
 {
   int i;
   for (i=0;i<n;i++)
