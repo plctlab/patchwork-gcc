@@ -524,4 +524,7 @@ call_used_or_fixed_reg_p (unsigned int regno)
 }
 #endif
 
+/* ira-color.cc */
+extern void print_hard_reg_set (FILE *, HARD_REG_SET, const char *, bool);
+
 #endif /* ! GCC_HARD_REG_SET_H */

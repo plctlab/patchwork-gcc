@@ -214,7 +214,7 @@ extern void dump_av_set (av_set_t);
 extern void dump_lv_set (regset);
 extern void dump_blist (blist_t);
 extern void dump_flist (flist_t);
-extern void dump_hard_reg_set (const char *, HARD_REG_SET);
+DEBUG_FUNCTION extern void dump_hard_reg_set (const char *, HARD_REG_SET);
 extern void sel_debug_cfg_1 (int);
 extern void sel_debug_cfg (void);
 extern void setup_dump_cfg_params (void);
