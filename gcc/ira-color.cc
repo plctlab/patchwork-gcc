@@ -482,11 +482,14 @@ first_common_ancestor_node (allocno_hard_regs_node_t first,
 }
 
 /* Print hard reg set SET to F.  */
-static void
-print_hard_reg_set (FILE *f, HARD_REG_SET set, bool new_line_p)
+void
+print_hard_reg_set (FILE *f, HARD_REG_SET set,
+		    const char *title, bool new_line_p)
 {
   int i, start, end;
 
+  if (title)
+    fprintf (f, "%s", title);
   for (start = end = -1, i = 0; i < FIRST_PSEUDO_REGISTER; i++)
     {
       bool reg_included = TEST_HARD_REG_BIT (set, i);
@@ -516,7 +519,7 @@ print_hard_reg_set (FILE *f, HARD_REG_SET set, bool new_line_p)
 DEBUG_FUNCTION void
 debug_hard_reg_set (HARD_REG_SET set)
 {
-  print_hard_reg_set (stderr, set, true);
+  print_hard_reg_set (stderr, set, NULL, true);
 }
 
 /* Print allocno hard register subforest given by ROOTS and its LEVEL
@@ -534,7 +537,7 @@ print_hard_regs_subforest (FILE *f, allocno_hard_regs_node_t roots,
       for (i = 0; i < level * 2; i++)
 	fprintf (f, " ");
       fprintf (f, "%d:(", node->preorder_num);
-      print_hard_reg_set (f, node->hard_regs->set, false);
+      print_hard_reg_set (f, node->hard_regs->set, NULL, false);
       fprintf (f, ")@%" PRId64"\n", node->hard_regs->cost);
       print_hard_regs_subforest (f, node->first, level + 1);
     }
@@ -2982,12 +2985,12 @@ setup_allocno_available_regs_num (ira_allocno_t a)
      "      Allocno a%dr%d of %s(%d) has %d avail. regs ",
      ALLOCNO_NUM (a), ALLOCNO_REGNO (a),
      reg_class_names[aclass], ira_class_hard_regs_num[aclass], n);
-  print_hard_reg_set (ira_dump_file, data->profitable_hard_regs, false);
+  print_hard_reg_set (ira_dump_file, data->profitable_hard_regs, NULL, false);
   fprintf (ira_dump_file, ", %snode: ",
 	   data->profitable_hard_regs == data->hard_regs_node->hard_regs->set
 	   ? "" : "^");
   print_hard_reg_set (ira_dump_file,
-		      data->hard_regs_node->hard_regs->set, false);
+		      data->hard_regs_node->hard_regs->set, NULL, false);
   for (i = 0; i < nwords; i++)
     {
       ira_object_t obj = ALLOCNO_OBJECT (a, i);
@@ -3000,7 +3003,7 @@ setup_allocno_available_regs_num (ira_allocno_t a)
 	}
       fprintf (ira_dump_file, " (confl regs = ");
       print_hard_reg_set (ira_dump_file, OBJECT_TOTAL_CONFLICT_HARD_REGS (obj),
-			  false);
+			  NULL, false);
       fprintf (ira_dump_file, ")");
     }
   fprintf (ira_dump_file, "\n");
