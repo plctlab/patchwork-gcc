@@ -2580,25 +2580,32 @@ add_branch_dependences (rtx_insn *head, rtx_insn *tail)
 
 static class deps_desc *bb_deps;
 
+/* Return a new insn_list with all the elements from the two input lists.  */
+static rtx_insn_list *
+concat_insn_list (rtx_insn_list *copy, rtx_insn_list *old)
+{
+  if (!old)
+    return copy_INSN_LIST (copy);
+  return concat_INSN_LIST (copy, old);
+}
+
+/* Return a new expr_list with all the elements from the two input lists.  */
+static rtx_expr_list *
+concat_expr_list (rtx_expr_list *copy, rtx_expr_list *old)
+{
+  if (!old)
+    return copy_EXPR_LIST (copy);
+  return concat_EXPR_LIST (copy, old);
+}
+
 static void
 concat_insn_mem_list (rtx_insn_list *copy_insns,
 		      rtx_expr_list *copy_mems,
 		      rtx_insn_list **old_insns_p,
 		      rtx_expr_list **old_mems_p)
 {
-  rtx_insn_list *new_insns = *old_insns_p;
-  rtx_expr_list *new_mems = *old_mems_p;
-
-  while (copy_insns)
-    {
-      new_insns = alloc_INSN_LIST (copy_insns->insn (), new_insns);
-      new_mems = alloc_EXPR_LIST (VOIDmode, copy_mems->element (), new_mems);
-      copy_insns = copy_insns->next ();
-      copy_mems = copy_mems->next ();
-    }
-
-  *old_insns_p = new_insns;
-  *old_mems_p = new_mems;
+  *old_insns_p = concat_insn_list (copy_insns, *old_insns_p);
+  *old_mems_p = concat_expr_list (copy_mems, *old_mems_p);
 }
 
 /* Join PRED_DEPS to the SUCC_DEPS.  */
@@ -2614,11 +2621,11 @@ deps_join (class deps_desc *succ_deps, class deps_desc *pred_deps)
       struct deps_reg *pred_rl = &pred_deps->reg_last[reg];
       struct deps_reg *succ_rl = &succ_deps->reg_last[reg];
 
-      succ_rl->uses = concat_INSN_LIST (pred_rl->uses, succ_rl->uses);
-      succ_rl->sets = concat_INSN_LIST (pred_rl->sets, succ_rl->sets);
+      succ_rl->uses = concat_insn_list (pred_rl->uses, succ_rl->uses);
+      succ_rl->sets = concat_insn_list (pred_rl->sets, succ_rl->sets);
       succ_rl->implicit_sets
-	= concat_INSN_LIST (pred_rl->implicit_sets, succ_rl->implicit_sets);
-      succ_rl->clobbers = concat_INSN_LIST (pred_rl->clobbers,
+	= concat_insn_list (pred_rl->implicit_sets, succ_rl->implicit_sets);
+      succ_rl->clobbers = concat_insn_list (pred_rl->clobbers,
                                             succ_rl->clobbers);
       succ_rl->uses_length += pred_rl->uses_length;
       succ_rl->clobbers_length += pred_rl->clobbers_length;
@@ -2636,10 +2643,10 @@ deps_join (class deps_desc *succ_deps, class deps_desc *pred_deps)
                         &succ_deps->pending_write_mems);
 
   succ_deps->pending_jump_insns
-    = concat_INSN_LIST (pred_deps->pending_jump_insns,
+    = concat_insn_list (pred_deps->pending_jump_insns,
                         succ_deps->pending_jump_insns);
   succ_deps->last_pending_memory_flush
-    = concat_INSN_LIST (pred_deps->last_pending_memory_flush,
+    = concat_insn_list (pred_deps->last_pending_memory_flush,
                         succ_deps->last_pending_memory_flush);
 
   succ_deps->pending_read_list_length += pred_deps->pending_read_list_length;
@@ -2648,17 +2655,17 @@ deps_join (class deps_desc *succ_deps, class deps_desc *pred_deps)
 
   /* last_function_call is inherited by successor.  */
   succ_deps->last_function_call
-    = concat_INSN_LIST (pred_deps->last_function_call,
+    = concat_insn_list (pred_deps->last_function_call,
                         succ_deps->last_function_call);
 
   /* last_function_call_may_noreturn is inherited by successor.  */
   succ_deps->last_function_call_may_noreturn
-    = concat_INSN_LIST (pred_deps->last_function_call_may_noreturn,
+    = concat_insn_list (pred_deps->last_function_call_may_noreturn,
                         succ_deps->last_function_call_may_noreturn);
 
   /* sched_before_next_call is inherited by successor.  */
   succ_deps->sched_before_next_call
-    = concat_INSN_LIST (pred_deps->sched_before_next_call,
+    = concat_insn_list (pred_deps->sched_before_next_call,
                         succ_deps->sched_before_next_call);
 }
 

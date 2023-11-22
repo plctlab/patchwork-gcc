@@ -160,6 +160,24 @@ free_INSN_LIST_list (rtx_insn_list **listp)
   free_list ((rtx *)listp, &unused_insn_list);
 }
 
+/* Make a copy of the EXPR_LIST list LINK and return it.  */
+rtx_expr_list *
+copy_EXPR_LIST (rtx_expr_list *link)
+{
+  rtx_expr_list *new_queue;
+  rtx_expr_list **pqueue = &new_queue;
+
+  for (; link; link = link->next ())
+    {
+      rtx x = link->element ();
+      rtx_expr_list *newlink = alloc_EXPR_LIST (REG_NOTE_KIND (link), x, NULL);
+      *pqueue = newlink;
+      pqueue = (rtx_expr_list **)&XEXP (newlink, 1);
+    }
+  *pqueue = NULL;
+  return new_queue;
+}
+
 /* Make a copy of the INSN_LIST list LINK and return it.  */
 rtx_insn_list *
 copy_INSN_LIST (rtx_insn_list *link)
@@ -178,12 +196,22 @@ copy_INSN_LIST (rtx_insn_list *link)
   return new_queue;
 }
 
+/* Duplicate the EXPR_LIST elements of COPY and prepend them to OLD.  */
+rtx_expr_list *
+concat_EXPR_LIST (rtx_expr_list *copy, rtx_expr_list *old)
+{
+  rtx_expr_list *new_rtx = old;
+  for (; copy; copy = copy->next ())
+    new_rtx = alloc_EXPR_LIST (REG_NOTE_KIND (copy), copy->element (), new_rtx);
+  return new_rtx;
+}
+
 /* Duplicate the INSN_LIST elements of COPY and prepend them to OLD.  */
 rtx_insn_list *
 concat_INSN_LIST (rtx_insn_list *copy, rtx_insn_list *old)
 {
   rtx_insn_list *new_rtx = old;
-  for (; copy ; copy = copy->next ())
+  for (; copy; copy = copy->next ())
     {
       new_rtx = alloc_INSN_LIST (copy->insn (), new_rtx);
       PUT_REG_NOTE_KIND (new_rtx, REG_NOTE_KIND (copy));
