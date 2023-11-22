@@ -132,7 +132,8 @@ static void dump_ds (FILE *, ds_t);
 /* Define flags for dump_dep ().  */
 
 /* Dump producer of the dependence.  */
-#define DUMP_DEP_PRO (2)
+#define DUMP_DEP_PRO (2) /* Reserve "1" for handling of DUMP_DEP_ALL and
+			    DUMP_LISTS_ALL.  */
 
 /* Dump consumer of the dependence.  */
 #define DUMP_DEP_CON (4)
@@ -205,9 +206,6 @@ dump_dep (FILE *dump, dep_t dep, int flags)
 
   fprintf (dump, ">");
 }
-
-/* Default flags for dump_dep ().  */
-static int dump_dep_flags = (DUMP_DEP_PRO | DUMP_DEP_CON);
 
 /* Dump all fields of DEP to STDERR.  */
 void
@@ -1454,19 +1452,20 @@ sd_delete_dep (sd_iterator_def sd_it)
 }
 
 /* Dump size of the lists.  */
-#define DUMP_LISTS_SIZE (2)
+#define DUMP_LISTS_SIZE (32) /* (DUMP_DEP_STATUS << 1)  */
 
 /* Dump dependencies of the lists.  */
-#define DUMP_LISTS_DEPS (4)
+#define DUMP_LISTS_DEPS (64)
 
 /* Dump all information about the lists.  */
 #define DUMP_LISTS_ALL (DUMP_LISTS_SIZE | DUMP_LISTS_DEPS)
 
 /* Dump deps_lists of INSN specified by TYPES to DUMP.
-   FLAGS is a bit mask specifying what information about the lists needs
-   to be printed.
+   FLAGS is a bit mask specifying what information about the lists and
+   the individual deps needs to be printed, this is a combination of
+   DUMP_DEP_* and DUMP_LISTS_* flags.
    If FLAGS has the very first bit set, then dump all information about
-   the lists and propagate this bit into the callee dump functions.  */
+   the lists and deps propagate this bit into the callee dump functions.  */
 static void
 dump_lists (FILE *dump, rtx insn, sd_list_types_def types, int flags)
 {
@@ -1488,10 +1487,12 @@ dump_lists (FILE *dump, rtx insn, sd_list_types_def types, int flags)
     {
       FOR_EACH_DEP (insn, types, sd_it, dep)
 	{
-	  dump_dep (dump, dep, dump_dep_flags | all);
+	  dump_dep (dump, dep, flags | all);
 	  fprintf (dump, " ");
 	}
     }
+
+  fprintf (dump, "]");
 }
 
 /* Dump all information about deps_lists of INSN specified by TYPES
