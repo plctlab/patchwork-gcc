@@ -1423,6 +1423,13 @@ operator_plus::wi_fold (irange &r, tree type,
 			const wide_int &lh_lb, const wide_int &lh_ub,
 			const wide_int &rh_lb, const wide_int &rh_ub) const
 {
+  // This operation requires all types to be the same precision.
+  if (lh_lb.get_precision () != rh_lb.get_precision ()
+      || lh_lb.get_precision () != TYPE_PRECISION (type))
+    {
+      r.set_varying (type);
+      return;
+    }
   wi::overflow_type ov_lb, ov_ub;
   signop s = TYPE_SIGN (type);
   wide_int new_lb = wi::add (lh_lb, rh_lb, s, &ov_lb);
@@ -1570,6 +1577,12 @@ operator_widen_plus_signed::wi_fold (irange &r, tree type,
 				     const wide_int &rh_lb,
 				     const wide_int &rh_ub) const
 {
+  // This operation requires both sides to be the same precision.
+  if (lh_lb.get_precision () != rh_lb.get_precision ())
+    {
+      r.set_varying (type);
+      return;
+    }
    wi::overflow_type ov_lb, ov_ub;
    signop s = TYPE_SIGN (type);
 
@@ -1604,6 +1617,12 @@ operator_widen_plus_unsigned::wi_fold (irange &r, tree type,
 				       const wide_int &rh_lb,
 				       const wide_int &rh_ub) const
 {
+  // This operation requires both sides to be the same precision.
+  if (lh_lb.get_precision () != rh_lb.get_precision ())
+    {
+      r.set_varying (type);
+      return;
+    }
    wi::overflow_type ov_lb, ov_ub;
    signop s = TYPE_SIGN (type);
 
@@ -1655,6 +1674,14 @@ operator_minus::wi_fold (irange &r, tree type,
 			 const wide_int &lh_lb, const wide_int &lh_ub,
 			 const wide_int &rh_lb, const wide_int &rh_ub) const
 {
+  // This operation requires all ranges and types to be the same precision.
+  if (lh_lb.get_precision () != rh_lb.get_precision ()
+      || lh_lb.get_precision () != TYPE_PRECISION (type))
+    {
+      r.set_varying (type);
+      return;
+    }
+
   wi::overflow_type ov_lb, ov_ub;
   signop s = TYPE_SIGN (type);
   wide_int new_lb = wi::sub (lh_lb, rh_ub, s, &ov_lb);
@@ -1829,6 +1856,13 @@ operator_min::wi_fold (irange &r, tree type,
 		       const wide_int &lh_lb, const wide_int &lh_ub,
 		       const wide_int &rh_lb, const wide_int &rh_ub) const
 {
+  // This operation requires all ranges and types to be the same precision.
+  if (lh_lb.get_precision () != rh_lb.get_precision ()
+      || lh_lb.get_precision () != TYPE_PRECISION (type))
+    {
+      r.set_varying (type);
+      return;
+    }
   signop s = TYPE_SIGN (type);
   wide_int new_lb = wi::min (lh_lb, rh_lb, s);
   wide_int new_ub = wi::min (lh_ub, rh_ub, s);
@@ -1851,6 +1885,13 @@ operator_max::wi_fold (irange &r, tree type,
 		       const wide_int &lh_lb, const wide_int &lh_ub,
 		       const wide_int &rh_lb, const wide_int &rh_ub) const
 {
+  // This operation requires all ranges and types to be the same precision.
+  if (lh_lb.get_precision () != rh_lb.get_precision ()
+      || lh_lb.get_precision () != TYPE_PRECISION (type))
+    {
+      r.set_varying (type);
+      return;
+    }
   signop s = TYPE_SIGN (type);
   wide_int new_lb = wi::max (lh_lb, rh_lb, s);
   wide_int new_ub = wi::max (lh_ub, rh_ub, s);
@@ -2008,6 +2049,13 @@ operator_mult::wi_fold (irange &r, tree type,
 			const wide_int &lh_lb, const wide_int &lh_ub,
 			const wide_int &rh_lb, const wide_int &rh_ub) const
 {
+  // This operation requires all ranges and types to be the same precision.
+  if (lh_lb.get_precision () != rh_lb.get_precision ()
+      || lh_lb.get_precision () != TYPE_PRECISION (type))
+    {
+      r.set_varying (type);
+      return;
+    }
   if (TYPE_OVERFLOW_UNDEFINED (type))
     {
       wi_cross_product (r, type, lh_lb, lh_ub, rh_lb, rh_ub);
@@ -2113,6 +2161,12 @@ operator_widen_mult_signed::wi_fold (irange &r, tree type,
 				     const wide_int &rh_lb,
 				     const wide_int &rh_ub) const
 {
+  // This operation requires both sides to be the same precision.
+  if (lh_lb.get_precision () != rh_lb.get_precision ())
+    {
+      r.set_varying (type);
+      return;
+    }
   signop s = TYPE_SIGN (type);
 
   wide_int lh_wlb = wide_int::from (lh_lb, wi::get_precision (lh_lb) * 2, SIGNED);
@@ -2146,6 +2200,12 @@ operator_widen_mult_unsigned::wi_fold (irange &r, tree type,
 				       const wide_int &rh_lb,
 				       const wide_int &rh_ub) const
 {
+  // This operation requires both sides to be the same precision.
+  if (lh_lb.get_precision () != rh_lb.get_precision ())
+    {
+      r.set_varying (type);
+      return;
+    }
   signop s = TYPE_SIGN (type);
 
   wide_int lh_wlb = wide_int::from (lh_lb, wi::get_precision (lh_lb) * 2, UNSIGNED);
@@ -2215,6 +2275,13 @@ operator_div::wi_fold (irange &r, tree type,
 		       const wide_int &lh_lb, const wide_int &lh_ub,
 		       const wide_int &rh_lb, const wide_int &rh_ub) const
 {
+  // This operation requires all ranges and types to be the same precision.
+  if (lh_lb.get_precision () != rh_lb.get_precision ()
+      || lh_lb.get_precision () != TYPE_PRECISION (type))
+    {
+      r.set_varying (type);
+      return;
+    }
   const wide_int dividend_min = lh_lb;
   const wide_int dividend_max = lh_ub;
   const wide_int divisor_min = rh_lb;
@@ -2403,6 +2470,12 @@ operator_lshift::wi_fold (irange &r, tree type,
 			  const wide_int &lh_lb, const wide_int &lh_ub,
 			  const wide_int &rh_lb, const wide_int &rh_ub) const
 {
+  // This operation requires left operand and type to be the same precision.
+  if (lh_lb.get_precision () != TYPE_PRECISION (type))
+    {
+      r.set_varying (type);
+      return;
+    }
   signop sign = TYPE_SIGN (type);
   unsigned prec = TYPE_PRECISION (type);
   int overflow_pos = sign == SIGNED ? prec - 1 : prec;
@@ -2655,6 +2728,12 @@ operator_rshift::wi_fold (irange &r, tree type,
 			  const wide_int &lh_lb, const wide_int &lh_ub,
 			  const wide_int &rh_lb, const wide_int &rh_ub) const
 {
+  // This operation requires left operand and type to be the same precision.
+  if (lh_lb.get_precision () != TYPE_PRECISION (type))
+    {
+      r.set_varying (type);
+      return;
+    }
   wi_cross_product (r, type, lh_lb, lh_ub, rh_lb, rh_ub);
 }
 
@@ -3218,6 +3297,13 @@ operator_bitwise_and::wi_fold (irange &r, tree type,
 			       const wide_int &rh_lb,
 			       const wide_int &rh_ub) const
 {
+  // This operation requires all ranges and types to be the same precision.
+  if (lh_lb.get_precision () != rh_lb.get_precision ()
+      || lh_lb.get_precision () != TYPE_PRECISION (type))
+    {
+      r.set_varying (type);
+      return;
+    }
   if (wi_optimize_and_or (r, BIT_AND_EXPR, type, lh_lb, lh_ub, rh_lb, rh_ub))
     return;
 
@@ -3533,6 +3619,13 @@ operator_bitwise_or::wi_fold (irange &r, tree type,
 			      const wide_int &rh_lb,
 			      const wide_int &rh_ub) const
 {
+  // This operation requires all ranges and types to be the same precision.
+  if (lh_lb.get_precision () != rh_lb.get_precision ()
+      || lh_lb.get_precision () != TYPE_PRECISION (type))
+    {
+      r.set_varying (type);
+      return;
+    }
   if (wi_optimize_and_or (r, BIT_IOR_EXPR, type, lh_lb, lh_ub, rh_lb, rh_ub))
     return;
 
@@ -3645,6 +3738,13 @@ operator_bitwise_xor::wi_fold (irange &r, tree type,
 			       const wide_int &rh_lb,
 			       const wide_int &rh_ub) const
 {
+  // This operation requires all ranges and types to be the same precision.
+  if (lh_lb.get_precision () != rh_lb.get_precision ()
+      || lh_lb.get_precision () != TYPE_PRECISION (type))
+    {
+      r.set_varying (type);
+      return;
+    }
   signop sign = TYPE_SIGN (type);
   wide_int maybe_nonzero_lh, mustbe_nonzero_lh;
   wide_int maybe_nonzero_rh, mustbe_nonzero_rh;
@@ -3786,6 +3886,13 @@ operator_trunc_mod::wi_fold (irange &r, tree type,
 			     const wide_int &rh_lb,
 			     const wide_int &rh_ub) const
 {
+  // This operation requires all ranges and types to be the same precision.
+  if (lh_lb.get_precision () != rh_lb.get_precision ()
+      || lh_lb.get_precision () != TYPE_PRECISION (type))
+    {
+      r.set_varying (type);
+      return;
+    }
   wide_int new_lb, new_ub, tmp;
   signop sign = TYPE_SIGN (type);
   unsigned prec = TYPE_PRECISION (type);
@@ -4125,6 +4232,12 @@ operator_abs::wi_fold (irange &r, tree type,
 		       const wide_int &rh_lb ATTRIBUTE_UNUSED,
 		       const wide_int &rh_ub ATTRIBUTE_UNUSED) const
 {
+  // This operation requires the operand and type to be the same precision.
+  if (lh_lb.get_precision () != TYPE_PRECISION (type))
+    {
+      r.set_varying (type);
+      return;
+    }
   wide_int min, max;
   signop sign = TYPE_SIGN (type);
   unsigned prec = TYPE_PRECISION (type);
@@ -4240,6 +4353,12 @@ operator_absu::wi_fold (irange &r, tree type,
 			const wide_int &rh_lb ATTRIBUTE_UNUSED,
 			const wide_int &rh_ub ATTRIBUTE_UNUSED) const
 {
+  // This operation requires the operand and type to be the same precision.
+  if (lh_lb.get_precision () != TYPE_PRECISION (type))
+    {
+      r.set_varying (type);
+      return;
+    }
   wide_int new_lb, new_ub;
 
   // Pass through VR0 the easy cases.
