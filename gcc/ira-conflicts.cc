@@ -670,37 +670,6 @@ build_conflicts (void)
 
 
 
-/* Print hard reg set SET with TITLE to FILE.  */
-static void
-print_hard_reg_set (FILE *file, const char *title, HARD_REG_SET set)
-{
-  int i, start, end;
-
-  fputs (title, file);
-  for (start = end = -1, i = 0; i < FIRST_PSEUDO_REGISTER; i++)
-    {
-      bool reg_included = TEST_HARD_REG_BIT (set, i);
-
-      if (reg_included)
-	{
-	  if (start == -1)
-	    start = i;
-	  end = i;
-	}
-      if (start >= 0 && (!reg_included || i == FIRST_PSEUDO_REGISTER - 1))
-	{
-	  if (start == end)
-	    fprintf (file, " %d", start);
-	  else if (start == end + 1)
-	    fprintf (file, " %d %d", start, end);
-	  else
-	    fprintf (file, " %d-%d", start, end);
-	  start = -1;
-	}
-    }
-  putc ('\n', file);
-}
-
 static void
 print_allocno_conflicts (FILE * file, bool reg_p, ira_allocno_t a)
 {
@@ -759,14 +728,14 @@ print_allocno_conflicts (FILE * file, bool reg_p, ira_allocno_t a)
       conflicting_hard_regs = (OBJECT_TOTAL_CONFLICT_HARD_REGS (obj)
 			       & ~ira_no_alloc_regs
 			       & reg_class_contents[ALLOCNO_CLASS (a)]);
-      print_hard_reg_set (file, "\n;;     total conflict hard regs:",
-			  conflicting_hard_regs);
+      print_hard_reg_set (file, conflicting_hard_regs,
+			  "\n;;     total conflict hard regs:", true);
 
       conflicting_hard_regs = (OBJECT_CONFLICT_HARD_REGS (obj)
 			       & ~ira_no_alloc_regs
 			       & reg_class_contents[ALLOCNO_CLASS (a)]);
-      print_hard_reg_set (file, ";;     conflict hard regs:",
-			  conflicting_hard_regs);
+      print_hard_reg_set (file, conflicting_hard_regs,
+			  ";;     conflict hard regs:", true);
       putc ('\n', file);
     }
 

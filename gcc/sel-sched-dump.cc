@@ -535,26 +535,13 @@ dump_insn_vector (rtx_vec_t succs)
       sel_print ("NULL ");
 }
 
-/* Dumps a hard reg set SET to FILE using PREFIX.  */
-static void
-print_hard_reg_set (FILE *file, const char *prefix, HARD_REG_SET set)
-{
-  int i;
-
-  fprintf (file, "%s{ ", prefix);
-  for (i = 0; i < FIRST_PSEUDO_REGISTER; i++)
-    {
-      if (TEST_HARD_REG_BIT (set, i))
-	fprintf (file, "%d ", i);
-    }
-  fprintf (file, "}\n");
-}
-
 /* Dumps a hard reg set SET using PREFIX.  */
-void
+DEBUG_FUNCTION void
 dump_hard_reg_set (const char *prefix, HARD_REG_SET set)
 {
-  print_hard_reg_set (sched_dump, prefix, set);
+  fprintf (sched_dump, "%s{", prefix);
+  print_hard_reg_set (sched_dump, set, NULL, false);
+  fprintf (sched_dump, "}\n");
 }
 
 /* Pretty print INSN.  This is used as a hook.  */
