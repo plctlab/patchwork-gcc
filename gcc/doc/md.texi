@@ -6493,8 +6493,11 @@ individually copied data units in the block.
 
 The @code{cpymem@var{m}} patterns need not give special consideration
 to the possibility that the source and destination strings might
-overlap. These patterns are used to do inline expansion of
-@code{__builtin_memcpy}.
+overlap.  An exeption is the case where source and destination are
+equal.  These patterns are used to do inline expansion of
+@code{__builtin_memcpy}.  The target runtime is expected to handle
+the case of an exact overlap of source and destination gracefully
+as GCC does not consider that undefined behavior.
 
 @cindex @code{movmem@var{m}} instruction pattern
 @item @samp{movmem@var{m}}
