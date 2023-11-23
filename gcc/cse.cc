@@ -1749,7 +1749,16 @@ merge_equiv_classes (struct table_elt *class1, struct table_elt *class2)
 	  if (REG_P (exp))
 	    {
 	      need_rehash = REGNO_QTY_VALID_P (REGNO (exp));
-	      delete_reg_equiv (REGNO (exp));
+
+	      /* If reg is already inserted into class1 and has a valid new
+		 quantity, avoid deleting it from reg_eqv_table.  */
+	      table_elt *e;
+	      for (e = class1->first_same_value; e; e = e->next_same_value)
+		if (REG_P (e->exp) && REGNO (e->exp) == REGNO (exp)
+		    && e->mode == mode)
+		  break;
+	      if (e == NULL)
+		delete_reg_equiv (REGNO (exp));
 	    }
 
 	  if (REG_P (exp) && REGNO (exp) >= FIRST_PSEUDO_REGISTER)
