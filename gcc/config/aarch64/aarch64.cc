@@ -13750,9 +13750,16 @@ aarch64_if_then_else_costs (rtx op0, rtx op1, rtx op2, int *cost, bool speed)
 	    /* CSINV/NEG with zero extend + const 0 (*csinv3_uxtw_insn3).  */
 	    op1 = XEXP (inner, 0);
 	}
-
-      *cost += rtx_cost (op1, VOIDmode, IF_THEN_ELSE, 1, speed);
-      *cost += rtx_cost (op2, VOIDmode, IF_THEN_ELSE, 2, speed);
+      if (op2 == constm1_rtx || op2 == const1_rtx)
+	*cost += rtx_cost (op1, VOIDmode, IF_THEN_ELSE, 1, speed);
+      else if (op1 == constm1_rtx || op1 == const1_rtx)
+	*cost += rtx_cost (op2, VOIDmode, IF_THEN_ELSE, 2, speed);
+      else
+	{
+	  *cost += rtx_cost (op1, VOIDmode, IF_THEN_ELSE, 1, speed);
+	  *cost += rtx_cost (op2, VOIDmode, IF_THEN_ELSE, 1, speed);
+	}
+      
       return true;
     }
 
