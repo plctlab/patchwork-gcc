@@ -23594,6 +23594,7 @@ ix86_vector_costs::add_stmt_cost (int count, vect_cost_for_stmt kind,
       stmt_cost = ix86_builtin_vectorization_cost (kind, vectype, misalign);
       unsigned i;
       tree op;
+      unsigned reg_needed = 0;
       FOR_EACH_VEC_ELT (SLP_TREE_SCALAR_OPS (node), i, op)
 	if (TREE_CODE (op) == SSA_NAME)
 	  TREE_VISITED (op) = 0;
@@ -23623,11 +23624,30 @@ ix86_vector_costs::add_stmt_cost (int count, vect_cost_for_stmt kind,
 		  && (gimple_assign_rhs_code (def) != BIT_FIELD_REF
 		      || !VECTOR_TYPE_P (TREE_TYPE
 				(TREE_OPERAND (gimple_assign_rhs1 (def), 0))))))
-	    stmt_cost += ix86_cost->sse_to_integer;
+	    {
+	      stmt_cost += ix86_cost->sse_to_integer;
+	      reg_needed++;
+	    }
 	}
       FOR_EACH_VEC_ELT (SLP_TREE_SCALAR_OPS (node), i, op)
 	if (TREE_CODE (op) == SSA_NAME)
 	  TREE_VISITED (op) = 0;
+
+      /* For vec_contruct, the components must be live at the same time if
+	 they're not loaded from memory, when the number of those components
+	 exceeds available registers, spill happens. Try to account that with a
+	 rough estimation. Currently only handle integral modes since scalar fp
+	 shares sse_regs with vectors.
+	 ??? Ideally, we should have an overall estimation of register pressure
+	 if we know the live range of all variables.  */
+      if (!fp && kind == vec_construct
+	  && reg_needed > target_avail_regs)
+	{
+	  unsigned spill_cost = ix86_builtin_vectorization_cost (scalar_store,
+								 vectype,
+								 misalign);
+	  stmt_cost += spill_cost * (reg_needed - target_avail_regs);
+	}
     }
   if (stmt_cost == -1)
     stmt_cost = ix86_builtin_vectorization_cost (kind, vectype, misalign);
