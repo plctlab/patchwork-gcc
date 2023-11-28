@@ -6607,14 +6607,19 @@ result of the comparison.
 
 @cindex @code{cmpmem@var{m}} instruction pattern
 @item @samp{cmpmem@var{m}}
-Block compare instruction, with five operands like the operands
-of @samp{cmpstr@var{m}}.  The two memory blocks specified are compared
-byte by byte in lexicographic order starting at the beginning of each
-block.  Unlike @samp{cmpstr@var{m}} the instruction can prefetch
-any bytes in the two memory blocks.  Also unlike @samp{cmpstr@var{m}}
-the comparison will not stop if both bytes are zero.  The effect of
-the instruction is to store a value in operand 0 whose sign indicates
-the result of the comparison.
+Block compare instruction, with six operands.  The first five operands are
+like the operands of @samp{cmpstr@var{m}}.  The last operand indicates
+whether the comparison is equality or not.  Value one means it's an
+equality only compare and zero means it's a non-equality compare.
+
+The two memory blocks specified are compared byte by byte in lexicographic
+order starting at the beginning of each block.  Unlike @samp{cmpstr@var{m}}
+the instruction can prefetch any bytes in the two memory blocks.  Also
+unlike @samp{cmpstr@var{m}} the comparison will not stop if both bytes are
+zero.  When last operand is zero, the effect of the instruction is to store
+a value in operand 0 whose sign indicates the result of the comparison.
+When last operand is one, zero in operand 0 indicates two blocks are equal.
+All other values in operand 0 indicate two blocks are not equal.
 
 @cindex @code{strlen@var{m}} instruction pattern
 @item @samp{strlen@var{m}}

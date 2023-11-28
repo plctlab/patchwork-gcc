@@ -2353,14 +2353,13 @@ emit_block_op_via_libcall (enum built_in_function fncode, rtx dst, rtx src,
   return expand_call (call_expr, NULL_RTX, false);
 }
 
-/* Try to expand cmpstrn or cmpmem operation ICODE with the given operands.
+/* Try to expand cmpstrn operation ICODE with the given operands.
    ARG3_TYPE is the type of ARG3_RTX.  Return the result rtx on success,
    otherwise return null.  */
 
 rtx
-expand_cmpstrn_or_cmpmem (insn_code icode, rtx target, rtx arg1_rtx,
-			  rtx arg2_rtx, tree arg3_type, rtx arg3_rtx,
-			  HOST_WIDE_INT align)
+expand_cmpstrn (insn_code icode, rtx target, rtx arg1_rtx, rtx arg2_rtx,
+		tree arg3_type, rtx arg3_rtx, HOST_WIDE_INT align)
 {
   machine_mode insn_mode = insn_data[icode].operand[0].mode;
 
@@ -2379,6 +2378,34 @@ expand_cmpstrn_or_cmpmem (insn_code icode, rtx target, rtx arg1_rtx,
   return NULL_RTX;
 }
 
+/* Similar as expand_cmpstrn, the last operand indicates whether it is a
+   equality comparison or not.  */
+rtx
+expand_cmpmem (insn_code icode, rtx target, rtx arg1_rtx, rtx arg2_rtx,
+	       tree arg3_type, rtx arg3_rtx, HOST_WIDE_INT align,
+	       bool equality_only)
+{
+  machine_mode insn_mode = insn_data[icode].operand[0].mode;
+
+  if (target && (!REG_P (target) || HARD_REGISTER_P (target)))
+    target = NULL_RTX;
+
+  class expand_operand ops[6];
+  create_output_operand (&ops[0], target, insn_mode);
+  create_fixed_operand (&ops[1], arg1_rtx);
+  create_fixed_operand (&ops[2], arg2_rtx);
+  create_convert_operand_from (&ops[3], arg3_rtx, TYPE_MODE (arg3_type),
+			       TYPE_UNSIGNED (arg3_type));
+  create_integer_operand (&ops[4], align);
+  if (equality_only)
+    create_integer_operand (&ops[5], 1);
+  else
+    create_integer_operand (&ops[5], 0);
+  if (maybe_expand_insn (icode, 6, ops))
+    return ops[0].value;
+  return NULL_RTX;
+}
+
 /* Expand a block compare between X and Y with length LEN using the
    cmpmem optab, placing the result in TARGET.  LEN_TYPE is the type
    of the expression that was used to calculate the length.  ALIGN
@@ -2386,7 +2413,7 @@ expand_cmpstrn_or_cmpmem (insn_code icode, rtx target, rtx arg1_rtx,
 
 static rtx
 emit_block_cmp_via_cmpmem (rtx x, rtx y, rtx len, tree len_type, rtx target,
-			   unsigned align)
+			   unsigned align, bool equality_only)
 {
   /* Note: The cmpstrnsi pattern, if it exists, is not suitable for
      implementing memcmp because it will stop if it encounters two
@@ -2396,7 +2423,8 @@ emit_block_cmp_via_cmpmem (rtx x, rtx y, rtx len, tree len_type, rtx target,
   if (icode == CODE_FOR_nothing)
     return NULL_RTX;
 
-  return expand_cmpstrn_or_cmpmem (icode, target, x, y, len_type, len, align);
+  return expand_cmpmem (icode, target, x, y, len_type, len, align,
+			equality_only);
 }
 
 /* Emit code to compare a block Y to a block X.  This may be done with
@@ -2441,7 +2469,8 @@ emit_block_cmp_hints (rtx x, rtx y, rtx len, tree len_type, rtx target,
     result = compare_by_pieces (x, y, INTVAL (len), target, align,
 				y_cfn, y_cfndata);
   else
-    result = emit_block_cmp_via_cmpmem (x, y, len, len_type, target, align);
+    result = emit_block_cmp_via_cmpmem (x, y, len, len_type, target, align,
+					equality_only);
 
   return result;
 }

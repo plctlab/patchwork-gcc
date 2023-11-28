@@ -4842,7 +4842,7 @@ expand_builtin_strcmp (tree exp, ATTRIBUTE_UNUSED rtx target)
       if (len && !TREE_SIDE_EFFECTS (len))
 	{
 	  arg3_rtx = expand_normal (len);
-	  result = expand_cmpstrn_or_cmpmem
+	  result = expand_cmpstrn
 	    (cmpstrn_icode, target, arg1_rtx, arg2_rtx, TREE_TYPE (len),
 	     arg3_rtx, MIN (arg1_align, arg2_align));
 	}
@@ -4952,9 +4952,9 @@ expand_builtin_strncmp (tree exp, ATTRIBUTE_UNUSED rtx target,
   rtx arg1_rtx = get_memory_rtx (arg1, len);
   rtx arg2_rtx = get_memory_rtx (arg2, len);
   rtx arg3_rtx = expand_normal (len);
-  result = expand_cmpstrn_or_cmpmem (cmpstrn_icode, target, arg1_rtx,
-				     arg2_rtx, TREE_TYPE (len), arg3_rtx,
-				     MIN (arg1_align, arg2_align));
+  result = expand_cmpstrn (cmpstrn_icode, target, arg1_rtx, arg2_rtx,
+			   TREE_TYPE (len), arg3_rtx,
+			   MIN (arg1_align, arg2_align));
 
   tree fndecl = get_callee_fndecl (exp);
   if (result)

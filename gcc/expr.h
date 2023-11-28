@@ -199,8 +199,9 @@ extern void use_regs (rtx *, int, int);
 extern void use_group_regs (rtx *, rtx);
 
 #ifdef GCC_INSN_CODES_H
-extern rtx expand_cmpstrn_or_cmpmem (insn_code, rtx, rtx, rtx, tree, rtx,
-				     HOST_WIDE_INT);
+extern rtx expand_cmpstrn (insn_code, rtx, rtx, rtx, tree, rtx, HOST_WIDE_INT);
+extern rtx expand_cmpmem (insn_code, rtx, rtx, rtx, tree, rtx, HOST_WIDE_INT,
+			  bool);
 #endif
 
 /* Write zeros through the storage of OBJECT.
