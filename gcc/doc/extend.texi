@@ -14255,20 +14255,22 @@ to @var{F} or the empty string if the call was not made at function
 scope.
 
 For example, in the following, each call to function @code{foo} will
-print a line similar to @code{"file.c:123: foo: message"} with the name
+print a line similar to @code{"file.c:5: foo: message"} with the name
 of the file and the line number of the @code{printf} call, the name of
 the function @code{foo}, followed by the word @code{message}.
 
 @smallexample
-const char*
-function (const char *func = __builtin_FUNCTION ())
-@{
-  return func;
-@}
+#include <stdio.h>
 
 void foo (void)
 @{
-  printf ("%s:%i: %s: message\n", file (), line (), function ());
+  printf ("%s:%i: %s: message\n", __builtin_FILE (), __builtin_LINE (), __builtin_FUNCTION ());
+  printf ("%s:%i: %s: message\n", __builtin_FILE (), __builtin_LINE (), __builtin_FUNCTION ());
+@}
+
+int main (void)
+@{
+  foo();
 @}
 @end smallexample
 
