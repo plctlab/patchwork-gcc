@@ -12017,7 +12017,9 @@ trees_in::read_class_def (tree defn, tree maybe_template)
   bool installing = maybe_dup && !TYPE_SIZE (type);
   if (installing)
     {
-      if (DECL_EXTERNAL (defn) && TYPE_LANG_SPECIFIC (type))
+      if (DECL_EXTERNAL (defn)
+	  && TYPE_LANG_SPECIFIC (type)
+	  && CLASSTYPE_TEMPLATE_INSTANTIATION (type))
 	{
 	  /* We don't deal with not-really-extern, because, for a
 	     module you want the import to be the interface, and for a
