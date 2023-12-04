@@ -6104,7 +6104,8 @@ gimplify_modify_expr (tree *expr_p, gimple_seq *pre_p, gimple_seq *post_p,
       && TYPE_SIZE_UNIT (TREE_TYPE (*from_p))
       && !poly_int_tree_p (TYPE_SIZE_UNIT (TREE_TYPE (*from_p)))
       && TREE_CODE (*from_p) == CONSTRUCTOR
-      && CONSTRUCTOR_NELTS (*from_p) == 0)
+      && CONSTRUCTOR_NELTS (*from_p) == 0
+      && ADDR_SPACE_GENERIC_P (TYPE_ADDR_SPACE (TREE_TYPE (*to_p))))
     {
       maybe_with_size_expr (from_p);
       gcc_assert (TREE_CODE (*from_p) == WITH_SIZE_EXPR);
@@ -6237,10 +6238,12 @@ gimplify_modify_expr (tree *expr_p, gimple_seq *pre_p, gimple_seq *post_p,
       tree from = TREE_OPERAND (*from_p, 0);
       tree size = TREE_OPERAND (*from_p, 1);
 
-      if (TREE_CODE (from) == CONSTRUCTOR)
+      if (!ADDR_SPACE_GENERIC_P (TYPE_ADDR_SPACE (TREE_TYPE (*to_p)))
+	  || !ADDR_SPACE_GENERIC_P (TYPE_ADDR_SPACE (TREE_TYPE (from))))
+	;
+      else if (TREE_CODE (from) == CONSTRUCTOR)
 	return gimplify_modify_expr_to_memset (expr_p, size, want_value, pre_p);
-
-      if (is_gimple_addressable (from))
+      else if (is_gimple_addressable (from))
 	{
 	  *from_p = from;
 	  return gimplify_modify_expr_to_memcpy (expr_p, size, want_value,
