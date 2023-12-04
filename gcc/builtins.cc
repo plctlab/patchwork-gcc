@@ -1370,7 +1370,8 @@ get_memory_rtx (tree exp, tree len)
     exp = TREE_OPERAND (exp, 0);
 
   addr = expand_expr (orig_exp, NULL_RTX, ptr_mode, EXPAND_NORMAL);
-  mem = gen_rtx_MEM (BLKmode, memory_address (BLKmode, addr));
+  addr_space_t as = TYPE_ADDR_SPACE (TREE_TYPE (TREE_TYPE (exp)));
+  mem = gen_rtx_MEM (BLKmode, memory_address_addr_space (BLKmode, addr, as));
 
   /* Get an expression we can use to find the attributes to assign to MEM.
      First remove any nops.  */
@@ -1380,8 +1381,11 @@ get_memory_rtx (tree exp, tree len)
 
   /* Build a MEM_REF representing the whole accessed area as a byte blob,
      (as builtin stringops may alias with anything).  */
+  tree ctype = char_type_node;
+  if (!ADDR_SPACE_GENERIC_P (as))
+    ctype = build_qualified_type (ctype, ENCODE_QUAL_ADDR_SPACE (as));
   exp = fold_build2 (MEM_REF,
-		     build_array_type (char_type_node,
+		     build_array_type (ctype,
 				       build_range_type (sizetype,
 							 size_one_node, len)),
 		     exp, build_int_cst (ptr_type_node, 0));
@@ -1398,7 +1402,7 @@ get_memory_rtx (tree exp, tree len)
       unsigned int align = get_pointer_alignment (TREE_OPERAND (exp, 0));
       exp = build_fold_addr_expr (base);
       exp = fold_build2 (MEM_REF,
-			 build_array_type (char_type_node,
+			 build_array_type (ctype,
 					   build_range_type (sizetype,
 							     size_zero_node,
 							     NULL)),
