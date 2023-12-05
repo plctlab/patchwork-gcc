@@ -39,6 +39,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "gimple-range.h"
 #include "gimple-range-path.h"
 #include "cfganal.h"
+#include "tree-ssa-loop-manip.h"
 
 /* Duplicates headers of loops if they are small enough, so that the statements
    in the loop body are always executed when the loop is entered.  This
@@ -702,7 +703,13 @@ ch_base::copy_headers (function *fun)
   if (!loops_to_unloop.is_empty ())
     {
       bool irred_invalidated;
-      unloop_loops (loops_to_unloop, loops_to_unloop_nunroll, NULL, &irred_invalidated);
+      auto_bitmap lc_invalidated;
+      auto_vec<edge> edges_to_remove;
+      unloop_loops (loops_to_unloop, loops_to_unloop_nunroll, edges_to_remove,
+		    lc_invalidated, &irred_invalidated);
+      if (loops_state_satisfies_p (fun, LOOP_CLOSED_SSA)
+	  && !bitmap_empty_p (lc_invalidated))
+	rewrite_into_loop_closed_ssa (NULL, 0);
       changed = true;
     }
   free (bbs);
