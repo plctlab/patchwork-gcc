@@ -1342,7 +1342,7 @@ optimize_vector_constructor (gimple_stmt_iterator *gsi)
    TYPE, or NULL_TREE if none is found.  */
 
 static tree
-type_for_widest_vector_mode (tree type, optab op)
+type_for_widest_vector_mode (tree type, optab op, poly_int64 max_nunits = 0)
 {
   machine_mode inner_mode = TYPE_MODE (type);
   machine_mode best_mode = VOIDmode, mode;
@@ -1366,7 +1366,9 @@ type_for_widest_vector_mode (tree type, optab op)
   FOR_EACH_MODE_FROM (mode, mode)
     if (GET_MODE_INNER (mode) == inner_mode
 	&& maybe_gt (GET_MODE_NUNITS (mode), best_nunits)
-	&& optab_handler (op, mode) != CODE_FOR_nothing)
+	&& optab_handler (op, mode) != CODE_FOR_nothing
+	&& (known_eq (max_nunits, 0)
+	    || known_lt (GET_MODE_NUNITS (mode), max_nunits)))
       best_mode = mode, best_nunits = GET_MODE_NUNITS (mode);
 
   if (best_mode == VOIDmode)
@@ -1697,7 +1699,8 @@ get_compute_type (enum tree_code code, optab op, tree type)
 	  || optab_handler (op, TYPE_MODE (type)) == CODE_FOR_nothing))
     {
       tree vector_compute_type
-	= type_for_widest_vector_mode (TREE_TYPE (type), op);
+	= type_for_widest_vector_mode (TREE_TYPE (type), op,
+				       TYPE_VECTOR_SUBPARTS (compute_type));
       if (vector_compute_type != NULL_TREE
 	  && subparts_gt (compute_type, vector_compute_type)
 	  && maybe_ne (TYPE_VECTOR_SUBPARTS (vector_compute_type), 1U)
