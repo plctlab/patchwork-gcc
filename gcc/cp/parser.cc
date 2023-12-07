@@ -245,12 +245,12 @@ static void cp_lexer_start_debugging
   (cp_lexer *) ATTRIBUTE_UNUSED;
 static void cp_lexer_stop_debugging
   (cp_lexer *) ATTRIBUTE_UNUSED;
-static const cp_trait *cp_lexer_lookup_trait
-  (const cp_token *);
-static const cp_trait *cp_lexer_lookup_trait_expr
-  (const cp_token *);
-static const cp_trait *cp_lexer_lookup_trait_type
-  (const cp_token *);
+static const cp_trait *cp_lexer_peek_trait
+  (cp_lexer *);
+static const cp_trait *cp_lexer_peek_trait_expr
+  (cp_lexer *);
+static const cp_trait *cp_lexer_peek_trait_type
+  (cp_lexer *);
 
 static cp_token_cache *cp_token_cache_new
   (cp_token *, cp_token *);
@@ -1168,15 +1168,29 @@ cp_keyword_starts_decl_specifier_p (enum rid keyword)
     }
 }
 
-/* Look ups the corresponding built-in trait if a given token is
-   a built-in trait.  Otherwise, returns nullptr.  */
+/* Peeks the corresponding built-in trait if the first token is
+   a built-in trait and the second token is either `(' or `<' depending
+   on the trait.  Otherwise, returns nullptr.  */
 
 static const cp_trait *
-cp_lexer_lookup_trait (const cp_token *token)
+cp_lexer_peek_trait (cp_lexer *lexer)
 {
-  if (token->type == CPP_NAME && IDENTIFIER_TRAIT_P (token->u.value))
-    return &cp_traits[IDENTIFIER_CP_INDEX (token->u.value)];
+  const cp_token *token1 = cp_lexer_peek_token (lexer);
+  if (token1->type == CPP_NAME && IDENTIFIER_TRAIT_P (token1->u.value))
+    {
+      const cp_trait &trait = cp_traits[IDENTIFIER_CP_INDEX (token1->u.value)];
+      const bool is_pack_element = (trait.kind == CPTK_TYPE_PACK_ELEMENT);
 
+      /* Check if the subsequent token is a `<' token to
+	 __type_pack_element or is a `(' token to everything else.  */
+      const cp_token *token2 = cp_lexer_peek_nth_token (lexer, 2);
+      if (is_pack_element && token2->type != CPP_LESS)
+	return nullptr;
+      if (!is_pack_element && token2->type != CPP_OPEN_PAREN)
+	return nullptr;
+
+      return &trait;
+    }
   return nullptr;
 }
 
@@ -1184,9 +1198,9 @@ cp_lexer_lookup_trait (const cp_token *token)
    built-in trait.  */
 
 static const cp_trait *
-cp_lexer_lookup_trait_expr (const cp_token *token)
+cp_lexer_peek_trait_expr (cp_lexer *lexer)
 {
-  const cp_trait *trait = cp_lexer_lookup_trait (token);
+  const cp_trait *trait = cp_lexer_peek_trait (lexer);
   if (trait && !trait->type)
     return trait;
 
@@ -1197,9 +1211,9 @@ cp_lexer_lookup_trait_expr (const cp_token *token)
    built-in trait.  */
 
 static const cp_trait *
-cp_lexer_lookup_trait_type (const cp_token *token)
+cp_lexer_peek_trait_type (cp_lexer *lexer)
 {
-  const cp_trait *trait = cp_lexer_lookup_trait (token);
+  const cp_trait *trait = cp_lexer_peek_trait (lexer);
   if (trait && trait->type)
     return trait;
 
@@ -1213,9 +1227,10 @@ cp_lexer_next_token_is_decl_specifier_keyword (cp_lexer *lexer)
 {
   cp_token *token;
 
-  token = cp_lexer_peek_token (lexer);
-  if (cp_lexer_lookup_trait_type (token))
+  if (cp_lexer_peek_trait_type (lexer))
     return true;
+
+  token = cp_lexer_peek_token (lexer);
   return cp_keyword_starts_decl_specifier_p (token->keyword);
 }
 
@@ -6038,7 +6053,7 @@ cp_parser_primary_expression (cp_parser *parser,
 	 `::' as the beginning of a qualified-id, or the "operator"
 	 keyword.  */
     case CPP_NAME:
-      if (const cp_trait* trait = cp_lexer_lookup_trait_expr (token))
+      if (const cp_trait* trait = cp_lexer_peek_trait_expr (parser->lexer))
 	return cp_parser_trait (parser, trait);
       /* FALLTHRU */
     case CPP_SCOPE:
@@ -19889,7 +19904,7 @@ cp_parser_simple_type_specifier (cp_parser* parser,
     }
 
   /* If token is a type-yielding built-in traits, parse it.  */
-  const cp_trait* trait = cp_lexer_lookup_trait_type (token);
+  const cp_trait* trait = cp_lexer_peek_trait_type (parser->lexer);
   if (trait)
     {
       type = cp_parser_trait (parser, trait);
