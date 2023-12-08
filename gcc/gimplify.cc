@@ -11266,6 +11266,23 @@ gimplify_scan_omp_clauses (tree *list_p, gimple_seq *pre_p,
 	  else if (!DECL_P (decl))
 	    {
 	      tree d = decl, *pd;
+	      pd = &OMP_CLAUSE_DECL (c);
+	      if (TREE_CODE (decl) == INDIRECT_REF)
+		{
+		  tree d2 = TREE_OPERAND (decl, 0);
+		  STRIP_NOPS (d2);
+		  if (DECL_P (d2))
+		    {
+		      if (gimplify_expr (pd, pre_p, NULL, is_gimple_lvalue,
+					 fb_lvalue) == GS_ERROR)
+			{
+			  remove = true;
+			  break;
+			}
+		      decl = d2;
+		      goto handle_map_decl;
+		    }
+		}
 	      if (TREE_CODE (d) == ARRAY_REF)
 		{
 		  while (TREE_CODE (d) == ARRAY_REF)
@@ -11274,7 +11291,6 @@ gimplify_scan_omp_clauses (tree *list_p, gimple_seq *pre_p,
 		      && TREE_CODE (TREE_TYPE (d)) == ARRAY_TYPE)
 		    decl = d;
 		}
-	      pd = &OMP_CLAUSE_DECL (c);
 	      if (d == decl
 		  && TREE_CODE (decl) == INDIRECT_REF
 		  && TREE_CODE (TREE_OPERAND (decl, 0)) == COMPONENT_REF
@@ -11469,6 +11485,7 @@ gimplify_scan_omp_clauses (tree *list_p, gimple_seq *pre_p,
 
 	      break;
 	    }
+	handle_map_decl:
 	  flags = GOVD_MAP | GOVD_EXPLICIT;
 	  if (OMP_CLAUSE_MAP_KIND (c) == GOMP_MAP_ALWAYS_TO
 	      || OMP_CLAUSE_MAP_KIND (c) == GOMP_MAP_ALWAYS_TOFROM)
@@ -11501,7 +11518,7 @@ gimplify_scan_omp_clauses (tree *list_p, gimple_seq *pre_p,
 	      OMP_CLAUSE_SET_MAP_KIND (c, map_kind);
 	    }
 
-	  goto do_add;
+	  goto do_add_decl;
 
 	case OMP_CLAUSE_AFFINITY:
 	  gimplify_omp_affinity (list_p, pre_p);
@@ -12261,6 +12278,7 @@ omp_find_stores_stmt (gimple_stmt_iterator *gsi_p,
 struct gimplify_adjust_omp_clauses_data
 {
   tree *list_p;
+  tree append_list;
   gimple_seq *pre_p;
 };
 
@@ -12381,6 +12399,7 @@ gimplify_adjust_omp_clauses_1 (splay_tree_node n, void *data)
       && omp_shared_to_firstprivate_optimizable_decl_p (decl))
     omp_mark_stores (gimplify_omp_ctxp->outer_context, decl);
 
+  bool len0_append_list_used = false;
   tree chain = *list_p;
   clause = build_omp_clause (input_location, code);
   OMP_CLAUSE_DECL (clause) = decl;
@@ -12397,6 +12416,11 @@ gimplify_adjust_omp_clauses_1 (splay_tree_node n, void *data)
     OMP_CLAUSE_FIRSTPRIVATE_IMPLICIT (clause) = 1;
   else if (code == OMP_CLAUSE_MAP && (flags & GOVD_MAP_0LEN_ARRAY) != 0)
     {
+      /* For GOVD_MAP_0LEN_ARRAY, add the clauses to append_list such
+	 that those come after any data mapping.  */
+      len0_append_list_used = true;
+      struct gimplify_adjust_omp_clauses_data *adjdata
+	= (struct gimplify_adjust_omp_clauses_data *) data;
       tree nc = build_omp_clause (input_location, OMP_CLAUSE_MAP);
       OMP_CLAUSE_DECL (nc) = decl;
       if (TREE_CODE (TREE_TYPE (decl)) == REFERENCE_TYPE
@@ -12411,8 +12435,9 @@ gimplify_adjust_omp_clauses_1 (splay_tree_node n, void *data)
       OMP_CLAUSE_SET_MAP_KIND (clause, GOMP_MAP_ALLOC);
       OMP_CLAUSE_MAP_MAYBE_ZERO_LENGTH_ARRAY_SECTION (clause) = 1;
       OMP_CLAUSE_SET_MAP_KIND (nc, GOMP_MAP_FIRSTPRIVATE_POINTER);
-      OMP_CLAUSE_CHAIN (nc) = chain;
+      OMP_CLAUSE_CHAIN (nc) = adjdata->append_list;
       OMP_CLAUSE_CHAIN (clause) = nc;
+      adjdata->append_list = clause;
       struct gimplify_omp_ctx *ctx = gimplify_omp_ctxp;
       gimplify_omp_ctxp = ctx->outer_context;
       gimplify_expr (&TREE_OPERAND (OMP_CLAUSE_DECL (clause), 0),
@@ -12520,7 +12545,8 @@ gimplify_adjust_omp_clauses_1 (splay_tree_node n, void *data)
 					  (ctx->region_type & ORT_ACC) != 0);
       gimplify_omp_ctxp = ctx;
     }
-  *list_p = clause;
+  if (!len0_append_list_used)
+    *list_p = clause;
   struct gimplify_omp_ctx *ctx = gimplify_omp_ctxp;
   gimplify_omp_ctxp = ctx->outer_context;
   /* Don't call omp_finish_clause on implicitly added OMP_CLAUSE_PRIVATE
@@ -12529,7 +12555,7 @@ gimplify_adjust_omp_clauses_1 (splay_tree_node n, void *data)
   if (code != OMP_CLAUSE_PRIVATE || ctx->region_type != ORT_SIMD) 
     lang_hooks.decls.omp_finish_clause (clause, pre_p,
 					(ctx->region_type & ORT_ACC) != 0);
-  if (gimplify_omp_ctxp)
+  if (gimplify_omp_ctxp && !len0_append_list_used)
     for (; clause != chain; clause = OMP_CLAUSE_CHAIN (clause))
       if (OMP_CLAUSE_CODE (clause) == OMP_CLAUSE_MAP
 	  && DECL_P (OMP_CLAUSE_SIZE (clause)))
@@ -13120,6 +13146,7 @@ gimplify_adjust_omp_clauses (gimple_seq *pre_p, gimple_seq body, tree *list_p,
 
   /* Add in any implicit data sharing.  */
   struct gimplify_adjust_omp_clauses_data data;
+  data.append_list = NULL;
   if ((gimplify_omp_ctxp->region_type & ORT_ACC) == 0)
     {
       /* OpenMP.  Implicit clauses are added at the start of the clause list,
@@ -13147,6 +13174,14 @@ gimplify_adjust_omp_clauses (gimple_seq *pre_p, gimple_seq body, tree *list_p,
 		    "iterator");
 	  break;
 	}
+  if (data.append_list != NULL_TREE && *data.list_p != NULL_TREE)
+    {
+      for (c = *data.list_p; c && OMP_CLAUSE_CHAIN (c); c = OMP_CLAUSE_CHAIN (c))
+	;
+      OMP_CLAUSE_CHAIN (c) = data.append_list;
+    }
+  else if (data.append_list != NULL_TREE)
+    *data.list_p = data.append_list;
 
   gimplify_omp_ctxp = ctx->outer_context;
   delete_omp_context (ctx);

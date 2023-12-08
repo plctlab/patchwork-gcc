@@ -46,4 +46,6 @@ int main (void)
   return 0;
 }
 
-/* { dg-final { scan-tree-dump {map\(alloc:MEM\[\(char \*\)_[0-9]+\] \[len: [0-9]+\]\) map\(firstprivate:this \[pointer assign, bias: 0\]\) firstprivate\(m\) map\(to:\*__closure \[len: [0-9]+\]\) map\(firstprivate:__closure \[pointer assign, bias: 0\]\) map\(tofrom:\*_[0-9]+ \[len: [0-9]+\]\) map\(always_pointer:__closure->__this \[pointer assign, bias: 0\]\) map\(from:v \[len: [0-9]+\]\)} "gimple" } } */
+/* Note that 'this' = '__closure->__this' such that no pointer-assign for 'this' should appear.  */
+
+/* { dg-final { scan-tree-dump {firstprivate\(n\) firstprivate\(m\) map\(to:\*__closure \[len: [0-9]+\]\) map\(firstprivate:__closure \[pointer assign, bias: 0\]\) map\(tofrom:\*_[0-9]+ \[len: [0-9]+\]\) map\(always_pointer:__closure->__this \[pointer assign, bias: 0\]\) map\(from:v \[len: [0-9]+\]\)[\r\n]} "gimple" } } */

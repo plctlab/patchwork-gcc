@@ -1139,7 +1139,8 @@ gomp_map_vars_internal (struct gomp_device_descr *devicep,
       splay_tree_key n;
       if ((kind & typemask) == GOMP_MAP_ZERO_LEN_ARRAY_SECTION)
 	{
-	  n = gomp_map_0len_lookup (mem_map, &cur_node);
+	  /* Defer lookup when mapped item found.  */
+	  n = not_found_cnt ? NULL : gomp_map_0len_lookup (mem_map, &cur_node);
 	  if (!n)
 	    {
 	      tgt->list[i].key = NULL;
@@ -1407,7 +1408,15 @@ gomp_map_vars_internal (struct gomp_device_descr *devicep,
 		  }
 		continue;
 	      case GOMP_MAP_FIRSTPRIVATE_INT:
+		continue;
 	      case GOMP_MAP_ZERO_LEN_ARRAY_SECTION:
+		cur_node.host_start = (uintptr_t) hostaddrs[i];
+		cur_node.host_end = cur_node.host_start + sizes[i];
+		n = gomp_map_0len_lookup (mem_map, &cur_node);
+		if (n)
+		  gomp_map_vars_existing (devicep, aq, n, &cur_node,
+					  &tgt->list[i], kind & typemask, false,
+					  implicit, NULL, refcount_set);
 		continue;
 	      case GOMP_MAP_USE_DEVICE_PTR_IF_PRESENT:
 		/* The OpenACC 'host_data' construct only allows 'use_device'
