@@ -114,6 +114,11 @@
    (T1_REGNUM			13)
    (S0_REGNUM			23)
 
+   ;; Return path styles
+   (NORMAL_RETURN		0)
+   (SIBCALL_RETURN		1)
+   (EXCEPTION_RETURN		2)
+
    ;; PIC long branch sequences are never longer than 100 bytes.
    (MAX_PIC_BRANCH_LENGTH	100)
 ])
@@ -2983,7 +2988,7 @@
   [(const_int 2)]
   ""
 {
-  loongarch_expand_epilogue (false);
+  loongarch_expand_epilogue (NORMAL_RETURN);
   DONE;
 })
 
@@ -2991,7 +2996,7 @@
   [(const_int 2)]
   ""
 {
-  loongarch_expand_epilogue (true);
+  loongarch_expand_epilogue (SIBCALL_RETURN);
   DONE;
 })
 
@@ -3048,6 +3053,20 @@
     emit_insn (gen_eh_set_ra_di (operands[0]));
   else
     emit_insn (gen_eh_set_ra_si (operands[0]));
+
+  emit_jump_insn (gen_eh_return_internal ());
+  emit_barrier ();
+  DONE;
+})
+
+(define_insn_and_split "eh_return_internal"
+  [(eh_return)]
+  ""
+  "#"
+  "epilogue_completed"
+  [(const_int 0)]
+{
+  loongarch_expand_epilogue (EXCEPTION_RETURN);
   DONE;
 })
 
