@@ -23368,12 +23368,17 @@ aarch64_float_const_representable_p (rtx x)
 
   r = *CONST_DOUBLE_REAL_VALUE (x);
 
+
   /* We cannot represent infinities, NaNs or +/-zero.  We won't
      know if we have +zero until we analyse the mantissa, but we
      can reject the other invalid values.  */
   if (REAL_VALUE_ISINF (r) || REAL_VALUE_ISNAN (r)
       || REAL_VALUE_MINUS_ZERO (r))
     return false;
+
+  /* For BFmode, only handle 0.0. */
+  if (GET_MODE (x) == BFmode)
+    return real_iszero (&r, false);
 
   /* Extract exponent.  */
   r = real_value_abs (&r);
