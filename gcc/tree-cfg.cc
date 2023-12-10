@@ -4675,7 +4675,7 @@ verify_gimple_assign_single (gassign *stmt)
       if (!is_gimple_reg (lhs)
 	  && is_gimple_reg_type (TREE_TYPE (lhs)))
 	{
-	  error ("invalid RHS for gimple memory store: %qs", code_name);
+	  error ("invalid LHS for gimple memory store: %qs", code_name);
 	  debug_generic_stmt (lhs);
 	  debug_generic_stmt (rhs1);
 	  return true;
@@ -4701,7 +4701,10 @@ verify_gimple_assign_single (gassign *stmt)
 	  && !is_gimple_reg (rhs1)
 	  && is_gimple_reg_type (TREE_TYPE (lhs)))
 	{
-	  error ("invalid RHS for gimple memory store: %qs", code_name);
+	  if (!is_gimple_reg (rhs1))
+	    error ("invalid RHS for gimple memory store: %qs", code_name);
+	  else
+	    error ("invalid LHS for gimple memory store: %qs", code_name);
 	  debug_generic_stmt (lhs);
 	  debug_generic_stmt (rhs1);
 	  return true;
