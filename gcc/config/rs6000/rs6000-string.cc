@@ -305,7 +305,7 @@ select_block_compare_mode (unsigned HOST_WIDE_INT offset,
   else if (bytes == GET_MODE_SIZE (QImode))
     return QImode;
   else if (bytes < GET_MODE_SIZE (SImode)
-	   && TARGET_EFFICIENT_OVERLAPPING_UNALIGNED
+	   && TARGET_EFFICIENT_UNALIGNED_FIXEDPOINT
 	   && offset >= GET_MODE_SIZE (SImode) - bytes)
     /* This matches the case were we have SImode and 3 bytes
        and offset >= 1 and permits us to move back one and overlap
@@ -313,7 +313,7 @@ select_block_compare_mode (unsigned HOST_WIDE_INT offset,
        unwanted bytes off of the input.  */
     return SImode;
   else if (word_mode_ok && bytes < UNITS_PER_WORD
-	   && TARGET_EFFICIENT_OVERLAPPING_UNALIGNED
+	   && TARGET_EFFICIENT_UNALIGNED_FIXEDPOINT
 	   && offset >= UNITS_PER_WORD-bytes)
     /* Similarly, if we can use DImode it will get matched here and
        can do an overlapping read that ends at the end of the block.  */
@@ -1749,7 +1749,7 @@ expand_block_compare_gpr(unsigned HOST_WIDE_INT bytes, unsigned int base_align,
       load_mode_size = GET_MODE_SIZE (load_mode);
       if (bytes >= load_mode_size)
 	cmp_bytes = load_mode_size;
-      else if (TARGET_EFFICIENT_OVERLAPPING_UNALIGNED)
+      else if (TARGET_EFFICIENT_UNALIGNED_FIXEDPOINT)
 	{
 	  /* Move this load back so it doesn't go past the end.
 	     P8/P9 can do this efficiently.  */
@@ -2026,7 +2026,7 @@ expand_block_compare (rtx operands[])
   /* The code generated for p7 and older is not faster than glibc
      memcmp if alignment is small and length is not short, so bail
      out to avoid those conditions.  */
-  if (!TARGET_EFFICIENT_OVERLAPPING_UNALIGNED
+  if (!TARGET_EFFICIENT_UNALIGNED_FIXEDPOINT
       && ((base_align == 1 && bytes > 16)
 	  || (base_align == 2 && bytes > 32)))
     return false;
@@ -2168,7 +2168,7 @@ expand_strncmp_gpr_sequence (unsigned HOST_WIDE_INT bytes_to_compare,
       load_mode_size = GET_MODE_SIZE (load_mode);
       if (bytes_to_compare >= load_mode_size)
 	cmp_bytes = load_mode_size;
-      else if (TARGET_EFFICIENT_OVERLAPPING_UNALIGNED)
+      else if (TARGET_EFFICIENT_UNALIGNED_FIXEDPOINT)
 	{
 	  /* Move this load back so it doesn't go past the end.
 	     P8/P9 can do this efficiently.  */
