@@ -508,6 +508,8 @@ function_info::record_use (build_info &bi, insn_info *insn,
       // different but equal-sized modes.
       gcc_checking_assert (use->insn () == insn);
       if (HARD_REGISTER_NUM_P (regno)
+	  && ordered_p (GET_MODE_PRECISION (use->mode ()),
+			GET_MODE_PRECISION (mode))
 	  && partial_subreg_p (use->mode (), mode))
 	use->set_mode (mode);
       use->record_reference (ref, false);
