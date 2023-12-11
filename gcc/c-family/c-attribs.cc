@@ -1412,7 +1412,8 @@ handle_noicf_attribute (tree *node, tree name,
 			tree ARG_UNUSED (args),
 			int ARG_UNUSED (flags), bool *no_add_attrs)
 {
-  if (TREE_CODE (*node) != FUNCTION_DECL)
+  if (TREE_CODE (*node) != FUNCTION_DECL
+      && (TREE_CODE (*node) != VAR_DECL || !is_global_var (*node)))
     {
       warning (OPT_Wattributes, "%qE attribute ignored", name);
       *no_add_attrs = true;

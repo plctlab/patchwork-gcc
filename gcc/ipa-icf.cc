@@ -3417,7 +3417,8 @@ sem_item_optimizer::merge_classes (unsigned int prev_class_count,
 				 alias->node->dump_asm_name ());
 	      }
 
-	    if (lookup_attribute ("no_icf", DECL_ATTRIBUTES (alias->decl)))
+	    if (lookup_attribute ("no_icf", DECL_ATTRIBUTES (alias->decl))
+		|| lookup_attribute ("no_icf", DECL_ATTRIBUTES (source->decl)))
 	      {
 		if (dump_enabled_p ())
 		  dump_printf_loc (MSG_OPTIMIZED_LOCATIONS, loc,
