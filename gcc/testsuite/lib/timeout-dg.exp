@@ -47,3 +47,20 @@ proc dg-timeout-factor { args } {
 	set timeout_factor [lindex $args 0]
     }
 }
+
+#
+# dg-test-timeout-factor -- Scale the test execution timeout limit
+#
+
+proc dg-test-timeout-factor { args } {
+    global test_timeout_factor
+
+    set args [lreplace $args 0 0]
+    if { [llength $args] > 1 } {
+	if { [dg-process-target [lindex $args 1]] == "S" } {
+	    set test_timeout_factor [lindex $args 0]
+	}
+    } else {
+	set test_timeout_factor [lindex $args 0]
+    }
+}
