@@ -74,6 +74,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "output.h"
 #include "builtins.h"
 #include "opts.h"
+#include "ccmp.h"
 
 /* Some systems use __main in a way incompatible with its use in gcc, in these
    cases use the macros NAME__MAIN to give a quoted symbol and SYMBOL__MAIN to
@@ -3957,6 +3958,30 @@ expand_gimple_stmt_1 (gimple *stmt)
 	    target = expand_expr (lhs, NULL_RTX, VOIDmode, EXPAND_WRITE);
 	    if (GET_CODE (target) == SUBREG && SUBREG_PROMOTED_VAR_P (target))
 	      promoted = true;
+
+	    /* Try to expand conditonal compare.  */
+	    if (targetm.gen_ccmp_first
+		&& gimple_assign_rhs_class (assign_stmt) == GIMPLE_BINARY_RHS)
+	      {
+		machine_mode mode = TYPE_MODE (TREE_TYPE (lhs));
+		gcc_checking_assert (targetm.gen_ccmp_next != NULL);
+		temp = expand_ccmp_expr (stmt, mode);
+		if (temp)
+		  {
+		    if (promoted)
+		      {
+			int unsignedp = SUBREG_PROMOTED_SIGN (target);
+			convert_move (SUBREG_REG (target), temp, unsignedp);
+		      }
+		    else
+		     {
+			temp = force_operand (temp, target);
+			if (temp != target)
+			  emit_move_insn (target, temp);
+		      }
+		    return;
+		  }
+	      }
 
 	    ops.code = gimple_assign_rhs_code (assign_stmt);
 	    ops.type = TREE_TYPE (lhs);
