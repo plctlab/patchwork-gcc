@@ -6564,7 +6564,8 @@ vectorizable_operation (vec_info *vinfo,
         S2:     z = x + 1       -               VS2_0  */
 
   vect_get_vec_defs (vinfo, stmt_info, slp_node, ncopies,
-		     op0, &vec_oprnds0, op1, &vec_oprnds1, op2, &vec_oprnds2);
+		     op0, vectype, &vec_oprnds0, op1, vectype, &vec_oprnds1,
+		     op2, vectype, &vec_oprnds2);
   /* Arguments are ready.  Create the new vector stmt.  */
   FOR_EACH_VEC_ELT (vec_oprnds0, i, vop0)
     {

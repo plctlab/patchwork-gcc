@@ -4654,9 +4654,7 @@ vect_analyze_data_refs (vec_info *vinfo, poly_uint64 *min_vf, bool *fatal)
 	  gather_scatter_info gs_info;
 	  if (!vect_check_gather_scatter (stmt_info,
 					  as_a <loop_vec_info> (vinfo),
-					  &gs_info)
-	      || !get_vectype_for_scalar_type (vinfo,
-					       TREE_TYPE (gs_info.offset)))
+					  &gs_info))
 	    {
 	      if (fatal)
 		*fatal = false;

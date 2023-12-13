@@ -4962,7 +4962,7 @@ get_initial_def_for_reduction (loop_vec_info loop_vinfo,
 {
   class loop *loop = LOOP_VINFO_LOOP (loop_vinfo);
   tree scalar_type = TREE_TYPE (init_val);
-  tree vectype = get_vectype_for_scalar_type (loop_vinfo, scalar_type);
+  tree vectype = STMT_VINFO_VECTYPE (reduc_info);
   tree init_def;
   gimple_seq stmts = NULL;
 
