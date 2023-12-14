@@ -516,6 +516,9 @@ get_abi_tags (tree t)
   if (!t || TREE_CODE (t) == NAMESPACE_DECL)
     return NULL_TREE;
 
+  if (TREE_CODE (t) == TEMPLATE_DECL && DECL_TEMPLATE_RESULT (t))
+    t = DECL_TEMPLATE_RESULT (t);
+
   if (DECL_P (t) && DECL_DECLARES_TYPE_P (t))
     t = TREE_TYPE (t);
 
