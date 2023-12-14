@@ -1720,10 +1720,23 @@ extract_bit_field_1 (rtx str_rtx, poly_uint64 bitsize, poly_uint64 bitnum,
 	}
     }
 
+  /* The target may prefer to return the extracted value in a different mode
+     than INNERMODE.  */
+  machine_mode outermode = GET_MODE (op0);
+  machine_mode element_mode = GET_MODE_INNER (outermode);
+  if (VECTOR_MODE_P (outermode) && !MEM_P (op0))
+    {
+      enum insn_code icode
+	= convert_optab_handler (vec_extract_optab, outermode, element_mode);
+
+      if (icode != CODE_FOR_nothing)
+	element_mode = insn_data[icode].operand[0].mode;
+    }
+
   /* See if we can get a better vector mode before extracting.  */
   if (VECTOR_MODE_P (GET_MODE (op0))
       && !MEM_P (op0)
-      && GET_MODE_INNER (GET_MODE (op0)) != tmode)
+      && element_mode != tmode)
     {
       machine_mode new_mode;
 
@@ -1753,7 +1766,7 @@ extract_bit_field_1 (rtx str_rtx, poly_uint64 bitsize, poly_uint64 bitnum,
   /* Use vec_extract patterns for extracting parts of vectors whenever
      available.  If that fails, see whether the current modes and bitregion
      give a natural subreg.  */
-  machine_mode outermode = GET_MODE (op0);
+  outermode = GET_MODE (op0);
   if (VECTOR_MODE_P (outermode) && !MEM_P (op0))
     {
       scalar_mode innermode = GET_MODE_INNER (outermode);
