@@ -152,6 +152,10 @@ GCC_4.8.0 {
   __cpu_model
   __cpu_indicator_init
 }
+
+GCC_CET_FEATURES {
+  __cet_features
+}
 %else
 GCC_4.4.0 {
   __addtf3

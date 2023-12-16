@@ -43,18 +43,15 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
     }						\
     while (0)
 
-/* Linux CET kernel places a restore token on shadow stack for signal
-   handler to enhance security.  The restore token is 8 byte and aligned
-   to 8 bytes.  It is usually transparent to user programs since kernel
-   will pop the restore token when signal handler returns.  But when an
-   exception is thrown from a signal handler, now we need to pop the
-   restore token from shadow stack.  For x86-64, we just need to treat
-   the signal frame as normal frame.  For i386, we need to search for
-   the restore token to check if the original shadow stack is 8 byte
-   aligned.  If the original shadow stack is 8 byte aligned, we just
-   need to pop 2 slots, one restore token, from shadow stack.  Otherwise,
-   we need to pop 3 slots, one restore token + 4 byte padding, from
-   shadow stack.
+/* Linux CET kernel places a restore token on shadow stack followed by
+   additional information for signal handler to enhance security.  The
+   restore token is the previous shadow stack pointer with bit 63 set.
+   It is usually transparent to user programs since kernel will pop the
+   restore token and additional information when signal handler returns.
+   But when an exception is thrown from a signal handler, now we need to
+   pop the restore token and additional information from shadow stack.
+   For x86-64, we just need to get the previous shadow stack pointer from
+   the restore token.  For i386, shadow stack is unsupported.
 
    When popping a stack frame, we compare the return address on normal
    stack against the return address on shadow stack.  If they don't match,
@@ -66,65 +63,34 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
    3. Signal stack frame since kernel puts a restore token on shadow
       stack.
  */
-#undef _Unwind_Frames_Increment
 #ifdef __x86_64__
+#undef _Unwind_Frames_Increment
 #define _Unwind_Frames_Increment(exc, context, frames)	\
     {							\
       frames++;						\
-      if (exc->exception_class != 0			\
-	  && _Unwind_GetIP (context) != 0		\
-	  && !_Unwind_IsSignalFrame (context))		\
+      _Unwind_Word ssp = _get_ssp ();			\
+      if (ssp != 0)					\
 	{						\
-	  _Unwind_Word ssp = _get_ssp ();		\
-	  if (ssp != 0)					\
+	  ssp += 8 * frames;			\
+	  if (_Unwind_IsSignalFrame (context))		\
 	    {						\
-	      ssp += 8 * frames;			\
+	      /* Get the previous SSP.  */		\
+	      _Unwind_Word prev_ssp			\
+		= ((*(_Unwind_Word *) ssp)		\
+		   & ~0x8000000000000000LL);		\
+	      /* Skip to the previous frame.  */	\
+	      frames += (prev_ssp - ssp) / 8 - 1;	\
+	    }						\
+	  else if (_Unwind_GetIP (context) != 0		\
+		   && exc->exception_class != 0)	\
+	    {						\
 	      _Unwind_Word ra = *(_Unwind_Word *) ssp;	\
 	      if (ra != _Unwind_GetIP (context))	\
 		return _URC_FATAL_PHASE2_ERROR;		\
 	    }						\
 	}						\
     }
-#else
-#define _Unwind_Frames_Increment(exc, context, frames)	\
-  if (_Unwind_IsSignalFrame (context))			\
-    do							\
-      {							\
-	_Unwind_Word ssp, prev_ssp, token;		\
-	ssp = _get_ssp ();				\
-	if (ssp != 0)					\
-	  {						\
-	    /* Align shadow stack pointer to the next	\
-	       8 byte aligned boundary.  */		\
-	    ssp = (ssp + 4) & ~7;			\
-	    do						\
-	      {						\
-		/* Look for a restore token.  */	\
-		token = (*(_Unwind_Word *) (ssp - 8));	\
-		prev_ssp = token & ~7;			\
-		if (prev_ssp == ssp)			\
-		  break;				\
-		ssp += 8;				\
-	      }						\
-	    while (1);					\
-	    frames += (token & 0x4) ? 3 : 2;		\
-	  }						\
-      }							\
-    while (0);						\
-  else							\
-    {							\
-      frames++;						\
-      if (exc->exception_class != 0			\
-	  && _Unwind_GetIP (context) != 0)		\
-	{						\
-	  _Unwind_Word ssp = _get_ssp ();		\
-	  if (ssp != 0)					\
-	    {						\
-	      ssp += 4 * frames;			\
-	      _Unwind_Word ra = *(_Unwind_Word *) ssp;	\
-	      if (ra != _Unwind_GetIP (context))	\
-		return _URC_FATAL_PHASE2_ERROR;		\
-	    }						\
-	}						\
-    }
+
+/* Bit 0: Unwinder uses the restore token in signal frame.  */
+const int __cet_features = 1;
 #endif
