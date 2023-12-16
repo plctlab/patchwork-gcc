@@ -183,6 +183,23 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
       : basic_string(__svw._M_sv.data(), __svw._M_sv.size(), __a) { }
 #endif
 
+      _GLIBCXX17_CONSTEXPR
+      static bool
+      _S_permit_copying_indeterminate() noexcept
+      {
+	// Copying compile-time known _S_local_capacity + 1 bytes is much more
+	// efficient than copying runtime known __str.length() + 1. This
+	// function returns true, if such initialization is permitted even if
+	// the right side has indeterminate values.
+	//
+	// [dcl.init] permits initializing with indeterminate value of unsigned
+	// narrow character type.
+	//
+	// Library users should not specialize char_traits<char> so this is
+	// not observable for user.
+	return is_same<traits_type, char_traits<char> >::value;
+	  }
+
       // Use empty-base optimization: http://www.cantrip.org/emptyopt.html
       struct _Alloc_hider : allocator_type // TODO check __is_final
       {
@@ -675,8 +692,10 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
       {
 	if (__str._M_is_local())
 	  {
-	    traits_type::copy(_M_local_buf, __str._M_local_buf,
-			      __str.length() + 1);
+	    size_type __copy_count = _S_local_capacity + 1;
+	    if _GLIBCXX17_CONSTEXPR (!_S_permit_copying_indeterminate())
+	      __copy_count = __str.length() + 1;
+	    traits_type::copy(_M_local_buf, __str._M_local_buf, __copy_count);
 	  }
 	else
 	  {
@@ -714,8 +733,10 @@ _GLIBCXX_BEGIN_NAMESPACE_CXX11
       {
 	if (__str._M_is_local())
 	  {
-	    traits_type::copy(_M_local_buf, __str._M_local_buf,
-			      __str.length() + 1);
+	    size_type __copy_count = _S_local_capacity + 1;
+	    if _GLIBCXX17_CONSTEXPR (!_S_permit_copying_indeterminate())
+	      __copy_count = __str.length() + 1;
+	    traits_type::copy(_M_local_buf, __str._M_local_buf, __copy_count);
 	    _M_length(__str.length());
 	    __str._M_set_length(0);
 	  }
