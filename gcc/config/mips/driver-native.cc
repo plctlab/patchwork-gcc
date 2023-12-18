@@ -44,7 +44,7 @@ const char *
 host_detect_local_cpu (int argc, const char **argv)
 {
   const char *cpu = NULL;
-  char *ret = NULL;
+  char *ret = concat(" ", NULL);
   char buf[128];
   FILE *f;
   bool arch;
