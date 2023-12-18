@@ -7773,6 +7773,16 @@ lookup_elaborated_type (tree name, TAG_how how)
 	      // FIXME: This isn't quite right, if we find something
 	      // here, from the language PoV we're not supposed to
 	      // know it?
+	      // We at least need to do this in __cxxabiv1 to unify lazy
+	      // declarations of __class_type_info in build_dynamic_cast_1.
+	      if (current_namespace == abi_node)
+		{
+		  tree g = (BINDING_VECTOR_CLUSTER (*slot, 0)
+			    .slots[BINDING_SLOT_GLOBAL]);
+		  for (ovl_iterator iter (g); iter; ++iter)
+		    if (qualify_lookup (*iter, LOOK_want::TYPE))
+		      return *iter;
+		}
 	    }
 	}
     }
