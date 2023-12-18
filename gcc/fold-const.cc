@@ -1602,8 +1602,20 @@ const_binop (enum tree_code code, tree arg1, tree arg2)
     {
       tree type = TREE_TYPE (arg1);
       bool step_ok_p;
+
+      /* AND, IOR as well as XOR with a zerop can be handled directly.  */
       if (VECTOR_CST_STEPPED_P (arg1)
-	  && VECTOR_CST_STEPPED_P (arg2))
+	  && VECTOR_CST_DUPLICATE_P (arg2)
+	  && integer_zerop (VECTOR_CST_ELT (arg2, 0)))
+	step_ok_p = code == BIT_AND_EXPR || code == BIT_IOR_EXPR
+	  || code == BIT_XOR_EXPR;
+      else if (VECTOR_CST_STEPPED_P (arg2)
+	       && VECTOR_CST_DUPLICATE_P (arg1)
+	       && integer_zerop (VECTOR_CST_ELT (arg1, 0)))
+	step_ok_p = code == BIT_AND_EXPR || code == BIT_IOR_EXPR
+	  || code == BIT_XOR_EXPR;
+      else if (VECTOR_CST_STEPPED_P (arg1)
+	       && VECTOR_CST_STEPPED_P (arg2))
 	/* We can operate directly on the encoding if:
 
 	      a3 - a2 == a2 - a1 && b3 - b2 == b2 - b1
