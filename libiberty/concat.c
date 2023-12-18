@@ -169,6 +169,9 @@ loop:
   str = reconcat (str, "pre-", str, NULL);
 @end example
 
+Note: don't try to append string(s) to the a NULL string,
+as the process will stop at the first NULL argument.
+
 @end deftypefn
 
 */
