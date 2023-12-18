@@ -5231,12 +5231,7 @@ optimize_atomic_compare_exchange_p (gimple *stmt)
       || !auto_var_in_fn_p (TREE_OPERAND (expected, 0), current_function_decl)
       || TREE_THIS_VOLATILE (etype)
       || VECTOR_TYPE_P (etype)
-      || TREE_CODE (etype) == COMPLEX_TYPE
-      /* Don't optimize floating point expected vars, VIEW_CONVERT_EXPRs
-	 might not preserve all the bits.  See PR71716.  */
-      || SCALAR_FLOAT_TYPE_P (etype)
-      || maybe_ne (TYPE_PRECISION (etype),
-		   GET_MODE_BITSIZE (TYPE_MODE (etype))))
+      || TREE_CODE (etype) == COMPLEX_TYPE)
     return false;
 
   tree weak = gimple_call_arg (stmt, 3);
@@ -5275,8 +5270,10 @@ fold_builtin_atomic_compare_exchange (gimple_stmt_iterator *gsi)
   tree itype = TREE_VALUE (TREE_CHAIN (TREE_CHAIN (parmt)));
   tree ctype = build_complex_type (itype);
   tree expected = TREE_OPERAND (gimple_call_arg (stmt, 1), 0);
+  tree etype = TREE_TYPE (expected);
   bool throws = false;
   edge e = NULL;
+  tree allbits = NULL_TREE;
   gimple *g = gimple_build_assign (make_ssa_name (TREE_TYPE (expected)),
 				   expected);
   gsi_insert_before (gsi, g, GSI_SAME_STMT);
@@ -5287,6 +5284,67 @@ fold_builtin_atomic_compare_exchange (gimple_stmt_iterator *gsi)
 			       build1 (VIEW_CONVERT_EXPR, itype,
 				       gimple_assign_lhs (g)));
       gsi_insert_before (gsi, g, GSI_SAME_STMT);
+
+      // VIEW_CONVERT_EXPRs might not preserve all the bits.  See PR71716.
+      // so we have to keep track all bits here.
+      if (maybe_ne (TYPE_PRECISION (etype),
+		    GET_MODE_BITSIZE (TYPE_MODE (etype))))
+	{
+	  gimple_stmt_iterator cgsi
+	    = gsi_after_labels (single_succ (ENTRY_BLOCK_PTR_FOR_FN (cfun)));
+	  allbits = create_tmp_var (itype);
+	  // allbits is initialized to 0, which can be ignored first time
+	  gimple *init_stmt
+	    = gimple_build_assign (allbits, build_int_cst (itype, 0));
+	  gsi_insert_before (&cgsi, init_stmt, GSI_SAME_STMT);
+	  tree maskbits = create_tmp_var (itype);
+	  // maskbits is initialized to full 1 (0xFFF...)
+	  init_stmt = gimple_build_assign (maskbits, build1 (BIT_NOT_EXPR,
+							     itype, allbits));
+	  gsi_insert_before (&cgsi, init_stmt, GSI_SAME_STMT);
+
+	  // g = g & maskbits
+	  g = gimple_build_assign (make_ssa_name (itype),
+				   build2 (BIT_AND_EXPR, itype,
+					   gimple_assign_lhs (g), maskbits));
+	  gsi_insert_before (gsi, g, GSI_SAME_STMT);
+
+	  gimple *def_mask = gimple_build_assign (
+	    make_ssa_name (itype),
+	    build2 (LSHIFT_EXPR, itype, build_int_cst (itype, 1),
+		    build_int_cst (itype, TYPE_PRECISION (etype))));
+	  gsi_insert_before (gsi, def_mask, GSI_SAME_STMT);
+	  def_mask = gimple_build_assign (make_ssa_name (itype),
+					  build2 (MINUS_EXPR, itype,
+						  gimple_assign_lhs (def_mask),
+						  build_int_cst (itype, 1)));
+	  gsi_insert_before (gsi, def_mask, GSI_SAME_STMT);
+	  // maskbits = (1 << TYPE_PRECISION (etype)) - 1
+	  def_mask = gimple_build_assign (maskbits, SSA_NAME,
+					  gimple_assign_lhs (def_mask));
+	  gsi_insert_before (gsi, def_mask, GSI_SAME_STMT);
+
+	  // paddingbits = (~maskbits) & allbits
+	  def_mask
+	    = gimple_build_assign (make_ssa_name (itype),
+				   build1 (BIT_NOT_EXPR, itype,
+					   gimple_assign_lhs (def_mask)));
+	  gsi_insert_before (gsi, def_mask, GSI_SAME_STMT);
+	  def_mask
+	    = gimple_build_assign (make_ssa_name (itype),
+				   build2 (BIT_AND_EXPR, itype, allbits,
+					   gimple_assign_lhs (def_mask)));
+	  gsi_insert_before (gsi, def_mask, GSI_SAME_STMT);
+
+	  // g = g | paddingbits, i.e.,
+	  // g = (VIEW_CONVERT_EXPR<itype>(expected) & maskbits)
+	  //       | (allbits &(~maskbits))
+	  g = gimple_build_assign (make_ssa_name (itype),
+				   build2 (BIT_IOR_EXPR, itype,
+					   gimple_assign_lhs (g),
+					   gimple_assign_lhs (def_mask)));
+	  gsi_insert_before (gsi, g, GSI_SAME_STMT);
+	}
     }
   int flag = (integer_onep (gimple_call_arg (stmt, 3)) ? 256 : 0)
 	     + int_size_in_bytes (itype);
@@ -5335,6 +5393,13 @@ fold_builtin_atomic_compare_exchange (gimple_stmt_iterator *gsi)
     gsi_insert_after (gsi, g, GSI_NEW_STMT);
   if (!useless_type_conversion_p (TREE_TYPE (expected), itype))
     {
+      // save all bits here
+      if (maybe_ne (TYPE_PRECISION (etype),
+		    GET_MODE_BITSIZE (TYPE_MODE (etype))))
+	{
+	  g = gimple_build_assign (allbits, SSA_NAME, gimple_assign_lhs (g));
+	  gsi_insert_after (gsi, g, GSI_NEW_STMT);
+	}
       g = gimple_build_assign (make_ssa_name (TREE_TYPE (expected)),
 			       VIEW_CONVERT_EXPR,
 			       build1 (VIEW_CONVERT_EXPR, TREE_TYPE (expected),
