@@ -2624,9 +2624,7 @@ expand_shift_1 (enum tree_code code, machine_mode mode, rtx shifted,
 		  (mode, GET_MODE_BITSIZE (scalar_mode) - INTVAL (op1));
 	      else
 		{
-		  other_amount
-		    = simplify_gen_unary (NEG, GET_MODE (op1),
-					  op1, GET_MODE (op1));
+		  other_amount = negate_rtx (GET_MODE (op1), op1);
 		  HOST_WIDE_INT mask = GET_MODE_PRECISION (scalar_mode) - 1;
 		  other_amount
 		    = simplify_gen_binary (AND, GET_MODE (op1), other_amount,
