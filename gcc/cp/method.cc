@@ -1768,8 +1768,6 @@ decl_remember_implicit_trigger_p (tree decl)
 void
 synthesize_method (tree fndecl)
 {
-  bool nested = (current_function_decl != NULL_TREE);
-  tree context = decl_function_context (fndecl);
   bool need_body = true;
   tree stmt;
   location_t save_input_location = input_location;
@@ -1793,10 +1791,7 @@ synthesize_method (tree fndecl)
      it now.  */
   push_deferring_access_checks (dk_no_deferred);
 
-  if (! context)
-    push_to_top_level ();
-  else if (nested)
-    push_function_context ();
+  bool push_to_top = maybe_push_to_top_level (fndecl);
 
   input_location = DECL_SOURCE_LOCATION (fndecl);
 
@@ -1841,10 +1836,7 @@ synthesize_method (tree fndecl)
 
   input_location = save_input_location;
 
-  if (! context)
-    pop_from_top_level ();
-  else if (nested)
-    pop_function_context ();
+  maybe_pop_from_top_level (push_to_top);
 
   pop_deferring_access_checks ();
 
