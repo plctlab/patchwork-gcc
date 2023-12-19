@@ -3060,13 +3060,13 @@ package body Sem_Aggr is
                             (Iterator_Specification (Comp)));
             end if;
 
-            --  Key expression must have the type of the key. We analyze
+            --  Key expression must have the type of the key. We preanalyze
             --  a copy of the original expression, because it will be
             --  reanalyzed and copied as needed during expansion of the
             --  corresponding loop.
 
             Key_Expr := Key_Expression (Comp);
-            Analyze_And_Resolve (New_Copy_Tree (Key_Expr), Key_Type);
+            Preanalyze_And_Resolve (New_Copy_Tree (Key_Expr), Key_Type);
             End_Scope;
 
          elsif Present (Iterator_Specification (Comp)) then
