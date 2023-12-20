@@ -4564,7 +4564,7 @@ case "${target}" in
 		;;
 
 	riscv*-*-*)
-		supported_defaults="abi arch tune riscv_attribute isa_spec"
+		supported_defaults="abi arch tune riscv_attribute isa_spec cmodel"
 
 		case "${target}" in
 		riscv-* | riscv32*) xlen=32 ;;
@@ -4605,6 +4605,17 @@ case "${target}" in
 			;;
 		esac
 
+		case "${with_cmodel}" in
+		""|default|"medlow")
+			with_cmodel="CM_MEDLOW"
+			;;
+		"medany")
+			with_cmodel="CM_MEDANY"
+			;;
+		"large")
+			with_cmodel="CM_LARGE"
+			;;
+		esac
 
 		# Infer arch from --with-arch, --target, and --with-abi.
 		case "${with_arch}" in
@@ -4629,7 +4640,7 @@ case "${target}" in
 		if test "x${PYTHON}" != x; then
 			with_arch=`${PYTHON} ${srcdir}/config/riscv/arch-canonicalize -misa-spec=${with_isa_spec} ${with_arch}`
 		fi
-		tm_defines="${tm_defines} TARGET_RISCV_DEFAULT_ARCH=${with_arch}"
+		tm_defines="${tm_defines} TARGET_RISCV_DEFAULT_ARCH=${with_arch} TARGET+RISCV_DEFAULT_CMODEL=${with_cmodel}"
 
 		# Make sure --with-abi is valid.  If it was not specified,
 		# pick a default based on the ISA, preferring soft-float

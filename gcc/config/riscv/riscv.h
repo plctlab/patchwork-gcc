@@ -109,7 +109,7 @@ ASM_MISA_SPEC
 "%{march=*:%:riscv_expand_arch(%*)} "				\
 "%{!march=*:%{mcpu=*:%:riscv_expand_arch_from_cpu(%*)}} "
 
-#define TARGET_DEFAULT_CMODEL CM_MEDLOW
+#define TARGET_DEFAULT_CMODEL TARGET_RISCV_DEFAULT_CMODEL
 
 #define LOCAL_LABEL_PREFIX	"."
 #define USER_LABEL_PREFIX	""
