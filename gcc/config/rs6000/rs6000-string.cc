@@ -1946,6 +1946,9 @@ expand_block_compare_gpr(unsigned HOST_WIDE_INT bytes, unsigned int base_align,
 bool
 expand_block_compare (rtx operands[])
 {
+  if (optimize_insn_for_size_p ())
+    return false;
+
   rtx target = operands[0];
   rtx orig_src1 = operands[1];
   rtx orig_src2 = operands[2];
