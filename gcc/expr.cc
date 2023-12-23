@@ -5902,6 +5902,23 @@ expand_assignment (tree to, tree from, bool nontemporal)
 					nontemporal, reversep);
 		  convert_move (SUBREG_REG (to_rtx), to_rtx1,
 				SUBREG_PROMOTED_SIGN (to_rtx));
+
+		  rtx last = get_last_insn ();
+		  if (TRULY_NOOP_TRUNCATION_MODES_P (DImode, SImode)
+		      && known_ge (bitregion_end, 31)
+		      && SUBREG_PROMOTED_VAR_P (to_rtx)
+		      && SUBREG_PROMOTED_SIGN (to_rtx) == SRP_SIGNED
+		      && GET_MODE (to_rtx) == SImode
+		      && GET_MODE (SUBREG_REG (to_rtx)) == DImode
+		      && GET_CODE (SET_SRC (PATTERN (last))) == SIGN_EXTEND
+		      )
+		    {
+		      insn_code icode = convert_optab_handler
+						(trunc_optab, SImode, DImode);
+		      if (icode != CODE_FOR_nothing)
+			emit_unop_insn (icode, to_rtx,
+					SUBREG_REG (to_rtx), TRUNCATE);
+		    }
 		}
 	    }
 	  else

@@ -3292,6 +3292,28 @@ try_combine (rtx_insn *i3, rtx_insn *i2, rtx_insn *i1, rtx_insn *i0,
       n_occurrences = 0;		/* `subst' counts here */
       subst_low_luid = DF_INSN_LUID (i2);
 
+      /* Don't try to combine a TRUNCATE INSN, if it's DEST is SUBREG and has
+	 FLAG /s/u.  We use these 2 flags to mark this INSN as really needed:
+	 normally, it means that the bits of 31+ of this variable is polluted
+	 by a bitops.  The reason of existing of case (subreg:SI (reg:DI)) is
+	 that, the same hardreg may act as src and dest.  */
+      if (TRULY_NOOP_TRUNCATION_MODES_P (DImode, SImode)
+	  && INSN_P (i2))
+	{
+	  rtx i2dest_o = SET_DEST (PATTERN (i2));
+	  rtx i2src_o = SET_SRC (PATTERN (i2));
+	  if (GET_CODE (i2dest_o) == SUBREG
+	      && GET_MODE (i2dest_o) == SImode
+	      && GET_MODE (SUBREG_REG (i2dest_o)) == DImode
+	      && SUBREG_PROMOTED_VAR_P (i2dest_o)
+	      && SUBREG_PROMOTED_GET (i2dest_o) == SRP_SIGNED
+	      && GET_CODE (i2src_o) == TRUNCATE
+	      && GET_MODE (i2src_o) == SImode
+	      && rtx_equal_p (SUBREG_REG (i2dest_o), XEXP (i2src_o, 0))
+	      )
+	    return 0;
+	}
+
       /* If I1 feeds into I2 and I1DEST is in I1SRC, we need to make a unique
 	 copy of I2SRC each time we substitute it, in order to avoid creating
 	 self-referential RTL when we will be substituting I1SRC for I1DEST
@@ -5323,7 +5345,6 @@ find_split_point (rtx *loc, rtx_insn *insn, bool set_src)
 
    UNIQUE_COPY is nonzero if each substitution must be unique.  We do this
    by copying if `n_occurrences' is nonzero.  */
-
 static rtx
 subst (rtx x, rtx from, rtx to, int in_dest, int in_cond, int unique_copy)
 {
