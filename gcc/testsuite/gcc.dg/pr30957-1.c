@@ -3,7 +3,7 @@
    where each addition is a library call.  /
 /* { dg-require-effective-target hard_float } */
 /* -fassociative-math requires -fno-trapping-math and -fno-signed-zeros. */
-/* { dg-options "-O2 -funroll-loops -fassociative-math -fno-trapping-math -fno-signed-zeros -fvariable-expansion-in-unroller -fdump-rtl-loop2_unroll" } */
+/* { dg-options "-O2 -funroll-loops -fassociative-math -fno-trapping-math -fno-signed-zeros -fvariable-expansion-in-unroller -fdump-rtl-loop2_unroll -fdump-tree-vect-details" } */
 
 extern void abort (void);
 extern void exit (int);
@@ -34,3 +34,4 @@ main ()
 }
 
 /* { dg-final { scan-rtl-dump "Expanding Accumulator" "loop2_unroll" { xfail mmix-*-* } } } */
+/* { dg-final { scan-tree-dump-times "Disabling unrolling due to variable-length vectorization factor" 1 "vect" { target { riscv_v } xfail { vect_variable_length } } } } */
