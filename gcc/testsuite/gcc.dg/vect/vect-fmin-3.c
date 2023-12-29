@@ -1,4 +1,5 @@
 /* { dg-require-effective-target vect_float } */
+/* { dg-additional-options "-ffast-math" } */
 
 #include "tree-vect.h"
 
