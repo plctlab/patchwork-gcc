@@ -3969,6 +3969,49 @@ mips_binary_cost (rtx x, int single_cost, int double_cost, bool speed)
 {
   int cost;
 
+  rtx op0 = XEXP (x, 0);
+  rtx op1 = XEXP (x, 1);
+  rtx op00, op01, op10, op11;
+  if (GET_RTX_LENGTH (GET_CODE (op0)) > 0)
+    op00 = XEXP (op0, 0);
+  if (GET_RTX_LENGTH (GET_CODE (op0)) > 1)
+    op01 = XEXP (op0, 1);
+  if (GET_RTX_LENGTH (GET_CODE (op1)) > 0)
+    op10 = XEXP (op1, 0);
+  if (GET_RTX_LENGTH (GET_CODE (op1)) > 1)
+    op11 = XEXP (op1, 1);
+  /* On TARGET_64BIT, these 2 RTXs can be converted to INS instruction.
+     (ior:SI (and:SI (subreg:SI (reg/v:DI 200) 0)
+		(const_int 16777215 [0xffffff]))
+	     (ashift:SI (subreg:SI (reg:QI 205) 0)
+		(const_int 24 [0x18]))
+     )
+     (ior:SI (ashift:SI (subreg:SI (reg:HI 201) 0)
+		(const_int 16 [0x10]))
+	     (zero_extend:SI (subreg:HI (reg/v:DI 198) 0)))
+  */
+  if (TARGET_64BIT && ISA_HAS_EXT_INS
+      && GET_CODE (x) == IOR && GET_MODE (x) == SImode
+      && GET_MODE (op0) == SImode && GET_MODE (op1) == SImode
+      && ((GET_CODE (op0) == AND && GET_CODE (op1) == ASHIFT
+	     && SUBREG_P (op00) && GET_MODE (op00) == SImode
+		&& GET_MODE (SUBREG_REG (op00)) == DImode
+		&& SUBREG_BYTE (op00) == 0
+	     && GET_CODE (op01) == CONST_INT && INTVAL (op01) == 0xffffff
+	     && SUBREG_P (op10) && GET_MODE (op10) == SImode
+		&& GET_MODE (SUBREG_REG (op10)) == QImode
+		&& SUBREG_BYTE (op00) == 0
+	     && GET_CODE (op11) == CONST_INT && INTVAL (op11) == 0x18)
+	  || (GET_CODE (op0) == ASHIFT && GET_CODE (op1) == ZERO_EXTEND
+		&& SUBREG_P (op00) && GET_MODE (op00) == SImode
+		   && GET_MODE (SUBREG_REG (op00)) == HImode
+		   && SUBREG_BYTE (op00) == 0
+		&& GET_CODE (op01) == CONST_INT && INTVAL (op01) == 0x10
+		&& SUBREG_P (op10) && GET_MODE (op10) == HImode
+			&& GET_MODE (SUBREG_REG (op10)) == DImode
+			&& SUBREG_BYTE (op10) == 0)))
+    return COSTS_N_INSNS (1);
+
   if (GET_MODE_SIZE (GET_MODE (x)) == UNITS_PER_WORD * 2)
     cost = double_cost;
   else
