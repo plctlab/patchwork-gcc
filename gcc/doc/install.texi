@@ -3220,7 +3220,7 @@ Likewise, in order to run only the @command{g++} ``old-deja'' tests in
 the testsuite with filenames matching @samp{9805*}, you would use
 
 @smallexample
-make check-g++ RUNTESTFLAGS="old-deja.exp=9805* @var{other-options}"
+make check-gcc-c++ RUNTESTFLAGS="old-deja.exp=9805* @var{other-options}"
 @end smallexample
 
 The file-matching expression following @var{filename}@command{.exp=} is treated
@@ -3229,8 +3229,8 @@ may be passed, although any whitespace must either be escaped or surrounded by
 single quotes if multiple expressions are desired. For example,
 
 @smallexample
-make check-g++ RUNTESTFLAGS="old-deja.exp=9805*\ virtual2.c @var{other-options}"
-make check-g++ RUNTESTFLAGS="'old-deja.exp=9805* virtual2.c' @var{other-options}"
+make check-gcc-c++ RUNTESTFLAGS="old-deja.exp=9805*\ virtual2.c @var{other-options}"
+make check-gcc-c++ RUNTESTFLAGS="'old-deja.exp=9805* virtual2.c' @var{other-options}"
 @end smallexample
 
 The @file{*.exp} files are located in the testsuite directories of the GCC
@@ -3248,7 +3248,7 @@ You can pass multiple options to the testsuite using the
 work outside the makefiles.  For example,
 
 @smallexample
-make check-g++ RUNTESTFLAGS="--target_board=unix/-O3/-fmerge-constants"
+make check-gcc-c++ RUNTESTFLAGS="--target_board=unix/-O3/-fmerge-constants"
 @end smallexample
 
 will run the standard @command{g++} testsuites (``unix'' is the target name
