@@ -2907,7 +2907,11 @@ expand_parity (scalar_int_mode mode, rtx op0, rtx target)
 	  if (temp)
 	    {
 	      if (mclass != MODE_INT
-		  || !TRULY_NOOP_TRUNCATION_MODES_P (mode, wider_mode))
+		  || (known_lt (GET_MODE_SIZE (mode),
+				GET_MODE_SIZE (wider_mode))
+		      ? !TRULY_NOOP_TRUNCATION_MODES_P (mode, wider_mode)
+		      : maybe_ne (GET_MODE_SIZE (mode),
+				  GET_MODE_SIZE (wider_mode))))
 		return convert_to_mode (mode, temp, 0);
 	      else
 		return gen_lowpart (mode, temp);

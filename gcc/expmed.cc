@@ -650,6 +650,7 @@ store_bit_field_using_insv (const extraction_insn *insv, rtx op0,
      X) 0)) is (reg:N X).  */
   if (GET_CODE (xop0) == SUBREG
       && REG_P (SUBREG_REG (xop0))
+      && paradoxical_subreg_p (xop0)
       && !TRULY_NOOP_TRUNCATION_MODES_P (GET_MODE (SUBREG_REG (xop0)),
 					 op_mode))
     {
@@ -1584,7 +1585,11 @@ extract_bit_field_using_extv (const extraction_insn *extv, rtx op0,
 	 mode.  Instead, create a temporary and use convert_move to set
 	 the target.  */
       if (REG_P (target)
-	  && TRULY_NOOP_TRUNCATION_MODES_P (GET_MODE (target), ext_mode)
+	  && (known_lt (GET_MODE_SIZE (GET_MODE (target)),
+			GET_MODE_SIZE (ext_mode))
+	      ? TRULY_NOOP_TRUNCATION_MODES_P (GET_MODE (target), ext_mode)
+	      : known_eq (GET_MODE_SIZE (GET_MODE (target)),
+			  GET_MODE_SIZE (ext_mode)))
 	  && (temp = gen_lowpart_if_possible (ext_mode, target)))
 	{
 	  target = temp;
@@ -1625,7 +1630,9 @@ extract_bit_field_as_subreg (machine_mode mode, rtx op0,
   if (multiple_p (bitnum, BITS_PER_UNIT, &bytenum)
       && known_eq (bitsize, GET_MODE_BITSIZE (mode))
       && lowpart_bit_field_p (bitnum, bitsize, op0_mode)
-      && TRULY_NOOP_TRUNCATION_MODES_P (mode, op0_mode))
+      && (known_lt (GET_MODE_SIZE (mode), GET_MODE_SIZE (op0_mode))
+	  ? TRULY_NOOP_TRUNCATION_MODES_P (mode, op0_mode)
+	  : known_eq (GET_MODE_SIZE (mode), GET_MODE_SIZE (op0_mode))))
     return simplify_gen_subreg (mode, op0, op0_mode, bytenum);
   return NULL_RTX;
 }

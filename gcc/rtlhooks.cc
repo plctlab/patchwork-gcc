@@ -66,7 +66,8 @@ gen_lowpart_general (machine_mode mode, rtx x)
       scalar_int_mode xmode;
       if (is_a <scalar_int_mode> (GET_MODE (x), &xmode)
 	  && GET_MODE_SIZE (xmode) <= UNITS_PER_WORD
-	  && TRULY_NOOP_TRUNCATION_MODES_P (mode, xmode)
+	  && (known_ge (GET_MODE_SIZE (mode), GET_MODE_SIZE (xmode))
+	      || TRULY_NOOP_TRUNCATION_MODES_P (mode, xmode))
 	  && !reload_completed)
 	return gen_lowpart_general (mode, force_reg (xmode, x));
 

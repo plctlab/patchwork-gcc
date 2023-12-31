@@ -7608,7 +7608,8 @@ make_extraction (machine_mode mode, rtx inner, HOST_WIDE_INT pos,
 	   && (pos == 0 || REG_P (inner))
 	   && (inner_mode == tmode
 	       || !REG_P (inner)
-	       || TRULY_NOOP_TRUNCATION_MODES_P (tmode, inner_mode)
+	       || (known_lt (GET_MODE_SIZE (tmode), GET_MODE_SIZE (inner_mode))
+		   && TRULY_NOOP_TRUNCATION_MODES_P (tmode, inner_mode))
 	       || reg_truncated_to_mode (tmode, inner))
 	   && (! in_dest
 	       || (REG_P (inner)
@@ -7851,6 +7852,8 @@ make_extraction (machine_mode mode, rtx inner, HOST_WIDE_INT pos,
       /* On the LHS, don't create paradoxical subregs implicitely truncating
 	 the register unless TARGET_TRULY_NOOP_TRUNCATION.  */
       if (in_dest
+	  && known_lt (GET_MODE_SIZE (GET_MODE (inner)),
+		       GET_MODE_SIZE (wanted_inner_mode))
 	  && !TRULY_NOOP_TRUNCATION_MODES_P (GET_MODE (inner),
 					     wanted_inner_mode))
 	return NULL_RTX;

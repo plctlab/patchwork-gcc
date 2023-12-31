@@ -617,7 +617,7 @@ simplify_context::simplify_truncation (machine_mode mode, rtx op,
   unsigned int op_precision = GET_MODE_UNIT_PRECISION (op_mode);
   scalar_int_mode int_mode, int_op_mode, subreg_mode;
 
-  gcc_assert (precision <= op_precision);
+  gcc_assert (precision < op_precision);
 
   /* Optimize truncations of zero and sign extended values.  */
   if (GET_CODE (op) == ZERO_EXTEND
@@ -1207,6 +1207,10 @@ simplify_context::simplify_unary_operation_1 (rtx_code code, machine_mode mode,
       break;
 
     case TRUNCATE:
+      /* Check for useless truncation.  */
+      if (GET_MODE (op) == mode)
+	return op;
+
       /* Don't optimize (lshiftrt (mult ...)) as it would interfere
 	 with the umulXi3_highpart patterns.  */
       if (GET_CODE (op) == LSHIFTRT
@@ -1271,9 +1275,6 @@ simplify_context::simplify_unary_operation_1 (rtx_code code, machine_mode mode,
 	    return temp;
 	}
 
-      /* Check for useless truncation.  */
-      if (GET_MODE (op) == mode)
-	return op;
       break;
 
     case FLOAT_TRUNCATE:
