@@ -991,7 +991,8 @@ worker_single_copy (basic_block from, basic_block to,
 		    hash_set<tree> *worker_partitioned_uses,
 		    tree record_type, record_field_map_t *record_field_map,
 		    unsigned HOST_WIDE_INT placement,
-		    bool isolate_broadcasts, bool has_gang_private_write)
+		    bool isolate_broadcasts, bool has_gang_private_write,
+		    hash_set<tree> *array_reduction_base_vars)
 {
   /* If we only have virtual defs, we'll have no record type, but we still want
      to emit single_copy_start and (particularly) single_copy_end to act as
@@ -1015,6 +1016,37 @@ worker_single_copy (basic_block from, basic_block to,
   edge e = split_block (to, gsi_stmt (gsi));
   basic_block barrier_block = e->dest;
 
+  gimple_seq local_asgns = NULL;
+
+  /* For accesses of variables used in array reductions, instead of
+     propagating the value for the main thread to all other worker threads
+     (which doesn't make sense as a reduction private var), move the defs
+     of such SSA_NAMEs to before the copy block and leave them alone (each
+     thread should access their own local copy).  */
+  for (gimple_stmt_iterator i = gsi_after_labels (from); !gsi_end_p (i);)
+    {
+      gimple *stmt = gsi_stmt (i);
+      if (gimple_assign_single_p (stmt)
+	  && def_escapes_block->contains (gimple_assign_lhs (stmt))
+	  && TREE_CODE (gimple_assign_lhs (stmt)) == SSA_NAME)
+	{
+	  tree lhs = gimple_assign_lhs (stmt);
+	  tree rhs = gimple_assign_rhs1 (stmt);
+	  if (TREE_CODE (rhs) == ADDR_EXPR)
+	    {
+	      rhs = TREE_OPERAND (rhs, 0);
+	      if (local_var_based_p (rhs)
+		  && array_reduction_base_vars->contains (lhs))
+		{
+		  gsi_remove (&i, false);
+		  gimple_seq_add_stmt (&local_asgns, stmt);
+		  continue;
+		}
+	    }
+	}
+      gsi_next (&i);
+    }
+
   gimple_stmt_iterator start = gsi_after_labels (from);
 
   tree decl = builtin_decl_explicit (BUILT_IN_GOACC_SINGLE_COPY_START);
@@ -1028,6 +1060,9 @@ worker_single_copy (basic_block from, basic_block to,
   gimple_call_set_lhs (call, lhs);
   gsi_insert_before (&start, call, GSI_NEW_STMT);
   update_stmt (call);
+
+  if (local_asgns)
+    gsi_insert_seq_before (&start, local_asgns, GSI_SAME_STMT);
 
   /* The shared-memory range for this block overflowed.  Add a barrier before
      the GOACC_single_copy_start call.  */
@@ -1127,6 +1162,22 @@ worker_single_copy (basic_block from, basic_block to,
 
 	  if (gimple_nop_p (def_stmt))
 	    continue;
+
+	  /* For accesses of variables used in array reductions, skip creating
+	     the barrier phi. Each thread runs same def_stmt to access
+	     local variable, there is no main/worker divide here.  */
+	  if (gimple_assign_single_p (def_stmt))
+	    {
+	      tree lhs = gimple_assign_lhs (def_stmt);
+	      tree rhs = gimple_assign_rhs1 (def_stmt);
+	      if (TREE_CODE (rhs) == ADDR_EXPR)
+		{
+		  rhs = TREE_OPERAND (rhs, 0);
+		  if (local_var_based_p (rhs)
+		      && array_reduction_base_vars->contains (lhs))
+		    continue;
+		}
+	    }
 
 	  /* The barrier phi takes one result from the actual work of the
 	     block we're neutering, and the other result is constant zero of
@@ -1248,7 +1299,8 @@ neuter_worker_single (parallel_g *par, unsigned outer_mask,
 		      hash_set<tree> *partitioned_var_uses,
 		      record_field_map_t *record_field_map,
 		      blk_offset_map_t *blk_offset_map,
-		      bitmap writes_gang_private)
+		      bitmap writes_gang_private,
+		      hash_set<tree> *array_reduction_base_vars)
 {
   unsigned mask = outer_mask | par->mask;
 
@@ -1398,7 +1450,8 @@ neuter_worker_single (parallel_g *par, unsigned outer_mask,
 				  &worker_partitioned_uses, record_type,
 				  record_field_map,
 				  offset, !range_allocated,
-				  has_gang_private_write);
+				  has_gang_private_write,
+				  array_reduction_base_vars);
 	    }
 	  else
 	    worker_single_simple (block, block, &def_escapes_block);
@@ -1436,11 +1489,13 @@ neuter_worker_single (parallel_g *par, unsigned outer_mask,
   if (par->inner)
     neuter_worker_single (par->inner, mask, worker_single, vector_single,
 			  prop_set, partitioned_var_uses, record_field_map,
-			  blk_offset_map, writes_gang_private);
+			  blk_offset_map, writes_gang_private,
+			  array_reduction_base_vars);
   if (par->next)
     neuter_worker_single (par->next, outer_mask, worker_single, vector_single,
 			  prop_set, partitioned_var_uses, record_field_map,
-			  blk_offset_map, writes_gang_private);
+			  blk_offset_map, writes_gang_private,
+			  array_reduction_base_vars);
 }
 
 static void
@@ -1587,7 +1642,8 @@ merge_ranges (splay_tree accum, splay_tree sp)
 
 static void
 oacc_do_neutering (unsigned HOST_WIDE_INT bounds_lo,
-		   unsigned HOST_WIDE_INT bounds_hi)
+		   unsigned HOST_WIDE_INT bounds_hi,
+		   hash_set<tree> *array_reduction_base_vars)
 {
   bb_stmt_map_t bb_stmt_map;
   auto_bitmap worker_single, vector_single;
@@ -1792,7 +1848,8 @@ oacc_do_neutering (unsigned HOST_WIDE_INT bounds_lo,
 
   neuter_worker_single (par, mask, worker_single, vector_single, &prop_set,
 			&partitioned_var_uses, &record_field_map,
-			&blk_offset_map, writes_gang_private);
+			&blk_offset_map, writes_gang_private,
+			array_reduction_base_vars);
 
   record_field_map.empty ();
 
@@ -1830,6 +1887,9 @@ execute_omp_oacc_neuter_broadcast ()
       reduction_size[i] = 0;
       private_size[i] = 0;
     }
+
+  /* Set of base variables referencing arrays used in array reductions.  */
+  hash_set<tree> array_reduction_base_vars;
 
   /* Calculate shared memory size required for reduction variables and
      gang-private memory for this offloaded function.  */
@@ -1869,6 +1929,15 @@ execute_omp_oacc_neuter_broadcast ()
 			   + tree_to_uhwi (TYPE_SIZE_UNIT (var_type)));
 		      reduction_size[level]
 			= MAX (reduction_size[level], limit);
+
+		      tree lhs = gimple_get_lhs (call);
+		      if (TREE_CODE (lhs) == MEM_REF
+			  && TREE_CODE (TREE_OPERAND (lhs, 0)) == SSA_NAME
+			  && TREE_CODE (TREE_TYPE (lhs)) == ARRAY_TYPE)
+			{
+			  tree addr = TREE_OPERAND (lhs, 0);
+			  array_reduction_base_vars.add (addr);
+			}
 		    }
 		}
 	      break;
@@ -1917,7 +1986,7 @@ execute_omp_oacc_neuter_broadcast ()
 
   /* Perform worker partitioning unless we know 'num_workers(1)'.  */
   if (dims[GOMP_DIM_WORKER] != 1)
-    oacc_do_neutering (bounds_lo, bounds_hi);
+    oacc_do_neutering (bounds_lo, bounds_hi, &array_reduction_base_vars);
 
   return 0;
 }

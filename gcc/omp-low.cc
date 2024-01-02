@@ -1705,10 +1705,14 @@ scan_sharing_clauses (tree clauses, omp_context *ctx)
 		    }
 		  gcc_assert (!splay_tree_lookup (ctx->field_map,
 						  (splay_tree_key) decl));
+		  tree ptr_type = ptr_type_node;
+		  if (TREE_CODE (decl) == ARRAY_REF)
+		    ptr_type
+		      = build_pointer_type (TREE_TYPE (TREE_OPERAND (decl, 0)));
 		  tree field
 		    = build_decl (OMP_CLAUSE_LOCATION (c),
-				  FIELD_DECL, NULL_TREE, ptr_type_node);
-		  SET_DECL_ALIGN (field, TYPE_ALIGN (ptr_type_node));
+				  FIELD_DECL, NULL_TREE, ptr_type);
+		  SET_DECL_ALIGN (field, TYPE_ALIGN (ptr_type));
 		  insert_field_into_struct (ctx->record_type, field);
 		  splay_tree_insert (ctx->field_map, (splay_tree_key) decl,
 				     (splay_tree_value) field);
@@ -4513,6 +4517,27 @@ maybe_lookup_decl_in_outer_ctx (tree decl, omp_context *ctx)
 tree
 omp_reduction_init_op (location_t loc, enum tree_code op, tree type)
 {
+  if (TREE_CODE (type) == ARRAY_TYPE)
+    {
+      vec<constructor_elt, va_gc> *v = NULL;
+      HOST_WIDE_INT min = tree_to_shwi (TYPE_MIN_VALUE (TYPE_DOMAIN (type)));
+      HOST_WIDE_INT max = tree_to_shwi (TYPE_MAX_VALUE (TYPE_DOMAIN (type)));
+      tree t = omp_reduction_init_op (loc, op, TREE_TYPE (type));
+      for (HOST_WIDE_INT i = min; i <= max; i++)
+	CONSTRUCTOR_APPEND_ELT (v, size_int (i), t);
+      return build_constructor (type, v);
+    }
+  else if (TREE_CODE (type) == RECORD_TYPE)
+    {
+      vec<constructor_elt, va_gc> *v = NULL;
+      for (tree fld = TYPE_FIELDS (type); fld; fld = TREE_CHAIN (fld))
+	if (TREE_CODE (fld) == FIELD_DECL)
+	  CONSTRUCTOR_APPEND_ELT (v, fld,
+				  omp_reduction_init_op (loc, op,
+							 TREE_TYPE (fld)));
+      return build_constructor (type, v);
+    }
+
   switch (op)
     {
     case PLUS_EXPR:
@@ -7499,6 +7524,21 @@ lower_oacc_reductions (location_t loc, tree clauses, tree level, bool inner,
 	gcc_checking_assert (!is_oacc_kernels_decomposed_part (ctx));
 
 	tree orig = OMP_CLAUSE_DECL (c);
+	tree addr = NULL_TREE;
+	if (TREE_CODE (orig) == MEM_REF)
+	  {
+	    /* Peel away MEM_REF to get at base array VAR_DECL.  */
+	    addr = TREE_OPERAND (orig, 0);
+	    if (TREE_CODE (addr) == POINTER_PLUS_EXPR)
+	      addr = TREE_OPERAND (addr, 0);
+	    if (TREE_CODE (addr) == ADDR_EXPR)
+	      addr = TREE_OPERAND (addr, 0);
+	    else if (INDIRECT_REF_P (addr))
+	      addr = TREE_OPERAND (addr, 0);
+	    orig = addr;
+	    gcc_assert (!is_variable_sized (addr));
+	  }
+
 	tree var = maybe_lookup_decl (orig, ctx);
 	tree ref_to_res = NULL_TREE;
 	tree incoming, outgoing, v1, v2, v3;
@@ -7569,6 +7609,18 @@ lower_oacc_reductions (location_t loc, tree clauses, tree level, bool inner,
 	  do_lookup:
 	    /* This is the outermost construct with this reduction,
 	       see if there's a mapping for it.  */
+	    if (TREE_CODE (TREE_TYPE (orig)) == ARRAY_TYPE
+		&& gimple_code (outer->stmt) == GIMPLE_OMP_TARGET)
+	      /* Recover original MEM_REF in OMP_CLAUSE_DECL from array
+		 VAR_DECL discovered above. This is due to field lookup
+		 key based on whole MEM_REF earlier during scanning.  */
+	      for (tree c = gimple_omp_target_clauses (outer->stmt); c;
+		   c = OMP_CLAUSE_CHAIN (c))
+		if (OMP_CLAUSE_CODE (c) == OMP_CLAUSE_MAP
+		    && TREE_CODE (OMP_CLAUSE_DECL (c)) == ARRAY_REF
+		    && TREE_OPERAND (OMP_CLAUSE_DECL (c), 0) == orig)
+		  orig = OMP_CLAUSE_DECL (c);
+
 	    if (gimple_code (outer->stmt) == GIMPLE_OMP_TARGET
 		&& maybe_lookup_field (orig, outer) && !is_private)
 	      {
@@ -7640,10 +7692,10 @@ lower_oacc_reductions (location_t loc, tree clauses, tree level, bool inner,
 	   variable-sized type.  */
 	fixed_size_mode mode
 	  = as_a <fixed_size_mode> (TYPE_MODE (TREE_TYPE (var)));
-	unsigned align = GET_MODE_ALIGNMENT (mode) /  BITS_PER_UNIT;
+	unsigned align = TYPE_ALIGN_UNIT (TREE_TYPE (var));
 	offset = (offset + align - 1) & ~(align - 1);
 	tree off = build_int_cst (sizetype, offset);
-	offset += GET_MODE_SIZE (mode);
+	offset += tree_to_uhwi (TYPE_SIZE_UNIT (TREE_TYPE (var)));
 
 	if (!init_code)
 	  {

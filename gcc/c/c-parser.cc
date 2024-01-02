@@ -15683,13 +15683,21 @@ c_parser_omp_clause_reduction (c_parser *parser, enum omp_clause_code kind,
 		code = MAX_EXPR;
 		break;
 	      }
+	    if (!is_omp)
+	      goto name_error;
 	    reduc_id = c_parser_peek_token (parser)->value;
 	    break;
 	  }
 	default:
-	  c_parser_error (parser,
-			  "expected %<+%>, %<*%>, %<-%>, %<&%>, "
-			  "%<^%>, %<|%>, %<&&%>, %<||%> or identifier");
+	name_error:
+	  if (is_omp)
+	    c_parser_error (parser,
+			    "expected %<+%>, %<*%>, %<-%>, %<&%>, "
+			    "%<^%>, %<|%>, %<&&%>, %<||%> or identifier");
+	  else
+	    c_parser_error (parser,
+			    "expected %<+%>, %<*%>, %<-%>, %<&%>, "
+			    "%<^%>, %<|%>, %<&&%>, %<||%>, %<min%> or %<max%>");
 	  c_parser_skip_until_found (parser, CPP_CLOSE_PAREN, 0);
 	  return list;
 	}
@@ -15702,6 +15710,11 @@ c_parser_omp_clause_reduction (c_parser *parser, enum omp_clause_code kind,
 	  nl = c_parser_omp_variable_list (parser, clause_loc, kind, list);
 	  for (c = nl; c != list; c = OMP_CLAUSE_CHAIN (c))
 	    {
+	      OMP_CLAUSE_REDUCTION_CODE (c) = code;
+	      /* OpenACC does not require anything below.  */
+	      if (!is_omp)
+		continue;
+
 	      tree d = OMP_CLAUSE_DECL (c), type;
 	      if (TREE_CODE (d) != TREE_LIST)
 		type = TREE_TYPE (d);
@@ -15723,7 +15736,6 @@ c_parser_omp_clause_reduction (c_parser *parser, enum omp_clause_code kind,
 		}
 	      while (TREE_CODE (type) == ARRAY_TYPE)
 		type = TREE_TYPE (type);
-	      OMP_CLAUSE_REDUCTION_CODE (c) = code;
 	      if (task)
 		OMP_CLAUSE_REDUCTION_TASK (c) = 1;
 	      else if (inscan)

@@ -39171,6 +39171,12 @@ cp_parser_omp_clause_reduction (cp_parser *parser, enum omp_clause_code kind,
 	    code = TRUTH_ANDIF_EXPR;
 	  else if (id == ovl_op_identifier (false, TRUTH_ORIF_EXPR))
 	    code = TRUTH_ORIF_EXPR;
+	  if (code == ERROR_MARK && !is_omp)
+	    {
+	      cp_parser_error (parser, "expected %<+%>, %<*%>, %<-%>, %<&%>, "
+			       "%<^%>, %<|%>, %<&&%>, %<||%>, %<min%> or %<max%>");
+	      goto resync_fail;
+	    }
 	  id = omp_reduction_id (code, id, NULL_TREE);
 	  tree scope = parser->scope;
 	  if (scope)
@@ -39198,6 +39204,10 @@ cp_parser_omp_clause_reduction (cp_parser *parser, enum omp_clause_code kind,
   for (c = nlist; c != list; c = OMP_CLAUSE_CHAIN (c))
     {
       OMP_CLAUSE_REDUCTION_CODE (c) = code;
+      /* OpenACC does not require anything below.  */
+      if (!is_omp)
+	continue;
+
       if (task)
 	OMP_CLAUSE_REDUCTION_TASK (c) = 1;
       else if (inscan)

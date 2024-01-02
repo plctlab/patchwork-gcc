@@ -2028,19 +2028,15 @@ nvptx_gen_shuffle (rtx dst, rtx src, rtx idx, nvptx_shuffle_kind kind)
       break;
     case E_V2SImode:
       {
-	rtx src0 = gen_rtx_SUBREG (SImode, src, 0);
-	rtx src1 = gen_rtx_SUBREG (SImode, src, 4);
-	rtx dst0 = gen_rtx_SUBREG (SImode, dst, 0);
-	rtx dst1 = gen_rtx_SUBREG (SImode, dst, 4);
 	rtx tmp0 = gen_reg_rtx (SImode);
 	rtx tmp1 = gen_reg_rtx (SImode);
 	start_sequence ();
-	emit_insn (gen_movsi (tmp0, src0));
-	emit_insn (gen_movsi (tmp1, src1));
+	emit_insn (gen_vec_extractv2sisi (tmp0, src, GEN_INT (0)));
+	emit_insn (gen_vec_extractv2sisi (tmp1, src, GEN_INT (1)));
 	emit_insn (nvptx_gen_shuffle (tmp0, tmp0, idx, kind));
 	emit_insn (nvptx_gen_shuffle (tmp1, tmp1, idx, kind));
-	emit_insn (gen_movsi (dst0, tmp0));
-	emit_insn (gen_movsi (dst1, tmp1));
+	emit_insn (gen_vec_setv2si (dst, tmp0, GEN_INT (0)));
+	emit_insn (gen_vec_setv2si (dst, tmp1, GEN_INT (1)));
 	res = get_insns ();
 	end_sequence ();
       }
@@ -6672,11 +6668,9 @@ nvptx_get_shared_red_addr (tree type, tree offset, bool vector)
   enum nvptx_builtins addr_dim = NVPTX_BUILTIN_WORKER_ADDR;
   if (vector)
     addr_dim = NVPTX_BUILTIN_VECTOR_ADDR;
-  machine_mode mode = TYPE_MODE (type);
   tree fndecl = nvptx_builtin_decl (addr_dim, true);
-  tree size = build_int_cst (unsigned_type_node, GET_MODE_SIZE (mode));
-  tree align = build_int_cst (unsigned_type_node,
-			      GET_MODE_ALIGNMENT (mode) / BITS_PER_UNIT);
+  tree size = TYPE_SIZE_UNIT (type);
+  tree align = build_int_cst (unsigned_type_node, TYPE_ALIGN_UNIT (type));
   tree call = build_call_expr (fndecl, 3, offset, size, align);
 
   return fold_convert (build_pointer_type (type), call);
@@ -6993,6 +6987,105 @@ nvptx_reduction_update (location_t loc, gimple_stmt_iterator *gsi,
   tree type = TREE_TYPE (var);
   tree size = TYPE_SIZE (type);
 
+  if (!VAR_P (ptr))
+    {
+      tree t = make_ssa_name (TREE_TYPE (ptr));
+      gimple_seq seq = NULL;
+      gimplify_assign (t, ptr, &seq);
+      gsi_insert_seq_before (gsi, seq, GSI_SAME_STMT);
+      ptr = t;
+    }
+
+  if (TREE_CODE (type) == ARRAY_TYPE)
+    {
+      gimple *g;
+      gimple_seq seq = NULL;
+      tree array_type = TREE_TYPE (var);
+      tree array_elem_type = TREE_TYPE (array_type);
+      tree max_index = TYPE_MAX_VALUE (TYPE_DOMAIN (array_type));
+
+      tree init_index = make_ssa_name (TREE_TYPE (max_index));
+      tree loop_index = make_ssa_name (TREE_TYPE (max_index));
+      tree update_index = make_ssa_name (TREE_TYPE (max_index));
+
+      g = gimple_build_assign (init_index,
+			       build_int_cst (TREE_TYPE (init_index), 0));
+      gimple_seq_add_stmt (&seq, g);
+      gimple *init_end = gimple_seq_last (seq);
+      gsi_insert_seq_before (gsi, seq, GSI_SAME_STMT);
+
+      basic_block init_bb = gsi_bb (*gsi);
+      edge init_edge = split_block (init_bb, init_end);
+      basic_block loop_bb = init_edge->dest;
+      /* Reset the iterator.  */
+      *gsi = gsi_for_stmt (gsi_stmt (*gsi));
+
+      seq = NULL;
+      g = gimple_build_assign (update_index, PLUS_EXPR, loop_index,
+			       build_int_cst (TREE_TYPE (loop_index), 1));
+      gimple_seq_add_stmt (&seq, g);
+
+      g = gimple_build_cond (LE_EXPR, update_index, max_index, NULL, NULL);
+      gimple_seq_add_stmt (&seq, g);
+      gsi_insert_seq_before (gsi, seq, GSI_SAME_STMT);
+
+      edge post_edge = split_block (loop_bb, g);
+      basic_block post_bb = post_edge->dest;
+      loop_bb = post_edge->src;
+      /* Reset the iterator.  */
+      *gsi = gsi_for_stmt (gsi_stmt (*gsi));
+
+      /* Place where we insert reduction code below.  */
+      gimple_stmt_iterator reduction_code_gsi = gsi_start_bb (loop_bb);
+
+      post_edge->flags ^= EDGE_FALSE_VALUE | EDGE_FALLTHRU;
+      post_edge->probability = profile_probability::even ();
+      edge loop_edge = make_edge (loop_bb, loop_bb, EDGE_TRUE_VALUE);
+      loop_edge->probability = profile_probability::even ();
+      set_immediate_dominator (CDI_DOMINATORS, loop_bb, init_bb);
+      set_immediate_dominator (CDI_DOMINATORS, post_bb, loop_bb);
+
+      gphi *phi = create_phi_node (loop_index, loop_bb);
+      add_phi_arg (phi, init_index, init_edge, loc);
+      add_phi_arg (phi, update_index, loop_edge, loc);
+
+      tree var_aref = build4 (ARRAY_REF, array_elem_type,
+			      var, loop_index, NULL_TREE, NULL_TREE);
+
+      tree red_array = build_simple_mem_ref (ptr);
+      tree red_array_type = TREE_TYPE (red_array);
+      tree red_array_elem_type
+	= build_qualified_type (TREE_TYPE (red_array_type),
+				TYPE_QUALS (red_array_type));
+      tree ptr_aref = build4 (ARRAY_REF, red_array_elem_type,
+			      red_array, loop_index,
+			      NULL_TREE, NULL_TREE);
+
+      nvptx_reduction_update (loc, &reduction_code_gsi,
+			      build_fold_addr_expr (ptr_aref),
+			      var_aref, op, level);
+      return build_simple_mem_ref (ptr);
+    }
+  else if (TREE_CODE (type) == RECORD_TYPE)
+    {
+      for (tree fld = TYPE_FIELDS (type); fld; fld = TREE_CHAIN (fld))
+	if (TREE_CODE (fld) == FIELD_DECL)
+	  {
+	    tree var_fld_ref = build3 (COMPONENT_REF, TREE_TYPE (fld),
+				       var, fld, NULL);
+	    tree ptr_ref = build_simple_mem_ref (ptr);
+	    tree ptr_fld_type
+	      = build_qualified_type (TREE_TYPE (fld),
+				      TYPE_QUALS (TREE_TYPE (ptr_ref)));
+	    tree ptr_fld_ref = build3 (COMPONENT_REF, ptr_fld_type,
+				       ptr_ref, fld, NULL);
+	    nvptx_reduction_update (loc, gsi,
+				    build_fold_addr_expr (ptr_fld_ref),
+				    var_fld_ref, op, level);
+	  }
+      return build_simple_mem_ref (ptr);
+    }
+
   if (size == TYPE_SIZE (unsigned_type_node)
       || size == TYPE_SIZE (long_long_unsigned_type_node))
     return nvptx_lockless_update (loc, gsi, ptr, var, op);
@@ -7023,7 +7116,10 @@ nvptx_goacc_reduction_setup (gcall *call, offload_attrs *oa)
     }
   
   if (level == GOMP_DIM_WORKER
-      || (level == GOMP_DIM_VECTOR && oa->vector_length > PTX_WARP_SIZE))
+      || (level == GOMP_DIM_VECTOR
+	  && (oa->vector_length > PTX_WARP_SIZE
+	      || TREE_CODE (TREE_TYPE (var)) == ARRAY_TYPE
+	      || TREE_CODE (TREE_TYPE (var)) == RECORD_TYPE)))
     {
       /* Store incoming value to worker reduction buffer.  */
       tree offset = gimple_call_arg (call, 5);
@@ -7037,11 +7133,14 @@ nvptx_goacc_reduction_setup (gcall *call, offload_attrs *oa)
       gimplify_assign (ref, var, &seq);
     }
 
-  if (lhs)
+  if (lhs
+      && TREE_CODE (TREE_TYPE (var)) != ARRAY_TYPE
+      && TREE_CODE (TREE_TYPE (var)) != RECORD_TYPE)
     gimplify_assign (lhs, var, &seq);
 
   pop_gimplify_context (NULL);
-  gsi_replace_with_seq (&gsi, seq, true);
+  gsi_insert_seq_before (&gsi, seq, GSI_SAME_STMT);
+  gsi_remove (&gsi, true);
 }
 
 /* NVPTX implementation of GOACC_REDUCTION_INIT. */
@@ -7061,7 +7160,9 @@ nvptx_goacc_reduction_init (gcall *call, offload_attrs *oa)
   
   push_gimplify_context (true);
 
-  if (level == GOMP_DIM_VECTOR && oa->vector_length == PTX_WARP_SIZE)
+  if (level == GOMP_DIM_VECTOR && oa->vector_length == PTX_WARP_SIZE
+      && TREE_CODE (TREE_TYPE (var)) != ARRAY_TYPE
+      && TREE_CODE (TREE_TYPE (var)) != RECORD_TYPE)
     {
       /* Initialize vector-non-zeroes to INIT_VAL (OP).  */
       tree tid = make_ssa_name (integer_type_node);
@@ -7126,7 +7227,8 @@ nvptx_goacc_reduction_init (gcall *call, offload_attrs *oa)
     }
 
   pop_gimplify_context (NULL);
-  gsi_replace_with_seq (&gsi, seq, true);
+  gsi_insert_seq_before (&gsi, seq, GSI_SAME_STMT);
+  gsi_remove (&gsi, true);
 }
 
 /* NVPTX implementation of GOACC_REDUCTION_FINI.  */
@@ -7146,7 +7248,9 @@ nvptx_goacc_reduction_fini (gcall *call, offload_attrs *oa)
 
   push_gimplify_context (true);
 
-  if (level == GOMP_DIM_VECTOR && oa->vector_length == PTX_WARP_SIZE)
+  if (level == GOMP_DIM_VECTOR && oa->vector_length == PTX_WARP_SIZE
+      && TREE_CODE (TREE_TYPE (var)) != ARRAY_TYPE
+      && TREE_CODE (TREE_TYPE (var)) != RECORD_TYPE)
     {
       /* Emit binary shuffle tree.  TODO. Emit this as an actual loop,
 	 but that requires a method of emitting a unified jump at the
@@ -7193,11 +7297,14 @@ nvptx_goacc_reduction_fini (gcall *call, offload_attrs *oa)
 	}
     }
 
-  if (lhs)
+  if (lhs
+      && TREE_CODE (TREE_TYPE (r)) != ARRAY_TYPE
+      && TREE_CODE (TREE_TYPE (r)) != RECORD_TYPE)
     gimplify_assign (lhs, r, &seq);
-  pop_gimplify_context (NULL);
 
-  gsi_replace_with_seq (&gsi, seq, true);
+  pop_gimplify_context (NULL);
+  gsi_insert_seq_before (&gsi, seq, GSI_SAME_STMT);
+  gsi_remove (&gsi, true);
 }
 
 /* NVPTX implementation of GOACC_REDUCTION_TEARDOWN.  */
@@ -7213,7 +7320,10 @@ nvptx_goacc_reduction_teardown (gcall *call, offload_attrs *oa)
   
   push_gimplify_context (true);
   if (level == GOMP_DIM_WORKER
-      || (level == GOMP_DIM_VECTOR && oa->vector_length > PTX_WARP_SIZE))
+      || (level == GOMP_DIM_VECTOR
+	  && (oa->vector_length > PTX_WARP_SIZE
+	      || TREE_CODE (TREE_TYPE (var)) == ARRAY_TYPE
+	      || TREE_CODE (TREE_TYPE (var)) == RECORD_TYPE)))
     {
       /* Read the worker reduction buffer.  */
       tree offset = gimple_call_arg (call, 5);
@@ -7236,11 +7346,11 @@ nvptx_goacc_reduction_teardown (gcall *call, offload_attrs *oa)
     }
 
   if (lhs)
-    gimplify_assign (lhs, var, &seq);
+    gimplify_assign (lhs, unshare_expr (var), &seq);
   
   pop_gimplify_context (NULL);
-
-  gsi_replace_with_seq (&gsi, seq, true);
+  gsi_insert_seq_before (&gsi, seq, GSI_SAME_STMT);
+  gsi_remove (&gsi, true);
 }
 
 /* NVPTX reduction expander.  */

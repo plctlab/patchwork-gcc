@@ -296,6 +296,105 @@ gcn_reduction_update (location_t loc, gimple_stmt_iterator *gsi,
   tree type = TREE_TYPE (var);
   tree size = TYPE_SIZE (type);
 
+  if (!VAR_P (ptr))
+    {
+      tree t = make_ssa_name (TREE_TYPE (ptr));
+      gimple_seq seq = NULL;
+      gimplify_assign (t, ptr, &seq);
+      gsi_insert_seq_before (gsi, seq, GSI_SAME_STMT);
+      ptr = t;
+    }
+
+  if (TREE_CODE (type) == ARRAY_TYPE)
+    {
+      gimple *g;
+      gimple_seq seq = NULL;
+      tree array_type = TREE_TYPE (var);
+      tree array_elem_type = TREE_TYPE (array_type);
+      tree max_index = TYPE_MAX_VALUE (TYPE_DOMAIN (array_type));
+
+      tree init_index = make_ssa_name (TREE_TYPE (max_index));
+      tree loop_index = make_ssa_name (TREE_TYPE (max_index));
+      tree update_index = make_ssa_name (TREE_TYPE (max_index));
+
+      g = gimple_build_assign (init_index,
+			       build_int_cst (TREE_TYPE (init_index), 0));
+      gimple_seq_add_stmt (&seq, g);
+      gimple *init_end = gimple_seq_last (seq);
+      gsi_insert_seq_before (gsi, seq, GSI_SAME_STMT);
+
+      basic_block init_bb = gsi_bb (*gsi);
+      edge init_edge = split_block (init_bb, init_end);
+      basic_block loop_bb = init_edge->dest;
+      /* Reset the iterator.  */
+      *gsi = gsi_for_stmt (gsi_stmt (*gsi));
+
+      seq = NULL;
+      g = gimple_build_assign (update_index, PLUS_EXPR, loop_index,
+			       build_int_cst (TREE_TYPE (loop_index), 1));
+      gimple_seq_add_stmt (&seq, g);
+
+      g = gimple_build_cond (LE_EXPR, update_index, max_index, NULL, NULL);
+      gimple_seq_add_stmt (&seq, g);
+      gsi_insert_seq_before (gsi, seq, GSI_SAME_STMT);
+
+      edge post_edge = split_block (loop_bb, g);
+      basic_block post_bb = post_edge->dest;
+      loop_bb = post_edge->src;
+      /* Reset the iterator.  */
+      *gsi = gsi_for_stmt (gsi_stmt (*gsi));
+
+      /* Place where we insert reduction code below.  */
+      gimple_stmt_iterator reduction_code_gsi = gsi_start_bb (loop_bb);
+
+      post_edge->flags ^= EDGE_FALSE_VALUE | EDGE_FALLTHRU;
+      post_edge->probability = profile_probability::even ();
+      edge loop_edge = make_edge (loop_bb, loop_bb, EDGE_TRUE_VALUE);
+      loop_edge->probability = profile_probability::even ();
+      set_immediate_dominator (CDI_DOMINATORS, loop_bb, init_bb);
+      set_immediate_dominator (CDI_DOMINATORS, post_bb, loop_bb);
+
+      gphi *phi = create_phi_node (loop_index, loop_bb);
+      add_phi_arg (phi, init_index, init_edge, loc);
+      add_phi_arg (phi, update_index, loop_edge, loc);
+
+      tree var_aref = build4 (ARRAY_REF, array_elem_type,
+			      var, loop_index, NULL_TREE, NULL_TREE);
+
+      tree red_array = build_simple_mem_ref (ptr);
+      tree red_array_type = TREE_TYPE (red_array);
+      tree red_array_elem_type
+	= build_qualified_type (TREE_TYPE (red_array_type),
+				TYPE_QUALS (red_array_type));
+      tree ptr_aref = build4 (ARRAY_REF, red_array_elem_type,
+			      red_array, loop_index,
+			      NULL_TREE, NULL_TREE);
+
+      gcn_reduction_update (loc, &reduction_code_gsi,
+			    build_fold_addr_expr (ptr_aref),
+			    var_aref, op);
+      return build_simple_mem_ref (ptr);
+    }
+  else if (TREE_CODE (type) == RECORD_TYPE)
+    {
+      for (tree fld = TYPE_FIELDS (type); fld; fld = TREE_CHAIN (fld))
+	if (TREE_CODE (fld) == FIELD_DECL)
+	  {
+	    tree var_fld_ref = build3 (COMPONENT_REF, TREE_TYPE (fld),
+				       var, fld, NULL);
+	    tree ptr_ref = build_simple_mem_ref (ptr);
+	    tree ptr_fld_type
+	      = build_qualified_type (TREE_TYPE (fld),
+				      TYPE_QUALS (TREE_TYPE (ptr_ref)));
+	    tree ptr_fld_ref = build3 (COMPONENT_REF, ptr_fld_type,
+				       ptr_ref, fld, NULL);
+	    gcn_reduction_update (loc, gsi,
+				  build_fold_addr_expr (ptr_fld_ref),
+				  var_fld_ref, op);
+	  }
+      return build_simple_mem_ref (ptr);
+    }
+
   if (size == TYPE_SIZE (unsigned_type_node)
       || size == TYPE_SIZE (long_long_unsigned_type_node))
     return gcn_lockless_update (loc, gsi, ptr, var, op);
@@ -359,11 +458,14 @@ gcn_goacc_reduction_setup (gcall *call)
       gimplify_assign (decl, var, &seq);
     }
 
-  if (lhs)
+  if (lhs
+      && TREE_CODE (TREE_TYPE (var)) != ARRAY_TYPE
+      && TREE_CODE (TREE_TYPE (var)) != RECORD_TYPE)
     gimplify_assign (lhs, var, &seq);
 
   pop_gimplify_context (NULL);
-  gsi_replace_with_seq (&gsi, seq, true);
+  gsi_insert_seq_before (&gsi, seq, GSI_SAME_STMT);
+  gsi_remove (&gsi, true);
 }
 
 /* Expand IFN_GOACC_REDUCTION_INIT.  */
@@ -395,7 +497,8 @@ gcn_goacc_reduction_init (gcall *call)
     gimplify_assign (lhs, init, &seq);
 
   pop_gimplify_context (NULL);
-  gsi_replace_with_seq (&gsi, seq, true);
+  gsi_insert_seq_before (&gsi, seq, GSI_SAME_STMT);
+  gsi_remove (&gsi, true);
 }
 
 /* Expand IFN_GOACC_REDUCTION_FINI.  */
@@ -439,11 +542,13 @@ gcn_goacc_reduction_fini (gcall *call)
       r = gcn_reduction_update (gimple_location (call), &gsi, accum, var, op);
     }
 
-  if (lhs)
+  if (lhs
+      && TREE_CODE (TREE_TYPE (r)) != ARRAY_TYPE
+      && TREE_CODE (TREE_TYPE (r)) != RECORD_TYPE)
     gimplify_assign (lhs, r, &seq);
   pop_gimplify_context (NULL);
-
-  gsi_replace_with_seq (&gsi, seq, true);
+  gsi_insert_seq_before (&gsi, seq, GSI_SAME_STMT);
+  gsi_remove (&gsi, true);
 }
 
 /* Expand IFN_GOACC_REDUCTION_TEARDOWN.  */
@@ -483,8 +588,8 @@ gcn_goacc_reduction_teardown (gcall *call)
     gimplify_assign (lhs, unshare_expr (var), &seq);
 
   pop_gimplify_context (NULL);
-
-  gsi_replace_with_seq (&gsi, seq, true);
+  gsi_insert_seq_before (&gsi, seq, GSI_SAME_STMT);
+  gsi_remove (&gsi, true);
 }
 
 /* Implement TARGET_GOACC_REDUCTION.

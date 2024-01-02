@@ -1790,7 +1790,7 @@ default_goacc_reduction (gcall *call)
 
   /* Copy VAR to LHS, if there is an LHS.  */
   if (lhs)
-    gimple_seq_add_stmt (&seq, gimple_build_assign (lhs, var));
+    gimple_seq_add_stmt (&seq, gimple_build_assign (lhs, unshare_expr (var)));
 
   gsi_replace_with_seq (&gsi, seq, true);
 }
