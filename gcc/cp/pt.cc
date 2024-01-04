@@ -27189,7 +27189,12 @@ instantiate_decl (tree d, bool defer_ok, bool expl_inst_class_mem_p)
     {
       set_instantiating_module (d);
       if (variable_template_p (gen_tmpl))
-	note_variable_template_instantiation (d);
+	{
+	  if (DECL_CLASS_SCOPE_P (gen_tmpl))
+	    note_static_data_member (d);
+	  else
+	    vec_safe_push (static_decls, d);
+	}
       instantiate_body (td, args, d, false);
     }
 
