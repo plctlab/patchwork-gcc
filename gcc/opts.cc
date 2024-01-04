@@ -3271,6 +3271,12 @@ common_handle_option (struct gcc_options *opts,
 				&opts->x_str_align_functions);
       break;
 
+    case OPT_falign_all_functions_:
+      check_alignment_argument (loc, arg, "all-functions",
+				&opts->x_flag_align_all_functions,
+				&opts->x_str_align_all_functions);
+      break;
+
     case OPT_ftabstop_:
       /* It is documented that we silently ignore silly values.  */
       if (value >= 1 && value <= 100)

@@ -1020,6 +1020,13 @@ faggressive-loop-optimizations
 Common Var(flag_aggressive_loop_optimizations) Optimization Init(1)
 Aggressively optimize loops using language constraints.
 
+falign-all-functions
+Common Var(flag_align_all_functions) Optimization
+Align the start of functions.
+
+falign-all-functions=
+Common RejectNegative Joined Var(str_align_all_functions) Optimization
+
 falign-functions
 Common Var(flag_align_functions) Optimization
 Align the start of functions.

@@ -1217,6 +1217,7 @@ parse_alignment_opts (void)
   parse_N_M (str_align_jumps, align_jumps);
   parse_N_M (str_align_labels, align_labels);
   parse_N_M (str_align_functions, align_functions);
+  parse_N_M (str_align_all_functions, align_all_functions);
 }
 
 /* Process the options that have been parsed.  */
