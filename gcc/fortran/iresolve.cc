@@ -2363,7 +2363,12 @@ gfc_resolve_repeat (gfc_expr *f, gfc_expr *string,
     }
 
   if (tmp)
-    f->ts.u.cl->length = gfc_multiply (tmp, gfc_copy_expr (ncopies));
+    {
+      /* Force-convert ncopies to gfc_charlen_int_kind.  */
+      gfc_expr *e = gfc_copy_expr (ncopies);
+      gfc_convert_type_warn (e, &tmp->ts, 2, 0);
+      f->ts.u.cl->length = gfc_multiply (tmp, e);
+    }
 }
 
 
