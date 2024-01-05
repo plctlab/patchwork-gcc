@@ -74,6 +74,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "output.h"
 #include "builtins.h"
 #include "opts.h"
+#include "ccmp.h"
 
 /* Some systems use __main in a way incompatible with its use in gcc, in these
    cases use the macros NAME__MAIN to give a quoted symbol and SYMBOL__MAIN to
@@ -3838,6 +3839,50 @@ expand_clobber (tree lhs)
     }
 }
 
+/* A subroutine of expand_gimple_stmt_1, expanding one gimple assign statement
+   ASSIGN_STMT that has a SSA name on the lhs, using TARGET and TARGET_MODE
+   as the target if possible and mode for what mode we should expand into.  */
+static rtx
+expand_gimple_assign_ssa (gassign *assign_stmt,
+			  rtx target,
+			  machine_mode target_mode)
+{
+  rtx temp;
+  tree lhs = gimple_assign_lhs (assign_stmt);
+  /* Try to expand conditonal compare.  */
+  if (targetm.gen_ccmp_first
+      && gimple_assign_rhs_class (assign_stmt) == GIMPLE_BINARY_RHS)
+    {
+      machine_mode mode = TYPE_MODE (TREE_TYPE (lhs));
+      gcc_checking_assert (targetm.gen_ccmp_next != NULL);
+      temp = expand_ccmp_expr (assign_stmt, mode);
+      if (temp)
+	return temp;
+    }
+
+  struct separate_ops ops;
+  ops.code = gimple_assign_rhs_code (assign_stmt);
+  ops.type = TREE_TYPE (lhs);
+  switch (get_gimple_rhs_class (ops.code))
+    {
+      case GIMPLE_TERNARY_RHS:
+	ops.op2 = gimple_assign_rhs3 (assign_stmt);
+	/* Fallthru */
+      case GIMPLE_BINARY_RHS:
+	ops.op1 = gimple_assign_rhs2 (assign_stmt);
+	/* Fallthru */
+      case GIMPLE_UNARY_RHS:
+	ops.op0 = gimple_assign_rhs1 (assign_stmt);
+	break;
+      default:
+	gcc_unreachable ();
+     }
+  ops.location = gimple_location (assign_stmt);
+
+  return expand_expr_real_2 (&ops, target, target_mode,
+			     EXPAND_NORMAL);
+}
+
 /* A subroutine of expand_gimple_stmt, expanding one gimple statement
    STMT that doesn't require special handling for outgoing edges.  That
    is no tailcalls and no GIMPLE_COND.  */
@@ -3951,37 +3996,17 @@ expand_gimple_stmt_1 (gimple *stmt)
 	  {
 	    rtx target, temp;
 	    bool nontemporal = gimple_assign_nontemporal_move_p (assign_stmt);
-	    struct separate_ops ops;
 	    bool promoted = false;
 
 	    target = expand_expr (lhs, NULL_RTX, VOIDmode, EXPAND_WRITE);
 	    if (GET_CODE (target) == SUBREG && SUBREG_PROMOTED_VAR_P (target))
 	      promoted = true;
 
-	    ops.code = gimple_assign_rhs_code (assign_stmt);
-	    ops.type = TREE_TYPE (lhs);
-	    switch (get_gimple_rhs_class (ops.code))
-	      {
-		case GIMPLE_TERNARY_RHS:
-		  ops.op2 = gimple_assign_rhs3 (assign_stmt);
-		  /* Fallthru */
-		case GIMPLE_BINARY_RHS:
-		  ops.op1 = gimple_assign_rhs2 (assign_stmt);
-		  /* Fallthru */
-		case GIMPLE_UNARY_RHS:
-		  ops.op0 = gimple_assign_rhs1 (assign_stmt);
-		  break;
-		default:
-		  gcc_unreachable ();
-	      }
-	    ops.location = gimple_location (stmt);
-
-	    /* If we want to use a nontemporal store, force the value to
-	       register first.  If we store into a promoted register,
-	       don't directly expand to target.  */
+	   /* If we want to use a nontemporal store, force the value to
+	      register first.  If we store into a promoted register,
+	      don't directly expand to target.  */
 	    temp = nontemporal || promoted ? NULL_RTX : target;
-	    temp = expand_expr_real_2 (&ops, temp, GET_MODE (target),
-				       EXPAND_NORMAL);
+	    temp = expand_gimple_assign_ssa (assign_stmt, temp, GET_MODE (target));
 
 	    if (temp == target)
 	      ;
@@ -3993,7 +4018,7 @@ expand_gimple_stmt_1 (gimple *stmt)
 		if (CONSTANT_P (temp) && GET_MODE (temp) == VOIDmode)
 		  {
 		    temp = convert_modes (GET_MODE (target),
-					  TYPE_MODE (ops.type),
+					  TYPE_MODE (TREE_TYPE (lhs)),
 					  temp, unsignedp);
 		    temp = convert_modes (GET_MODE (SUBREG_REG (target)),
 					  GET_MODE (target), temp, unsignedp);
