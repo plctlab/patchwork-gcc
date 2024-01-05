@@ -372,6 +372,9 @@
 ;; Likewise the 64-bit truncate-and-shift patterns.
 (define_mode_iterator SUBDI [QI HI SI])
 
+;; Scalar fixed point modes but excludes QI.
+(define_mode_iterator HWD [HI SI (DI "TARGET_64BIT")])
+
 ;; Iterator for scalar fixed point modes.
 (define_mode_iterator QHWD [QI HI SI (DI "TARGET_64BIT")])
 
@@ -1377,48 +1380,48 @@
   [(set_attr "move_type" "arith,load,load,load")
    (set_attr "mode" "DI")])
 
-(define_insn "zero_extend<SHORT:mode><GPR:mode>2"
+(define_insn "zero_extendhi<GPR:mode>2"
   [(set (match_operand:GPR 0 "register_operand" "=r,r,r")
 	(zero_extend:GPR
-	     (match_operand:SHORT 1 "nonimmediate_operand" "r,m,k")))]
+	     (match_operand:HI 1 "nonimmediate_operand" "r,m,k")))]
   ""
   "@
-   bstrpick.w\t%0,%1,<SHORT:7_or_15>,0
-   ld.<SHORT:size>u\t%0,%1
-   ldx.<SHORT:size>u\t%0,%1"
+   bstrpick.w\t%0,%1,15,0
+   ld.hu\t%0,%1
+   ldx.hu\t%0,%1"
   [(set_attr "move_type" "pick_ins,load,load")
    (set_attr "mode" "<GPR:MODE>")])
 
-(define_insn "zero_extendqihi2"
-  [(set (match_operand:HI 0 "register_operand" "=r,r,r")
-	(zero_extend:HI (match_operand:QI 1 "nonimmediate_operand" "r,k,m")))]
+(define_insn "zero_extendqi<HWD:mode>2"
+  [(set (match_operand:HWD 0 "register_operand" "=r,r,r")
+	(zero_extend:HWD (match_operand:QI 1 "nonimmediate_operand" "r,k,m")))]
   ""
   "@
    andi\t%0,%1,0xff
    ldx.bu\t%0,%1
    ld.bu\t%0,%1"
   [(set_attr "move_type" "andi,load,load")
-   (set_attr "mode" "HI")])
+   (set_attr "mode" "<HWD:MODE>")])
 
 ;; Combiner patterns to optimize truncate/zero_extend combinations.
 
-(define_insn "*zero_extend<GPR:mode>_trunc<SHORT:mode>"
+(define_insn "*zero_extend<GPR:mode>_trunchi"
   [(set (match_operand:GPR 0 "register_operand" "=r")
 	(zero_extend:GPR
-	    (truncate:SHORT (match_operand:DI 1 "register_operand" "r"))))]
+	    (truncate:HI (match_operand:DI 1 "register_operand" "r"))))]
   "TARGET_64BIT"
-  "bstrpick.w\t%0,%1,<SHORT:7_or_15>,0"
+  "bstrpick.w\t%0,%1,15,0"
   [(set_attr "move_type" "pick_ins")
    (set_attr "mode" "<GPR:MODE>")])
 
-(define_insn "*zero_extendhi_truncqi"
-  [(set (match_operand:HI 0 "register_operand" "=r")
-	(zero_extend:HI
+(define_insn "*zero_extend<HWD:mode>_truncqi"
+  [(set (match_operand:HWD 0 "register_operand" "=r")
+	(zero_extend:HWD
 	    (truncate:QI (match_operand:DI 1 "register_operand" "r"))))]
   "TARGET_64BIT"
   "andi\t%0,%1,0xff"
   [(set_attr "alu_type" "and")
-   (set_attr "mode" "HI")])
+   (set_attr "mode" "<HWD:MODE>")])
 
 ;;
 ;;  ....................
