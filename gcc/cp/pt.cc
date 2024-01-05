@@ -23421,6 +23421,7 @@ type_unification_real (tree tparms,
 		 might be instantiation-dependent like access (87480).  */
 	      processing_template_decl_sentinel s (!any_dependent_targs);
 	      tree substed = NULL_TREE;
+	      tristate dependent_p = tristate::unknown ();
 	      if (saw_undeduced == 1 && !any_dependent_targs)
 		{
 		  /* First instatiate in template context, in case we still
@@ -23429,8 +23430,9 @@ type_unification_real (tree tparms,
 		  substed = tsubst_template_arg (arg, full_targs, complain,
 						 NULL_TREE);
 		  --processing_template_decl;
+		  dependent_p = uses_template_parms (substed);
 		  if (substed != error_mark_node
-		      && !uses_template_parms (substed))
+		      && dependent_p.is_false ())
 		    /* We replaced all the tparms, substitute again out of
 		       template context.  */
 		    substed = NULL_TREE;
@@ -23438,8 +23440,11 @@ type_unification_real (tree tparms,
 	      if (!substed)
 		substed = tsubst_template_arg (arg, full_targs, complain,
 					       NULL_TREE);
+	      if (dependent_p.is_unknown ())
+		dependent_p = (processing_template_decl
+			       && uses_template_parms (substed));
 
-	      if (!uses_template_parms (substed))
+	      if (dependent_p.is_false ())
 		arg = convert_template_argument (parm, substed, full_targs,
 						 complain, i, NULL_TREE);
 	      else if (saw_undeduced == 1)
