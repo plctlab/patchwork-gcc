@@ -41,6 +41,8 @@
 	builtin_define ("__gfx908__");                                         \
       else if (TARGET_GFX90a)                                                  \
 	builtin_define ("__gfx90a__");                                         \
+      else if (TARGET_GFX1030)                                                 \
+	builtin_define ("__gfx1030");                                          \
   } while (0)
 
 /* Support for a compile-time default architecture and tuning.
