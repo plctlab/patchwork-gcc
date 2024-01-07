@@ -54,6 +54,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
     __cow_string();
     __cow_string(const std::string&);
+    __cow_string(const char*);
     __cow_string(const char*, size_t);
     __cow_string(const __cow_string&) _GLIBCXX_NOTHROW;
     __cow_string& operator=(const __cow_string&) _GLIBCXX_NOTHROW;

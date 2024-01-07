@@ -127,6 +127,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
     __cow_string();
     __cow_string(const std::string& s);
+    __cow_string(const char*);
     __cow_string(const char*, size_t n);
     __cow_string(const __cow_string&) noexcept;
     __cow_string& operator=(const __cow_string&) noexcept;
@@ -138,6 +139,8 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   __cow_string::__cow_string() : _M_str() { }
 
   __cow_string::__cow_string(const std::string& s) : _M_str(s) { }
+
+  __cow_string::__cow_string(const char* s) : _M_str(s) { }
 
   __cow_string::__cow_string(const char* s, size_t n) : _M_str(s, n) { }
 
