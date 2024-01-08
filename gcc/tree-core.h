@@ -1795,8 +1795,7 @@ struct GTY(()) tree_decl_common {
      In FIELD_DECL, this is DECL_FIELD_ABI_IGNORED.  */
   unsigned decl_flag_0 : 1;
   /* In FIELD_DECL, this is DECL_BIT_FIELD
-     In VAR_DECL and FUNCTION_DECL, this is DECL_EXTERNAL.
-     In TYPE_DECL, this is TYPE_DECL_SUPPRESS_DEBUG.  */
+     In VAR_DECL, FUNCTION_DECL, and TYPE_DECL, this is DECL_EXTERNAL.  */
   unsigned decl_flag_1 : 1;
   /* In FIELD_DECL, this is DECL_NONADDRESSABLE_P
      In VAR_DECL, PARM_DECL and RESULT_DECL, this is
@@ -1825,7 +1824,8 @@ struct GTY(()) tree_decl_common {
      TYPE_WARN_IF_NOT_ALIGN.  */
   unsigned int warn_if_not_align : 6;
 
-  /* In FIELD_DECL, this is DECL_NOT_FLEXARRAY.  */
+  /* In FIELD_DECL, this is DECL_NOT_FLEXARRAY.
+     In TYPE_DECL, this is TYPE_DECL_SUPPRESS_DEBUG.  */
   unsigned int decl_not_flexarray : 1;
 
   /* 13 bits unused.  */

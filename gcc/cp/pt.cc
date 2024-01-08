@@ -26289,6 +26289,7 @@ mark_class_instantiated (tree t, int extern_p)
   SET_CLASSTYPE_EXPLICIT_INSTANTIATION (t);
   SET_CLASSTYPE_INTERFACE_KNOWN (t);
   CLASSTYPE_INTERFACE_ONLY (t) = extern_p;
+  DECL_EXTERNAL (TYPE_NAME (t)) = extern_p;
   TYPE_DECL_SUPPRESS_DEBUG (TYPE_NAME (t)) = extern_p;
   if (! extern_p)
     {

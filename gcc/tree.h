@@ -2782,9 +2782,9 @@ extern tree vector_element_bits_tree (const_tree);
 #define DECL_LANG_SPECIFIC(NODE) \
   (DECL_COMMON_CHECK (NODE)->decl_common.lang_specific)
 
-/* In a VAR_DECL or FUNCTION_DECL, nonzero means external reference:
-   do not allocate storage, and refer to a definition elsewhere.  Note that
-   this does not necessarily imply the entity represented by NODE
+/* In a VAR_DECL, FUNCTION_DECL, or TYPE_DECL, nonzero means external
+   reference: do not allocate storage, and refer to a definition elsewhere.
+   Note that this does not necessarily imply the entity represented by NODE
    has no program source-level definition in this translation unit.  For
    example, for a FUNCTION_DECL, DECL_SAVED_TREE may be non-NULL and
    DECL_EXTERNAL may be true simultaneously; that can be the case for
@@ -3481,7 +3481,7 @@ extern vec<tree, va_gc> **decl_debug_args_insert (tree);
    into stabs.  Instead it will generate cross reference ('x') of names.
    This uses the same flag as DECL_EXTERNAL.  */
 #define TYPE_DECL_SUPPRESS_DEBUG(NODE) \
-  (TYPE_DECL_CHECK (NODE)->decl_common.decl_flag_1)
+  (TYPE_DECL_CHECK (NODE)->decl_common.decl_not_flexarray)
 
 /* Getter of the imported declaration associated to the
    IMPORTED_DECL node.  */
