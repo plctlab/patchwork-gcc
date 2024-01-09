@@ -2173,6 +2173,13 @@ lto_section_with_id (const char *name, unsigned HOST_WIDE_INT *id)
 
   if (strncmp (name, section_name_prefix, strlen (section_name_prefix)))
     return 0;
+
+  if (flag_ltrans)
+    {
+      *id = 0;
+      return 1;
+    }
+
   s = strrchr (name, '.');
   if (!s)
     return 0;
