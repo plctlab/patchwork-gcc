@@ -919,7 +919,6 @@ package Rtsfind is
      RE_Attr_Long_Long_Float,            -- System.Fat_LLF
 
      RE_Add_Offset_To_Address,           -- System.Finalization_Masters
-     RE_Attach,                          -- System.Finalization_Masters
      RE_Base_Pool,                       -- System.Finalization_Masters
      RE_Finalization_Master,             -- System.Finalization_Masters
      RE_Finalization_Master_Ptr,         -- System.Finalization_Masters
@@ -2564,7 +2563,6 @@ package Rtsfind is
      RE_Attr_Long_Long_Float             => System_Fat_LLF,
 
      RE_Add_Offset_To_Address            => System_Finalization_Masters,
-     RE_Attach                           => System_Finalization_Masters,
      RE_Base_Pool                        => System_Finalization_Masters,
      RE_Finalization_Master              => System_Finalization_Masters,
      RE_Finalization_Master_Ptr          => System_Finalization_Masters,
