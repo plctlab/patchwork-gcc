@@ -41,6 +41,10 @@ typedef struct iter_info
   tree start;
   tree end;
   tree step;
+  unsigned short unroll;
+  bool ivdep;
+  bool vector;
+  bool novector;
   struct iter_info *next;
 }
 iter_info;
@@ -4104,10 +4108,28 @@ gfc_trans_forall_loop (forall_info *forall_tmp, tree body,
 
       /* PR 83064 means that we cannot use annot_expr_parallel_kind until
        the autoparallelizer can handle this.  */
-      if (forall_tmp->do_concurrent)
+      if (forall_tmp->do_concurrent || iter->ivdep)
 	cond = build3 (ANNOTATE_EXPR, TREE_TYPE (cond), cond,
 		       build_int_cst (integer_type_node,
 				      annot_expr_ivdep_kind),
+		       integer_zero_node);
+
+      if (iter->unroll && cond != error_mark_node)
+	cond = build3 (ANNOTATE_EXPR, TREE_TYPE (cond), cond,
+		       build_int_cst (integer_type_node,
+				      annot_expr_unroll_kind),
+		       build_int_cst (integer_type_node, iter->unroll));
+
+      if (iter->vector && cond != error_mark_node)
+	cond = build3 (ANNOTATE_EXPR, TREE_TYPE (cond), cond,
+		       build_int_cst (integer_type_node,
+				      annot_expr_vector_kind),
+		       integer_zero_node);
+
+      if (iter->novector && cond != error_mark_node)
+	cond = build3 (ANNOTATE_EXPR, TREE_TYPE (cond), cond,
+		       build_int_cst (integer_type_node,
+				      annot_expr_no_vector_kind),
 		       integer_zero_node);
 
       tmp = build1_v (GOTO_EXPR, exit_label);
@@ -5076,6 +5098,11 @@ gfc_trans_forall_1 (gfc_code * code, forall_info * nested_forall_info)
       gfc_make_safe_expr (&se);
       gfc_add_block_to_block (&block, &se.pre);
       step[n] = se.expr;
+
+      this_forall->unroll = fa->unroll;
+      this_forall->ivdep = fa->ivdep;
+      this_forall->vector = fa->vector;
+      this_forall->novector = fa->novector;
 
       /* Set the NEXT field of this_forall to NULL.  */
       this_forall->next = NULL;

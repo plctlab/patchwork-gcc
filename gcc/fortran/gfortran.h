@@ -2888,6 +2888,10 @@ gfc_dt;
 typedef struct gfc_forall_iterator
 {
   gfc_expr *var, *start, *end, *stride;
+  unsigned short unroll;
+  bool ivdep;
+  bool vector;
+  bool novector;
   struct gfc_forall_iterator *next;
 }
 gfc_forall_iterator;
