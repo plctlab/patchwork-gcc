@@ -140,7 +140,9 @@ expand_block_clear (rtx operands[])
 	}
 
       dest = adjust_address (orig_dest, mode, offset);
-
+      /* Set the alignment of dest to the size of mode in order to
+	 avoid unnecessary byte swaps on LE.  */
+      set_mem_align (dest, GET_MODE_SIZE (mode) * BITS_PER_UNIT);
       emit_move_insn (dest, CONST0_RTX (mode));
     }
 
