@@ -20,16 +20,52 @@ foo (float d, int n)
   return accum;
 }
 
+float __attribute__((noinline))
+get_minus_zero()
+{
+  return 0.0 / -5.0;
+}
+
 int
 main ()
 {
-  /* When compiling standard compliant we expect foo to return -0.0.  But the
-     variable expansion during unrolling optimization (for this testcase enabled
-     by non-compliant -fassociative-math) instantiates copy(s) of the
-     accumulator which it initializes with +0.0.  Hence we expect that foo
-     returns +0.0.  */
-  if (__builtin_copysignf (1.0, foo (0.0 / -5.0, 10)) != 1.0)
+  /* The variable expansion in unroll requires option unsafe-math-optimizations
+     (aka -fno-signed-zeros, -fno-trapping-math, -fassociative-math
+     and -freciprocal-math).
+
+     When loop like above will have expansion after unrolling as below:
+
+     accum_1 += d_1;
+     accum_2 += d_2;
+     accum_3 += d_3;
+     ...
+
+     The accum_1, accum_2 and accum_3 need to be initialized. Given the
+     floating-point we have
+     +0.0f + -0.0f = +0.0f.
+
+     Thus, we should initialize the accum_* to -0.0 for correctness.  But
+     the things become more complicated when no-signed-zeros, as well as VLA
+     vectorizer mode which doesn't trigger variable expansion. Then we have:
+
+     Case 1: Trigger variable expansion but target doesn't honor no-signed-zero.
+       minus_zero will be -0.0f and foo (minus_zero, 10) will be -0.0f.
+     Case 2: Trigger variable expansion but target does honor no-signed-zero.
+       minus_zero will be +0.0f and foo (minus_zero, 10) will be +0.0f.
+     Case 3: No variable expansion but target doesn't honor no-signed-zero.
+       minus_zero will be -0.0f and foo (minus_zero, 10) will be -0.0f.
+     Case 4: No variable expansion but target does honor no-signed-zero.
+       minus_zero will be +0.0f and foo (minus_zero, 10) will be +0.0f.
+
+     The test case covers above 4 cases for running.
+     */
+  float minus_zero = get_minus_zero ();
+  float a = __builtin_copysignf (1.0, minus_zero);
+  float b = __builtin_copysignf (1.0, foo (minus_zero, 10));
+
+  if (a != b)
     abort ();
+
   exit (0);
 }
 
