@@ -114,7 +114,7 @@ namespace __gnu_posix
   inline int close(int fd)
   { return ::_close(fd); }
 
-  typedef struct ::__stat64 stat_type;
+  using stat_type = struct ::_stat64;
 
   inline int stat(const wchar_t* path, stat_type* buffer)
   { return ::_wstat64(path, buffer); }
@@ -176,7 +176,7 @@ namespace __gnu_posix
   using ::open;
   using ::close;
 # ifdef _GLIBCXX_HAVE_SYS_STAT_H
-  typedef struct ::stat stat_type;
+  using stat_type = struct ::stat;
   using ::stat;
 #  ifdef _GLIBCXX_USE_LSTAT
   using ::lstat;
