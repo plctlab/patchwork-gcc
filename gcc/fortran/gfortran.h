@@ -2792,13 +2792,21 @@ gfc_case;
 #define gfc_get_case() XCNEW (gfc_case)
 
 
+/* Annotations for loop constructs.  */
 typedef struct
 {
-  gfc_expr *var, *start, *end, *step;
   unsigned short unroll;
   bool ivdep;
   bool vector;
   bool novector;
+}
+gfc_loop_annot;
+
+
+typedef struct
+{
+  gfc_expr *var, *start, *end, *step;
+  gfc_loop_annot annot;
 }
 gfc_iterator;
 
@@ -2888,6 +2896,7 @@ gfc_dt;
 typedef struct gfc_forall_iterator
 {
   gfc_expr *var, *start, *end, *stride;
+  gfc_loop_annot annot;
   struct gfc_forall_iterator *next;
 }
 gfc_forall_iterator;
