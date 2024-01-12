@@ -105,11 +105,32 @@ avr_devicespecs_file (int argc, const char **argv)
   return concat ("%{!nodevicespecs:-specs=device-specs", dir_separator_str,
 				 "specs-", mmcu, "%s} %<nodevicespecs"
 #if defined (WITH_AVRLIBC)
-                 " %{mmcu=avr*:" X_NODEVLIB "} %{!mmcu=*:" X_NODEVLIB "}",
+		 // Return X_NODEVLIB when we are compiling for a core.  As
+		 // there are devices like AVR128DA32, a simple mmcu=avr* to
+		 // discriminate between cores and devices ceased to work,
+		 // hence use spec function no-devlib=avr_no_devlib from below.
+		 // See also PR107201.
+		 " %{mmcu=avr*:%:no-devlib(avr%*)} %{!mmcu=*:" X_NODEVLIB "}",
 #else
                  " " X_NODEVLIB,
 #endif
                  NULL);
+}
+
+
+/* Return X_NODEVLIB when ARGV[] contains a core like "avr5",
+   otherwise return "".  */
+
+const char*
+avr_no_devlib (int argc, const char **argv)
+{
+  for (int i = 0; i < argc; ++i)
+    {
+      if (avr_get_parch (argv[i]))
+	return X_NODEVLIB;
+    }
+
+  return "";
 }
 
 
