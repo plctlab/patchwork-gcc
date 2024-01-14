@@ -1042,6 +1042,11 @@ AC_ARG_WITH(dwarf2,
 dwarf2="$with_dwarf2",
 dwarf2=no)
 
+AC_ARG_WITH(dwarf4,
+[AS_HELP_STRING([--with-dwarf4], [force the default debug format to be DWARF 4])],
+dwarf4="$with_dwarf4",
+dwarf4=no)
+
 AC_ARG_ENABLE(shared,
 [AS_HELP_STRING([--disable-shared], [don't provide a shared libgcc])],
 [
@@ -1903,6 +1908,10 @@ fi
 
 if test x"$dwarf2" = xyes
 then tm_file="$tm_file tm-dwarf2.h"
+fi
+
+if test x"$dwarf4" = xyes
+then tm_file="$tm_file tm-dwarf4.h"
 fi
 
 # Say what files are being used for the output code and MD file.
