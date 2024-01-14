@@ -95,6 +95,8 @@ public:
      *non-debug* insns.	 */
   int nrefs, freq;
   int last_reload;
+  /* Skip reasign register pair with adjacent memory access allocno.  */
+  bool pseudo_conflict;
   /* rtx used to undo the inheritance.  It can be non-null only
      between subsequent inheritance and undo inheritance passes.  */
   rtx restore_rtx;
