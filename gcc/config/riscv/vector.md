@@ -275,7 +275,7 @@
 	       (const_int 1)
 
 	       (eq_attr "type" "vimuladd,vfmuladd")
-	       (const_int 5)]
+	       (const_int 2)]
 	(const_int INVALID_ATTRIBUTE)))
 
 ;; The index of operand[] to get the avl op.
@@ -4560,7 +4560,7 @@
    vmv.v.v\t%0,%2\;vmadd.vv\t%0,%3,%4%p1"
   [(set_attr "type" "vimuladd")
    (set_attr "mode" "<MODE>")
-   (set_attr "merge_op_idx" "4")
+   (set_attr "merge_op_idx" "2")
    (set_attr "vl_op_idx" "5")
    (set (attr "ta") (symbol_ref "riscv_vector::get_ta(operands[6])"))
    (set (attr "ma") (symbol_ref "riscv_vector::get_ma(operands[7])"))
@@ -4591,7 +4591,7 @@
    vmv.v.v\t%0,%4\;vmacc.vv\t%0,%2,%3%p1"
   [(set_attr "type" "vimuladd")
    (set_attr "mode" "<MODE>")
-   (set_attr "merge_op_idx" "2")
+   (set_attr "merge_op_idx" "4")
    (set_attr "vl_op_idx" "5")
    (set (attr "ta") (symbol_ref "riscv_vector::get_ta(operands[6])"))
    (set (attr "ma") (symbol_ref "riscv_vector::get_ma(operands[7])"))
@@ -4697,7 +4697,7 @@
    vmv.v.v\t%0,%3\;vmadd.vx\t%0,%2,%4%p1"
   [(set_attr "type" "vimuladd")
    (set_attr "mode" "<MODE>")
-   (set_attr "merge_op_idx" "4")
+   (set_attr "merge_op_idx" "3")
    (set_attr "vl_op_idx" "5")
    (set (attr "ta") (symbol_ref "riscv_vector::get_ta(operands[6])"))
    (set (attr "ma") (symbol_ref "riscv_vector::get_ma(operands[7])"))
@@ -4729,7 +4729,7 @@
    vmv.v.v\t%0,%4\;vmacc.vx\t%0,%2,%3%p1"
   [(set_attr "type" "vimuladd")
    (set_attr "mode" "<MODE>")
-   (set_attr "merge_op_idx" "2")
+   (set_attr "merge_op_idx" "4")
    (set_attr "vl_op_idx" "5")
    (set (attr "ta") (symbol_ref "riscv_vector::get_ta(operands[6])"))
    (set (attr "ma") (symbol_ref "riscv_vector::get_ma(operands[7])"))
@@ -4844,7 +4844,7 @@
    vmv.v.v\t%0,%2\;vmadd.vx\t%0,%2,%4%p1"
   [(set_attr "type" "vimuladd")
    (set_attr "mode" "<MODE>")
-   (set_attr "merge_op_idx" "4")
+   (set_attr "merge_op_idx" "3")
    (set_attr "vl_op_idx" "5")
    (set (attr "ta") (symbol_ref "riscv_vector::get_ta(operands[6])"))
    (set (attr "ma") (symbol_ref "riscv_vector::get_ma(operands[7])"))
@@ -4877,7 +4877,7 @@
    vmv.v.v\t%0,%4\;vmacc.vx\t%0,%2,%3%p1"
   [(set_attr "type" "vimuladd")
    (set_attr "mode" "<MODE>")
-   (set_attr "merge_op_idx" "2")
+   (set_attr "merge_op_idx" "4")
    (set_attr "vl_op_idx" "5")
    (set (attr "ta") (symbol_ref "riscv_vector::get_ta(operands[6])"))
    (set (attr "ma") (symbol_ref "riscv_vector::get_ma(operands[7])"))
@@ -4981,7 +4981,7 @@
    vmv.v.v\t%0,%2\;vnmsub.vv\t%0,%3,%4%p1"
   [(set_attr "type" "vimuladd")
    (set_attr "mode" "<MODE>")
-   (set_attr "merge_op_idx" "4")
+   (set_attr "merge_op_idx" "2")
    (set_attr "vl_op_idx" "5")
    (set (attr "ta") (symbol_ref "riscv_vector::get_ta(operands[6])"))
    (set (attr "ma") (symbol_ref "riscv_vector::get_ma(operands[7])"))
@@ -5012,7 +5012,7 @@
    vmv.v.v\t%0,%4\;vnmsac.vv\t%0,%2,%3%p1"
   [(set_attr "type" "vimuladd")
    (set_attr "mode" "<MODE>")
-   (set_attr "merge_op_idx" "2")
+   (set_attr "merge_op_idx" "4")
    (set_attr "vl_op_idx" "5")
    (set (attr "ta") (symbol_ref "riscv_vector::get_ta(operands[6])"))
    (set (attr "ma") (symbol_ref "riscv_vector::get_ma(operands[7])"))
@@ -5118,7 +5118,7 @@
    vmv.v.v\t%0,%3\;vnmsub.vx\t%0,%2,%4%p1"
   [(set_attr "type" "vimuladd")
    (set_attr "mode" "<MODE>")
-   (set_attr "merge_op_idx" "4")
+   (set_attr "merge_op_idx" "3")
    (set_attr "vl_op_idx" "5")
    (set (attr "ta") (symbol_ref "riscv_vector::get_ta(operands[6])"))
    (set (attr "ma") (symbol_ref "riscv_vector::get_ma(operands[7])"))
@@ -5150,7 +5150,7 @@
    vmv.v.v\t%0,%4\;vnmsac.vx\t%0,%2,%3%p1"
   [(set_attr "type" "vimuladd")
    (set_attr "mode" "<MODE>")
-   (set_attr "merge_op_idx" "2")
+   (set_attr "merge_op_idx" "4")
    (set_attr "vl_op_idx" "5")
    (set (attr "ta") (symbol_ref "riscv_vector::get_ta(operands[6])"))
    (set (attr "ma") (symbol_ref "riscv_vector::get_ma(operands[7])"))
@@ -5265,7 +5265,7 @@
    vmv.v.v\t%0,%3\;vnmsub.vx\t%0,%2,%4%p1"
   [(set_attr "type" "vimuladd")
    (set_attr "mode" "<MODE>")
-   (set_attr "merge_op_idx" "4")
+   (set_attr "merge_op_idx" "3")
    (set_attr "vl_op_idx" "5")
    (set (attr "ta") (symbol_ref "riscv_vector::get_ta(operands[6])"))
    (set (attr "ma") (symbol_ref "riscv_vector::get_ma(operands[7])"))
@@ -5298,7 +5298,7 @@
    vmv.v.v\t%0,%4\;vnmsac.vx\t%0,%2,%3%p1"
   [(set_attr "type" "vimuladd")
    (set_attr "mode" "<MODE>")
-   (set_attr "merge_op_idx" "2")
+   (set_attr "merge_op_idx" "4")
    (set_attr "vl_op_idx" "5")
    (set (attr "ta") (symbol_ref "riscv_vector::get_ta(operands[6])"))
    (set (attr "ma") (symbol_ref "riscv_vector::get_ma(operands[7])"))
@@ -5860,7 +5860,7 @@
    vmv.v.v\t%0,%2\;vf<madd_msub>.vv\t%0,%3,%4%p1"
   [(set_attr "type" "vfmuladd")
    (set_attr "mode" "<MODE>")
-   (set_attr "merge_op_idx" "4")
+   (set_attr "merge_op_idx" "2")
    (set_attr "vl_op_idx" "5")
    (set (attr "ta") (symbol_ref "riscv_vector::get_ta(operands[6])"))
    (set (attr "ma") (symbol_ref "riscv_vector::get_ma(operands[7])"))
@@ -5891,7 +5891,7 @@
    vmv.v.v\t%0,%4\;vf<macc_msac>.vv\t%0,%2,%3%p1"
   [(set_attr "type" "vfmuladd")
    (set_attr "mode" "<MODE>")
-   (set_attr "merge_op_idx" "2")
+   (set_attr "merge_op_idx" "4")
    (set_attr "vl_op_idx" "5")
    (set (attr "ta") (symbol_ref "riscv_vector::get_ta(operands[6])"))
    (set (attr "ma") (symbol_ref "riscv_vector::get_ma(operands[7])"))
@@ -5979,7 +5979,7 @@
    vmv.v.v\t%0,%3\;vf<madd_msub>.vf\t%0,%2,%4%p1"
   [(set_attr "type" "vfmuladd")
    (set_attr "mode" "<MODE>")
-   (set_attr "merge_op_idx" "4")
+   (set_attr "merge_op_idx" "3")
    (set_attr "vl_op_idx" "5")
    (set (attr "ta") (symbol_ref "riscv_vector::get_ta(operands[6])"))
    (set (attr "ma") (symbol_ref "riscv_vector::get_ma(operands[7])"))
@@ -6011,7 +6011,7 @@
    vmv.v.v\t%0,%4\;vf<macc_msac>.vf\t%0,%2,%3%p1"
   [(set_attr "type" "vfmuladd")
    (set_attr "mode" "<MODE>")
-   (set_attr "merge_op_idx" "2")
+   (set_attr "merge_op_idx" "4")
    (set_attr "vl_op_idx" "5")
    (set (attr "ta") (symbol_ref "riscv_vector::get_ta(operands[6])"))
    (set (attr "ma") (symbol_ref "riscv_vector::get_ma(operands[7])"))
@@ -6104,7 +6104,7 @@
    vmv.v.v\t%0,%2\;vf<nmsub_nmadd>.vv\t%0,%3,%4%p1"
   [(set_attr "type" "vfmuladd")
    (set_attr "mode" "<MODE>")
-   (set_attr "merge_op_idx" "4")
+   (set_attr "merge_op_idx" "2")
    (set_attr "vl_op_idx" "5")
    (set (attr "ta") (symbol_ref "riscv_vector::get_ta(operands[6])"))
    (set (attr "ma") (symbol_ref "riscv_vector::get_ma(operands[7])"))
@@ -6136,7 +6136,7 @@
    vmv.v.v\t%0,%4\;vf<nmsac_nmacc>.vv\t%0,%2,%3%p1"
   [(set_attr "type" "vfmuladd")
    (set_attr "mode" "<MODE>")
-   (set_attr "merge_op_idx" "2")
+   (set_attr "merge_op_idx" "4")
    (set_attr "vl_op_idx" "5")
    (set (attr "ta") (symbol_ref "riscv_vector::get_ta(operands[6])"))
    (set (attr "ma") (symbol_ref "riscv_vector::get_ma(operands[7])"))
@@ -6227,7 +6227,7 @@
    vmv.v.v\t%0,%3\;vf<nmsub_nmadd>.vf\t%0,%2,%4%p1"
   [(set_attr "type" "vfmuladd")
    (set_attr "mode" "<MODE>")
-   (set_attr "merge_op_idx" "4")
+   (set_attr "merge_op_idx" "3")
    (set_attr "vl_op_idx" "5")
    (set (attr "ta") (symbol_ref "riscv_vector::get_ta(operands[6])"))
    (set (attr "ma") (symbol_ref "riscv_vector::get_ma(operands[7])"))
@@ -6260,7 +6260,7 @@
    vmv.v.v\t%0,%4\;vf<nmsac_nmacc>.vf\t%0,%2,%3%p1"
   [(set_attr "type" "vfmuladd")
    (set_attr "mode" "<MODE>")
-   (set_attr "merge_op_idx" "2")
+   (set_attr "merge_op_idx" "4")
    (set_attr "vl_op_idx" "5")
    (set (attr "ta") (symbol_ref "riscv_vector::get_ta(operands[6])"))
    (set (attr "ma") (symbol_ref "riscv_vector::get_ma(operands[7])"))
