@@ -4206,11 +4206,16 @@ cp_binding_level_descriptor (cp_binding_level *scope)
     "try-scope",
     "catch-scope",
     "for-scope",
+    "cond-init-scope",
+    "stmt-expr-scope",
     "function-parameter-scope",
     "class-scope",
+    "enum-scope",
     "namespace-scope",
     "template-parameter-scope",
-    "template-explicit-spec-scope"
+    "template-explicit-spec-scope",
+    "transaction-scope",
+    "openmp-scope"
   };
   const scope_kind kind = scope->explicit_spec_p
     ? sk_template_spec : scope->kind;
