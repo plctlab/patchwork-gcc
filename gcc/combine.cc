@@ -7206,6 +7206,11 @@ expand_compound_operation (rtx x)
       if (len == 0)
 	return x;
 
+      /* Sign-extending loads can never be simplified at compile time.  */
+      if (WORD_REGISTER_OPERATIONS && MEM_P (XEXP (x, 0))
+	  && load_extend_op (inner_mode) == SIGN_EXTEND)
+	return x;
+
       break;
 
     case ZERO_EXTRACT:
