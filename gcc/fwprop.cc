@@ -463,7 +463,10 @@ try_fwprop_subst_pattern (obstack_watermark &attempt, insn_change &use_change,
   if (prop.num_replacements == 0)
     return false;
 
-  if (!prop.profitable_p ())
+  if (!prop.profitable_p ()
+      && (prop.changed_mem_p ()
+	  || use_insn->is_asm ()
+	  || !single_set (use_rtl)))
     {
       if (dump_file && (dump_flags & TDF_DETAILS))
 	fprintf (dump_file, "cannot propagate from insn %d into"
@@ -495,7 +498,8 @@ try_fwprop_subst_pattern (obstack_watermark &attempt, insn_change &use_change,
 	redo_changes (0);
 	auto new_cost = set_src_cost (SET_SRC (use_set),
 				      GET_MODE (SET_DEST (use_set)), speed);
-	if (new_cost > old_cost)
+	if (new_cost > old_cost
+            || (new_cost == old_cost && !prop.profitable_p ()))
 	  {
 	    if (dump_file)
 	      fprintf (dump_file, "change not profitable"
