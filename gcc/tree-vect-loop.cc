@@ -5427,7 +5427,6 @@ vect_create_epilog_for_reduction (loop_vec_info loop_vinfo,
   gimple_stmt_iterator exit_gsi;
   tree new_temp = NULL_TREE, new_name, new_scalar_dest;
   gimple *epilog_stmt = NULL;
-  gimple *exit_phi;
   tree bitsize;
   tree def;
   tree orig_name, scalar_result;
@@ -5438,7 +5437,6 @@ vect_create_epilog_for_reduction (loop_vec_info loop_vinfo,
   int j, i;
   vec<tree> &scalar_results = reduc_info->reduc_scalar_results;
   unsigned int group_size = 1, k;
-  auto_vec<gimple *> phis;
   /* SLP reduction without reduction chain, e.g.,
      # a1 = phi <a2, a0>
      # b1 = phi <b2, b0>
@@ -6345,44 +6343,59 @@ vect_create_epilog_for_reduction (loop_vec_info loop_vinfo,
           use <s_out4> */
 
   gcc_assert (live_out_stmts.size () == scalar_results.length ());
+  auto_vec<gphi *> phis;
   for (k = 0; k < live_out_stmts.size (); k++)
     {
       stmt_vec_info scalar_stmt_info = vect_orig_stmt (live_out_stmts[k]);
       scalar_dest = gimple_get_lhs (scalar_stmt_info->stmt);
 
-      phis.create (3);
       /* Find the loop-closed-use at the loop exit of the original scalar
          result.  (The reduction result is expected to have two immediate uses,
          one at the latch block, and one at the loop exit).  For double
-         reductions we are looking for exit phis of the outer loop.  */
-      FOR_EACH_IMM_USE_FAST (use_p, imm_iter, scalar_dest)
-        {
-          if (!flow_bb_inside_loop_p (loop, gimple_bb (USE_STMT (use_p))))
+	 reductions we are looking for exit phis of the outer loop.
+	 ???  For early-breaks we mess up scalar LC SSA form so also match
+	 a PHI in a merge block and replace that PHIs use on the correct
+	 edge.  */
+      FOR_EACH_IMM_USE_STMT (use_stmt, imm_iter, scalar_dest)
+	{
+	  if (is_gimple_debug (use_stmt))
+	    continue;
+	  else if (!flow_bb_inside_loop_p (loop, gimple_bb (use_stmt)))
 	    {
-	      if (!is_gimple_debug (USE_STMT (use_p)))
-		phis.safe_push (USE_STMT (use_p));
+	      if (gimple_bb (use_stmt) == loop_exit->dest)
+		phis.safe_push (as_a <gphi *> (use_stmt));
+	      else if (gimple_code (use_stmt) == GIMPLE_PHI)
+		{
+		  /* ???  This is the case running into a merge PHI with
+		     a missing LC PHI for early exit vectorization.  Replace
+		     only the merge argument corresponding to loop_exit.  */
+		  FOR_EACH_IMM_USE_ON_STMT (use_p, imm_iter)
+		    if (gimple_phi_arg_edge (as_a <gphi *> (use_stmt),
+					     phi_arg_index_from_use (use_p))
+			  ->src == loop_exit->dest)
+		      SET_USE (use_p, scalar_results[k]);
+		  update_stmt (use_stmt);
+		}
 	    }
-          else
-            {
-              if (double_reduc && gimple_code (USE_STMT (use_p)) == GIMPLE_PHI)
-                {
-                  tree phi_res = PHI_RESULT (USE_STMT (use_p));
+	  else if (double_reduc && gimple_code (use_stmt) == GIMPLE_PHI)
+	    {
+	      tree phi_res = PHI_RESULT (use_stmt);
 
-                  FOR_EACH_IMM_USE_FAST (phi_use_p, phi_imm_iter, phi_res)
-                    {
-                      if (!flow_bb_inside_loop_p (loop,
-                                             gimple_bb (USE_STMT (phi_use_p)))
-			  && !is_gimple_debug (USE_STMT (phi_use_p)))
-                        phis.safe_push (USE_STMT (phi_use_p));
-                    }
-                }
-            }
-        }
+	      FOR_EACH_IMM_USE_FAST (phi_use_p, phi_imm_iter, phi_res)
+		{
+		  if (!flow_bb_inside_loop_p (outer_loop,
+					      gimple_bb (USE_STMT (phi_use_p)))
+		      && !is_gimple_debug (USE_STMT (phi_use_p)))
+		    phis.safe_push (as_a <gphi *> (USE_STMT (phi_use_p)));
+		}
+	    }
+	}
 
+      gphi *exit_phi;
       FOR_EACH_VEC_ELT (phis, i, exit_phi)
         {
-          /* Replace the uses:  */
-          orig_name = PHI_RESULT (exit_phi);
+	  /* Replace the uses:  */
+	  orig_name = gimple_phi_result (exit_phi);
 
 	  /* Look for a single use at the target of the skip edge.  */
 	  if (unify_with_main_loop_p)
@@ -6403,7 +6416,7 @@ vect_create_epilog_for_reduction (loop_vec_info loop_vinfo,
 	    }
         }
 
-      phis.release ();
+      phis.truncate (0);
     }
 }
 
