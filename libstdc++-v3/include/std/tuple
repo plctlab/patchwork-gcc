@@ -317,7 +317,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 		(_Tuple_impl<_Idx, _UHead, _UTails...>::_M_head(__in)))
 	{ }
 
-#if __cplusplus > 202002L
+#if __cpp_lib_ranges_zip // >= C++23
       template<typename... _UElements>
 	constexpr
 	_Tuple_impl(_Tuple_impl<_Idx, _UElements...>& __in)
@@ -398,7 +398,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 		(_Tuple_impl<_Idx, _UHead, _UTails...>::_M_head(__in)))
 	{ }
 
-#if __cplusplus > 202002L
+#if __cpp_lib_ranges_zip // >= C++23
       template<typename _Alloc, typename _UHead, typename... _UTails>
 	constexpr
 	_Tuple_impl(allocator_arg_t __tag, const _Alloc& __a,
@@ -442,7 +442,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	      std::move(_Tuple_impl<_Idx, _UHead, _UTails...>::_M_tail(__in)));
 	}
 
-#if __cplusplus > 202002L
+#if __cpp_lib_ranges_zip // >= C++23
       template<typename... _UElements>
 	constexpr void
 	_M_assign(const _Tuple_impl<_Idx, _UElements...>& __in) const
@@ -473,7 +473,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	_Inherited::_M_swap(_M_tail(__in));
       }
 
-#if __cplusplus > 202002L
+#if __cpp_lib_ranges_zip // >= C++23
       constexpr void
       _M_swap(const _Tuple_impl& __in) const
       {
@@ -542,7 +542,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	: _Base(std::forward<_UHead>(_Tuple_impl<_Idx, _UHead>::_M_head(__in)))
 	{ }
 
-#if __cplusplus > 202002L
+#if __cpp_lib_ranges_zip // >= C++23
       template<typename _UHead>
 	constexpr
 	_Tuple_impl(_Tuple_impl<_Idx, _UHead>& __in)
@@ -608,7 +608,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 		std::forward<_UHead>(_Tuple_impl<_Idx, _UHead>::_M_head(__in)))
 	{ }
 
-#if __cplusplus > 202002L
+#if __cpp_lib_ranges_zip // >= C++23
       template<typename _Alloc, typename _UHead>
 	constexpr
 	_Tuple_impl(allocator_arg_t __tag, const _Alloc& __a,
@@ -643,7 +643,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	    = std::forward<_UHead>(_Tuple_impl<_Idx, _UHead>::_M_head(__in));
 	}
 
-#if __cplusplus > 202002L
+#if __cpp_lib_ranges_zip // >= C++23
       template<typename _UHead>
 	constexpr void
 	_M_assign(const _Tuple_impl<_Idx, _UHead>& __in) const
@@ -669,7 +669,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	swap(_M_head(*this), _M_head(__in));
       }
 
-#if __cplusplus > 202002L
+#if __cpp_lib_ranges_zip // >= C++23
       constexpr void
       _M_swap(const _Tuple_impl& __in) const
       {
@@ -1211,7 +1211,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     public:
       _GLIBCXX20_CONSTEXPR
       void swap(tuple&) noexcept { /* no-op */ }
-#if __cplusplus > 202002L
+#if __cpp_lib_ranges_zip // >= C++23
       constexpr void swap(const tuple&) const noexcept { /* no-op */ }
 #endif
       // We need the default since we're going to define no-op
