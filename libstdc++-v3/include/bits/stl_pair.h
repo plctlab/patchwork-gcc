@@ -212,7 +212,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	swap(second, __p.second);
       }
 
-#if __cplusplus > 202002L
+#if __glibcxx_ranges_zip // >= C++23
       // As an extension, we constrain the const swap member function in order
       // to continue accepting explicit instantiation of pairs whose elements
       // are not all const swappable.  Without this constraint, such an
@@ -353,7 +353,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	constexpr explicit(!_S_convertible<_U1, _U2>())
 	pair(pair<_U1, _U2>&&) = delete;
 
-#if __cplusplus > 202002L
+#if __glibcxx_ranges_zip // >= C++23
       /// Converting constructor from a non-const `pair<U1, U2>` lvalue
       template<typename _U1, typename _U2>
 	requires (_S_constructible<_U1&, _U2&>()) && (!_S_dangles<_U1&, _U2&>())
@@ -457,7 +457,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	  return *this;
 	}
 
-#if __cplusplus > 202002L
+#if __glibcxx_ranges_zip // >= C++23
       /// Copy assignment operator (const)
       constexpr const pair&
       operator=(const pair& __p) const
@@ -880,7 +880,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     noexcept(noexcept(__x.swap(__y)))
     { __x.swap(__y); }
 
-#if __cplusplus > 202002L
+#if __glibcxx_ranges_zip // >= C++23
   template<typename _T1, typename _T2>
     requires is_swappable_v<const _T1> && is_swappable_v<const _T2>
     constexpr void
@@ -1094,7 +1094,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     get(const pair<_Up, _Tp>&& __p) noexcept
     { return std::move(__p.second); }
 
-#if __cplusplus > 202002L
+#if __glibcxx_ranges_zip // >= C++23
   template<typename _T1, typename _T2, typename _U1, typename _U2,
 	   template<typename> class _TQual, template<typename> class _UQual>
     requires requires { typename pair<common_reference_t<_TQual<_T1>, _UQual<_U1>>,
