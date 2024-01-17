@@ -5504,6 +5504,8 @@ namespace views::__adaptor
 	    else
 	      return adjacent_view<all_t<_Range>, _Nm>(std::forward<_Range>(__r));
 	  }
+
+	static constexpr bool _S_has_simple_call_op = true;
       };
 
     template<size_t _Nm>
@@ -8630,6 +8632,8 @@ namespace views::__adaptor
 	  else
 	    return as_rvalue_view(std::forward<_Range>(__r));
 	}
+
+      static constexpr bool _S_has_simple_call_op = true;
     };
 
     inline constexpr _AsRvalue as_rvalue;
@@ -8933,6 +8937,8 @@ namespace views::__adaptor
 	constexpr auto
 	operator() [[nodiscard]] (_Range&& __r) const
 	{ return enumerate_view<all_t<_Range>>(std::forward<_Range>(__r)); }
+
+      static constexpr bool _S_has_simple_call_op = true;
     };
 
     inline constexpr _Enumerate enumerate;
@@ -9039,6 +9045,8 @@ namespace views::__adaptor
 	else
 	  return as_const_view(std::forward<_Range>(__r));
       }
+
+      static constexpr bool _S_has_simple_call_op = true;
     };
 
     inline constexpr _AsConst as_const;
