@@ -27,6 +27,8 @@ test_iterators()
   it -= 2;
   it += 1;
   VERIFY( (it + 1) == v.end() );
+  it = it + 1;
+  it = it;
 
   auto rit = v.rbegin();
   VERIFY( &*rit == &v.back() );

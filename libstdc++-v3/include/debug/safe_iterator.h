@@ -63,6 +63,20 @@
   _GLIBCXX_DEBUG_VERIFY_OPERANDS(_Lhs, _Rhs, __msg_distance_bad,	\
 				 __msg_distance_different)
 
+// This pair of macros helps with writing valid C++20 constexpr functions that
+// contain a non-constexpr code path that defines a non-literal variable, which
+// was otherwise disallowed until P2242R3 for C++23.  We use them below for
+// __gnu_cxx::__scoped_lock so that the containing functions are still
+// considered valid C++20 constexpr functions.
+
+#if __cplusplus >= 202002L && __cpp_constexpr < 202110L
+# define _GLIBCXX20_CONSTEXPR_NON_LITERAL_SCOPE_BEGIN [&]() -> void { do
+# define _GLIBCXX20_CONSTEXPR_NON_LITERAL_SCOPE_END while(false); }();
+#else
+# define _GLIBCXX20_CONSTEXPR_NON_LITERAL_SCOPE_BEGIN
+# define _GLIBCXX20_CONSTEXPR_NON_LITERAL_SCOPE_END
+#endif
+
 namespace __gnu_debug
 {
   /** Helper struct to deal with sequence offering a before_begin
@@ -236,11 +250,11 @@ namespace __gnu_debug
 			      ._M_iterator(__x, "other"));
 
 	if (this->_M_sequence && this->_M_sequence == __x._M_sequence)
-	  {
+	  _GLIBCXX20_CONSTEXPR_NON_LITERAL_SCOPE_BEGIN {
 	    __gnu_cxx::__scoped_lock __l(this->_M_get_mutex());
 	    base() = __x.base();
 	    _M_version = __x._M_sequence->_M_version;
-	  }
+	  } _GLIBCXX20_CONSTEXPR_NON_LITERAL_SCOPE_END
 	else
 	  {
 	    _M_detach();
@@ -269,11 +283,11 @@ namespace __gnu_debug
 	  return *this;
 
 	if (this->_M_sequence && this->_M_sequence == __x._M_sequence)
-	  {
+	  _GLIBCXX20_CONSTEXPR_NON_LITERAL_SCOPE_BEGIN {
 	    __gnu_cxx::__scoped_lock __l(this->_M_get_mutex());
 	    base() = __x.base();
 	    _M_version = __x._M_sequence->_M_version;
-	  }
+	  } _GLIBCXX20_CONSTEXPR_NON_LITERAL_SCOPE_END
 	else
 	  {
 	    _M_detach();
@@ -326,8 +340,10 @@ namespace __gnu_debug
 	_GLIBCXX_DEBUG_VERIFY(this->_M_incrementable(),
 			      _M_message(__msg_bad_inc)
 			      ._M_iterator(*this, "this"));
-	__gnu_cxx::__scoped_lock __l(this->_M_get_mutex());
-	++base();
+	_GLIBCXX20_CONSTEXPR_NON_LITERAL_SCOPE_BEGIN {
+	  __gnu_cxx::__scoped_lock __l(this->_M_get_mutex());
+	  ++base();
+	} _GLIBCXX20_CONSTEXPR_NON_LITERAL_SCOPE_END
 	return *this;
       }
 
@@ -621,8 +637,10 @@ namespace __gnu_debug
 	_GLIBCXX_DEBUG_VERIFY(this->_M_decrementable(),
 			      _M_message(__msg_bad_dec)
 			      ._M_iterator(*this, "this"));
-	__gnu_cxx::__scoped_lock __l(this->_M_get_mutex());
-	--this->base();
+	_GLIBCXX20_CONSTEXPR_NON_LITERAL_SCOPE_BEGIN {
+	  __gnu_cxx::__scoped_lock __l(this->_M_get_mutex());
+	  --this->base();
+	} _GLIBCXX20_CONSTEXPR_NON_LITERAL_SCOPE_END
 	return *this;
       }
 
@@ -809,8 +827,10 @@ namespace __gnu_debug
 	_GLIBCXX_DEBUG_VERIFY(this->_M_can_advance(__n),
 			      _M_message(__msg_advance_oob)
 			      ._M_iterator(*this)._M_integer(__n));
-	__gnu_cxx::__scoped_lock __l(this->_M_get_mutex());
-	this->base() += __n;
+	_GLIBCXX20_CONSTEXPR_NON_LITERAL_SCOPE_BEGIN {
+	  __gnu_cxx::__scoped_lock __l(this->_M_get_mutex());
+	  this->base() += __n;
+	} _GLIBCXX20_CONSTEXPR_NON_LITERAL_SCOPE_END
 	return *this;
       }
 
@@ -820,8 +840,10 @@ namespace __gnu_debug
 	_GLIBCXX_DEBUG_VERIFY(this->_M_can_advance(-__n),
 			      _M_message(__msg_retreat_oob)
 			      ._M_iterator(*this)._M_integer(__n));
-	__gnu_cxx::__scoped_lock __l(this->_M_get_mutex());
-	this->base() -= __n;
+	_GLIBCXX20_CONSTEXPR_NON_LITERAL_SCOPE_BEGIN {
+	  __gnu_cxx::__scoped_lock __l(this->_M_get_mutex());
+	  this->base() -= __n;
+	} _GLIBCXX20_CONSTEXPR_NON_LITERAL_SCOPE_END
 	return *this;
       }
 
@@ -1030,6 +1052,8 @@ _GLIBCXX_END_NAMESPACE_VERSION
 }
 #endif
 
+#undef _GLIBCXX20_CONSTEXPR_NON_LITERAL_SCOPE_END
+#undef _GLIBCXX20_CONSTEXPR_NON_LITERAL_SCOPE_BEGIN
 #undef _GLIBCXX_DEBUG_VERIFY_DIST_OPERANDS
 #undef _GLIBCXX_DEBUG_VERIFY_REL_OPERANDS
 #undef _GLIBCXX_DEBUG_VERIFY_EQ_OPERANDS
