@@ -2,6 +2,8 @@
 /* { dg-skip-if "fiji/gfx803 only" { ! amdgcn-*-* } { "*" } { "-foffload=-march=fiji" } } */
 /* { dg-additional-options "-foffload=-fdump-tree-optimized" } */
 
+/* { dg-xfail-if "fiji/gfx803 is no longer enabled by default & deprectated in ROCm/LLVM/GCC" { *-*-* } } */
+
 #define USE_FIJI_FOR_GFX803
 #include "declare-variant-4.h"
 
