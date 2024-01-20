@@ -2635,6 +2635,17 @@ enum function_type
   TYPE_EXCEPTION
 };
 
+enum call_saved_registers_type
+{
+  TYPE_DEFAULT_CALL_SAVED_REGISTERS = 0,
+  /* The current function is a function specified with the "interrupt"
+     or "no_caller_saved_registers" attribute.  */
+  TYPE_NO_CALLER_SAVED_REGISTERS,
+  /* The current function is a function specified with the "noreturn"
+     or "no_callee_saved_registers" attribute.  */
+  TYPE_NO_CALLEE_SAVED_REGISTERS
+};
+
 enum queued_insn_type
 {
   TYPE_NONE = 0,
@@ -2704,9 +2715,12 @@ struct GTY(()) machine_function {
   /* How to generate function return.  */
   ENUM_BITFIELD(indirect_branch) function_return_type : 3;
 
-  /* If true, the current function is a function specified with
-     the "interrupt" or "no_caller_saved_registers" attribute.  */
-  BOOL_BITFIELD no_caller_saved_registers : 1;
+  /* Call saved registers type.  */
+  ENUM_BITFIELD(call_saved_registers_type) call_saved_registers : 2;
+
+  /* If true, the current function calls no_callee_saved_registers
+     functions.  */
+  BOOL_BITFIELD call_no_callee_saved_registers : 1;
 
   /* If true, there is register available for argument passing.  This
      is used only in ix86_function_ok_for_sibcall by 32-bit to determine
