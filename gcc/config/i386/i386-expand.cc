@@ -9391,17 +9391,41 @@ ix86_expand_call (rtx retval, rtx fnaddr, rtx callarg1,
   rtx use = NULL, call;
   unsigned int vec_len = 0;
   tree fndecl;
+  bool call_no_callee_saved_registers = false;
 
   if (GET_CODE (XEXP (fnaddr, 0)) == SYMBOL_REF)
     {
       fndecl = SYMBOL_REF_DECL (XEXP (fnaddr, 0));
-      if (fndecl
-	  && (lookup_attribute ("interrupt",
-				TYPE_ATTRIBUTES (TREE_TYPE (fndecl)))))
-	error ("interrupt service routine cannot be called directly");
+      if (fndecl)
+	{
+	  if (lookup_attribute ("interrupt",
+				TYPE_ATTRIBUTES (TREE_TYPE (fndecl))))
+	    error ("interrupt service routine cannot be called directly");
+	  else if (lookup_attribute ("no_callee_saved_registers",
+				     TYPE_ATTRIBUTES (TREE_TYPE (fndecl))))
+	    {
+	      cfun->machine->call_no_callee_saved_registers = true;
+	      call_no_callee_saved_registers = true;
+	    }
+	}
     }
   else
-    fndecl = NULL_TREE;
+    {
+      if (MEM_P (fnaddr))
+	{
+	  tree mem_expr = MEM_EXPR (fnaddr);
+	  if (mem_expr != nullptr
+	      && TREE_CODE (mem_expr) == MEM_REF
+	      && lookup_attribute ("no_callee_saved_registers",
+				   TYPE_ATTRIBUTES (TREE_TYPE (mem_expr))))
+	    {
+	      cfun->machine->call_no_callee_saved_registers = true;
+	      call_no_callee_saved_registers = true;
+	    }
+	}
+
+      fndecl = NULL_TREE;
+    }
 
   if (pop == const0_rtx)
     pop = NULL;
@@ -9536,13 +9560,18 @@ ix86_expand_call (rtx retval, rtx fnaddr, rtx callarg1,
       vec[vec_len++] = pop;
     }
 
-  if (cfun->machine->no_caller_saved_registers
+  static const char ix86_call_used_regs[] = CALL_USED_REGISTERS;
+
+  char clobbered_registers[FIRST_PSEUDO_REGISTER];
+  memset (clobbered_registers, 0, sizeof (clobbered_registers));
+
+  if ((cfun->machine->call_saved_registers
+       == TYPE_NO_CALLER_SAVED_REGISTERS)
       && (!fndecl
 	  || (!TREE_THIS_VOLATILE (fndecl)
 	      && !lookup_attribute ("no_caller_saved_registers",
 				    TYPE_ATTRIBUTES (TREE_TYPE (fndecl))))))
     {
-      static const char ix86_call_used_regs[] = CALL_USED_REGISTERS;
       bool is_64bit_ms_abi = (TARGET_64BIT
 			      && ix86_function_abi (fndecl) == MS_ABI);
       char c_mask = CALL_USED_REGISTERS_MASK (is_64bit_ms_abi);
@@ -9555,8 +9584,11 @@ ix86_expand_call (rtx retval, rtx fnaddr, rtx callarg1,
 		|| (ix86_call_used_regs[i] & c_mask))
 	    && !STACK_REGNO_P (i)
 	    && !MMX_REGNO_P (i))
-	  clobber_reg (&use,
-		       gen_rtx_REG (GET_MODE (regno_reg_rtx[i]), i));
+	  {
+	    clobber_reg (&use,
+			 gen_rtx_REG (GET_MODE (regno_reg_rtx[i]), i));
+	    clobbered_registers[i] = 1;
+	  }
     }
   else if (TARGET_64BIT_MS_ABI
 	   && (!callarg2 || INTVAL (callarg2) != -2))
@@ -9569,6 +9601,7 @@ ix86_expand_call (rtx retval, rtx fnaddr, rtx callarg1,
 	  machine_mode mode = SSE_REGNO_P (regno) ? TImode : DImode;
 
 	  clobber_reg (&use, gen_rtx_REG (mode, regno));
+	  clobbered_registers[i] = 1;
 	}
 
       /* Set here, but it may get cleared later.  */
@@ -9605,6 +9638,27 @@ ix86_expand_call (rtx retval, rtx fnaddr, rtx callarg1,
 	 resolver could be used which clobbers R11 and R10.  */
       clobber_reg (&use, gen_rtx_REG (DImode, R11_REG));
       clobber_reg (&use, gen_rtx_REG (DImode, R10_REG));
+      clobbered_registers[R11_REG] = 1;
+      clobbered_registers[R10_REG] = 1;
+    }
+
+  if (call_no_callee_saved_registers)
+    {
+      /* After calling a no_callee_saved_registers function, all
+	 registers may be clobbered.  Clobber all registers that are
+	 not clobbered yet and not used by the callee.  */
+      bool is_64bit_ms_abi = (TARGET_64BIT
+			      && ix86_function_abi (fndecl) == MS_ABI);
+      char c_mask = CALL_USED_REGISTERS_MASK (is_64bit_ms_abi);
+      for (int i = 0; i < FIRST_PSEUDO_REGISTER; i++)
+	if (!fixed_regs[i]
+	    && !clobbered_registers[i]
+	    && !(ix86_call_used_regs[i] == 1
+		 || (ix86_call_used_regs[i] & c_mask))
+	    && !STACK_REGNO_P (i)
+	    && !MMX_REGNO_P (i))
+	  clobber_reg (&use,
+		       gen_rtx_REG (GET_MODE (regno_reg_rtx[i]), i));
     }
 
   if (vec_len > 1)
