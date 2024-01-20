@@ -11724,6 +11724,11 @@ trees_in::read_var_def (tree decl, tree maybe_template)
 	  DECL_INITIALIZED_P (decl) = true;
 	  if (maybe_dup && DECL_INITIALIZED_BY_CONSTANT_EXPRESSION_P (maybe_dup))
 	    DECL_INITIALIZED_BY_CONSTANT_EXPRESSION_P (decl) = true;
+	  if (DECL_CLASS_SCOPE_P (decl)
+	      && !DECL_VTABLE_OR_VTT_P (decl)
+	      && (!DECL_TEMPLATE_INFO (decl)
+		  || DECL_IMPLICIT_INSTANTIATION (decl)))
+	    note_static_storage_variable (decl);
 	}
       DECL_INITIAL (decl) = init;
       if (!dyn_init)
