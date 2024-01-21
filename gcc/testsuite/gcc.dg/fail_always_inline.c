@@ -2,7 +2,7 @@
 /* { dg-add-options bind_pic_locally } */
 
 extern __attribute__ ((always_inline)) void
- bar() { } /* { dg-warning "function might not be inlinable" } */
+ bar() { } /* { dg-warning "function is not always inlined unless also declared .inline." } */
 
 void
 f()

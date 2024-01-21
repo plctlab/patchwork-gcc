@@ -179,7 +179,7 @@ get_auto_15 (vector TYPE a)
 #ifdef DISABLE_INLINE_OF_GET_AUTO_N
 __attribute__ ((__noinline__))
 #else
-/* gcc issues warning: always_inline function might not be inlinable
+/* gcc issues warning: always_inline function is not always inlined unless also declared inline
 
    __attribute__ ((__always_inline__))
 */
