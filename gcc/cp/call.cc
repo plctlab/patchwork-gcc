@@ -6896,9 +6896,14 @@ add_operator_candidates (z_candidate **candidates,
 	{
 	  flags |= LOOKUP_REWRITTEN;
 	  if (rewrite_code != code)
-	    /* Add rewritten candidates in same order.  */
-	    add_operator_candidates (candidates, rewrite_code, ERROR_MARK,
-				     arglist, lookups, flags, complain);
+	    {
+	      /* Add rewritten candidates in same order.  */
+	      tree r = add_operator_candidates (candidates, rewrite_code,
+						ERROR_MARK, arglist, lookups,
+						flags, complain);
+	      if (r == error_mark_node)
+		return error_mark_node;
+	    }
 
 	  z_candidate *save_cand = *candidates;
 
