@@ -6517,7 +6517,8 @@ label_matches (const constexpr_ctx *ctx, tree *jump_target, tree stmt)
       break;
 
     default:
-      gcc_unreachable ();
+      /* Something else, like CONVERT_EXPR.  Unknown whether it matches.  */
+      break;
     }
   return false;
 }
