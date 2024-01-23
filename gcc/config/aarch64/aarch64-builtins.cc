@@ -1281,11 +1281,12 @@ aarch64_add_attribute (const char *name, tree attrs)
 /* Return the appropriate attributes for a function that has
    flags F and mode MODE.  */
 static tree
-aarch64_get_attributes (unsigned int f, machine_mode mode)
+aarch64_get_attributes (unsigned int f, machine_mode mode,
+			bool lane_check = false)
 {
   tree attrs = NULL_TREE;
 
-  if (!aarch64_modifies_global_state_p (f, mode))
+  if (!lane_check && !aarch64_modifies_global_state_p (f, mode))
     {
       if (aarch64_reads_global_state_p (f, mode))
 	attrs = aarch64_add_attribute ("pure", attrs);
@@ -1341,6 +1342,7 @@ aarch64_init_simd_intrinsics (void)
 
       tree return_type = void_type_node;
       tree args = void_list_node;
+      bool lane_check = false;
 
       for (int op_num = d->op_count - 1; op_num >= 0; op_num--)
 	{
@@ -1353,10 +1355,17 @@ aarch64_init_simd_intrinsics (void)
 	    return_type = eltype;
 	  else
 	    args = tree_cons (NULL_TREE, eltype, args);
+
+	  if (qualifiers & (qualifier_lane_index
+			    | qualifier_struct_load_store_lane_index
+			    | qualifier_lane_pair_index
+			    | qualifier_lane_quadtup_index))
+	    lane_check = true;
 	}
 
       tree ftype = build_function_type (return_type, args);
-      tree attrs = aarch64_get_attributes (d->flags, d->op_modes[0]);
+      tree attrs = aarch64_get_attributes (d->flags, d->op_modes[0],
+					   lane_check);
       unsigned int code
 	      = (d->fcode << AARCH64_BUILTIN_SHIFT | AARCH64_BUILTIN_GENERAL);
       tree fndecl = simulate_builtin_function_decl (input_location, d->name,
@@ -1423,6 +1432,7 @@ aarch64_init_simd_builtin_functions (bool called_from_pragma)
 	  || (!called_from_pragma && struct_mode_args > 0))
 	continue;
 
+      bool lane_check = false;
       /* Build a function type directly from the insn_data for this
 	 builtin.  The build_function_type () function takes care of
 	 removing duplicates for us.  */
@@ -1458,6 +1468,12 @@ aarch64_init_simd_builtin_functions (bool called_from_pragma)
 	    return_type = eltype;
 	  else
 	    args = tree_cons (NULL_TREE, eltype, args);
+
+	  if (qualifiers & (qualifier_lane_index
+			    | qualifier_struct_load_store_lane_index
+			    | qualifier_lane_pair_index
+			    | qualifier_lane_quadtup_index))
+	    lane_check = true;
 	}
 
       ftype = build_function_type (return_type, args);
@@ -1471,7 +1487,7 @@ aarch64_init_simd_builtin_functions (bool called_from_pragma)
 	snprintf (namebuf, sizeof (namebuf), "__builtin_aarch64_%s",
 		  d->name);
 
-      tree attrs = aarch64_get_attributes (d->flags, d->mode);
+      tree attrs = aarch64_get_attributes (d->flags, d->mode, lane_check);
 
       if (called_from_pragma)
 	{
