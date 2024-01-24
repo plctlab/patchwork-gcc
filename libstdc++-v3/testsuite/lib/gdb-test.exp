@@ -188,7 +188,7 @@ proc gdb-test { marker {selector {}} {load_xmethods 0} } {
 
     set test_counter 0
     remote_expect target [timeout_value] {
-	-re {^(type|\$([0-9]+)) = ([^\n\r]*)[\n\r]+} {
+	-re {^(type|\$([0-9]+)) = ([^\n\r]*)\r\n} {
 	    send_log "got: $expect_out(buffer)"
 
 	    incr test_counter
@@ -244,7 +244,7 @@ proc gdb-test { marker {selector {}} {load_xmethods 0} } {
 	    return
 	}
 
-	-re {^[^$][^\n\r]*[\n\r]+} {
+	-re {^[\r\n]*[^$][^\n\r]*\r\n} {
 	    send_log "skipping: $expect_out(buffer)"
 	    exp_continue
 	}
