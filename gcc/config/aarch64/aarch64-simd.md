@@ -7399,7 +7399,7 @@
 )
 
 (define_insn "*aarch64_movv8di"
-  [(set (match_operand:V8DI 0 "nonimmediate_operand" "=r,m,r")
+  [(set (match_operand:V8DI 0 "nonimmediate_operand" "=r,m,&r")
 	(match_operand:V8DI 1 "general_operand" " r,r,m"))]
   "(register_operand (operands[0], V8DImode)
     || register_operand (operands[1], V8DImode))"
