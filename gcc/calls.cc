@@ -2640,7 +2640,9 @@ expand_call (tree exp, rtx target, int ignore)
   /* The type of the function being called.  */
   tree fntype;
   bool try_tail_call = CALL_EXPR_TAILCALL (exp);
-  bool must_tail_call = CALL_EXPR_MUST_TAIL_CALL (exp);
+  /* tree-tailcall decided not to do tail calls. Error for the musttail case.  */
+  if (!try_tail_call)
+      maybe_complain_about_tail_call (exp, "cannot tail-call: other reasons");
   int pass;
 
   /* Register in which non-BLKmode value will be returned,
@@ -3013,10 +3015,22 @@ expand_call (tree exp, rtx target, int ignore)
      pushed these optimizations into -O2.  Don't try if we're already
      expanding a call, as that means we're an argument.  Don't try if
      there's cleanups, as we know there's code to follow the call.  */
-  if (currently_expanding_call++ != 0
-      || (!flag_optimize_sibling_calls && !CALL_FROM_THUNK_P (exp))
-      || args_size.var
-      || dbg_cnt (tail_call) == false)
+  if (currently_expanding_call++ != 0)
+    {
+      maybe_complain_about_tail_call (exp, "cannot tail-call: inside another call");
+      try_tail_call = 0;
+    }
+  if (!flag_optimize_sibling_calls
+	&& !CALL_FROM_THUNK_P (exp)
+	&& !CALL_EXPR_MUST_TAIL_CALL (exp))
+    try_tail_call = 0;
+  if (args_size.var)
+    {
+      /* ??? correct message?  */
+      maybe_complain_about_tail_call (exp, "cannot tail-call: stack space needed");
+      try_tail_call = 0;
+    }
+  if (dbg_cnt (tail_call) == false)
     try_tail_call = 0;
 
   /* Workaround buggy C/C++ wrappers around Fortran routines with
@@ -3037,14 +3051,11 @@ expand_call (tree exp, rtx target, int ignore)
 	    if (MEM_P (*iter))
 	      {
 		try_tail_call = 0;
+		maybe_complain_about_tail_call (exp,
+				"cannot tail-call: hidden string length argument");
 		break;
 	      }
 	}
-
-  /* If the user has marked the function as requiring tail-call
-     optimization, attempt it.  */
-  if (must_tail_call)
-    try_tail_call = 1;
 
   /*  Rest of purposes for tail call optimizations to fail.  */
   if (try_tail_call)
