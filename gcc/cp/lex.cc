@@ -122,8 +122,8 @@ void
 set_identifier_kind (tree id, cp_identifier_kind kind)
 {
   gcc_checking_assert (!IDENTIFIER_KIND_BIT_2 (id)
-		       & !IDENTIFIER_KIND_BIT_1 (id)
-		       & !IDENTIFIER_KIND_BIT_0 (id));
+		       && !IDENTIFIER_KIND_BIT_1 (id)
+		       && !IDENTIFIER_KIND_BIT_0 (id));
   IDENTIFIER_KIND_BIT_2 (id) |= (kind >> 2) & 1;
   IDENTIFIER_KIND_BIT_1 (id) |= (kind >> 1) & 1;
   IDENTIFIER_KIND_BIT_0 (id) |= (kind >> 0) & 1;
