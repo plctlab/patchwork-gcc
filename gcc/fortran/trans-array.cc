@@ -3458,6 +3458,10 @@ trans_array_bound_check (gfc_se * se, gfc_ss *ss, tree index, int n,
   tree descriptor;
   char *msg;
   const char * name = NULL;
+  char *var_name = NULL;
+  gfc_expr *expr;
+  gfc_ref *ref;
+  size_t len;
 
   if (!(gfc_option.rtcheck & GFC_RTCHECK_BOUNDS))
     return index;
@@ -3469,6 +3473,36 @@ trans_array_bound_check (gfc_se * se, gfc_ss *ss, tree index, int n,
   /* We find a name for the error message.  */
   name = ss->info->expr->symtree->n.sym->name;
   gcc_assert (name != NULL);
+
+  /* When we have a component ref, compile name for the array section.
+     Note that there can only be one part ref.  */
+  expr = ss->info->expr;
+  if (expr->ref && !compname)
+    {
+      len = strlen (name) + 1;
+
+      /* Find a safe length.  */
+      for (ref = expr->ref; ref; ref = ref->next)
+	if (ref->type == REF_COMPONENT)
+	  len += 2 + strlen (ref->u.c.component->name);
+
+      var_name = XALLOCAVEC (char, len);
+      strcpy (var_name, name);
+
+      for (ref = expr->ref; ref; ref = ref->next)
+	{
+	  /* Append component name.  */
+	  if (ref->type == REF_COMPONENT)
+	    {
+	      strcat (var_name, "%%");
+	      strcat (var_name, ref->u.c.component->name);
+	      continue;
+	    }
+	  if (ref->type == REF_ARRAY && ref->u.ar.type == AR_SECTION)
+	    break;
+	}
+      name = var_name;
+    }
 
   if (VAR_P (descriptor))
     name = IDENTIFIER_POINTER (DECL_NAME (descriptor));
