@@ -22125,6 +22125,43 @@ cp_parser_using_directive (cp_parser* parser)
   cp_parser_require (parser, CPP_SEMICOLON, RT_SEMICOLON);
 }
 
+/* Parse a string literal or constant expression yielding a string.
+   The constant expression uses extra parens to avoid ambiguity with "x" (expr).
+
+   asm-string-expr:
+     string-literal
+     ( constant-expr ) */
+
+static tree
+cp_parser_asm_string_expression (cp_parser *parser)
+{
+  location_t sloc = cp_lexer_peek_token (parser->lexer)->location;
+
+  if (cp_lexer_next_token_is (parser->lexer, CPP_OPEN_PAREN))
+    {
+      matching_parens parens;
+      parens.consume_open (parser);
+      tree string = cp_parser_constant_expression (parser);
+      if (string != error_mark_node)
+	string = cxx_constant_value (string, tf_error);
+      if (TREE_CODE (string) == NOP_EXPR)
+	string = TREE_OPERAND (string, 0);
+      if (TREE_CODE (string) == ADDR_EXPR && TREE_CODE (TREE_OPERAND (string, 0)) == STRING_CST)
+	string = TREE_OPERAND (string, 0);
+      if (TREE_CODE (string) == VIEW_CONVERT_EXPR)
+	string = TREE_OPERAND (string, 0);
+      if (TREE_CODE (string) != STRING_CST && string != error_mark_node)
+	{
+	  error_at (sloc, "Expected string valued constant expression for %<asm%>, not type %qT",
+			    TREE_TYPE (string));
+	  string = error_mark_node;
+	}
+      parens.require_close (parser);
+      return string;
+    }
+  return cp_parser_string_literal (parser, false, false);
+}
+
 /* Parse an asm-definition.
 
   asm-qualifier:
@@ -22137,19 +22174,19 @@ cp_parser_using_directive (cp_parser* parser)
     asm-qualifier-list asm-qualifier
 
    asm-definition:
-     asm ( string-literal ) ;
+     asm ( constant-expr ) ;
 
    GNU Extension:
 
    asm-definition:
-     asm asm-qualifier-list [opt] ( string-literal ) ;
-     asm asm-qualifier-list [opt] ( string-literal : asm-operand-list [opt] ) ;
-     asm asm-qualifier-list [opt] ( string-literal : asm-operand-list [opt]
+     asm asm-qualifier-list [opt] ( asm-string-expr ) ;
+     asm asm-qualifier-list [opt] ( asm-string-expr : asm-operand-list [opt] ) ;
+     asm asm-qualifier-list [opt] ( asm-string-expr : asm-operand-list [opt]
 				    : asm-operand-list [opt] ) ;
-     asm asm-qualifier-list [opt] ( string-literal : asm-operand-list [opt]
+     asm asm-qualifier-list [opt] ( asm-string-expr : asm-operand-list [opt]
 				    : asm-operand-list [opt]
 			  : asm-clobber-list [opt] ) ;
-     asm asm-qualifier-list [opt] ( string-literal : : asm-operand-list [opt]
+     asm asm-qualifier-list [opt] ( asm-string-expr : : asm-operand-list [opt]
 				    : asm-clobber-list [opt]
 				    : asm-goto-list ) ;
 
@@ -22267,8 +22304,7 @@ cp_parser_asm_definition (cp_parser* parser)
   if (!cp_parser_require (parser, CPP_OPEN_PAREN, RT_OPEN_PAREN))
     return;
   /* Look for the string.  */
-  tree string = cp_parser_string_literal (parser, /*translate=*/false,
-					  /*wide_ok=*/false);
+  tree string = cp_parser_asm_string_expression (parser);
   if (string == error_mark_node)
     {
       cp_parser_skip_to_closing_parenthesis (parser, true, false,
@@ -28739,7 +28775,7 @@ cp_parser_yield_expression (cp_parser* parser)
 /* Parse an (optional) asm-specification.
 
    asm-specification:
-     asm ( string-literal )
+     asm ( asm-string-expr )
 
    If the asm-specification is present, returns a STRING_CST
    corresponding to the string-literal.  Otherwise, returns
@@ -28762,9 +28798,7 @@ cp_parser_asm_specification_opt (cp_parser* parser)
   parens.require_open (parser);
 
   /* Look for the string-literal.  */
-  tree asm_specification = cp_parser_string_literal (parser,
-						     /*translate=*/false,
-						     /*wide_ok=*/false);
+  tree asm_specification = cp_parser_asm_string_expression (parser);
 
   /* Look for the `)'.  */
   parens.require_close (parser);
@@ -28779,8 +28813,8 @@ cp_parser_asm_specification_opt (cp_parser* parser)
      asm-operand-list , asm-operand
 
    asm-operand:
-     string-literal ( expression )
-     [ string-literal ] string-literal ( expression )
+     asm-string-expr ( expression )
+     [ asm-string-expr ] asm-string-expr ( expression )
 
    Returns a TREE_LIST representing the operands.  The TREE_VALUE of
    each node is the expression.  The TREE_PURPOSE is itself a
@@ -28813,10 +28847,8 @@ cp_parser_asm_operand_list (cp_parser* parser)
 	}
       else
 	name = NULL_TREE;
-      /* Look for the string-literal.  */
-      tree string_literal = cp_parser_string_literal (parser,
-						      /*translate=*/false,
-						      /*wide_ok=*/false);
+      /* Look for the string.  */
+      tree string_literal = cp_parser_asm_string_expression (parser);
 
       /* Look for the `('.  */
       matching_parens parens;
@@ -28849,8 +28881,8 @@ cp_parser_asm_operand_list (cp_parser* parser)
 /* Parse an asm-clobber-list.
 
    asm-clobber-list:
-     string-literal
-     asm-clobber-list , string-literal
+     const-expression
+     asm-clobber-list , const-expression
 
    Returns a TREE_LIST, indicating the clobbers in the order that they
    appeared.  The TREE_VALUE of each node is a STRING_CST.  */
@@ -28863,9 +28895,7 @@ cp_parser_asm_clobber_list (cp_parser* parser)
   while (true)
     {
       /* Look for the string literal.  */
-      tree string_literal = cp_parser_string_literal (parser,
-						      /*translate=*/false,
-						      /*wide_ok=*/false);
+      tree string_literal = cp_parser_asm_string_expression (parser);
       /* Add it to the list.  */
       clobbers = tree_cons (NULL_TREE, string_literal, clobbers);
       /* If the next token is not a `,', then the list is
