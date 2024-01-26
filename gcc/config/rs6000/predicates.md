@@ -748,6 +748,14 @@
   return false;
 })
 
+;; Return 1 if it's a duplicated easy_altivec_constant.
+(define_predicate "duplicate_easy_altivec_constant"
+  (and (match_code "const_vector")
+       (match_test "easy_altivec_constant (op, mode)"))
+{
+  return const_vec_duplicate_p (op);
+})
+
 ;; Same as easy_vector_constant but only for EASY_VECTOR_15_ADD_SELF.
 (define_predicate "easy_vector_constant_add_self"
   (and (match_code "const_vector")
