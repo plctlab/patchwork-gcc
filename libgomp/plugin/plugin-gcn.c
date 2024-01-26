@@ -2382,13 +2382,15 @@ isa_matches_agent (struct agent_info *agent, Elf64_Ehdr *image)
       char msg[120];
       const char *agent_isa_s = isa_hsa_name (agent->device_isa);
       const char *agent_isa_gcc_s = isa_gcc_name (agent->device_isa);
-      assert (agent_isa_s);
-      assert (agent_isa_gcc_s);
-
-      snprintf (msg, sizeof msg,
-		"GCN code object ISA '%s' does not match GPU ISA '%s'.\n"
-		"Try to recompile with '-foffload-options=-march=%s'.\n",
-		isa_s, agent_isa_s, agent_isa_gcc_s);
+      if (agent_isa_s && agent_isa_gcc_s)
+	snprintf (msg, sizeof msg,
+		  "GCN code object ISA '%s' does not match GPU ISA '%s'.\n"
+		  "Try to recompile with '-foffload-options=-march=%s'.\n",
+		  isa_s, agent_isa_s, agent_isa_gcc_s);
+      else
+	snprintf (msg, sizeof msg,
+		  "GCN code object ISA '%s' (%d) does not match GPU ISA %d.\n",
+		  isa_s, isa_field, agent->device_isa);
 
       hsa_error (msg, HSA_STATUS_ERROR);
       return false;
