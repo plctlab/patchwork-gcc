@@ -1022,6 +1022,8 @@ print_kernel_dispatch (struct kernel_dispatch *dispatch, unsigned indent)
 /* }}}  */
 /* {{{ Utility functions  */
 
+static const char* isa_hsa_name (int isa);
+
 /* Cast the thread local storage to gcn_thread.  */
 
 static inline struct gcn_thread *
@@ -1563,6 +1565,11 @@ get_agent_info (int n)
   if (!hsa_context.agents[n].initialized)
     {
       GOMP_PLUGIN_error ("Attempt to use an uninitialized GCN agent.");
+      return NULL;
+    }
+  if (!isa_hsa_name (hsa_context.agents[n].device_isa))
+    {
+      GOMP_PLUGIN_error ("Attempt to use an unsupported GCN agent.");
       return NULL;
     }
   return &hsa_context.agents[n];
