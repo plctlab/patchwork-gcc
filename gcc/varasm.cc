@@ -7333,15 +7333,33 @@ default_elf_select_rtx_section (machine_mode mode, rtx x,
 {
   int reloc = compute_reloc_for_rtx (x);
 
+  /* If it is a function symbol reference, call function_rodata_section
+     for the read-only or relocated read-only data section associated
+     with function DECL so that the COMDAT section will be used for a
+     COMDAT function symbol.  */
+  tree decl = nullptr;
+  if (GET_CODE (x) == SYMBOL_REF)
+    {
+      decl = SYMBOL_REF_DECL (x);
+      if (TREE_CODE (decl) != FUNCTION_DECL)
+	decl = nullptr;
+    }
+
   /* ??? Handle small data here somehow.  */
 
   if (reloc & targetm.asm_out.reloc_rw_mask ())
     {
+      if (decl)
+	return targetm.asm_out.function_rodata_section (decl, true);
+
       if (reloc == 1)
 	return get_named_section (NULL, ".data.rel.ro.local", 1);
       else
 	return get_named_section (NULL, ".data.rel.ro", 3);
     }
+
+  if (decl)
+    return targetm.asm_out.function_rodata_section (decl, false);
 
   return mergeable_constant_section (mode, align, 0);
 }
