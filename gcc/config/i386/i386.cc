@@ -21695,6 +21695,40 @@ x86_output_mi_thunk (FILE *file, tree thunk_fndecl, HOST_WIDE_INT delta,
   flag_force_indirect_call = saved_flag_force_indirect_call;
 }
 
+/* Implement TARGET_ASM_POST_CFI_STARTPROC.  Triggered after a
+   .cfi_startproc directive is emitted into the assembly file.
+   When assembler directives for DWARF frame unwind is enabled,
+   output the .cfi_undefined directive for unsaved callee-saved
+   registers which have been used in the function.  */
+
+void
+ix86_post_cfi_startproc (FILE *f, tree)
+{
+  if ((cfun->machine->call_saved_registers
+       == TYPE_NO_CALLEE_SAVED_REGISTERS)
+      && dwarf2out_do_cfi_asm ())
+    for (int i = 0; i < FIRST_PSEUDO_REGISTER; i++)
+      if (df_regs_ever_live_p (i)
+	  && !fixed_regs[i]
+	  && !call_used_regs[i]
+	  && !STACK_REGNO_P (i)
+	  && !MMX_REGNO_P (i))
+	{
+	  if (LEGACY_INT_REGNO_P (i))
+	    {
+	      if (TARGET_64BIT)
+		asm_fprintf (f, "\t.cfi_undefined r%s\n",
+			     hi_reg_name[i]);
+	      else
+		asm_fprintf (f, "\t.cfi_undefined e%s\n",
+			     hi_reg_name[i]);
+	    }
+	  else
+	    asm_fprintf (f, "\t.cfi_undefined %s\n",
+			 hi_reg_name[i]);
+	}
+}
+
 static void
 x86_file_start (void)
 {
@@ -24850,6 +24884,9 @@ ix86_run_selftests (void)
 #define TARGET_ASM_OUTPUT_MI_THUNK x86_output_mi_thunk
 #undef TARGET_ASM_CAN_OUTPUT_MI_THUNK
 #define TARGET_ASM_CAN_OUTPUT_MI_THUNK x86_can_output_mi_thunk
+
+#undef TARGET_ASM_POST_CFI_STARTPROC
+#define TARGET_ASM_POST_CFI_STARTPROC ix86_post_cfi_startproc
 
 #undef TARGET_ASM_FILE_START
 #define TARGET_ASM_FILE_START x86_file_start
