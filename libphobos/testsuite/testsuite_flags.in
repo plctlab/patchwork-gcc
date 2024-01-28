@@ -46,10 +46,8 @@ case ${query} in
       echo ${GDCPATHS_default} ${GDCPATHS_config}
       ;;
     --gdcldflags)
-      GDCLDFLAGS="-B${BUILD_DIR}/src
-                  -B${BUILD_DIR}/libdruntime/gcc
-                  -B${BUILD_DIR}/src/.libs
-                  -L${BUILD_DIR}/src/.libs"
+      GDCLDFLAGS="-B${BUILD_DIR}/libdruntime/gcc
+                  -B${BUILD_DIR}/src/.libs"
       echo ${GDCLDFLAGS}
       ;;
     *)
