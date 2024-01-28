@@ -21,6 +21,9 @@ along with GCC; see the file COPYING3.  If not see
 #define LIBGCCJIT_H
 
 #include <stdio.h>
+#if __has_include(<sys/types.h>)
+# include <sys/types.h>  /* For ssize_t.  */
+#endif
 
 #ifdef __cplusplus
 extern "C" {
