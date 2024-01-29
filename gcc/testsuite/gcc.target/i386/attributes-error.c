@@ -9,4 +9,7 @@ void foo5(int i, int j) __attribute__((stdcall, fastcall)); /* { dg-error "not c
 void foo6(int i, int j) __attribute__((cdecl, fastcall)); /* { dg-error "not compatible" } */
 void foo7(int i, int j) __attribute__((cdecl, stdcall)); /* { dg-error "not compatible" } */
 void foo8(int i, int j) __attribute__((regparm(2), fastcall)); /* { dg-error "not compatible" } */
+char *foo9(const char *format, ...) __attribute__((regparm(3),stdcall)); /* { dg-warning "attribute ignored on function with variable number of arguments" } */
+char *foo10(int, ...) __attribute__((regparm(2))); /* { dg-warning "attribute ignored on function with variable number of arguments" } */
+char *foo11(int, ...) __attribute__((stdcall)); /* { dg-warning "attribute ignored on function with variable number of arguments" } */
 

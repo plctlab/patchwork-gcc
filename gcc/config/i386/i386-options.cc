@@ -3415,6 +3415,12 @@ ix86_handle_cconv_attribute (tree *node, tree name, tree args, int,
 		   name, REGPARM_MAX);
 	  *no_add_attrs = true;
 	}
+      else if (FUNC_OR_METHOD_TYPE_P (*node) && stdarg_p (*node))
+	{
+	  warning (OPT_Wattributes, "%qE attribute ignored "
+		   "on function with variable number of arguments", name);
+	  *no_add_attrs = true;
+	}
 
       return NULL_TREE;
     }
@@ -3468,6 +3474,12 @@ ix86_handle_cconv_attribute (tree *node, tree name, tree args, int,
 	{
 	  error ("stdcall and thiscall attributes are not compatible");
 	}
+      if (FUNC_OR_METHOD_TYPE_P (*node) && stdarg_p (*node))
+	{
+	  warning (OPT_Wattributes, "%qE attribute ignored "
+		   "on function with variable number of arguments", name);
+	  *no_add_attrs = true;
+	}
     }
 
   /* Can combine cdecl with regparm and sseregparm.  */
@@ -3502,6 +3514,15 @@ ix86_handle_cconv_attribute (tree *node, tree name, tree args, int,
       if (lookup_attribute ("cdecl", TYPE_ATTRIBUTES (*node)))
 	{
 	  error ("cdecl and thiscall attributes are not compatible");
+	}
+    }
+  else if (is_attribute_p ("sseregparm", name))
+    {
+      if (FUNC_OR_METHOD_TYPE_P (*node) && stdarg_p (*node))
+	{
+	  warning (OPT_Wattributes, "%qE attribute ignored "
+		   "on function with variable number of arguments", name);
+	  *no_add_attrs = true;
 	}
     }
 
