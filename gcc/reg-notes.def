@@ -151,6 +151,10 @@ REG_CFA_NOTE (CFA_EXPRESSION)
    the given register.  */
 REG_CFA_NOTE (CFA_VAL_EXPRESSION)
 
+/* Attached to insns that are RTX_FRAME_RELATED_P, to specific a register
+   with undefined value.  */
+REG_CFA_NOTE (CFA_UNDEFINED)
+
 /* Attached to insns that are RTX_FRAME_RELATED_P, with the information
    that this is a restore operation, i.e. will result in DW_CFA_restore
    or the like.  Either the attached rtx, or the destination of the insn's

@@ -8992,6 +8992,26 @@ ix86_expand_prologue (void)
      combined with prologue modifications.  */
   if (TARGET_SEH)
     emit_insn (gen_prologue_use (stack_pointer_rtx));
+
+  if (cfun->machine->call_saved_registers
+      != TYPE_NO_CALLEE_SAVED_REGISTERS)
+    return;
+
+  insn = get_insns ();
+  if (!insn)
+    return;
+
+  /* Attach REG_CFA_UNDEFINED notes for unsaved callee-saved registers
+     which have been used in the function to an instruction in prologue.
+   */
+  for (int i = 0; i < FIRST_PSEUDO_REGISTER; i++)
+    if (df_regs_ever_live_p (i)
+	&& !fixed_regs[i]
+	&& !call_used_regs[i]
+	&& !STACK_REGNO_P (i)
+	&& !MMX_REGNO_P (i))
+      add_reg_note (insn, REG_CFA_UNDEFINED,
+		    gen_rtx_REG (word_mode, i));
 }
 
 /* Emit code to restore REG using a POP insn.  */
