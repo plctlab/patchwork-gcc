@@ -517,6 +517,20 @@ add_cfi_restore (unsigned reg)
   add_cfi (cfi);
 }
 
+/* Add DW_CFA_undefined either to the current insn stream or to a vector,
+   or both.  */
+
+static void
+add_cfi_undefined (unsigned reg)
+{
+  dw_cfi_ref cfi = new_cfi ();
+
+  cfi->dw_cfi_opc = DW_CFA_undefined;
+  cfi->dw_cfi_oprnd1.dw_cfi_reg_num = reg;
+
+  add_cfi (cfi);
+}
+
 /* Perform ROW->REG_SAVE[COLUMN] = CFI.  CFI may be null, indicating
    that the register column is no longer saved.  */
 
@@ -1532,6 +1546,37 @@ dwarf2out_frame_debug_cfa_restore (rtx reg, bool emit_cfi)
     }
 }
 
+/* A subroutine of dwarf2out_frame_debug, process a REG_CFA_UNDEFINED
+   note.  */
+
+static void
+dwarf2out_frame_debug_cfa_undefined (rtx reg)
+{
+  gcc_assert (REG_P (reg));
+
+  rtx span = targetm.dwarf_register_span (reg);
+  if (!span)
+    {
+      unsigned int regno = dwf_regno (reg);
+      add_cfi_undefined (regno);
+    }
+  else
+    {
+      /* We have a PARALLEL describing where the contents of REG live.
+	 Restore the register for each piece of the PARALLEL.  */
+      gcc_assert (GET_CODE (span) == PARALLEL);
+
+      const int par_len = XVECLEN (span, 0);
+      for (int par_index = 0; par_index < par_len; par_index++)
+	{
+	  reg = XVECEXP (span, 0, par_index);
+	  gcc_assert (REG_P (reg));
+	  unsigned int regno = dwf_regno (reg);
+	  add_cfi_undefined (regno);
+	}
+    }
+}
+
 /* A subroutine of dwarf2out_frame_debug, process a REG_CFA_WINDOW_SAVE.
 
    ??? Perhaps we should note in the CIE where windows are saved (instead
@@ -2323,6 +2368,19 @@ dwarf2out_frame_debug (rtx_insn *insn)
 	    n = XEXP (n, 0);
 	  }
 	dwarf2out_frame_debug_cfa_restore (n, REG_NOTE_KIND (note) == REG_CFA_RESTORE);
+	handled_one = true;
+	break;
+
+      case REG_CFA_UNDEFINED:
+	n = XEXP (note, 0);
+	if (n == nullptr)
+	  {
+	    n = PATTERN (insn);
+	    if (GET_CODE (n) == PARALLEL)
+	      n = XVECEXP (n, 0, 0);
+	    n = XEXP (n, 0);
+	  }
+	dwarf2out_frame_debug_cfa_undefined (n);
 	handled_one = true;
 	break;
 
