@@ -65,6 +65,10 @@ function_extensions = {'.c', '.cpp', '.C', '.cc', '.h', '.inc', '.def', '.md'}
 # NB: Makefile.in isn't listed as it's not always generated.
 generated_files = {'aclocal.m4', 'config.h.in', 'configure'}
 
+libstdcxx_generated_files = { 'include/bits/version.h',
+    'include/bits/text_encoding-data.h' 'include/bits/unicode-data.h',
+}
+
 help_message = """\
 Generate ChangeLog template for PATCH.
 PATCH must be generated using diff(1)'s -up or -cp options
@@ -255,6 +259,10 @@ def generate_changelog(data, no_functions=False, fill_pr_titles=False,
                                                     changelog)
                 out += f'\t* {new_path}: ...here.\n'
             elif os.path.basename(file.path) in generated_files:
+                out += '\t* %s: Regenerate.\n' % (relative_path)
+                append_changelog_line(out, relative_path, 'Regenerate.')
+            elif changelog == "libstdc++-v3" and \
+                    relative_path in libstdcxx_generated_files:
                 out += '\t* %s: Regenerate.\n' % (relative_path)
                 append_changelog_line(out, relative_path, 'Regenerate.')
             else:
