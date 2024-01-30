@@ -1759,14 +1759,118 @@ is_cond_scalar_reduction (gimple *phi, gimple **reduc, tree arg_0, tree arg_1,
   r_nop2 = strip_nop_cond_scalar_reduction (*has_nop, r_op2);
 
   /* Make R_OP1 to hold reduction variable.  */
+  gimple *reassociate_stmt = NULL;
   if (r_nop2 == PHI_RESULT (header_phi)
       && commutative_tree_code (reduction_op))
     {
       std::swap (r_op1, r_op2);
       std::swap (r_nop1, r_nop2);
     }
-  else if (r_nop1 != PHI_RESULT (header_phi))
-    return false;
+  else if (r_nop1 == PHI_RESULT (header_phi))
+    ;
+  /* Analyze the statement chain of STMT so that we could teach generate
+     better if-converison code sequence.  We are trying to catch this
+     following situation:
+
+       loop-header:
+	 reduc_1 = PHI <0, reduc_2>
+
+	 ...
+	 if (...)
+	 tmp1 = reduc_1 + rhs1;
+	 tmp2 = tmp1 + rhs2;
+	 tmp3 = tmp2 + rhs3;
+	 ...
+	 reduc_3 = tmpN-1 + rhsN-1;
+
+	 reduc_2 = PHI <reduc_1, reduc_3>
+
+       and re-associate it to:
+
+	 reduc_1 = PHI <0, reduc_2>
+
+	 tmp1 = rhs1;
+	 tmp2 = tmp1 + rhs2;
+	 tmp3 = tmp2 + rhs3;
+	 ...
+	 reduc_3 = tmpN-1 + rhsN-1;
+
+	 ifcvt = cond_expr ? reduc_3 : 0;
+	 reduc_2 = reduc_1 +/- ifcvt;  */
+  else
+    {
+      /* We only re-associate the header PHI has 2 uses.
+	 One is simple assign use with PLUS_EXPR or MINU_EXPR,
+	 the other is the current PHI.  That is:
+
+	 reduc_1 = PHI <..., reduc_2>     ---> Header PHI.
+	 ...
+	 if (...)
+	   tmp1 = reduc_1 + rhs1;         ---> First use.
+	 ...
+	 reduc_2 = PHI <reduc_1, reduc_3> ---> Last use.
+	 ...
+
+	 TODO: We can relax the check here in the future when we see there
+	 are more cases to be optimized.  */
+      if (num_imm_uses (PHI_RESULT (header_phi)) != 2
+	  || EDGE_COUNT (gimple_bb (stmt)->succs) != 1)
+	return false;
+
+      /* For TYPE_OVERFLOW_UNDEFINED you have to convert the ops to unsigned
+	 to avoid spurious undefined overflow.  */
+      if (ANY_INTEGRAL_TYPE_P (TREE_TYPE (PHI_RESULT (phi)))
+	  && TYPE_OVERFLOW_UNDEFINED (TREE_TYPE (PHI_RESULT (phi))))
+	return false;
+
+      /* We should not re-associate floating-point reduction that will have
+	 spurious exceptions.  */
+      if (FLOAT_TYPE_P (TREE_TYPE (PHI_RESULT (phi)))
+	  && (!flag_associative_math
+	      || HONOR_SIGNED_ZEROS (TREE_TYPE (PHI_RESULT (phi)))
+	      || HONOR_SIGN_DEPENDENT_ROUNDING (TREE_TYPE (PHI_RESULT (phi)))
+	      || HONOR_NANS (TREE_TYPE (PHI_RESULT (phi)))))
+	return false;
+
+      /* The first use should be PHI that we are visiting.  */
+      gimple *first_use_stmt = USE_STMT (
+	first_readonly_imm_use (&imm_iter, PHI_RESULT (header_phi)));
+      if (first_use_stmt != phi
+	  /* This first use should locate at the fallthrough block.  */
+	  || gimple_bb (first_use_stmt) == gimple_bb (stmt)
+	  || !flow_bb_inside_loop_p (gimple_bb (stmt)->loop_father,
+				     gimple_bb (first_use_stmt))
+	  || !find_fallthru_edge (gimple_bb (stmt)->succs)
+	  || gimple_bb (first_use_stmt)
+	       != FALLTHRU_EDGE (gimple_bb (stmt))->dest)
+	return false;
+
+      /* The last use STMT which should be a simple assign STMT
+	 that has SSA_NAME lhs.  */
+      gimple *last_use_stmt = USE_STMT (next_readonly_imm_use (&imm_iter));
+      if (gimple_code (last_use_stmt) != GIMPLE_ASSIGN
+	  || TREE_CODE (gimple_assign_lhs (last_use_stmt)) != SSA_NAME
+	  /* The last use STMT lhs should be single use and in the same
+	     block as the current STMT.  */
+	  || !has_single_use (gimple_assign_lhs (last_use_stmt))
+	  || gimple_bb (last_use_stmt) != gimple_bb (stmt))
+	return false;
+
+      r_op1 = *has_nop ? gimple_assign_lhs (last_use_stmt)
+		       : PHI_RESULT (header_phi);
+      r_op2 = gimple_assign_lhs (stmt);
+      r_nop1 = *has_nop ? PHI_RESULT (header_phi) : NULL_TREE;
+      r_nop2 = *has_nop ? gimple_assign_lhs (last_use_stmt) : NULL_TREE;
+      reassociate_stmt = last_use_stmt;
+      tree_code reassociate_op = gimple_assign_rhs_code (reassociate_stmt);
+      if (reassociate_op != PLUS_EXPR
+	  && reassociate_op != MINUS_EXPR
+	  && reassociate_op != MULT_EXPR
+	  && reassociate_op != BIT_IOR_EXPR
+	  && reassociate_op != BIT_XOR_EXPR
+	  && reassociate_op != BIT_AND_EXPR)
+	return false;
+    }
 
   if (*has_nop)
     {
@@ -1791,12 +1895,43 @@ is_cond_scalar_reduction (gimple *phi, gimple **reduc, tree arg_0, tree arg_1,
 	continue;
       if (use_stmt == stmt)
 	continue;
+      if (use_stmt == reassociate_stmt)
+	continue;
       if (gimple_code (use_stmt) != GIMPLE_PHI)
 	return false;
     }
 
   *op0 = r_op1; *op1 = r_op2;
   *reduc = stmt;
+
+  if (reassociate_stmt)
+    {
+      /* Transform:
+
+	if (...)
+	   tmp1 = reduc_1 + rhs1;
+	   tmp2 = tmp1 + rhs2;
+	   tmp3 = tmp2 + rhs3;
+
+	into:
+
+	   tmp1 = rhs1 + 0;   ---> We replace reduc_1 into '0'
+	   tmp2 = tmp1 + rhs2;
+	   tmp3 = tmp2 + rhs3;
+	   ...
+	   reduc_3 = tmpN-1 + rhsN-1;
+	   ifcvt = cond_expr ? reduc_3 : 0;  */
+      gimple_stmt_iterator gsi = gsi_for_stmt (reassociate_stmt);
+      gimple *new_stmt;
+      if (gimple_assign_rhs1 (reassociate_stmt) == r_op1)
+	new_stmt = gimple_build_assign (gimple_assign_lhs (reassociate_stmt),
+					gimple_assign_rhs2 (reassociate_stmt));
+      else if (gimple_assign_rhs2 (reassociate_stmt) == r_op1)
+	new_stmt = gimple_build_assign (gimple_assign_lhs (reassociate_stmt),
+					gimple_assign_rhs1 (reassociate_stmt));
+
+      gsi_replace (&gsi, new_stmt, true);
+    }
   return true;
 }
 
@@ -1861,12 +1996,17 @@ convert_scalar_cond_reduction (gimple *reduc, gimple_stmt_iterator *gsi,
       gsi_remove (&stmt_it, true);
       release_defs (nop_reduc);
     }
+
   gsi_insert_seq_before (gsi, stmts, GSI_SAME_STMT);
 
   /* Delete original reduction stmt.  */
-  stmt_it = gsi_for_stmt (reduc);
-  gsi_remove (&stmt_it, true);
-  release_defs (reduc);
+  if (op1 != gimple_assign_lhs (reduc))
+    {
+      stmt_it = gsi_for_stmt (reduc);
+      gsi_remove (&stmt_it, true);
+      release_defs (reduc);
+    }
+
   return rhs;
 }
 
