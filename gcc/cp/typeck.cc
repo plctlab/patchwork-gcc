@@ -1573,9 +1573,23 @@ structural_comptypes (tree t1, tree t2, int strict)
 	return false;
       /* If T1 and T2 don't represent the same class template deduction,
          they aren't equal.  */
-      if (CLASS_PLACEHOLDER_TEMPLATE (t1)
-	  != CLASS_PLACEHOLDER_TEMPLATE (t2))
-	return false;
+      if (CLASS_PLACEHOLDER_TEMPLATE (t1) || CLASS_PLACEHOLDER_TEMPLATE (t2))
+	{
+	  tree tmpl1 = CLASS_PLACEHOLDER_TEMPLATE (t1);
+	  tree tmpl2 = CLASS_PLACEHOLDER_TEMPLATE (t2);
+	  if (!tmpl1 || !tmpl2)
+	    return false;
+	  if (DECL_TEMPLATE_TEMPLATE_PARM_P (tmpl1)
+	      != DECL_TEMPLATE_TEMPLATE_PARM_P (tmpl2))
+	    return false;
+	  if (DECL_TEMPLATE_TEMPLATE_PARM_P (tmpl1)
+	      /* Treat two CTAD placeholders that use equivalent ttps
+		 from different scopes as equivalent by comparing their
+		 TEMPLATE_TEMPLATE_PARMs instead of their TEMPLATE_DECLs.  */
+	      ? !same_type_p (TREE_TYPE (tmpl1), TREE_TYPE (tmpl2))
+	      : tmpl1 != tmpl2)
+	    return false;
+	}
       /* Constrained 'auto's are distinct from parms that don't have the same
 	 constraints.  */
       if (!equivalent_placeholder_constraints (t1, t2))
