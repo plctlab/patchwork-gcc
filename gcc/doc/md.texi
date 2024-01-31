@@ -1784,7 +1784,7 @@ Integer constant that is valid as an immediate operand in a 64-bit @code{MOV}
 pseudo instruction
 
 @item S
-An absolute symbolic address or a label reference
+A symbolic reference or label reference.
 
 @item Y
 Floating point constant zero

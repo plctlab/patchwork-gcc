@@ -104,8 +104,8 @@
        (match_test "GET_CODE(XEXP(op,0)) == REG")))
 
 (define_constraint "S"
-  "A constraint that matches an absolute symbolic address."
-  (match_operand 0 "absolute_symbolic_operand"))
+  "A symbolic reference or label reference."
+  (match_code "const,symbol_ref,label_ref"))
 
 (define_constraint "U"
   "@internal
