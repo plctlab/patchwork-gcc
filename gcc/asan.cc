@@ -3762,6 +3762,14 @@ asan_expand_mark_ifn (gimple_stmt_iterator *iter)
 
   gcc_checking_assert (TREE_CODE (decl) == VAR_DECL);
 
+  if (TREE_STATIC (decl))
+    {
+      /* Don't poison a variable with static storage; it might have gotten
+	 marked before gimplify_init_constructor promoted it to static.  */
+      gsi_remove (iter, true);
+      return false;
+    }
+
   if (hwasan_sanitize_p ())
     {
       gcc_assert (param_hwasan_instrument_stack);
