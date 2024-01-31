@@ -1012,13 +1012,14 @@ struct reverse_invoker
     operator()(Rest&&... rest)
     {
         // Random-access iterator
-        iterator_invoker<std::random_access_iterator_tag, IsReverse>()(std::forward<Rest>(rest)...);
+        iterator_invoker<std::random_access_iterator_tag, IsReverse>()(rest...);
 
         // Forward iterator
-        iterator_invoker<std::forward_iterator_tag, IsReverse>()(std::forward<Rest>(rest)...);
+
+        iterator_invoker<std::forward_iterator_tag, IsReverse>()(rest...);
 
         // Bidirectional iterator
-        iterator_invoker<std::bidirectional_iterator_tag, IsReverse>()(std::forward<Rest>(rest)...);
+        iterator_invoker<std::bidirectional_iterator_tag, IsReverse>()(rest...);
     }
 };
 
@@ -1028,8 +1029,8 @@ struct invoke_on_all_iterator_types
     void
     operator()(Rest&&... rest)
     {
-        reverse_invoker</* IsReverse = */ std::false_type>()(std::forward<Rest>(rest)...);
-        reverse_invoker</* IsReverse = */ std::true_type>()(std::forward<Rest>(rest)...);
+        reverse_invoker</* IsReverse = */ std::false_type>()(rest...);
+        reverse_invoker</* IsReverse = */ std::true_type>()(rest...);
     }
 };
 //============================================================================
@@ -1042,10 +1043,10 @@ invoke_on_all_policies(Op op, T&&... rest)
     using namespace __pstl::execution;
 
     // Try static execution policies
-    invoke_on_all_iterator_types()(seq, op, std::forward<T>(rest)...);
-    invoke_on_all_iterator_types()(unseq, op, std::forward<T>(rest)...);
-    invoke_on_all_iterator_types()(par, op, std::forward<T>(rest)...);
-    invoke_on_all_iterator_types()(par_unseq, op, std::forward<T>(rest)...);
+    invoke_on_all_iterator_types()(seq, op, rest...);
+    invoke_on_all_iterator_types()(unseq, op, rest...);
+    invoke_on_all_iterator_types()(par, op, rest...);
+    invoke_on_all_iterator_types()(par_unseq, op, rest...);
 }
 
 template <typename F>
