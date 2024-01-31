@@ -493,6 +493,9 @@ AC_CACHE_CHECK([assembler for $1], [$2],
       cat conftest.s >&AS_MESSAGE_LOG_FD
     fi
     rm -f conftest.o conftest.s
+  elif test x$gcc_cv_as = x -a x$gas_flag = xyes ; then
+    AC_MSG_WARN([Assume the working GNU assembler])
+    [$2]=yes
   fi])
 ifelse([$6],,,[dnl
 if test $[$2] = yes; then
