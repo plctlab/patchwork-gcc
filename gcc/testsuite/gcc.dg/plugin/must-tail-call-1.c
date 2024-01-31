@@ -1,4 +1,5 @@
 /* { dg-do compile { target tail_call } } */
+/* { dg-options "-O2" } */
 /* { dg-options "-fdelayed-branch" { target sparc*-*-* } } */
 
 extern void abort (void);
