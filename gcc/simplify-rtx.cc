@@ -3233,11 +3233,15 @@ simplify_context::simplify_binary_operation_1 (rtx_code code,
          canonicalize (minus A (plus B C)) to (minus (minus A B) C).
 	 Don't use the associative law for floating point.
 	 The inaccuracy makes it nonassociative,
-	 and subtle programs can break if operations are associated.  */
+	 and subtle programs can break if operations are associated.
+	 Don't use the associative law when subtracting a MINUS from
+	 a REG_POINTER as that can trick find_base_term into discovering
+	 the wrong base.  */
 
       if (INTEGRAL_MODE_P (mode)
 	  && (plus_minus_operand_p (op0)
-	      || plus_minus_operand_p (op1))
+	      || ((!REG_P (op0) || !REG_POINTER (op0))
+		  && plus_minus_operand_p (op1)))
 	  && (tem = simplify_plus_minus (code, mode, op0, op1)) != 0)
 	return tem;
 
