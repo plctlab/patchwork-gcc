@@ -150,9 +150,9 @@ build_conflict_bit_table (void)
   if (internal_flag_ira_verbose > 0 && ira_dump_file != NULL)
     fprintf
       (ira_dump_file,
-       "+++Allocating %ld bytes for conflict table (uncompressed size %ld)\n",
-       (long) allocated_words_num * sizeof (IRA_INT_TYPE),
-       (long) object_set_words * ira_objects_num * sizeof (IRA_INT_TYPE));
+       "+++Allocating %zu bytes for conflict table (uncompressed size %zu)\n",
+       (size_t)(allocated_words_num * sizeof (IRA_INT_TYPE)),
+       (size_t)(object_set_words * ira_objects_num * sizeof (IRA_INT_TYPE)));
 
   objects_live = sparseset_alloc (ira_objects_num);
   for (i = 0; i < ira_max_point; i++)
