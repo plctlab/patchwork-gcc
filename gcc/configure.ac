@@ -1252,10 +1252,13 @@ if test $gcc_cv_prog_makeinfo_modern = no; then
 *** Makeinfo is missing or too old.
 *** Info documentation will not be built.])
   BUILD_INFO=
+  INSTALL_INFO=
 else
   BUILD_INFO=info
+  INSTALL_INFO=install-info
 fi
 AC_SUBST(BUILD_INFO)
+AC_SUBST(INSTALL_INFO)
 
 # Determine whether makeinfo supports the CONTENTS_OUTPUT_LOCATION variable.
 # If it does, we want to pass it to makeinfo in order to restore the old

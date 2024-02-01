@@ -812,6 +812,7 @@ FLEX
 GENERATED_MANPAGES
 MAKEINFO_TOC_INLINE_FLAG
 BUILD_INFO
+INSTALL_INFO
 MAKEINFO
 have_mktemp_command
 make_compare_target
@@ -8816,8 +8817,10 @@ $as_echo "$as_me: WARNING:
 *** Makeinfo is missing or too old.
 *** Info documentation will not be built." >&2;}
   BUILD_INFO=
+  INSTALL_INFO=
 else
   BUILD_INFO=info
+  INSTALL_INFO=install-info
 fi
 
 

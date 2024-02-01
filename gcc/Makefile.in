@@ -803,6 +803,7 @@ INSTALL_HEADERS=install-headers install-mkheaders
 
 # Control whether Info documentation is built and installed.
 BUILD_INFO = @BUILD_INFO@
+INSTALL_INFO = @INSTALL_INFO@
 
 # Control flags for @contents placement in HTML output
 MAKEINFO_TOC_INLINE_FLAG = @MAKEINFO_TOC_INLINE_FLAG@
@@ -3668,7 +3669,7 @@ maintainer-clean:
 # Install the driver last so that the window when things are
 # broken is small.
 install: install-common $(INSTALL_HEADERS) \
-    install-cpp install-man install-info install-@POSUB@ \
+    install-cpp install-man $(INSTALL_INFO) install-@POSUB@ \
     install-driver install-lto-wrapper install-gcc-ar
 
 ifeq ($(enable_plugin),yes)
