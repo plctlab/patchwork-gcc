@@ -1,7 +1,16 @@
 /* { dg-do run } */
 /* { dg-options "-O2 -fdump-tree-optimized -save-temps" } */
 
-#include <string.h>
+#define NULL ((void *) 0)
+
+typedef __SIZE_TYPE__ size_t;
+#ifdef __cplusplus
+extern "C" {
+#endif
+extern void *memchr (const void *, int, size_t);
+#ifdef __cplusplus
+}
+#endif
 
 __attribute__ ((weak))
 int
