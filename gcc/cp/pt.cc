@@ -16820,7 +16820,8 @@ tsubst_baselink (tree baselink, tree object_type,
 {
   bool qualified_p = BASELINK_QUALIFIED_P (baselink);
   tree qualifying_scope = BINFO_TYPE (BASELINK_ACCESS_BINFO (baselink));
-  qualifying_scope = tsubst (qualifying_scope, args, complain, in_decl);
+  qualifying_scope = tsubst_aggr_type (qualifying_scope, args, complain, in_decl,
+				       /*entering_scope=*/true);
 
   tree optype = BASELINK_OPTYPE (baselink);
   optype = tsubst (optype, args, complain, in_decl);
