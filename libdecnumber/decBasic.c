@@ -2023,6 +2023,7 @@ decFloat * decFloatFMA(decFloat *result, const decFloat *dfl,
   uInt	 carry; 		   /* +1 for ten's complement and during add */
   uByte  *ub, *uh, *ul; 	   /* work */
   uInt	 uiwork;		   /* for macros */
+  uShort uswork;
 
   /* handle all the special values [any special operand leads to a */
   /* special result] */
@@ -2252,7 +2253,7 @@ decFloat * decFloatFMA(decFloat *result, const decFloat *dfl,
       /* all done except for the special IEEE 754 exact-zero-result */
       /* rule (see above); while testing for zero, strip leading */
       /* zeros (which will save decFinalize doing it) */
-      for (; UBTOUI(lo->msd)==0 && lo->msd+3<lo->lsd;) lo->msd+=4;
+      for (; UBTOUS(lo->msd)==0 && lo->msd+1<lo->lsd;) lo->msd+=2;
       for (; *lo->msd==0 && lo->msd<lo->lsd;) lo->msd++;
       if (*lo->msd==0) {	   /* must be true zero (and diffsign) */
 	lo->sign=0;		   /* assume + */
