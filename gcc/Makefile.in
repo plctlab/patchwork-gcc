@@ -1638,6 +1638,7 @@ OBJS = \
 	store-motion.o \
 	streamer-hooks.o \
 	stringpool.o \
+	subreg-live-range.o \
 	substring-locations.o \
 	target-globals.o \
 	targhooks.o \
