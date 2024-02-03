@@ -276,7 +276,7 @@ static decFloat * decFinalize(decFloat *df, bcdnum *num,
     /* [this is quite expensive] */
     if (*umsd==0) {
       for (; umsd+3<ulsd && UBTOUI(umsd)==0;) umsd+=4;
-      for (; *umsd==0 && umsd<ulsd;) umsd++;
+      for (; umsd<ulsd && *umsd==0;) umsd++;
       length=ulsd-umsd+1;		     /* recalculate */
       }
     drop=MAXI(length-DECPMAX, DECQTINY-num->exponent);
