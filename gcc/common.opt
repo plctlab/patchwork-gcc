@@ -2047,6 +2047,10 @@ fira-verbose=
 Common RejectNegative Joined UInteger Var(flag_ira_verbose) Init(5)
 -fira-verbose=<number>	Control IRA's level of diagnostic messages.
 
+ftrack-subreg-liveness
+Common Var(flag_track_subreg_liveness) Init(0) Optimization
+Track subreg liveness information for IRA and LRA, enabled at -O3.
+
 fivopts
 Common Var(flag_ivopts) Init(1) Optimization
 Optimize induction variables on trees.
