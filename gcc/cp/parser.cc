@@ -6566,12 +6566,17 @@ cp_parser_unqualified_id (cp_parser* parser,
 
 	/* DR 2237 (C++20 only): A simple-template-id is no longer valid as the
 	   declarator-id of a constructor or destructor.  */
-	if (token->type == CPP_TEMPLATE_ID && declarator_p
-	    && cxx_dialect >= cxx20)
+	if (token->type == CPP_TEMPLATE_ID && declarator_p)
 	  {
-	    if (!cp_parser_simulate_error (parser))
-	      error_at (tilde_loc, "template-id not allowed for destructor");
-	    return error_mark_node;
+	    if (cxx_dialect >= cxx20)
+	      {
+		if (!cp_parser_simulate_error (parser))
+		  pedwarn (tilde_loc, OPT_Wc__20_extensions,
+			   "template-id not allowed for destructor");
+		return error_mark_node;
+	      }
+	    warning_at (tilde_loc, OPT_Wc__20_compat,
+			"template-id not allowed for destructor in C++20");
 	  }
 
 	/* If there was an explicit qualification (S::~T), first look
@@ -31687,10 +31692,10 @@ cp_parser_constructor_declarator_p (cp_parser *parser, cp_parser_flags flags,
   if (next_token->type != CPP_NAME
       && next_token->type != CPP_SCOPE
       && next_token->type != CPP_NESTED_NAME_SPECIFIER
-      /* DR 2237 (C++20 only): A simple-template-id is no longer valid as the
-	 declarator-id of a constructor or destructor.  */
-      && (next_token->type != CPP_TEMPLATE_ID || cxx_dialect >= cxx20))
+      && next_token->type != CPP_TEMPLATE_ID)
     return false;
+
+  const bool saw_template_id = (next_token->type == CPP_TEMPLATE_ID);
 
   /* Parse tentatively; we are going to roll back all of the tokens
      consumed here.  */
@@ -31907,6 +31912,18 @@ cp_parser_constructor_declarator_p (cp_parser *parser, cp_parser_flags flags,
 
   /* We did not really want to consume any tokens.  */
   cp_parser_abort_tentative_parse (parser);
+
+  /* DR 2237 (C++20 only): A simple-template-id is no longer valid as the
+     declarator-id of a constructor or destructor.  */
+  if (constructor_p && saw_template_id)
+    {
+      if (cxx_dialect >= cxx20)
+	pedwarn (input_location, OPT_Wc__20_extensions,
+		 "template-id not allowed for constructor");
+      else
+	warning (OPT_Wc__20_compat,
+		 "template-id not allowed for constructor in C++20");
+    }
 
   return constructor_p;
 }
