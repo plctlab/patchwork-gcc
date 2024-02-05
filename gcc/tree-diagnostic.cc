@@ -339,24 +339,14 @@ set_inlining_locations (diagnostic_context *,
       block = BLOCK_SUPERCONTEXT (block);
     }
 
+  if (in_system_header_at (loc))
+    ++nsyslocs;
+
+  /* When there is an inlining context use the macro expansion
+     location for the original location and bump up NSYSLOCS if
+     it's in a system header since it's not counted above.  */
   if (ilocs.length ())
-    {
-      /* When there is an inlining context use the macro expansion
-	 location for the original location and bump up NSYSLOCS if
-	 it's in a system header since it's not counted above.  */
-      location_t sysloc = expansion_point_location_if_in_system_header (loc);
-      if (sysloc != loc)
-	{
-	  loc = sysloc;
-	  ++nsyslocs;
-	}
-    }
-  else
-    {
-      /* When there's no inlining context use the original location
-	 and set NSYSLOCS accordingly.  */
-      nsyslocs = in_system_header_at (loc) != 0;
-    }
+    loc = expansion_point_location_if_in_system_header (loc);
 
   ilocs.safe_push (loc);
 
