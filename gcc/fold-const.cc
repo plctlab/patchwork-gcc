@@ -7985,13 +7985,13 @@ native_encode_vector_part (const_tree expr, unsigned char *ptr, int len,
 	off = 0;
 
       /* Zero the buffer and then set bits later where necessary.  */
-      int extract_bytes = MIN (len, total_bytes - off);
+      unsigned elts_per_byte = BITS_PER_UNIT / elt_bits;
+      unsigned first_elt = off * elts_per_byte;
+      unsigned extract_elts = MIN (len * elts_per_byte, count - first_elt);
+      unsigned extract_bytes = CEIL (elt_bits * extract_elts, BITS_PER_UNIT);
       if (ptr)
 	memset (ptr, 0, extract_bytes);
 
-      unsigned int elts_per_byte = BITS_PER_UNIT / elt_bits;
-      unsigned int first_elt = off * elts_per_byte;
-      unsigned int extract_elts = extract_bytes * elts_per_byte;
       for (unsigned int i = 0; i < extract_elts; ++i)
 	{
 	  tree elt = VECTOR_CST_ELT (expr, first_elt + i);
