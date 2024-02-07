@@ -14241,34 +14241,29 @@ and returns an address constant pointing to the name of the function
 from which the built-in was invoked, or the empty string if
 the invocation is not at function scope.  When used as a C++ default
 argument for a function @var{F}, it returns the name of @var{F}'s
-caller or the empty string if the call was not made at function
-scope.
+caller.
 @enddefbuiltin
 
 @defbuiltin{{const char *} __builtin_FILE ()}
 This function is the equivalent of the preprocessor @code{__FILE__}
 macro and returns an address constant pointing to the file name
-containing the invocation of the built-in, or the empty string if
-the invocation is not at function scope.  When used as a C++ default
+containing the invocation of the built-in, or an empty string if
+the invocation is not at file scope.  When used as a C++ default
 argument for a function @var{F}, it returns the file name of the call
-to @var{F} or the empty string if the call was not made at function
-scope.
+to @var{F}.
 
-For example, in the following, each call to function @code{foo} will
-print a line similar to @code{"file.c:123: foo: message"} with the name
-of the file and the line number of the @code{printf} call, the name of
+In the following example, each call to function @code{foo}
+prints a line similar to @code{"file.c:123: foo: message"} with the
+file and line number of the @code{printf} call, the name of
 the function @code{foo}, followed by the word @code{message}.
 
 @smallexample
-const char*
-function (const char *func = __builtin_FUNCTION ())
-@{
-  return func;
-@}
+#include <stdio.h>
 
 void foo (void)
 @{
-  printf ("%s:%i: %s: message\n", file (), line (), function ());
+  printf ("%s:%i: %s: message\n", __builtin_FILE (), __builtin_LINE (),
+                                                 __builtin_FUNCTION ());
 @}
 @end smallexample
 
