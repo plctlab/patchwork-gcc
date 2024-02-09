@@ -1708,7 +1708,7 @@ record_set (rtx dest, const_rtx set, void *data ATTRIBUTE_UNUSED)
 
 /* Return REG_BASE_VALUE for REGNO.  Selective scheduler uses this to avoid
    using hard registers with non-null REG_BASE_VALUE for renaming.  */
-rtx
+static rtx
 get_reg_base_value (unsigned int regno)
 {
   return (*reg_base_value)[regno];
