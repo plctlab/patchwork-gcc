@@ -3004,7 +3004,6 @@ true_dependence_1 (const_rtx mem, machine_mode mem_mode, rtx mem_addr,
 		   const_rtx x, rtx x_addr, bool mem_canonicalized)
 {
   rtx true_mem_addr;
-  rtx base;
   int ret;
 
   gcc_checking_assert (mem_canonicalized ? (mem_addr != NULL_RTX)
@@ -3051,13 +3050,17 @@ true_dependence_1 (const_rtx mem, machine_mode mem_mode, rtx mem_addr,
   if (MEM_ADDR_SPACE (mem) != MEM_ADDR_SPACE (x))
     return 1;
 
-  base = find_base_term (x_addr);
+  rtx base = MEM_BASE (x);
+  if (!base)
+    base = find_base_term (x_addr);
   if (base && (GET_CODE (base) == LABEL_REF
 	       || (GET_CODE (base) == SYMBOL_REF
 		   && CONSTANT_POOL_ADDRESS_P (base))))
     return 0;
 
-  rtx mem_base = find_base_term (true_mem_addr);
+  rtx mem_base = MEM_BASE (mem);
+  if (!mem_base)
+    mem_base = find_base_term (true_mem_addr);
   if (! base_alias_check (x_addr, base, true_mem_addr, mem_base,
 			  GET_MODE (x), mem_mode))
     return 0;
@@ -3115,7 +3118,6 @@ write_dependence_p (const_rtx mem,
 {
   rtx mem_addr;
   rtx true_mem_addr, true_x_addr;
-  rtx base;
   int ret;
 
   gcc_checking_assert (x_canonicalized
@@ -3158,7 +3160,9 @@ write_dependence_p (const_rtx mem,
   if (MEM_ADDR_SPACE (mem) != MEM_ADDR_SPACE (x))
     return 1;
 
-  base = find_base_term (true_mem_addr);
+  rtx base = MEM_BASE (mem);
+  if (!base)
+    base = find_base_term (true_mem_addr);
   if (! writep
       && base
       && (GET_CODE (base) == LABEL_REF
@@ -3166,7 +3170,9 @@ write_dependence_p (const_rtx mem,
 	      && CONSTANT_POOL_ADDRESS_P (base))))
     return 0;
 
-  rtx x_base = find_base_term (true_x_addr);
+  rtx x_base = MEM_BASE (x);
+  if (!x_base)
+    x_base = find_base_term (true_x_addr);
   if (! base_alias_check (true_x_addr, x_base, true_mem_addr, base,
 			  GET_MODE (x), GET_MODE (mem)))
     return 0;
@@ -3281,8 +3287,12 @@ may_alias_p (const_rtx mem, const_rtx x)
   if (MEM_ADDR_SPACE (mem) != MEM_ADDR_SPACE (x))
     return 1;
 
-  rtx x_base = find_base_term (x_addr);
-  rtx mem_base = find_base_term (mem_addr);
+  rtx x_base = MEM_BASE (x);
+  if (!x_base)
+    x_base = find_base_term (x_addr);
+  rtx mem_base = MEM_BASE (mem);
+  if (!mem_base)
+    mem_base = find_base_term (mem_addr);
   if (! base_alias_check (x_addr, x_base, mem_addr, mem_base,
 			  GET_MODE (x), GET_MODE (mem_addr)))
     return 0;

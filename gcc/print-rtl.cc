@@ -974,6 +974,12 @@ rtx_writer::print_rtx (const_rtx in_rtx)
       if (!ADDR_SPACE_GENERIC_P (MEM_ADDR_SPACE (in_rtx)))
 	fprintf (m_outfile, " AS%u", MEM_ADDR_SPACE (in_rtx));
 
+      if (MEM_BASE (in_rtx))
+	{
+	  fputc (' ', m_outfile);
+	  print_rtx (MEM_BASE (in_rtx));
+	}
+
       fputc (']', m_outfile);
       break;
 
