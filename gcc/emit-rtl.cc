@@ -367,7 +367,10 @@ mem_attrs_eq_p (const class mem_attrs *p, const class mem_attrs *q)
 	  && p->addrspace == q->addrspace
 	  && (p->expr == q->expr
 	      || (p->expr != NULL_TREE && q->expr != NULL_TREE
-		  && operand_equal_p (p->expr, q->expr, 0))));
+		  && operand_equal_p (p->expr, q->expr, 0)))
+	  && (p->base == q->base
+	      || (p->base != NULL_RTX && q->base != NULL_RTX
+		  && rtx_equal_p (p->base, q->base))));
 }
 
 /* Set MEM's memory attributes so that they are the same as ATTRS.  */
@@ -1823,6 +1826,7 @@ operand_subword_force (rtx op, poly_uint64 offset, machine_mode mode)
 
 mem_attrs::mem_attrs ()
   : expr (NULL_TREE),
+    base (NULL_RTX),
     offset (0),
     size (0),
     alias (0),
@@ -1980,6 +1984,7 @@ set_mem_attributes_minus_bitpos (rtx ref, tree t, int objectp,
       /* ??? Can this ever happen?  Calling this routine on a MEM that
 	 already carries memory attributes should probably be invalid.  */
       attrs.expr = refattrs->expr;
+      attrs.base = refattrs->base;
       attrs.offset_known_p = refattrs->offset_known_p;
       attrs.offset = refattrs->offset;
       attrs.size_known_p = refattrs->size_known_p;
@@ -1992,6 +1997,7 @@ set_mem_attributes_minus_bitpos (rtx ref, tree t, int objectp,
     {
       defattrs = mode_mem_attrs[(int) GET_MODE (ref)];
       gcc_assert (!defattrs->expr);
+      gcc_assert (!defattrs->base);
       gcc_assert (!defattrs->offset_known_p);
 
       /* Respect mode size.  */
@@ -2251,6 +2257,16 @@ clear_mem_size (rtx mem)
 {
   mem_attrs attrs (*get_mem_attrs (mem));
   attrs.size_known_p = false;
+  set_mem_attrs (mem, &attrs);
+}
+
+/* Set the BASE of MEM.  */
+
+void
+set_mem_base (rtx mem, rtx base)
+{
+  mem_attrs attrs (*get_mem_attrs (mem));
+  attrs.base = base;
   set_mem_attrs (mem, &attrs);
 }
 

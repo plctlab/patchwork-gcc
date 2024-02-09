@@ -357,6 +357,9 @@ extern void set_mem_addr_space (rtx, addr_space_t);
 /* Set the expr for MEM to EXPR.  */
 extern void set_mem_expr (rtx, tree);
 
+/* Set the base for MEM to BASE.  */
+extern void set_mem_base (rtx, rtx);
+
 /* Set the offset for MEM to OFFSET.  */
 extern void set_mem_offset (rtx, poly_int64);
 

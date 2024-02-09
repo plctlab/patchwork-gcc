@@ -157,6 +157,10 @@ public:
      (In other words, the MEM might access only part of the object.)  */
   tree expr;
 
+  /* A unique base this MEM accesses.  This can be a SYMBOL_REF or
+     an ADDRESS RTX.  */
+  rtx base;
+
   /* The offset of the memory reference from the start of EXPR.
      Only valid if OFFSET_KNOWN_P.  */
   poly_int64 offset;
@@ -2639,6 +2643,9 @@ do {								        \
 /* For a MEM rtx, the decl it is known to refer to, if it is known to
    refer to part of a DECL.  It may also be a COMPONENT_REF.  */
 #define MEM_EXPR(RTX) (get_mem_attrs (RTX)->expr)
+
+/* For a MEM rtx, the ADDRESS or SYMBOL_REF it is based on.  */
+#define MEM_BASE(RTX) (get_mem_attrs (RTX)->base)
 
 /* For a MEM rtx, true if its MEM_OFFSET is known.  */
 #define MEM_OFFSET_KNOWN_P(RTX) (get_mem_attrs (RTX)->offset_known_p)
