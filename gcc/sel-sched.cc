@@ -1082,9 +1082,13 @@ init_regs_for_mode (machine_mode mode)
             /* Can't use regs which aren't saved by
                the prologue.  */
             || !TEST_HARD_REG_BIT (sel_hrd.regs_ever_used, cur_reg + i)
+	    /* It's fine to elide this since REG_BASE_VALUE will go away
+	       and the info is in the MEMs itself.  */
+#if 0
 	    /* Can't use regs with non-null REG_BASE_VALUE, because adjusting
 	       it affects aliasing globally and invalidates all AV sets.  */
 	    || get_reg_base_value (cur_reg + i)
+#endif
 #ifdef LEAF_REGISTERS
             /* We can't use a non-leaf register if we're in a
                leaf function.  */
