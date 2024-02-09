@@ -40,6 +40,9 @@ along with GCC; see the file COPYING3.  If not see
 #include "rtl-iter.h"
 #include "cgraph.h"
 #include "ipa-utils.h"
+#include "stringpool.h"
+#include "value-range.h"
+#include "tree-ssanames.h"
 
 /* The aliasing API provided here solves related but different problems:
 
@@ -202,6 +205,10 @@ static struct {
      1. incoming arguments.  There is just one ADDRESS to represent all
 	arguments, since we do not know at this level whether accesses
 	based on different arguments can alias.  The ADDRESS has id 0.
+
+	This is solely useful to disambiguate against other ADDRESS
+	bases as we know incoming pointers cannot point to local
+	stack, frame or argument space.
 
      2. stack_pointer_rtx, frame_pointer_rtx, hard_frame_pointer_rtx
 	(if distinct from frame_pointer_rtx) and arg_pointer_rtx.
@@ -2129,12 +2136,34 @@ find_base_term (rtx x, vec<std::pair<cselib_val *,
    to avoid visiting them multiple times.  We unwind that changes here.  */
 
 static rtx
-find_base_term (rtx x)
+find_base_term (rtx x, const_rtx mem = NULL_RTX)
 {
   auto_vec<std::pair<cselib_val *, struct elt_loc_list *>, 32> visited_vals;
   rtx res = find_base_term (x, visited_vals);
   for (unsigned i = 0; i < visited_vals.length (); ++i)
     visited_vals[i].first->locs = visited_vals[i].second;
+  if (!res && mem && MEM_EXPR (mem))
+    {
+      tree base = get_base_address (MEM_EXPR (mem));
+      if (TREE_CODE (base) == PARM_DECL
+	  && DECL_RTL_SET_P (base))
+	/* We need to look at how we expanded a PARM_DECL.  It might be in
+	   the argument space (UNIQUE_BASE_VALUE_ARGP) or it might
+	   be spilled (UNIQUE_BASE_VALUE_FP/UNIQUE_BASE_VALUE_HFP).  */
+	res = find_base_term (DECL_RTL (base));
+      else if (TREE_CODE (base) == MEM_REF
+	       && TREE_CODE (TREE_OPERAND (base, 0)) == SSA_NAME
+	       && SSA_NAME_PTR_INFO (TREE_OPERAND (base, 0)))
+	{
+	  auto pt = &SSA_NAME_PTR_INFO (TREE_OPERAND (base, 0))->pt;
+	  if (pt->nonlocal
+	      && !pt->anything
+	      && !pt->escaped
+	      && !pt->ipa_escaped
+	      && bitmap_empty_p (pt->vars))
+	    res = arg_base_value;
+	}
+    }
   return res;
 }
 
@@ -3051,13 +3080,13 @@ true_dependence_1 (const_rtx mem, machine_mode mem_mode, rtx mem_addr,
   if (MEM_ADDR_SPACE (mem) != MEM_ADDR_SPACE (x))
     return 1;
 
-  base = find_base_term (x_addr);
+  base = find_base_term (x_addr, x);
   if (base && (GET_CODE (base) == LABEL_REF
 	       || (GET_CODE (base) == SYMBOL_REF
 		   && CONSTANT_POOL_ADDRESS_P (base))))
     return 0;
 
-  rtx mem_base = find_base_term (true_mem_addr);
+  rtx mem_base = find_base_term (true_mem_addr, mem);
   if (! base_alias_check (x_addr, base, true_mem_addr, mem_base,
 			  GET_MODE (x), mem_mode))
     return 0;
@@ -3158,7 +3187,7 @@ write_dependence_p (const_rtx mem,
   if (MEM_ADDR_SPACE (mem) != MEM_ADDR_SPACE (x))
     return 1;
 
-  base = find_base_term (true_mem_addr);
+  base = find_base_term (true_mem_addr, mem);
   if (! writep
       && base
       && (GET_CODE (base) == LABEL_REF
@@ -3166,7 +3195,7 @@ write_dependence_p (const_rtx mem,
 	      && CONSTANT_POOL_ADDRESS_P (base))))
     return 0;
 
-  rtx x_base = find_base_term (true_x_addr);
+  rtx x_base = find_base_term (true_x_addr, x);
   if (! base_alias_check (true_x_addr, x_base, true_mem_addr, base,
 			  GET_MODE (x), GET_MODE (mem)))
     return 0;
@@ -3281,8 +3310,8 @@ may_alias_p (const_rtx mem, const_rtx x)
   if (MEM_ADDR_SPACE (mem) != MEM_ADDR_SPACE (x))
     return 1;
 
-  rtx x_base = find_base_term (x_addr);
-  rtx mem_base = find_base_term (mem_addr);
+  rtx x_base = find_base_term (x_addr, x);
+  rtx mem_base = find_base_term (mem_addr, mem);
   if (! base_alias_check (x_addr, x_base, mem_addr, mem_base,
 			  GET_MODE (x), GET_MODE (mem_addr)))
     return 0;
