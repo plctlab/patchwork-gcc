@@ -2022,6 +2022,12 @@ set_mem_attributes_minus_bitpos (rtx ref, tree t, int objectp,
   if (objectp || TREE_CODE (t) == INDIRECT_REF)
     attrs.align = MAX (attrs.align, TYPE_ALIGN (type));
 
+  /* We usually expand the base of a complicated ref first, so record any
+     base value we can determine.  ???  Probably should use a simplified
+     find_base_value here to unwrap a contained SYMBOL_REF.  */
+  if (GET_CODE (ref) == SYMBOL_REF)
+    attrs.base = copy_rtx (ref);
+
   /* If the size is known, we can set that.  */
   tree new_size = TYPE_SIZE_UNIT (type);
 
@@ -2069,6 +2075,24 @@ set_mem_attributes_minus_bitpos (rtx ref, tree t, int objectp,
 								      0))));
 	  else
 	    as = TYPE_ADDR_SPACE (TREE_TYPE (base));
+
+#if 0
+	  /* Set the base RTX based on points-to info.  */
+	  if (!attrs.base
+	      && (TREE_CODE (base) == MEM_REF
+		  || TREE_CODE (base) == TARGET_MEM_REF)
+	      && TREE_CODE (TREE_OPERAND (base, 0)) == SSA_NAME
+	      && SSA_NAME_PTR_INFO (TREE_OPERAND (base, 0)))
+	    {
+	      auto pt = &SSA_NAME_PTR_INFO (TREE_OPERAND (base, 0))->pt;
+	      if (pt->nonlocal
+		  && !pt->anything
+		  && !pt->escaped
+		  && !pt->ipa_escaped
+		  && bitmap_empty_p (pt->vars))
+		attrs.base = arg_base_value;
+	    }
+#endif
 	}
 
       /* If this expression uses it's parent's alias set, mark it such
