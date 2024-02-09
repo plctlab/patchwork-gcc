@@ -13160,7 +13160,7 @@ depset::hash::add_specializations (bool decl_p)
       if (use_tpl == 1)
 	/* Implicit instantiations only walked if we reach them.  */
 	needs_reaching = true;
-      else if (!DECL_LANG_SPECIFIC (spec)
+      else if (!DECL_LANG_SPECIFIC (STRIP_TEMPLATE (spec))
 	       || !DECL_MODULE_PURVIEW_P (STRIP_TEMPLATE (spec)))
 	/* Likewise, GMF explicit or partial specializations.  */
 	needs_reaching = true;
@@ -18611,7 +18611,8 @@ get_originating_module_decl (tree decl)
       && (TREE_CODE (DECL_CONTEXT (decl)) == ENUMERAL_TYPE))
     decl = TYPE_NAME (DECL_CONTEXT (decl));
   else if (TREE_CODE (decl) == FIELD_DECL
-	   || TREE_CODE (decl) == USING_DECL)
+	   || TREE_CODE (decl) == USING_DECL
+	   || TREE_CODE (decl) == CONST_DECL)
     {
       decl = DECL_CONTEXT (decl);
       if (TREE_CODE (decl) != FUNCTION_DECL)
