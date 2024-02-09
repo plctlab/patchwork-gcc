@@ -20166,6 +20166,7 @@ tsubst_lambda_expr (tree t, tree args, tsubst_flags_t complain, tree in_decl)
 	  r = error_mark_node;
 	  goto out;
 	}
+      LAMBDA_EXPR_FUNCTION (r) = inst;
       finish_member_declaration (inst);
       record_lambda_scope_sig_discriminator (r, inst);
 

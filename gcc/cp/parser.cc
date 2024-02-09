@@ -11815,6 +11815,7 @@ cp_parser_lambda_declarator_opt (cp_parser* parser, tree lambda_expr)
     else if (parser->fully_implicit_function_template_p)
       fco = finish_fully_implicit_template (parser, fco);
 
+    LAMBDA_EXPR_FUNCTION (lambda_expr) = fco;
     finish_member_declaration (fco);
     record_lambda_scope_sig_discriminator (lambda_expr, fco);
 

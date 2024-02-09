@@ -1516,6 +1516,10 @@ enum cp_lambda_default_capture_mode_type {
 #define LAMBDA_EXPR_CLOSURE(NODE) \
   (TREE_TYPE (LAMBDA_EXPR_CHECK (NODE)))
 
+/* The op() of the lambda closure type as would be found by name lookup.  */
+#define LAMBDA_EXPR_FUNCTION(NODE) \
+  (((struct tree_lambda_expr *)LAMBDA_EXPR_CHECK (NODE))->function)
+
 struct GTY (()) tree_lambda_expr
 {
   struct tree_typed typed;
@@ -1523,6 +1527,7 @@ struct GTY (()) tree_lambda_expr
   tree this_capture;
   tree extra_scope;
   tree regen_info;
+  tree function;
   vec<tree, va_gc> *pending_proxies;
   location_t locus;
   enum cp_lambda_default_capture_mode_type default_capture_mode : 2;

@@ -166,22 +166,12 @@ begin_lambda_type (tree lambda)
 tree
 lambda_function (tree lambda)
 {
-  tree type;
-  if (TREE_CODE (lambda) == LAMBDA_EXPR)
-    type = LAMBDA_EXPR_CLOSURE (lambda);
-  else
-    type = lambda;
-  gcc_assert (LAMBDA_TYPE_P (type));
-  /* Don't let debug_tree cause instantiation.  */
-  if (CLASSTYPE_TEMPLATE_INSTANTIATION (type)
-      && !COMPLETE_OR_OPEN_TYPE_P (type))
+  if (CLASS_TYPE_P (lambda))
+    lambda = CLASSTYPE_LAMBDA_EXPR (lambda);
+  tree callop = LAMBDA_EXPR_FUNCTION (lambda);
+  if (!callop)
     return NULL_TREE;
-  lambda = lookup_member (type, call_op_identifier,
-			  /*protect=*/0, /*want_type=*/false,
-			  tf_warning_or_error);
-  if (lambda)
-    lambda = STRIP_TEMPLATE (get_first_fn (lambda));
-  return lambda;
+  return STRIP_TEMPLATE (callop);
 }
 
 /* True if EXPR is an expression whose type can be used directly in lambda
