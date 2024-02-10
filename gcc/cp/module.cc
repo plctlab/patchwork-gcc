@@ -5659,8 +5659,7 @@ trees_out::lang_decl_bools (tree t)
      want to mark them as in module purview.  */
   WB (lang->u.base.module_purview_p && !header_module_p ());
   WB (lang->u.base.module_attach_p);
-  if (VAR_OR_FUNCTION_DECL_P (t))
-    WB (lang->u.base.module_keyed_decls_p);
+  WB (lang->u.base.module_keyed_decls_p);
   switch (lang->u.base.selector)
     {
     default:
@@ -5730,8 +5729,7 @@ trees_in::lang_decl_bools (tree t)
   RB (lang->u.base.dependent_init_p);
   RB (lang->u.base.module_purview_p);
   RB (lang->u.base.module_attach_p);
-  if (VAR_OR_FUNCTION_DECL_P (t))
-    RB (lang->u.base.module_keyed_decls_p);
+  RB (lang->u.base.module_keyed_decls_p);
   switch (lang->u.base.selector)
     {
     default:
@@ -7846,8 +7844,7 @@ trees_out::decl_value (tree decl, depset *dep)
       install_entity (decl, dep);
     }
 
-  if (VAR_OR_FUNCTION_DECL_P (inner)
-      && DECL_LANG_SPECIFIC (inner)
+  if (DECL_LANG_SPECIFIC (inner)
       && DECL_MODULE_KEYED_DECLS_P (inner)
       && !is_key_order ())
     {
@@ -8144,8 +8141,7 @@ trees_in::decl_value ()
   bool installed = install_entity (existing);
   bool is_new = existing == decl;
 
-  if (VAR_OR_FUNCTION_DECL_P (inner)
-      && DECL_LANG_SPECIFIC (inner)
+  if (DECL_LANG_SPECIFIC (inner)
       && DECL_MODULE_KEYED_DECLS_P (inner))
     {
       /* Read and maybe install the attached entities.  */
@@ -10416,8 +10412,7 @@ trees_out::get_merge_kind (tree decl, depset *dep)
 	      if (tree scope
 		  = LAMBDA_EXPR_EXTRA_SCOPE (CLASSTYPE_LAMBDA_EXPR
 					     (TREE_TYPE (decl))))
-		if (TREE_CODE (scope) == VAR_DECL
-		    && DECL_MODULE_KEYED_DECLS_P (scope))
+		if (DECL_MODULE_KEYED_DECLS_P (scope))
 		  {
 		    mk = MK_keyed;
 		    break;
@@ -10714,7 +10709,9 @@ trees_out::key_mergeable (int tag, merge_kind mk, tree decl, tree inner,
 	    gcc_checking_assert (LAMBDA_TYPE_P (TREE_TYPE (inner)));
 	    tree scope = LAMBDA_EXPR_EXTRA_SCOPE (CLASSTYPE_LAMBDA_EXPR
 						  (TREE_TYPE (inner)));
-	    gcc_checking_assert (TREE_CODE (scope) == VAR_DECL);
+	    gcc_checking_assert (TREE_CODE (scope) == VAR_DECL
+				 || TREE_CODE (scope) == FIELD_DECL
+				 || TREE_CODE (scope) == PARM_DECL);
 	    auto *root = keyed_table->get (scope);
 	    unsigned ix = root->length ();
 	    /* If we don't find it, we'll write a really big number
@@ -10992,6 +10989,26 @@ trees_in::key_mergeable (int tag, merge_kind mk, tree decl, tree inner,
 		}
 	    }
 	}
+      else if (mk == MK_keyed
+	       && DECL_LANG_SPECIFIC (name)
+	       && DECL_MODULE_KEYED_DECLS_P (name))
+	{
+	  gcc_checking_assert (TREE_CODE (container) == NAMESPACE_DECL
+			       || TREE_CODE (container) == TYPE_DECL);
+	  if (auto *set = keyed_table->get (name))
+	    if (key.index < set->length ())
+	      {
+		existing = (*set)[key.index];
+		if (existing)
+		  {
+		    gcc_checking_assert
+		      (DECL_IMPLICIT_TYPEDEF_P (existing));
+		    if (inner != decl)
+		      existing
+			= CLASSTYPE_TI_TEMPLATE (TREE_TYPE (existing));
+		  }
+	      }
+	}
       else
 	switch (TREE_CODE (container))
 	  {
@@ -10999,27 +11016,8 @@ trees_in::key_mergeable (int tag, merge_kind mk, tree decl, tree inner,
 	    gcc_unreachable ();
 
 	  case NAMESPACE_DECL:
-	    if (mk == MK_keyed)
-	      {
-		if (DECL_LANG_SPECIFIC (name)
-		    && VAR_OR_FUNCTION_DECL_P (name)
-		    && DECL_MODULE_KEYED_DECLS_P (name))
-		  if (auto *set = keyed_table->get (name))
-		    if (key.index < set->length ())
-		      {
-			existing = (*set)[key.index];
-			if (existing)
-			  {
-			    gcc_checking_assert
-			      (DECL_IMPLICIT_TYPEDEF_P (existing));
-			    if (inner != decl)
-			      existing
-				= CLASSTYPE_TI_TEMPLATE (TREE_TYPE (existing));
-			  }
-		      }
-	      }
-	    else if (is_attached
-		     && !(state->is_module () || state->is_partition ()))
+	    if (is_attached
+		&& !(state->is_module () || state->is_partition ()))
 	      kind = "unique";
 	    else
 	      {
@@ -18873,9 +18871,11 @@ maybe_key_decl (tree ctx, tree decl)
   if (!modules_p ())
     return;
 
-  // FIXME: For now just deal with lambdas attached to var decls.
-  // This might be sufficient?
-  if (TREE_CODE (ctx) != VAR_DECL)
+  /* We only need to deal with lambdas attached to var, field,
+     or parm decls.  */
+  if (TREE_CODE (ctx) != VAR_DECL
+      && TREE_CODE (ctx) != FIELD_DECL
+      && TREE_CODE (ctx) != PARM_DECL)
     return;
 
   gcc_checking_assert (DECL_NAMESPACE_SCOPE_P (ctx));
