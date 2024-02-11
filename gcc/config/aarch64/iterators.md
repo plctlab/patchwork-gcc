@@ -706,6 +706,7 @@
     UNSPEC_PMULL        ; Used in aarch64-simd.md.
     UNSPEC_PMULL2       ; Used in aarch64-simd.md.
     UNSPEC_REV_REGLIST  ; Used in aarch64-simd.md.
+    UNSPEC_VEC_SHL      ; Used in aarch64-simd.md.
     UNSPEC_VEC_SHR      ; Used in aarch64-simd.md.
     UNSPEC_SQRDMLAH     ; Used in aarch64-simd.md.
     UNSPEC_SQRDMLSH     ; Used in aarch64-simd.md.

@@ -1530,9 +1530,23 @@
   "TARGET_SIMD"
   {
     if (BYTES_BIG_ENDIAN)
-      return "shl %d0, %d1, %2";
+      return "shl\t%d0, %d1, %2";
     else
-      return "ushr %d0, %d1, %2";
+      return "ushr\t%d0, %d1, %2";
+  }
+  [(set_attr "type" "neon_shift_imm")]
+)
+(define_insn "vec_shl_<mode><vczle><vczbe>"
+  [(set (match_operand:VD 0 "register_operand" "=w")
+        (unspec:VD [(match_operand:VD 1 "register_operand" "w")
+		    (match_operand:SI 2 "immediate_operand" "i")]
+		   UNSPEC_VEC_SHL))]
+  "TARGET_SIMD"
+  {
+    if (BYTES_BIG_ENDIAN)
+      return "ushr\t%d0, %d1, %2";
+    else
+      return "shl\t%d0, %d1, %2";
   }
   [(set_attr "type" "neon_shift_imm")]
 )
