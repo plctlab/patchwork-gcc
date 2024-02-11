@@ -10711,7 +10711,8 @@ trees_out::key_mergeable (int tag, merge_kind mk, tree decl, tree inner,
 						  (TREE_TYPE (inner)));
 	    gcc_checking_assert (TREE_CODE (scope) == VAR_DECL
 				 || TREE_CODE (scope) == FIELD_DECL
-				 || TREE_CODE (scope) == PARM_DECL);
+				 || TREE_CODE (scope) == PARM_DECL
+				 || TREE_CODE (scope) == TYPE_DECL);
 	    auto *root = keyed_table->get (scope);
 	    unsigned ix = root->length ();
 	    /* If we don't find it, we'll write a really big number
@@ -18872,10 +18873,11 @@ maybe_key_decl (tree ctx, tree decl)
     return;
 
   /* We only need to deal with lambdas attached to var, field,
-     or parm decls.  */
+     parm, or type decls.  */
   if (TREE_CODE (ctx) != VAR_DECL
       && TREE_CODE (ctx) != FIELD_DECL
-      && TREE_CODE (ctx) != PARM_DECL)
+      && TREE_CODE (ctx) != PARM_DECL
+      && TREE_CODE (ctx) != TYPE_DECL)
     return;
 
   gcc_checking_assert (DECL_NAMESPACE_SCOPE_P (ctx));
