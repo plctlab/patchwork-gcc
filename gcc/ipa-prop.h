@@ -667,15 +667,6 @@ ipa_node_params::ipa_node_params ()
 {
 }
 
-inline
-ipa_node_params::~ipa_node_params ()
-{
-  free (lattices);
-  vec_free (descriptors);
-  known_csts.release ();
-  known_contexts.release ();
-}
-
 /* Intermediate information that we get from alias analysis about a particular
    parameter in a particular basic_block.  When a parameter or the memory it
    references is marked modified, we use that information in all dominated

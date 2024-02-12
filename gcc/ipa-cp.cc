@@ -390,6 +390,23 @@ public:
   bool virt_call;
 };
 
+/* Destructor of node function summary, placed here because it mainly must
+   destruct value range lattices not known outside of this source file.  */
+
+ipa_node_params::~ipa_node_params ()
+{
+  if (lattices)
+    {
+      int count = ipa_get_param_count (this);
+      for (int i = 0; i < count; i++)
+	lattices[i].~ipcp_param_lattices ();
+      free (lattices);
+    }
+  vec_free (descriptors);
+  known_csts.release ();
+  known_contexts.release ();
+}
+
 /* Allocation pools for values and their sources in ipa-cp.  */
 
 object_allocator<ipcp_value<tree> > ipcp_cst_values_pool
