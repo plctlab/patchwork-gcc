@@ -1,4 +1,4 @@
-/* { dg-options "-fdiagnostics-show-caret -Wpedantic" } */
+/* { dg-options "-fdiagnostics-show-caret -Wextra-semi" } */
 
 /* Struct with extra semicolon.  */
 struct s1 { int i;; }; /* { dg-warning "19: extra .;." } */
