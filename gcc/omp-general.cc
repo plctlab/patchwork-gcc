@@ -2409,6 +2409,8 @@ omp_resolve_declare_variant (tree base)
       (*slot)->variants = entry.variants;
       tree alt = build_decl (DECL_SOURCE_LOCATION (base), FUNCTION_DECL,
 			     DECL_NAME (base), TREE_TYPE (base));
+      if (DECL_ASSEMBLER_NAME_SET_P (base))
+	SET_DECL_ASSEMBLER_NAME (alt, DECL_ASSEMBLER_NAME (base));
       DECL_ARTIFICIAL (alt) = 1;
       DECL_IGNORED_P (alt) = 1;
       TREE_STATIC (alt) = 1;
