@@ -18043,7 +18043,7 @@ aarch64_override_options_internal (struct gcc_options *opts)
 	   "size.  Given value %d (%llu KB) is out of range",
 	   guard_size, (1ULL << guard_size) / 1024ULL);
 
-  /* Enforce that interval is the same size as size so the mid-end does the
+  /* Enforce that interval is the same size as size so the middle-end does the
      right thing.  */
   SET_OPTION_IF_UNSET (opts, &global_options_set,
 		       param_stack_clash_protection_probe_interval,
@@ -18055,8 +18055,8 @@ aarch64_override_options_internal (struct gcc_options *opts)
   int probe_interval
     = param_stack_clash_protection_probe_interval;
   if (guard_size != probe_interval)
-    error ("stack clash guard size %<%d%> must be equal to probing interval "
-	   "%<%d%>", guard_size, probe_interval);
+    error ("%<--param stack-clash-protection-probe-interval=%d%> needs to match "
+	   "%<--param stack-clash-protection-guard-size=%d%>", probe_interval, guard_size);
 
   /* Enable sw prefetching at specified optimization level for
      CPUS that have prefetch.  Lower optimization level threshold by 1
