@@ -235,11 +235,28 @@ namespace std _GLIBCXX_VISIBILITY(default)
 {
 _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
+#if __cplusplus < 201103L
   template<typename _Ite, typename _Seq>
     _Ite
     __niter_base(const ::__gnu_debug::_Safe_iterator<_Ite, _Seq,
 		 std::random_access_iterator_tag>& __it)
     { return __it.base(); }
+
+  template<typename _Ite, typename _Cont, typename _DbgSeq>
+    _Ite
+    __niter_base(const ::__gnu_debug::_Safe_iterator<
+		 ::__gnu_cxx::__normal_iterator<_Ite, _Cont>, _DbgSeq,
+		 std::random_access_iterator_tag>& __it)
+    { return __it.base().base(); }
+#else
+  template<typename _Ite, typename _Seq>
+    _GLIBCXX20_CONSTEXPR
+    auto
+    __niter_base(const ::__gnu_debug::_Safe_iterator<_Ite, _Seq,
+		 std::random_access_iterator_tag>& __it)
+    -> decltype(std::__niter_base(declval<_Ite>()))
+    { return std::__niter_base(__it.base()); }
+#endif
 
   template<bool _IsMove,
 	   typename _Ite, typename _Seq, typename _Cat, typename _OI>
