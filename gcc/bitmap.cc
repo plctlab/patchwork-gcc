@@ -2696,6 +2696,7 @@ bitmap_hash (const_bitmap head)
 {
   const bitmap_element *ptr;
   BITMAP_WORD hash = 0;
+  unsigned long count = 0;
   int ix;
 
   gcc_checking_assert (!head->tree_form);
@@ -2704,9 +2705,12 @@ bitmap_hash (const_bitmap head)
     {
       hash ^= ptr->indx;
       for (ix = 0; ix != BITMAP_ELEMENT_WORDS; ix++)
-	hash ^= ptr->bits[ix];
+	{
+	  hash ^= ptr->bits[ix];
+	  count += bitmap_count_bits_in_word (&ptr->bits[ix]);
+	}
     }
-  return (hashval_t)hash;
+  return iterative_hash (&hash, sizeof (hash), count);
 }
 
 
