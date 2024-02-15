@@ -153,9 +153,11 @@ Classes used:
 
    data - buffer
 
-   bytes - data streamer
-   bytes_in : bytes - scalar reader
-   bytes_out : bytes - scalar writer
+   bytes_in - scalar reader
+   bytes_out - scalar writer
+
+   bits_in - bit stream reader
+   bits_out - bit stream writer
 
    elf - ELROND format
    elf_in : elf - ELROND reader
@@ -345,6 +347,7 @@ typedef hash_map<void *,signed,ptr_int_traits> ptr_int_hash_map;
 
 /* Variable length buffer.  */
 
+namespace {
 class data {
 public:
   class allocator {
@@ -392,6 +395,8 @@ protected:
     return res;
   }
 
+  unsigned calc_crc (unsigned) const;
+
 public:
   void unuse (unsigned count)
   {
@@ -401,6 +406,7 @@ public:
 public:
   static allocator simple_memory;
 };
+} // anon namespace
 
 /* The simple data allocator.  */
 data::allocator data::simple_memory;
@@ -446,46 +452,11 @@ data::allocator::shrink (char *ptr)
   XDELETEVEC (ptr);
 }
 
-/* Byte streamer base.   Buffer with read/write position and smarts
-   for single bits.  */
-
-class bytes : public data {
-public:
-  typedef data parent;
-
-protected:
-  uint32_t bit_val;	/* Bit buffer.  */
-  unsigned bit_pos;	/* Next bit in bit buffer.  */
-
-public:
-  bytes ()
-    :parent (), bit_val (0), bit_pos (0)
-  {}
-  ~bytes () 
-  {
-  }
-
-protected:
-  unsigned calc_crc (unsigned) const;
-
-protected:
-  /* Finish bit packet.  Rewind the bytes not used.  */
-  unsigned bit_flush ()
-  {
-    gcc_assert (bit_pos);
-    unsigned bytes = (bit_pos + 7) / 8;
-    unuse (4 - bytes);
-    bit_pos = 0;
-    bit_val = 0;
-    return bytes;
-  }
-};
-
 /* Calculate the crc32 of the buffer.  Note the CRC is stored in the
    first 4 bytes, so don't include them.  */
 
 unsigned
-bytes::calc_crc (unsigned l) const
+data::calc_crc (unsigned l) const
 {
   unsigned crc = 0;
   for (size_t ix = 4; ix < l; ix++)
@@ -497,8 +468,9 @@ class elf_in;
 
 /* Byte stream reader.  */
 
-class bytes_in : public bytes {
-  typedef bytes parent;
+namespace {
+class bytes_in : public data {
+  typedef data parent;
 
 protected:
   bool overrun;  /* Sticky read-too-much flag.  */
@@ -533,7 +505,6 @@ public:
     if (offset > size)
       set_overrun ();
     pos = offset;
-    bit_pos = bit_val = 0;
   }
 
 public:
@@ -575,13 +546,6 @@ public:
   unsigned u32 ();  	/* Read uncompressed integer.  */
 
 public:
-  bool b ();	    	/* Read a bool.  */
-  void bflush ();	/* Completed a block of bools.  */
-
-private:
-  void bfill ();	/* Get the next block of bools.  */
-
-public:
   int c ();		/* Read a char.  */
   int i ();		/* Read a signed int.  */
   unsigned u ();	/* Read an unsigned int.  */
@@ -592,6 +556,7 @@ public:
   const void *buf (size_t); /* Read a fixed-length buffer.  */
   cpp_hashnode *cpp_node (); /* Read a cpp node.  */
 };
+} // anon namespace
 
 /* Verify the buffer's CRC is correct.  */
 
@@ -612,8 +577,9 @@ class elf_out;
 
 /* Byte stream writer.  */
 
-class bytes_out : public bytes {
-  typedef bytes parent;
+namespace {
+class bytes_out : public data {
+  typedef data parent;
 
 public:
   allocator *memory;	/* Obtainer of memory.  */
@@ -661,10 +627,6 @@ public:
   void u32 (unsigned);  /* Write uncompressed integer.  */
 
 public:
-  void b (bool);	/* Write bool.  */
-  void bflush ();	/* Finish block of bools.  */
-
-public:
   void c (unsigned char); /* Write unsigned char.  */
   void i (int);		/* Write signed int.  */
   void u (unsigned);	/* Write unsigned int.  */
@@ -696,13 +658,127 @@ protected:
   /* Instrumentation.  */
   static unsigned spans[4];
   static unsigned lengths[4];
-  static int is_set;
+  friend struct bits_out;
 };
+} // anon namespace
+
+/* Finish bit packet.  Rewind the bytes not used.  */
+static unsigned
+bit_flush (data& bits, uint32_t& bit_val, unsigned& bit_pos)
+{
+  gcc_assert (bit_pos);
+  unsigned bytes = (bit_pos + 7) / 8;
+  bits.unuse (4 - bytes);
+  bit_pos = 0;
+  bit_val = 0;
+  return bytes;
+}
+
+/* RAII-enabled bit stream reader.  Bools are packed into bytes.  You
+   cannot mix bools and non-bools.  Use bflush to flush the current stream
+   of bools on demand.  Upon destruction bflush is called.
+
+   When reading, we don't know how many bools we'll read in.  So read
+   4 bytes-worth, and then rewind when flushing if we didn't need them
+   all.  You can't have a block of bools closer than 4 bytes to the
+   end of the buffer.  */
+
+namespace {
+struct bits_in {
+  bytes_in& in;
+  uint32_t bit_val = 0;
+  unsigned bit_pos = 0;
+
+  bits_in (bytes_in& in)
+    : in (in)
+  {
+  }
+
+  ~bits_in ()
+  {
+    bflush ();
+  }
+
+  bits_in(const bits_in&) = delete;
+  bits_in& operator=(const bits_in&) = delete;
+
+  /* Completed a block of bools.  */
+  void bflush ()
+  {
+    if (bit_pos)
+      bit_flush (in, bit_val, bit_pos);
+  }
+
+  /* Read one bit.  */
+  bool b ()
+  {
+    if (!bit_pos)
+      bit_val = in.u32 ();
+    bool x = (bit_val >> bit_pos) & 1;
+    bit_pos = (bit_pos + 1) % 32;
+    return x;
+  }
+};
+} // anon namespace
+
+/* RAII-enabled bit stream writer, counterpart to bits_in.  */
+
+namespace {
+struct bits_out {
+  bytes_out& out;
+  uint32_t bit_val = 0;
+  unsigned bit_pos = 0;
+  char is_set = -1;
+
+  bits_out (bytes_out& out)
+    : out (out)
+  { }
+
+  ~bits_out ()
+  {
+    bflush ();
+  }
+
+  bits_out(const bits_out&) = delete;
+  bits_out& operator=(const bits_out&) = delete;
+
+  /* Completed a block of bools.  */
+  void bflush ()
+  {
+    if (bit_pos)
+      {
+	out.u32 (bit_val);
+	out.lengths[2] += bit_flush (out, bit_val, bit_pos);
+      }
+    out.spans[2]++;
+    is_set = -1;
+  }
+
+  /* Write one bit.
+
+     It may be worth optimizing for most bools being zero.  Some kind of
+     run-length encoding?  */
+  void b (bool x)
+  {
+    if (is_set != x)
+      {
+	is_set = x;
+	out.spans[x]++;
+      }
+    out.lengths[x]++;
+    bit_val |= unsigned (x) << bit_pos++;
+    if (bit_pos == 32)
+      {
+	out.u32 (bit_val);
+	out.lengths[2] += bit_flush (out, bit_val, bit_pos);
+      }
+  }
+};
+} // anon namespace
 
 /* Instrumentation.  */
 unsigned bytes_out::spans[4];
 unsigned bytes_out::lengths[4];
-int bytes_out::is_set = -1;
 
 /* If CRC_PTR non-null, set the CRC of the buffer.  Mix the CRC into
    that pointed to by CRC_PTR.  */
@@ -723,73 +799,6 @@ bytes_out::set_crc (unsigned *crc_ptr)
       /* Buffer will be sufficiently aligned.  */
       *(unsigned *)buffer = crc;
     }
-}
-
-/* Finish a set of bools.  */
-
-void
-bytes_out::bflush ()
-{
-  if (bit_pos)
-    {
-      u32 (bit_val);
-      lengths[2] += bit_flush ();
-    }
-  spans[2]++;
-  is_set = -1;
-}
-
-void
-bytes_in::bflush ()
-{
-  if (bit_pos)
-    bit_flush ();
-}
-
-/* When reading, we don't know how many bools we'll read in.  So read
-   4 bytes-worth, and then rewind when flushing if we didn't need them
-   all.  You can't have a block of bools closer than 4 bytes to the
-   end of the buffer.  */
-
-void
-bytes_in::bfill ()
-{
-  bit_val = u32 ();
-}
-
-/* Bools are packed into bytes.  You cannot mix bools and non-bools.
-   You must call bflush before emitting another type.  So batch your
-   bools.
-
-   It may be worth optimizing for most bools being zero.  Some kind of
-   run-length encoding?  */
-
-void
-bytes_out::b (bool x)
-{
-  if (is_set != x)
-    {
-      is_set = x;
-      spans[x]++;
-    }
-  lengths[x]++;
-  bit_val |= unsigned (x) << bit_pos++;
-  if (bit_pos == 32)
-    {
-      u32 (bit_val);
-      lengths[2] += bit_flush ();
-    }
-}
-
-bool
-bytes_in::b ()
-{
-  if (!bit_pos)
-    bfill ();
-  bool v = (bit_val >> bit_pos++) & 1;
-  if (bit_pos == 32)
-    bit_flush ();
-  return v;
 }
 
 /* Exactly 4 bytes.  Used internally for bool packing and a few other
@@ -2841,6 +2850,7 @@ duplicate_hash_map;
    read trees with TREE_VISITED.  Thus it's quite safe to have
    multiple concurrent readers.  Which is good, because lazy
    loading. */
+namespace {
 class trees_in : public bytes_in {
   typedef bytes_in parent;
 
@@ -2865,15 +2875,15 @@ private:
 
 public:
   /* Needed for binfo writing  */
-  bool core_bools (tree);
+  bool core_bools (tree, bits_in&);
 
 private:
   /* Stream tree_core, lang_decl_specific and lang_type_specific
      bits.  */
   bool core_vals (tree);
-  bool lang_type_bools (tree);
+  bool lang_type_bools (tree, bits_in&);
   bool lang_type_vals (tree);
-  bool lang_decl_bools (tree);
+  bool lang_decl_bools (tree, bits_in&);
   bool lang_decl_vals (tree);
   bool lang_vals (tree);
   bool tree_node_bools (tree);
@@ -2960,6 +2970,7 @@ private:
 private:
   void assert_definition (tree, bool installing);
 };
+} // anon namespace
 
 trees_in::trees_in (module_state *state)
   :parent (), state (state), unused (0)
@@ -2977,6 +2988,7 @@ trees_in::~trees_in ()
 }
 
 /* Tree stream writer.  */
+namespace {
 class trees_out : public bytes_out {
   typedef bytes_out parent;
 
@@ -3038,11 +3050,11 @@ public:
   }
 
 private:
-  void core_bools (tree);
+  void core_bools (tree, bits_out&);
   void core_vals (tree);
-  void lang_type_bools (tree);
+  void lang_type_bools (tree, bits_out&);
   void lang_type_vals (tree);
-  void lang_decl_bools (tree);
+  void lang_decl_bools (tree, bits_out&);
   void lang_decl_vals (tree);
   void lang_vals (tree);
   void tree_node_bools (tree);
@@ -3121,6 +3133,7 @@ private:
   static unsigned back_ref_count;
   static unsigned null_count;
 };
+} // anon namespace
 
 /* Instrumentation counters.  */
 unsigned trees_out::tree_val_count;
@@ -5289,9 +5302,9 @@ trees_in::start (unsigned code)
 /* Read & write the core boolean flags.  */
 
 void
-trees_out::core_bools (tree t)
+trees_out::core_bools (tree t, bits_out& bits)
 {
-#define WB(X) (b (X))
+#define WB(X) (bits.b (X))
   tree_code code = TREE_CODE (t);
 
   WB (t->base.side_effects_flag);
@@ -5311,6 +5324,8 @@ trees_out::core_bools (tree t)
   if (TREE_CODE_CLASS (code) != tcc_type)
     /* This is TYPE_CACHED_VALUES_P for types.  */
     WB (t->base.public_flag);
+  else
+    WB (false);
   WB (t->base.private_flag);
   WB (t->base.protected_flag);
   WB (t->base.deprecated_flag);
@@ -5324,7 +5339,7 @@ trees_out::core_bools (tree t)
     case TARGET_MEM_REF:
     case TREE_VEC:
       /* These use different base.u fields.  */
-      break;
+      return;
 
     default:
       WB (t->base.u.bits.lang_flag_0);
@@ -5371,6 +5386,7 @@ trees_out::core_bools (tree t)
       WB (t->type_common.lang_flag_5);
       WB (t->type_common.lang_flag_6);
       WB (t->type_common.typeless_storage);
+      return;
     }
 
   if (CODE_CONTAINS_STRUCT (code, TS_DECL_COMMON))
@@ -5436,6 +5452,8 @@ trees_out::core_bools (tree t)
       WB (t->decl_common.decl_nonshareable_flag);
       WB (t->decl_common.decl_not_flexarray);
     }
+  else
+    return;
 
   if (CODE_CONTAINS_STRUCT (code, TS_DECL_WITH_VIS))
     {
@@ -5456,6 +5474,8 @@ trees_out::core_bools (tree t)
       WB (t->decl_with_vis.final);
       WB (t->decl_with_vis.regdecl_flag);
     }
+  else
+    return;
 
   if (CODE_CONTAINS_STRUCT (code, TS_FUNCTION_DECL))
     {
@@ -5482,13 +5502,16 @@ trees_out::core_bools (tree t)
       WB ((kind >> 0) & 1);
       WB ((kind >> 1) & 1);
     }
+  else
+    return;
 #undef WB
 }
 
 bool
-trees_in::core_bools (tree t)
+trees_in::core_bools (tree t, bits_in& bits)
 {
-#define RB(X) ((X) = b ())
+#define RB(X) ((X) = bits.b ())
+
   tree_code code = TREE_CODE (t);
 
   RB (t->base.side_effects_flag);
@@ -5504,6 +5527,8 @@ trees_in::core_bools (tree t)
   RB (t->base.static_flag);
   if (TREE_CODE_CLASS (code) != tcc_type)
     RB (t->base.public_flag);
+  else
+    bits.b ();
   RB (t->base.private_flag);
   RB (t->base.protected_flag);
   RB (t->base.deprecated_flag);
@@ -5517,7 +5542,7 @@ trees_in::core_bools (tree t)
     case TARGET_MEM_REF:
     case TREE_VEC:
       /* These use different base.u fields.  */
-      break;
+      goto done;
 
     default:
       RB (t->base.u.bits.lang_flag_0);
@@ -5551,6 +5576,7 @@ trees_in::core_bools (tree t)
       RB (t->type_common.lang_flag_5);
       RB (t->type_common.lang_flag_6);
       RB (t->type_common.typeless_storage);
+      goto done;
     }
 
   if (CODE_CONTAINS_STRUCT (code, TS_DECL_COMMON))
@@ -5581,6 +5607,8 @@ trees_in::core_bools (tree t)
       RB (t->decl_common.decl_nonshareable_flag);
       RB (t->decl_common.decl_not_flexarray);
     }
+  else
+    goto done;
 
   if (CODE_CONTAINS_STRUCT (code, TS_DECL_WITH_VIS))
     {
@@ -5601,6 +5629,8 @@ trees_in::core_bools (tree t)
       RB (t->decl_with_vis.final);
       RB (t->decl_with_vis.regdecl_flag);
     }
+  else
+    goto done;
 
   if (CODE_CONTAINS_STRUCT (code, TS_FUNCTION_DECL))
     {
@@ -5624,20 +5654,22 @@ trees_in::core_bools (tree t)
 
       /* decl_type is a (misnamed) 2 bit discriminator.	 */
       unsigned kind = 0;
-      kind |= unsigned (b ()) << 0;
-      kind |= unsigned (b ()) << 1;
+      kind |= unsigned (bits.b ()) << 0;
+      kind |= unsigned (bits.b ()) << 1;
       t->function_decl.decl_type = function_decl_type (kind);
     }
 #undef RB
+done:
   return !get_overrun ();
 }
 
 void
-trees_out::lang_decl_bools (tree t)
+trees_out::lang_decl_bools (tree t, bits_out& bits)
 {
-#define WB(X) (b (X))
+#define WB(X) (bits.b (X))
   const struct lang_decl *lang = DECL_LANG_SPECIFIC (t);
 
+  bits.bflush ();
   WB (lang->u.base.language == lang_cplusplus);
   WB ((lang->u.base.use_template >> 0) & 1);
   WB ((lang->u.base.use_template >> 1) & 1);
@@ -5661,6 +5693,8 @@ trees_out::lang_decl_bools (tree t)
   WB (lang->u.base.module_attach_p);
   if (VAR_OR_FUNCTION_DECL_P (t))
     WB (lang->u.base.module_keyed_decls_p);
+  else
+    WB (false);
   switch (lang->u.base.selector)
     {
     default:
@@ -5708,15 +5742,16 @@ trees_out::lang_decl_bools (tree t)
 }
 
 bool
-trees_in::lang_decl_bools (tree t)
+trees_in::lang_decl_bools (tree t, bits_in& bits)
 {
-#define RB(X) ((X) = b ())
+#define RB(X) ((X) = bits.b ())
   struct lang_decl *lang = DECL_LANG_SPECIFIC (t);
 
-  lang->u.base.language = b () ? lang_cplusplus : lang_c;
+  bits.bflush ();
+  lang->u.base.language = bits.b () ? lang_cplusplus : lang_c;
   unsigned v;
-  v = b () << 0;
-  v |= b () << 1;
+  v = bits.b () << 0;
+  v |= bits.b () << 1;
   lang->u.base.use_template = v;
   /* lang->u.base.not_really_extern is not streamed.  */
   RB (lang->u.base.initialized_in_class);
@@ -5732,6 +5767,8 @@ trees_in::lang_decl_bools (tree t)
   RB (lang->u.base.module_attach_p);
   if (VAR_OR_FUNCTION_DECL_P (t))
     RB (lang->u.base.module_keyed_decls_p);
+  else
+    bits.b ();
   switch (lang->u.base.selector)
     {
     default:
@@ -5777,11 +5814,12 @@ trees_in::lang_decl_bools (tree t)
 }
 
 void
-trees_out::lang_type_bools (tree t)
+trees_out::lang_type_bools (tree t, bits_out& bits)
 {
-#define WB(X) (b (X))
+#define WB(X) (bits.b (X))
   const struct lang_type *lang = TYPE_LANG_SPECIFIC (t);
 
+  bits.bflush ();
   WB (lang->has_type_conversion);
   WB (lang->has_copy_ctor);
   WB (lang->has_default_ctor);
@@ -5845,11 +5883,12 @@ trees_out::lang_type_bools (tree t)
 }
 
 bool
-trees_in::lang_type_bools (tree t)
+trees_in::lang_type_bools (tree t, bits_in& bits)
 {
-#define RB(X) ((X) = b ())
+#define RB(X) ((X) = bits.b ())
   struct lang_type *lang = TYPE_LANG_SPECIFIC (t);
 
+  bits.bflush ();
   RB (lang->has_type_conversion);
   RB (lang->has_copy_ctor);
   RB (lang->has_default_ctor);
@@ -5857,8 +5896,8 @@ trees_in::lang_type_bools (tree t)
   RB (lang->ref_needs_init);
   RB (lang->has_const_copy_assign);
   unsigned v;
-  v = b () << 0;
-  v |= b () << 1;
+  v = bits.b () << 0;
+  v |= bits.b () << 1;
   lang->use_template = v;
 
   RB (lang->has_mutable);
@@ -5870,8 +5909,8 @@ trees_in::lang_type_bools (tree t)
   RB (lang->has_new);
   RB (lang->has_array_new);
 
-  v = b () << 0;
-  v |= b () << 1;
+  v = bits.b () << 0;
+  v |= bits.b () << 1;
   lang->gets_delete = v;
   // lang->interface_only
   // lang->interface_unknown
@@ -7085,18 +7124,19 @@ trees_out::tree_node_bools (tree t)
   gcc_checking_assert (TREE_CODE (t) != NAMESPACE_DECL
 		       || DECL_NAMESPACE_ALIAS (t));
 
-  core_bools (t);
+  bits_out bits (*this);
+  core_bools (t, bits);
 
   switch (TREE_CODE_CLASS (TREE_CODE (t)))
     {
     case tcc_declaration:
       {
 	bool specific = DECL_LANG_SPECIFIC (t) != NULL;
-	b (specific);
+	bits.b (specific);
 	if (specific && VAR_P (t))
-	  b (DECL_DECOMPOSITION_P (t));
+	  bits.b (DECL_DECOMPOSITION_P (t));
 	if (specific)
-	  lang_decl_bools (t);
+	  lang_decl_bools (t, bits);
       }
       break;
 
@@ -7107,9 +7147,9 @@ trees_out::tree_node_bools (tree t)
 	gcc_assert (TYPE_LANG_SPECIFIC (t)
 		    == TYPE_LANG_SPECIFIC (TYPE_MAIN_VARIANT (t)));
 
-	b (specific);
+	bits.b (specific);
 	if (specific)
-	  lang_type_bools (t);
+	  lang_type_bools (t, bits);
       }
       break;
 
@@ -7117,34 +7157,35 @@ trees_out::tree_node_bools (tree t)
       break;
     }
 
-  bflush ();
+  bits.bflush ();
 }
 
 bool
 trees_in::tree_node_bools (tree t)
 {
-  bool ok = core_bools (t);
+  bits_in bits (*this);
+  bool ok = core_bools (t, bits);
 
   if (ok)
     switch (TREE_CODE_CLASS (TREE_CODE (t)))
       {
       case tcc_declaration:
-	if (b ())
+	if (bits.b ())
 	  {
-	    bool decomp = VAR_P (t) && b ();
+	    bool decomp = VAR_P (t) && bits.b ();
 
 	    ok = maybe_add_lang_decl_raw (t, decomp);
 	    if (ok)
-	      ok = lang_decl_bools (t);
+	      ok = lang_decl_bools (t, bits);
 	}
 	break;
 
       case tcc_type:
-	if (b ())
+	if (bits.b ())
 	  {
 	    ok = maybe_add_lang_type_raw (t);
 	    if (ok)
-	      ok = lang_type_bools (t);
+	      ok = lang_type_bools (t, bits);
 	  }
 	break;
 
@@ -7152,7 +7193,7 @@ trees_in::tree_node_bools (tree t)
 	break;
       }
 
-  bflush ();
+  bits.bflush ();
   if (!ok || get_overrun ())
     return false;
 
@@ -7678,8 +7719,7 @@ trees_out::decl_value (tree decl, depset *dep)
 	  if (!(mk & MK_template_mask) && !state->is_header ())
 	    {
 	      /* Tell the importer whether this is a global module entity,
-		 or a module entity.  This bool merges into the next block
-		 of bools.  Sneaky.  */
+		 or a module entity.  */
 	      tree o = get_originating_module_decl (decl);
 	      bool is_attached = false;
 
@@ -7688,9 +7728,9 @@ trees_out::decl_value (tree decl, depset *dep)
 		  && DECL_MODULE_ATTACH_P (not_tmpl))
 		is_attached = true;
 
-	      b (is_attached);
+	      c (is_attached);
 	    }
-	  b (dep && dep->has_defn ());
+	  c (dep && dep->has_defn ());
 	}
       tree_node_bools (decl);
     }
@@ -7958,10 +7998,9 @@ trees_in::decl_value ()
       if (mk != MK_unique)
 	{
 	  if (!(mk & MK_template_mask) && !state->is_header ())
-	    /* See note in trees_out about where this bool is sequenced.  */
-	    is_attached = b ();
+	    is_attached = c ();
 
-	  has_defn = b ();
+	  has_defn = c ();
 	}
 
       if (!tree_node_bools (decl))
@@ -16579,10 +16618,9 @@ module_state::write_define (bytes_out &sec, const cpp_macro *macro)
 {
   sec.u (macro->count);
 
-  sec.b (macro->fun_like);
-  sec.b (macro->variadic);
-  sec.b (macro->syshdr);
-  sec.bflush ();
+  sec.c (macro->fun_like);
+  sec.c (macro->variadic);
+  sec.c (macro->syshdr);
 
   write_location (sec, macro->line);
   if (macro->fun_like)
@@ -16677,10 +16715,9 @@ module_state::read_define (bytes_in &sec, cpp_reader *reader) const
   macro->kind = cmk_macro;
   macro->imported_p = true;
 
-  macro->fun_like = sec.b ();
-  macro->variadic = sec.b ();
-  macro->syshdr = sec.b ();
-  sec.bflush ();
+  macro->fun_like = sec.c ();
+  macro->variadic = sec.c ();
+  macro->syshdr = sec.c ();
 
   macro->line = read_location (sec);
 
