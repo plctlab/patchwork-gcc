@@ -1947,6 +1947,13 @@ maybe_check_overriding_exception_spec (tree overrider, tree basefn)
       || UNPARSED_NOEXCEPT_SPEC_P (over_throw))
     return true;
 
+  /* We also have to defer checking when we're in a template and couldn't
+     instantiate the noexcept yet.
+     ??? maybe_instantiate_noexcept already checked these.  Use tristate?  */
+  if (type_dependent_expression_p (base_throw)
+      || type_dependent_expression_p (over_throw))
+    return true;
+
   if (!comp_except_specs (base_throw, over_throw, ce_derived))
     {
       auto_diagnostic_group d;
