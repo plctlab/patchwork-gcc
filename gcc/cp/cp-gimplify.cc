@@ -2390,10 +2390,11 @@ cxx_omp_finish_clause (tree c, gimple_seq *, bool /* openacc */)
 /* Return true if DECL's DECL_VALUE_EXPR (if any) should be
    disregarded in OpenMP construct, because it is going to be
    remapped during OpenMP lowering.  SHARED is true if DECL
-   is going to be shared, false if it is going to be privatized.  */
+   is going to be shared, false if it is going to be privatized. TARGET is
+   true if this for an OpenMP target/OpenACC compute region.   */
 
 bool
-cxx_omp_disregard_value_expr (tree decl, bool shared)
+cxx_omp_disregard_value_expr (tree decl, bool shared, bool target)
 {
   if (shared)
     return false;
@@ -2403,7 +2404,7 @@ cxx_omp_disregard_value_expr (tree decl, bool shared)
       && DECL_LANG_SPECIFIC (decl)
       && DECL_OMP_PRIVATIZED_MEMBER (decl))
     return true;
-  if (VAR_P (decl) && DECL_CONTEXT (decl) && is_capture_proxy (decl))
+  if (!target && VAR_P (decl) && DECL_CONTEXT (decl) && is_capture_proxy (decl))
     return true;
   return false;
 }

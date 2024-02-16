@@ -1790,7 +1790,7 @@ gfc_omp_scalar_target_p (tree decl)
    is going to be shared, false if it is going to be privatized.  */
 
 bool
-gfc_omp_disregard_value_expr (tree decl, bool shared)
+gfc_omp_disregard_value_expr (tree decl, bool shared, bool /* target */)
 {
   if (GFC_DECL_COMMON_OR_EQUIV (decl)
       && DECL_HAS_VALUE_EXPR_P (decl))

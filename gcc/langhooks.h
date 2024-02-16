@@ -280,8 +280,9 @@ struct lang_hooks_for_decls
   /* Return true if DECL's DECL_VALUE_EXPR (if any) should be
      disregarded in OpenMP construct, because it is going to be
      remapped during OpenMP lowering.  SHARED is true if DECL
-     is going to be shared, false if it is going to be privatized.  */
-  bool (*omp_disregard_value_expr) (tree, bool);
+     is going to be shared, false if it is going to be privatized.  TARGET
+     is true when this if for an OpenMP target/OPenACC compute contruct.  */
+  bool (*omp_disregard_value_expr) (tree, bool, bool);
 
   /* Return true if DECL that is shared iff SHARED is true should
      be put into OMP_CLAUSE_PRIVATE_DEBUG.  */

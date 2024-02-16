@@ -275,7 +275,7 @@ omp_member_access_dummy_var (tree decl)
       || !DECL_ARTIFICIAL (decl)
       || !DECL_IGNORED_P (decl)
       || !DECL_HAS_VALUE_EXPR_P (decl)
-      || !lang_hooks.decls.omp_disregard_value_expr (decl, false))
+      || !lang_hooks.decls.omp_disregard_value_expr (decl, false, false))
     return NULL_TREE;
 
   tree v = DECL_VALUE_EXPR (decl);

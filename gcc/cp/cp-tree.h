@@ -8302,7 +8302,7 @@ extern tree cxx_omp_clause_assign_op		(tree, tree, tree);
 extern tree cxx_omp_clause_dtor			(tree, tree);
 extern void cxx_omp_finish_clause		(tree, gimple_seq *, bool);
 extern bool cxx_omp_privatize_by_reference	(const_tree);
-extern bool cxx_omp_disregard_value_expr	(tree, bool);
+extern bool cxx_omp_disregard_value_expr	(tree, bool, bool);
 extern void cp_fold_function			(tree);
 extern tree cp_fold_maybe_rvalue		(tree, bool);
 extern tree cp_fold_rvalue			(tree);

@@ -349,6 +349,12 @@ hook_bool_tree_bool_false (tree, bool)
 }
 
 bool
+hook_bool_tree_bool_bool_false (tree, bool, bool)
+{
+  return false;
+}
+
+bool
 hook_bool_rtx_insn_true (rtx_insn *)
 {
   return true;

@@ -7713,7 +7713,7 @@ oacc_default_clause (struct gimplify_omp_ctx *ctx, tree decl, unsigned flags)
      the whole block.  For C++ and Fortran, it can also be true under certain
      other conditions, if DECL_HAS_VALUE_EXPR.  */
   if (RECORD_OR_UNION_TYPE_P (type))
-    is_private = lang_hooks.decls.omp_disregard_value_expr (decl, false);
+    is_private = lang_hooks.decls.omp_disregard_value_expr (decl, false, true);
 
   if ((ctx->region_type & (ORT_ACC_PARALLEL | ORT_ACC_KERNELS)) != 0
       && is_global_var (decl)
@@ -7805,7 +7805,7 @@ omp_notice_variable (struct gimplify_omp_ctx *ctx, tree decl, bool in_code)
     return false;
 
   if (ctx->region_type == ORT_NONE)
-    return lang_hooks.decls.omp_disregard_value_expr (decl, false);
+    return lang_hooks.decls.omp_disregard_value_expr (decl, false, false);
 
   if (is_global_var (decl))
     {
@@ -7861,9 +7861,9 @@ omp_notice_variable (struct gimplify_omp_ctx *ctx, tree decl, bool in_code)
 	/* For OpenACC, as remarked above, defer expansion.  */
 	shared = false;
       else
-	shared = true;
+	shared = (flags & GOVD_MAP) != 0;
 
-      ret = lang_hooks.decls.omp_disregard_value_expr (decl, shared);
+      ret = lang_hooks.decls.omp_disregard_value_expr (decl, shared, true);
       if (n == NULL)
 	{
 	  unsigned nflags = flags;
@@ -8013,7 +8013,7 @@ omp_notice_variable (struct gimplify_omp_ctx *ctx, tree decl, bool in_code)
       omp_add_variable (ctx, decl, flags);
 
       shared = (flags & GOVD_SHARED) != 0;
-      ret = lang_hooks.decls.omp_disregard_value_expr (decl, shared);
+      ret = lang_hooks.decls.omp_disregard_value_expr (decl, shared, false);
       goto do_outer;
     }
 
@@ -8058,7 +8058,7 @@ omp_notice_variable (struct gimplify_omp_ctx *ctx, tree decl, bool in_code)
     shared = false;
   else
     shared = ((flags | n->value) & GOVD_SHARED) != 0;
-  ret = lang_hooks.decls.omp_disregard_value_expr (decl, shared);
+  ret = lang_hooks.decls.omp_disregard_value_expr (decl, shared, false);
 
   /* If nothing changed, there's nothing left to do.  */
   if ((n->value & flags) == flags)

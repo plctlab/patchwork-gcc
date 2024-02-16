@@ -827,7 +827,7 @@ void gfc_omp_finish_clause (tree, gimple_seq *, bool);
 bool gfc_omp_allocatable_p (tree);
 bool gfc_omp_scalar_p (tree, bool);
 bool gfc_omp_scalar_target_p (tree);
-bool gfc_omp_disregard_value_expr (tree, bool);
+bool gfc_omp_disregard_value_expr (tree, bool, bool);
 bool gfc_omp_private_debug_clause (tree, bool);
 bool gfc_omp_private_outer_ref (tree);
 struct gimplify_omp_ctx;
