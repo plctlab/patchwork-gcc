@@ -583,7 +583,7 @@ m68k_option_override (void)
 	      : (m68k_cpu_flags & FL_COLDFIRE) != 0 ? FPUTYPE_COLDFIRE
 	      : FPUTYPE_68881);
 
-  /* Sanity check to ensure that msep-data and mid-sahred-library are not
+  /* Sanity check to ensure that msep-data and mid-shared-library are not
    * both specified together.  Doing so simply doesn't make sense.
    */
   if (TARGET_SEP_DATA && TARGET_ID_SHARED_LIBRARY)
@@ -712,6 +712,9 @@ m68k_option_override (void)
       else
 	m68k_sched_mac = MAC_NO;
     }
+
+  /* -ffold-mem-offsets doesn't work for m68k (PR113357).  */
+  flag_fold_mem_offsets = 0;
 }
 
 /* Implement TARGET_OVERRIDE_OPTIONS_AFTER_CHANGE.  */
