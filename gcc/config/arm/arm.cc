@@ -6998,7 +6998,7 @@ aapcs_libcall_value (machine_mode mode)
    numbers referred to here are those in the AAPCS.  */
 static void
 aapcs_layout_arg (CUMULATIVE_ARGS *pcum, machine_mode mode,
-		  const_tree type, bool named)
+		  const_tree type, bool named, const_tree fntype)
 {
   int nregs, nregs2;
   int ncrn;
@@ -7010,8 +7010,9 @@ aapcs_layout_arg (CUMULATIVE_ARGS *pcum, machine_mode mode,
   pcum->aapcs_arg_processed = true;
 
   /* Special case: if named is false then we are handling an incoming
-     anonymous argument which is on the stack.  */
-  if (!named)
+     anonymous argument which is on the stack unless the function has no named
+     arguments (functions without named arguments was introduced in C23).  */
+  if ((fntype == NULL_TREE || !TYPE_NO_NAMED_ARGS_STDARG_P (fntype)) && !named)
     return;
 
   /* Is this a potential co-processor register candidate?  */
@@ -7259,7 +7260,7 @@ arm_function_arg (cumulative_args_t pcum_v, const function_arg_info &arg)
 
   if (pcum->pcs_variant <= ARM_PCS_AAPCS_LOCAL)
     {
-      aapcs_layout_arg (pcum, arg.mode, arg.type, arg.named);
+      aapcs_layout_arg (pcum, arg.mode, arg.type, arg.named, arg.fntype);
       return pcum->aapcs_reg;
     }
 
@@ -7334,7 +7335,7 @@ arm_arg_partial_bytes (cumulative_args_t pcum_v, const function_arg_info &arg)
 
   if (pcum->pcs_variant <= ARM_PCS_AAPCS_LOCAL)
     {
-      aapcs_layout_arg (pcum, arg.mode, arg.type, arg.named);
+      aapcs_layout_arg (pcum, arg.mode, arg.type, arg.named, arg.fntype);
       return pcum->aapcs_partial;
     }
 
@@ -7359,7 +7360,7 @@ arm_function_arg_advance (cumulative_args_t pcum_v,
 
   if (pcum->pcs_variant <= ARM_PCS_AAPCS_LOCAL)
     {
-      aapcs_layout_arg (pcum, arg.mode, arg.type, arg.named);
+      aapcs_layout_arg (pcum, arg.mode, arg.type, arg.named, arg.fntype);
 
       if (pcum->aapcs_cprc_slot >= 0)
 	{

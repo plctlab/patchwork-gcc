@@ -8,17 +8,20 @@
 
 extern void abort (void);
 
-double
+void
 f (...)
 {
   va_list ap;
   va_start (ap);
-  double ret = va_arg (ap, int);
-  ret += va_arg (ap, double);
-  ret += va_arg (ap, int);
-  ret += va_arg (ap, double);
+  if (va_arg (ap, int) != 1)
+    abort();
+  if (va_arg (ap, double) != 2)
+    abort();
+  if (va_arg (ap, int) != 3)
+    abort();
+  if (va_arg (ap, double) != 4)
+    abort();
   va_end (ap);
-  return ret;
 }
 
 void

@@ -35,24 +35,33 @@ class function_arg_info
 {
 public:
   function_arg_info ()
-    : type (NULL_TREE), mode (VOIDmode), named (false),
+    : type (NULL_TREE), fntype (NULL_TREE), mode (VOIDmode), named (false),
       pass_by_reference (false)
   {}
 
   /* Initialize an argument of mode MODE, either before or after promotion.  */
   function_arg_info (machine_mode mode, bool named)
-    : type (NULL_TREE), mode (mode), named (named), pass_by_reference (false)
+    : type (NULL_TREE), fntype (NULL_TREE), mode (mode), named (named),
+    pass_by_reference (false)
   {}
 
   /* Initialize an unpromoted argument of type TYPE.  */
   function_arg_info (tree type, bool named)
-    : type (type), mode (TYPE_MODE (type)), named (named),
+    : type (type), fntype (NULL_TREE), mode (TYPE_MODE (type)), named (named),
       pass_by_reference (false)
+  {}
+
+  /* Initialize an unpromoted argument of type TYPE with a known function type
+     FNTYPE.  */
+  function_arg_info (tree type, tree fntype, bool named)
+    : type (type), fntype (fntype), mode (TYPE_MODE (type)), named (named),
+    pass_by_reference (false)
   {}
 
   /* Initialize an argument with explicit properties.  */
   function_arg_info (tree type, machine_mode mode, bool named)
-    : type (type), mode (mode), named (named), pass_by_reference (false)
+    : type (type), fntype (NULL_TREE), mode (mode), named (named),
+    pass_by_reference (false)
   {}
 
   /* Return true if the gimple-level type is an aggregate.  */
@@ -95,6 +104,9 @@ public:
   /* The type of the argument, or null if not known (which is true for
      libgcc support functions).  */
   tree type;
+
+  /* The type of the function that has this argument, or null if not known.  */
+  tree fntype;
 
   /* The mode of the argument.  Depending on context, this might be
      the mode of the argument type or the mode after promotion.  */

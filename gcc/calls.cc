@@ -1367,7 +1367,7 @@ initialize_argument_information (int num_actuals ATTRIBUTE_UNUSED,
 	 with those made by function.cc.  */
 
       /* See if this argument should be passed by invisible reference.  */
-      function_arg_info arg (type, argpos < n_named_args);
+      function_arg_info arg (type, fntype, argpos < n_named_args);
       if (pass_by_reference (args_so_far_pnt, arg))
 	{
 	  const bool callee_copies
