@@ -376,6 +376,7 @@ public:
   //
   // This routine is only meaningful when def () is nonnull.
   bool is_last_use () const;
+  void set_is_live_out_use (bool value) { m_is_live_out_use = value; }
 
   // Print a description of def () to PP.
   void print_def (pretty_printer *pp) const;
@@ -427,7 +428,6 @@ private:
   void record_reference (rtx_obj_reference, bool);
   void set_insn (insn_info *);
   void set_def (set_info *set) { m_def = set; }
-  void set_is_live_out_use (bool value) { m_is_live_out_use = value; }
   void copy_prev_from (use_info *);
   void copy_next_from (use_info *);
   void set_last_use (use_info *);

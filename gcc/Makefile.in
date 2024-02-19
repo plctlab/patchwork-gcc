@@ -1520,6 +1520,8 @@ OBJS = \
 	ipa-utils.o \
 	ipa.o \
 	ira.o \
+	pair-fusion-common.o \
+	pair-fusion.o \
 	ira-build.o \
 	ira-costs.o \
 	ira-conflicts.o \
