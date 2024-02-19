@@ -643,7 +643,8 @@ function_info::place_phis (build_info &bi)
       bitmap_iterator bmi;
       unsigned int b2;
       EXECUTE_IF_SET_IN_BITMAP (&frontiers[b1], 0, b2, bmi)
-	if (bitmap_ior_into (&unfiltered[b2], b1_def)
+	if (bitmap_ior_and_into (&unfiltered[b2], b1_def,
+				 DF_LR_IN (BASIC_BLOCK_FOR_FN (m_fn, b2)))
 	    && !bitmap_empty_p (&frontiers[b2]))
 	  // Propagate the (potential) new phi node definitions in B2.
 	  bitmap_set_bit (worklist, b2);
