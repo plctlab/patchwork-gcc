@@ -1715,7 +1715,7 @@
   const vull __builtin_vsx_xvcvdpuxds_uns (vd);
     XVCVDPUXDS_UNS vsx_fixuns_truncv2dfv2di2 {}
 
-  const vsi __builtin_vsx_xvcvdpuxws (vd);
+  const vui __builtin_vsx_xvcvdpuxws (vd);
     XVCVDPUXWS vsx_xvcvdpuxws {}
 
   const vd __builtin_vsx_xvcvspdp (vf);
@@ -1727,10 +1727,10 @@
   const vsi __builtin_vsx_xvcvspsxws (vf);
     XVCVSPSXWS vsx_fix_truncv4sfv4si2 {}
 
-  const vsll __builtin_vsx_xvcvspuxds (vf);
+  const vull __builtin_vsx_xvcvspuxds (vf);
     XVCVSPUXDS vsx_xvcvspuxds {}
 
-  const vsi __builtin_vsx_xvcvspuxws (vf);
+  const vui __builtin_vsx_xvcvspuxws (vf);
     XVCVSPUXWS vsx_fixuns_truncv4sfv4si2 {}
 
   const vd __builtin_vsx_xvcvsxddp (vsll);
