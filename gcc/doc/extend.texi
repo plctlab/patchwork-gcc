@@ -19509,6 +19509,29 @@ if the VSX instruction set is available.  The @samp{vec_vsx_ld} and
 @samp{vec_vsx_st} built-in functions always generate the VSX @samp{LXVD2X},
 @samp{LXVW4X}, @samp{STXVD2X}, and @samp{STXVW4X} instructions.
 
+
+@smallexample
+vector signed char __builtin_vsx_cmple_16qi (vector signed char,
+                                             vector signed char);
+vector signed short __builtin_vsx_cmple_8hi (vector signed short,
+                                             vector signed short);
+vector signed int __builtin_vsx_cmple_4si (vector signed int,
+                                             vector signed int);
+vector unsigned char __builtin_vsx_cmple_u16qi (vector unsigned char,
+                                                vector unsigned char);
+vector unsigned short __builtin_vsx_cmple_u8hi (vector unsigned short,
+                                                vector unsigned short);
+vector unsigned int __builtin_vsx_cmple_u4si (vector unsigned int,
+                                              vector unsigned int);
+@end smallexample
+
+The builti-ins @code{__builtin_vsx_cmple_16qi}, @code{__builtin_vsx_cmple_8hi},
+@code{__builtin_vsx_cmple_4si}, @code{__builtin_vsx_cmple_u16qi},
+@code{__builtin_vsx_cmple_u8hi} and @code{__builtin_vsx_cmple_u4si} compare
+vectors of their defined type.  The corresponding result element is set to
+all ones if the two argument elements are less than or equal and all zeros
+otherwise.
+
 @node PowerPC AltiVec Built-in Functions Available on ISA 2.07
 @subsubsection PowerPC AltiVec Built-in Functions Available on ISA 2.07
 
