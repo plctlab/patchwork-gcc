@@ -18482,6 +18482,19 @@ The @code{__builtin_vsx_xvcvuxwdp} converts single precision unsigned integer
 value to a double precision floating point value.  Input element at index 2*i
 is stored in the destination element i.
 
+@smallexample
+vector float __builtin_vsx_xvnegsp (vector float);
+vector double __builtin_vsx_xvnegdp (vector double);
+@end smallexample
+
+The  @code{__builtin_vsx_xvnegsp} and @code{__builtin_vsx_xvnegdp} negate each
+vector element.
+
+@smallexample
+vector __int128  __builtin_vsx_xxpermdi_1ti (vector __int128, vector __int128,
+const int);
+
+@end smallexample
 @node Basic PowerPC Built-in Functions Available on ISA 2.07
 @subsubsection Basic PowerPC Built-in Functions Available on ISA 2.07
 
