@@ -19687,6 +19687,18 @@ vectors of their defined type.  The corresponding result element is set to
 all ones if the two argument elements are less than or equal and all zeros
 otherwise.
 
+@smallexample
+const vf __builtin_vsx_xvcmpeqsp (vf, vf);
+const vd __builtin_vsx_xvcmpeqdp (vd, vd);
+@end smallexample
+
+The builti-ins @code{__builtin_vsx_xvcmpeqdp} and
+@code{__builtin_vsx_xvcmpeqdp} compare two floating point vectors and return
+a vector.  If the corresponding elements are equal then the corresponding
+vector element of the result is set to all ones, it is set to all zeros
+otherwise.
+
+
 @node PowerPC AltiVec Built-in Functions Available on ISA 2.07
 @subsubsection PowerPC AltiVec Built-in Functions Available on ISA 2.07
 
@@ -20957,6 +20969,17 @@ is larger than 128 bits, the result is undefined.
 
 The result is the modulo result of dividing the first input  by the second
 input.
+
+@smallexample
+const signed int __builtin_vsx_xvcmpeqdp_p (signed int, vd, vd);
+@end smallexample
+
+The first argument of the builti-in @code{__builtin_vsx_xvcmpeqdp_p} is an
+integer in the range of 0 to 1.  The second and third arguments are floating
+point vectors to be compared.  The result is 1 if the first argument is a 1
+and one or more of the corresponding vector elements are equal.  The result is
+1 if the first argument is 0 and all of the corresponding vector elements are
+not equal.  The result is zero otherwise.
 
 The following builtins perform 128-bit vector comparisons.  The
 @code{vec_all_xx}, @code{vec_any_xx}, and @code{vec_cmpxx}, where @code{xx} is
