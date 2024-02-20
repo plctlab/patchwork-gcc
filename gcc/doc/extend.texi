@@ -18495,6 +18495,13 @@ vector __int128  __builtin_vsx_xxpermdi_1ti (vector __int128, vector __int128,
 const int);
 
 @end smallexample
+
+The  @code{__builtin_vsx_xxpermdi_1ti} Let srcA[127:0] be the 128-bit first
+argument and srcB[127:0] be the 128-bit second argument.  Let sel[1:0] be the
+least significant bits of the const int argument (third input argument).  The
+result bits [127:64] is srcB[127:64] if  sel[1] = 0, srcB[63:0] otherwise.  The
+result bits [63:0] is srcA[127:64] if  sel[0] = 0, srcA[63:0] otherwise.
+
 @node Basic PowerPC Built-in Functions Available on ISA 2.07
 @subsubsection Basic PowerPC Built-in Functions Available on ISA 2.07
 
