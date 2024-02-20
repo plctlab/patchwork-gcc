@@ -19666,6 +19666,104 @@ if the VSX instruction set is available.  The @samp{vec_vsx_ld} and
 
 
 @smallexample
+vector signed int __builtin_altivec_fix_sfsi (vector float);
+vector signed int __builtin_altivec_fixuns_sfsi (vector float);
+vector float __builtin_altivec_float_sisf (vector int);
+vector float __builtin_altivec_uns_float_sisf (vector int);
+vector float __builtin_altivec_vrsqrtfp (vector float);
+@end smallexample
+
+The @code{__builtin_altivec_fix_sfsi} converts a vector of single precision
+floating point values to a vector of signed integers with round to zero.
+
+The @code{__builtin_altivec_fixuns_sfsi} converts a vector of single precision
+floating point values to a vector of unsigned integers with round to zero.  If
+the rounded floating point value is less then 0 the result is 0 and VXCVI
+is set to 1.
+
+The @code{__builtin_altivec_float_sisf} converts a vector of single precision
+signed integers to a vector of floating point values using the rounding mode
+specified by RN.
+
+The @code{__builtin_altivec_uns_float_sisf} converts a vector of single
+precision unsigned integers to a vector of floating point values using the
+rounding mode specified by RN.
+
+The @code{__builtin_altivec_vrsqrtfp} returns a vector of floating point
+estimates of the reciprical square root of each floating point source vector
+element.
+
+@smallexample
+vector signed char test_altivec_mask_for_load (const void *);
+@end smallexample
+
+The @code{__builtin_altivec_vrsqrtfp} returns a vector mask based on the
+bottom four bits of the argument.  Let X be the 32-byte value:
+0x00 || 0x01 || 0x02 || ... || 0x1D || 0x1E || 0x1F.
+Bytes sh to sh+15 are returned where sh is given by the least significant 4
+bit of the argument. See description of lvsl, lvsr instructions.
+
+@smallexample
+vector signed __int128 __builtin_altivec_vsel_1ti (vector signed __int128,
+                                                   vector signed __int128,
+                                                   vector unsigned __int128);
+vector unsigned __int128
+  __builtin_altivec_vsel_1ti_uns (vector unsigned __int128,
+                                  vector unsigned __int128,
+                                  vector unsigned __int128)
+@end smallexample
+
+Let the arguments of @code{__builtin_altivec_vsel_1ti} and
+@code{__builtin_altivec_vsel_1ti_uns} be src1, src2, mask.  The result is
+given by (src1 & ~mask) | (src2 & mask).
+
+@smallexample
+vector signed char
+__builtin_vec_init_v16qi (signed char, signed char, signed char, signed char,
+                          signed char, signed char, signed char, signed char,
+                          signed char, signed char, signed char, signed char,
+                          signed char, signed char, signed char, signed char);
+
+vector short int __builtin_vec_init_v8hi (short int, short int, short int,
+                                          short int, short int, short int,
+                                          short int, short int);
+vector signed int __builtin_vec_init_v4si (signed int, signed int, signed int,
+                                           signed int);
+vector float __builtin_vec_init_v4sf (float, float, float, float);
+vector __int128 __builtin_vec_init_v1ti (signed __int128);
+vector double __builtin_vec_init_v2df (double, double);
+vector signed long long __builtin_vec_init_v2di (signed long long,
+                                                 signed long long);
+@end smallexample
+
+The builti-ins @code{__builtin_vec_init_v16qi}, @code{__builtin_vec_init_v8hi},
+@code{__builtin_vec_init_v4si}, @code{__builtin_vec_init_v4sf},
+@code{__builtin_vec_init_v1ti}, @code{__builtin_vec_init_v2df} and
+@code{__builtin_vec_init_v2di} return a
+vector corresponding to the argument type initialized with the value of the
+arguments.
+
+@smallexample
+vector signed char __builtin_vec_set_v16qi (vector signed char, signed char,
+                                            const int);
+vector short int __builtin_vec_set_v8hi (vector short int, short int,
+                                         const int);
+vector signed int __builtin_vec_set_v4si (vector signed int, signed int,
+                                          const int);
+vector float __builtin_vec_set_v4sf (vector float, float, const int);
+vector __int128 __builtin_vec_set_v1ti (vector __int128, __int128, const int);
+vector double __builtin_vec_set_v2dfi (vector double, double, const int);
+vector signed long long __builtin_vec_set_v2dfi (vector signed long long,
+                                                 signed long long, const int);
+@end smallexample
+
+The builti-ins @code{__builtin_vec_set_v16qi}, @code{__builtin_vec_set_v8hi},
+@code{__builtin_vec_set_v4si}, @code{__builtin_vec_set_v4sf},
+@code{__builtin_vec_set_v1ti},  @code{__builtin_vec_set_v2dfi} and
+@code{__builtin_vec_set_v2dfi} return the input source vector with the element
+indexed by the const int replaced by the scalar argument.
+
+@smallexample
 vector signed char __builtin_vsx_cmple_16qi (vector signed char,
                                              vector signed char);
 vector signed short __builtin_vsx_cmple_8hi (vector signed short,
