@@ -1340,16 +1340,16 @@
   const vss __builtin_vsx_cmple_8hi (vss, vss);
     CMPLE_8HI vector_ngtv8hi {}
 
-  const vsc __builtin_vsx_cmple_u16qi (vsc, vsc);
+  const vuc __builtin_vsx_cmple_u16qi (vuc, vuc);
     CMPLE_U16QI vector_ngtuv16qi {}
 
-  const vsll __builtin_vsx_cmple_u2di (vsll, vsll);
+  const vull __builtin_vsx_cmple_u2di (vull, vull);
     CMPLE_U2DI vector_ngtuv2di {}
 
-  const vsi __builtin_vsx_cmple_u4si (vsi, vsi);
+  const vui __builtin_vsx_cmple_u4si (vui, vui);
     CMPLE_U4SI vector_ngtuv4si {}
 
-  const vss __builtin_vsx_cmple_u8hi (vss, vss);
+  const vus __builtin_vsx_cmple_u8hi (vus, vus);
     CMPLE_U8HI vector_ngtuv8hi {}
 
   const vd __builtin_vsx_concat_2df (double, double);
@@ -1760,7 +1760,7 @@
   const vf __builtin_vsx_xvcvuxdsp (vull);
     XVCVUXDSP vsx_xvcvuxdsp {}
 
-  const vd __builtin_vsx_xvcvuxwdp (vsi);
+  const vd __builtin_vsx_xvcvuxwdp (vui);
     XVCVUXWDP vsx_xvcvuxwdp {}
 
   const vf __builtin_vsx_xvcvuxwsp (vsi);
