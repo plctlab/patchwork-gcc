@@ -1547,6 +1547,14 @@
 ; These are duplicates of __builtin_altivec_* counterparts, and are being
 ; kept for backwards compatibility.  The reason for their existence is
 ; unclear.  TODO: Consider deprecation/removal at some point.
+; Note, __builtin_vsx_vperm_16qi, __builtin_vsx_vperm_16qi_uns,
+; __builtin_vsx_vperm_1ti, __builtin_vsx_vperm_v1ti_uns,
+; __builtin_vsx_vperm_2df, __builtin_vsx_vperm_2di, __builtin_vsx_vperm_2di,
+; __builtin_vsx_vperm_2di_uns, __builtin_vsx_vperm_4sf,
+; __builtin_vsx_vperm_4si, __builtin_vsx_vperm_4si_uns,
+; __builtin_vsx_vperm_8hi, __builtin_altivec_vperm_8hi_uns
+; are all covered by the overloaded vec_perm built-in which uses the
+; __builtin_altivec_* built-in definitions.
   const vsc __builtin_vsx_vperm_16qi (vsc, vsc, vuc);
     VPERM_16QI_X altivec_vperm_v16qi {}
 
