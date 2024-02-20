@@ -28991,6 +28991,8 @@ Permissible values for this option are: @samp{sifive-e20}, @samp{sifive-e21},
 @samp{sifive-s21}, @samp{sifive-s51}, @samp{sifive-s54}, @samp{sifive-s76},
 @samp{sifive-u54}, and @samp{sifive-u74}.
 
+Note that @option{-mcpu} does not override @option{-march} or @option{-mtune}.
+
 @opindex mtune
 @item -mtune=@var{processor-string}
 Optimize the output for the given processor, specified by microarchitecture or
