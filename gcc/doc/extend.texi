@@ -18347,6 +18347,141 @@ __float128 __builtin_sqrtf128 (__float128);
 __float128 __builtin_fmaf128 (__float128, __float128, __float128);
 @end smallexample
 
+@smallexample
+vector int __builtin_vsx_xvcvspsxws (vector float);
+@end smallexample
+
+The @code{__builtin_vsx_xvcvspsxws} converts the single precision floating
+point vector element i to a signed single-precision integer value using
+round to zero storing the result in element i.  If the source element is NaN
+the result is set to 0x80000000 and VXCI is set to 1.  If the source
+element is SNaN then VXSNAN is also set to 1.  If the rounded value is greater
+than 2^31 - 1 the result is 0x7FFFFFFF and VXCVI is set to 1.  If the
+rounded value is less than -2^31, the result is set to 0x80000000 and
+VXCVI is set to 1. If the rounded result is inexact then XX is set to 1.
+
+@smallexample
+vector signed long long int __builtin_vsx_xvcvspsxds (vector float);
+@end smallexample
+
+The @code{__builtin_vsx_xvcvspsxds} converts the single precision floating
+point vector element to a double precision signed integer value using the
+round to zero rounding mode.  If the source element is NaN the result
+is set to 0x8000000000000000 and VXCI is set to 1.  If the source element is
+SNaN then VXSNAN is also set to 1.  If the rounded value is greater than
+2^63 - 1 the result is 0x7FFFFFFFFFFFFFFF and VXCVI is set to 1.  If the
+rounded value is less than zero, the result is set to 0x8000000000000000 and
+VXCVI is set to 1.  If the rounded result is inexact then XX is set to 1.
+
+@smallexample
+vector unsigned long long __builtin_vsx_xvcvspuxds (vector float);
+@end smallexample
+
+The @code{__builtin_vsx_xvcvspuxds} converts the single precision floating
+point vector element 2*i to an unsigned double-precision integer value using
+round to zero storing the result in element i.  If the source element is NaN
+the result is set to 0x0000000000000000 and VXCI is set to 1.  If the source
+element is SNaN then VXSNAN is also set to 1.  If the rounded value is greater
+than 2^63 - 1 the result is 0xFFFFFFFFFFFFFFFF and VXCVI is set to 1.  If the
+rounded value is less than -2^63, the result is set to 0x0000000000000000 and
+VXCVI is set to 1.  If the rounded result is inexact then XX is set to 1.
+
+@smallexample
+vector signed int __builtin_vsx_xvcvdpsxws (vector double);
+@end smallexample
+
+The @code{__builtin_vsx_xvcvdpsxws} converts the ith double precision floating
+point vector element to a single-precision integer value using the round to
+zero rounding mode.  The single precision integer value is placed into vector
+elements j and j+1 where j = i*2.  If the source element is NaN the result
+is set to 0x80000000 and VXCI is set to 1.  If the source element is SNaN then
+VXSNAN is also set to 1.  If the rounded value is greater than 2^31 - 1 the
+result is 0x7FFFFFFF and VXCVI is set to 1.  If the rounded value is less than
+-2^31, the result is set to 0x80000000 and VXCVI is set to 1.  If the rounded
+result is inexact then XX is set to 1.
+
+@smallexample
+vector unsigned int __builtin_vsx_xvcvdpuxws (vector double);
+@end smallexample
+
+The @code{__builtin_vsx_xvcvdpuxws} converts the ith double precision floating
+point vector element to a unsigned single-precision integer value using the
+round to zero rounding mode.  The single precision integer value is placed into
+vector elements j and j+1 where j = i*2.  If the source element is NaN the
+result is set to 0x00000000 and VXCI is set to 1.  If the source element is
+SNaN then VXSNAN is also set to 1.  If the rounded value is greater than
+2^31 - 1 the result is 0xFFFFFFFF and VXCVI is set to 1.  If the rounded value
+is less than zero, the result is set to 0x00000000 and VXCVI is set to 1.  If
+the rounded result is inexact then XX is set to 1.
+
+@smallexample
+vector unsigned long long int __builtin_vsx_xvcvdpuxds_uns (vector double);
+@end smallexample
+
+The @code{__builtin_vsx_xvcvdpuxds_uns} converts the double precision floating
+point vector element to a double precision unsigned integer value using the
+round to zero rounding mode.  If the source element is NaN the result is set
+to 0x0000000000000000 and VXCI is set to 1.  If the source element is SNaN
+then VXSNAN is also set to 1.  If the rounded value is greater than 2^63 - 1
+the result is 0xFFFFFFFFFFFFFFFF and VXCVI is set to 1.  If the rounded value
+is less than zero, the result is set to 0x0000000000000000 and VXCVI is set to
+1.  If the rounded result is inexact then XX is set to 1.
+
+@smallexample
+vector double __builtin_vsx_xvcvspdp (vector float);
+@end smallexample
+
+The @code{__builtin_vsx_xvcvspdp} converts single precision floating
+point vector element to a double precision floating point value.  Input element
+at index 2*i is stored in the destination element i.
+
+@smallexample
+vector float __builtin_vsx_xvcvdpsp (vector double);
+@end smallexample
+
+The @code{__builtin_vsx_xvcvdpsp} converts the ith double precision floating
+point vector element to a single-precision floating point value using the
+rounding mode specified by RN.  The single precision value is placed into
+vector elements j and j+1 where j = i*2.  The rounding mode, RN, is specified
+by bits [62:63] of the FPSCR.
+
+@smallexample
+vector unsigned int __builtin_vsx_xvcvspuxws (vector float);
+@end smallexample
+
+The @code{__builtin_vsx_xvcvspuxws} converts the single precision floating
+point vector element i to an unsigned single-precision integer value using
+round to zero storing the result in element i.  If the source element is NaN
+the result is set to 0x00000000 and VXCI is set to 1.  If the source element
+is SNaN then VXSNAN is also set to 1.  If the rounded value is greater than
+2^31 - 1 the result is 0xFFFFFFFF and VXCVI is set to 1.  If the rounded
+value is less than -2^31, the result is set to 0x00000000 and VXCVI is set
+to 1. If the rounded result is inexact then XX is set to 1.
+
+@smallexample
+vector double __builtin_vsx_xvcvsxwdp (vector signed int);
+@end smallexample
+
+The @code{__builtin_vsx_xvcvsxwdp} converts single precision integer value
+to a double precision floating point value.  Input element at index 2*i is
+stored in the destination element i.
+
+@smallexample
+vector double __builtin_vsx_xvcvuxddp_uns (vector unsigned long long);
+@end smallexample
+
+The @code{__builtin_vsx_xvcvuxddp_uns} converts unsigned double-precision
+integer value to a double precision floating point value.  Input element
+at index i is stored in the destination element i.
+
+@smallexample
+vector double __builtin_vsx_xvcvuxwdp (vector unsigned int);
+@end smallexample
+
+The @code{__builtin_vsx_xvcvuxwdp} converts single precision unsigned integer
+value to a double precision floating point value.  Input element at index 2*i
+is stored in the destination element i.
+
 @node Basic PowerPC Built-in Functions Available on ISA 2.07
 @subsubsection Basic PowerPC Built-in Functions Available on ISA 2.07
 
