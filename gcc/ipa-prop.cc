@@ -2476,14 +2476,26 @@ ipa_get_stmt_member_ptr_load_param (gimple *stmt, bool use_delta,
   if (TREE_CODE (rhs) != MEM_REF)
     return NULL_TREE;
   rec = TREE_OPERAND (rhs, 0);
-  if (TREE_CODE (rec) != ADDR_EXPR)
+  if (TREE_CODE (rec) == ADDR_EXPR)
+    {
+      rec = TREE_OPERAND (rec, 0);
+      if (TREE_CODE (rec) != PARM_DECL
+	  || !type_like_member_ptr_p (TREE_TYPE (rec), &ptr_field,
+				      &delta_field))
+	return NULL_TREE;
+    }
+  else if (TREE_CODE (rec) == SSA_NAME
+	   && SSA_NAME_IS_DEFAULT_DEF (rec))
+    {
+      if (TREE_CODE (SSA_NAME_VAR (rec)) != PARM_DECL
+	  || !type_like_member_ptr_p (TREE_TYPE (TREE_TYPE (rec)), &ptr_field,
+				      &delta_field))
+	return NULL_TREE;
+    }
+  else
     return NULL_TREE;
-  rec = TREE_OPERAND (rec, 0);
-  if (TREE_CODE (rec) != PARM_DECL
-      || !type_like_member_ptr_p (TREE_TYPE (rec), &ptr_field, &delta_field))
-    return NULL_TREE;
-  ref_offset = TREE_OPERAND (rhs, 1);
 
+  ref_offset = TREE_OPERAND (rhs, 1);
   if (use_delta)
     fld = delta_field;
   else
@@ -2719,17 +2731,31 @@ ipa_analyze_indirect_call_uses (struct ipa_func_body_info *fbi, gcall *call,
   if (rec != rec2)
     return;
 
-  index = ipa_get_param_decl_index (info, rec);
-  if (index >= 0
-      && parm_preserved_before_stmt_p (fbi, index, call, rec))
+  if (TREE_CODE (rec) == SSA_NAME)
     {
-      struct cgraph_edge *cs = ipa_note_param_call (fbi->node, index,
-	 					    call, false);
-      cs->indirect_info->offset = offset;
-      cs->indirect_info->agg_contents = 1;
-      cs->indirect_info->member_ptr = 1;
-      cs->indirect_info->guaranteed_unmodified = 1;
+      index = ipa_get_param_decl_index (info, SSA_NAME_VAR (rec));
+      if (index < 0
+	  || !parm_ref_data_preserved_p (fbi, index, call,
+					 gimple_assign_rhs1 (def)))
+	return;
+      by_ref = true;
     }
+  else
+    {
+      index = ipa_get_param_decl_index (info, rec);
+      if (index < 0
+	  || !parm_preserved_before_stmt_p (fbi, index, call, rec))
+	return;
+      by_ref = false;
+    }
+
+  struct cgraph_edge *cs = ipa_note_param_call (fbi->node, index,
+						call, false);
+  cs->indirect_info->offset = offset;
+  cs->indirect_info->agg_contents = 1;
+  cs->indirect_info->member_ptr = 1;
+  cs->indirect_info->by_ref = by_ref;
+  cs->indirect_info->guaranteed_unmodified = 1;
 
   return;
 }
