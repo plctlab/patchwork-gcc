@@ -127,7 +127,7 @@ riscv_cpu_cpp_builtins (cpp_reader *pfile)
     {
       builtin_define ("__riscv_vector");
       builtin_define_with_int_value ("__riscv_v_intrinsic",
-				     riscv_ext_version_value (0, 11));
+				     riscv_ext_version_value (0, 12));
     }
 
   /* Define architecture extension test macros.  */
