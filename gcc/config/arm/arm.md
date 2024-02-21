@@ -307,6 +307,8 @@
 ;
 ; NOCOND means that the instruction does not use or alter the condition
 ;   codes but can be converted into a conditionally exectuted instruction.
+;   Given that NOCOND is the default for most instructions if omitted,
+;   the attribute predicable must be set to yes as well.
 
 (define_attr "conds" "use,set,clob,unconditional,nocond"
 	(if_then_else
