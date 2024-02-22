@@ -12462,9 +12462,15 @@ simplify_comparison (enum rtx_code code, rtx *pop0, rtx *pop1)
 	    }
 
 	  /* If the inner mode is narrower and we are extracting the low part,
-	     we can treat the SUBREG as if it were a ZERO_EXTEND.  */
+	     we can treat the SUBREG as if it were a ZERO_EXTEND ...  */
 	  if (paradoxical_subreg_p (op0))
-	    ;
+	    {
+	      /* ... except we can't treat as ZERO_EXTEND when a machine
+		 automatically sign-extends loads. */
+	      if (MEM_P (SUBREG_REG (op0)) && WORD_REGISTER_OPERATIONS
+		  && load_extend_op (inner_mode) == SIGN_EXTEND)
+		break;
+	    }
 	  else if (subreg_lowpart_p (op0)
 		   && GET_MODE_CLASS (mode) == MODE_INT
 		   && is_int_mode (GET_MODE (SUBREG_REG (op0)), &inner_mode)
