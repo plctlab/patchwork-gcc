@@ -13644,6 +13644,90 @@ aarch64_extr_rtx_p (rtx x, rtx *res_op0, rtx *res_op1)
   return false;
 }
 
+/* Return true iff X is an rtx that will match an bfi instruction
+   i.e. as described in the *aarch64_bfi<mode>5 family of patterns.
+   OP0 and OP1 will be set to the operands of the insert involved
+   on success and will be NULL_RTX otherwise.  */
+
+static bool
+aarch64_bfi_rtx_p (rtx x, rtx *res_op0, rtx *res_op1)
+{
+  rtx op0, op1;
+  scalar_int_mode mode;
+
+  *res_op0 = NULL_RTX;
+  *res_op1 = NULL_RTX;
+  if (!is_a <scalar_int_mode> (GET_MODE (x), &mode))
+    return false;
+
+  if (GET_CODE (x) != IOR)
+    return false;
+
+  unsigned HOST_WIDE_INT mask1;
+  unsigned HOST_WIDE_INT shft_amnt;
+  unsigned HOST_WIDE_INT mask2;
+  rtx shiftop;
+
+  rtx iop0 = XEXP (x, 0);
+  rtx iop1 = XEXP (x, 1);
+
+  if (GET_CODE (iop0) == AND
+      && CONST_INT_P (XEXP (iop0, 1))
+      && GET_CODE (XEXP (iop0, 0)) != ASHIFT)
+    {
+      op0 = XEXP (iop0, 0);
+      mask1 = UINTVAL (XEXP (iop0, 1));
+      shiftop = iop1;
+    }
+  else if (GET_CODE (iop1) == AND
+      && CONST_INT_P (XEXP (iop1, 1))
+      && GET_CODE (XEXP (iop1, 0)) != ASHIFT)
+    {
+      op0 = XEXP (iop1, 0);
+      mask1 = UINTVAL (XEXP (iop1, 1));
+      shiftop = iop0;
+    }
+  else
+    return false;
+
+  /* Shifted with no mask. */
+  if (GET_CODE (shiftop) == ASHIFT
+      && CONST_INT_P (XEXP (shiftop, 1)))
+    {
+      shft_amnt = UINTVAL (XEXP (shiftop, 1));
+      mask2 = HOST_WIDE_INT_M1U << shft_amnt;
+      op1 = XEXP (shiftop, 0);
+    }
+   else if (GET_CODE (shiftop) == AND
+	    && CONST_INT_P (XEXP (shiftop, 1)))
+    {
+      mask2 = UINTVAL (XEXP (shiftop, 1));
+      if (GET_CODE (XEXP (shiftop, 0)) == ASHIFT
+	  && CONST_INT_P (XEXP (XEXP (shiftop, 0), 1)))
+	{
+	  op1 = XEXP (XEXP (shiftop, 0), 0);
+	  shft_amnt = UINTVAL (XEXP (XEXP (shiftop, 0), 1));
+	}
+      else
+	{
+	  op1 = XEXP (shiftop, 0);
+	  shft_amnt = 0;
+	}
+    }
+  else
+    return false;
+
+  if (shft_amnt >= GET_MODE_BITSIZE (mode))
+    return false;
+
+  if (!aarch64_masks_and_shift_for_bfi_p (mode, mask1, shft_amnt, mask2))
+    return false;
+
+  *res_op0 = op0;
+  *res_op1 = op1;
+  return true;
+}
+
 /* Calculate the cost of calculating (if_then_else (OP0) (OP1) (OP2)),
    storing it in *COST.  Result is true if the total cost of the operation
    has now been calculated.  */
@@ -14496,6 +14580,16 @@ cost_plus:
 	    }
 	  return true;
         }
+
+      if (aarch64_bfi_rtx_p (x, &op0, &op1))
+	{
+	  *cost += rtx_cost (op0, mode, IOR, 0, speed);
+	  *cost += rtx_cost (op0, mode, IOR, 1, speed);
+	  if (speed)
+	    *cost += extra_cost->alu.bfi;
+
+	  return true;
+	}
 
       if (aarch64_extr_rtx_p (x, &op0, &op1))
         {
