@@ -94,11 +94,11 @@
 /* Information about a legitimate vector immediate operand.  */
 struct simd_immediate_info
 {
-  enum insn_type { MOV, MVN, INDEX, PTRUE };
+  enum insn_type { MOV, FMOV_SDH, MVN, INDEX, PTRUE };
   enum modifier_type { LSL, MSL };
 
   simd_immediate_info () {}
-  simd_immediate_info (scalar_float_mode, rtx);
+  simd_immediate_info (scalar_float_mode, rtx, insn_type = MOV);
   simd_immediate_info (scalar_int_mode, unsigned HOST_WIDE_INT,
 		       insn_type = MOV, modifier_type = LSL,
 		       unsigned int = 0);
@@ -113,7 +113,7 @@ struct simd_immediate_info
 
   union
   {
-    /* For MOV and MVN.  */
+    /* For MOV, FMOV_SDH and MVN.  */
     struct
     {
       /* The value of each element.  */
@@ -141,9 +141,10 @@ struct simd_immediate_info
 /* Construct a floating-point immediate in which each element has mode
    ELT_MODE_IN and value VALUE_IN.  */
 inline simd_immediate_info
-::simd_immediate_info (scalar_float_mode elt_mode_in, rtx value_in)
-  : elt_mode (elt_mode_in), insn (MOV)
+::simd_immediate_info (scalar_float_mode elt_mode_in, rtx value_in, insn_type insn_in)
+  : elt_mode (elt_mode_in), insn (insn_in)
 {
+  gcc_assert (insn_in == MOV || insn_in == FMOV_SDH);
   u.mov.value = value_in;
   u.mov.modifier = LSL;
   u.mov.shift = 0;
@@ -21458,6 +21459,35 @@ aarch64_simd_valid_immediate (rtx op, simd_immediate_info *info,
 	  return true;
 	}
     }
+  /* See if we can use fmov d0/s0/h0 ... for the constant. */
+  if (n_elts >= 1
+      && (vec_flags & VEC_ADVSIMD)
+      && is_a <scalar_float_mode> (elt_mode, &elt_float_mode)
+      && !CONST_VECTOR_DUPLICATE_P (op))
+    {
+      rtx elt = CONST_VECTOR_ENCODED_ELT (op, 0);
+      if (aarch64_float_const_zero_rtx_p (elt)
+	  || aarch64_float_const_representable_p (elt))
+	{
+	  bool valid = true;
+	  for (unsigned int i = 1; i < n_elts; i++)
+	    {
+	      rtx elt1 = CONST_VECTOR_ENCODED_ELT (op, i);
+	      if (!aarch64_float_const_zero_rtx_p (elt1))
+		{
+		  valid = false;
+		  break;
+		}
+	    }
+	  if (valid)
+	    {
+	      if (info)
+		*info = simd_immediate_info (elt_float_mode, elt,
+					     simd_immediate_info::FMOV_SDH);
+	      return true;
+	    }
+	}
+    }
 
   /* If all elements in an SVE vector have the same value, we have a free
      choice between using the element mode and using the container mode.
@@ -23454,7 +23484,8 @@ aarch64_output_simd_mov_immediate (rtx const_vector, unsigned width,
 
   if (GET_MODE_CLASS (info.elt_mode) == MODE_FLOAT)
     {
-      gcc_assert (info.insn == simd_immediate_info::MOV
+      gcc_assert ((info.insn == simd_immediate_info::MOV
+		   || info.insn == simd_immediate_info::FMOV_SDH)
 		  && info.u.mov.shift == 0);
       /* For FP zero change it to a CONST_INT 0 and use the integer SIMD
 	 move immediate path.  */
@@ -23467,8 +23498,9 @@ aarch64_output_simd_mov_immediate (rtx const_vector, unsigned width,
 	  real_to_decimal_for_mode (float_buf,
 				    CONST_DOUBLE_REAL_VALUE (info.u.mov.value),
 				    buf_size, buf_size, 1, info.elt_mode);
-
-	  if (lane_count == 1)
+	  if (info.insn == simd_immediate_info::FMOV_SDH)
+	    snprintf (templ, sizeof (templ), "fmov\t%%%c0, %s", element_char, float_buf);
+	  else if (lane_count == 1)
 	    snprintf (templ, sizeof (templ), "fmov\t%%d0, %s", float_buf);
 	  else
 	    snprintf (templ, sizeof (templ), "fmov\t%%0.%d%c, %s",
