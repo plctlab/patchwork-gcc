@@ -100,6 +100,21 @@ enum symbol_partitioning_class
    SYMBOL_DUPLICATE
 };
 
+/* Classification whether a function has any IFUNC resolver caller.  */
+enum ifunc_caller
+{
+  /* It is unknown if this function has any IFUNC resolver caller.  */
+  IFUNC_CALLER_UNKNOWN,
+  /* Work in progress to check if this function has any IFUNC resolver
+     caller.  */
+  IFUNC_CALLER_WIP,
+  /* This function has at least an IFUNC resolver caller, including
+     itself.  */
+  IFUNC_CALLER_TRUE,
+  /* This function doesn't have any IFUNC resolver caller.  */
+  IFUNC_CALLER_FALSE
+};
+
 /* Base of all entries in the symbol table.
    The symtab_node is inherited by cgraph and varpol nodes.  */
 struct GTY((desc ("%h.type"), tag ("SYMTAB_SYMBOL"),
@@ -121,6 +136,7 @@ public:
       used_from_other_partition (false), in_other_partition (false),
       address_taken (false), in_init_priority_hash (false),
       need_lto_streaming (false), offloadable (false), ifunc_resolver (false),
+      has_ifunc_caller (IFUNC_CALLER_UNKNOWN),
       order (false), next_sharing_asm_name (NULL),
       previous_sharing_asm_name (NULL), same_comdat_group (NULL), ref_list (),
       alias_target (NULL), lto_file_data (NULL), aux (NULL),
@@ -595,6 +611,8 @@ public:
   /* Set when symbol is an IFUNC resolver.  */
   unsigned ifunc_resolver : 1;
 
+  /* Classification whether a function has any IFUNC resolver caller.  */
+  ENUM_BITFIELD (ifunc_caller) has_ifunc_caller : 2;
 
   /* Ordering of all symtab entries.  */
   int order;

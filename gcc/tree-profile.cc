@@ -676,6 +676,72 @@ include_source_file_for_profile (const char *filename)
   return false;
 }
 
+/* Return true and set *DATA to true if NODE is an ifunc resolver.  */
+
+static bool
+check_ifunc_resolver (cgraph_node *node, void *data)
+{
+  if (node->ifunc_resolver)
+    {
+      bool *is_ifunc_resolver = (bool *) data;
+      *is_ifunc_resolver = true;
+      return true;
+    }
+  return false;
+}
+
+/* Return true if any caller of NODE is an ifunc resolver.  */
+
+static bool
+is_caller_ifunc_resolver (cgraph_node *node)
+{
+  if (node->has_ifunc_caller == IFUNC_CALLER_WIP)
+    gcc_unreachable ();
+
+  node->has_ifunc_caller = IFUNC_CALLER_WIP;
+  bool is_ifunc_resolver = false;
+
+  for (cgraph_edge *e = node->callers; e; e = e->next_caller)
+    {
+      /* Check for recursive call.  */
+      if (e->caller == node)
+	continue;
+
+      switch (e->caller->has_ifunc_caller)
+	{
+	case IFUNC_CALLER_UNKNOWN:
+	  e->caller->call_for_symbol_and_aliases (check_ifunc_resolver,
+						  &is_ifunc_resolver,
+						  true);
+	  if (is_ifunc_resolver)
+	    {
+	      e->caller->has_ifunc_caller = IFUNC_CALLER_TRUE;
+	      return true;
+	    }
+	  break;
+	case IFUNC_CALLER_TRUE:
+	  return true;
+	case IFUNC_CALLER_FALSE:
+	  /* This caller doesn't have any IFUNC resolver call.  Check
+	     the next caller.  */
+	  continue;
+
+	case IFUNC_CALLER_WIP:
+	  continue;
+	}
+
+      if (is_caller_ifunc_resolver (e->caller))
+	{
+	  e->caller->has_ifunc_caller = IFUNC_CALLER_TRUE;
+	  return true;
+	}
+      else
+	e->caller->has_ifunc_caller = IFUNC_CALLER_FALSE;
+    }
+
+  return false;
+}
+
 #ifndef HAVE_sync_compare_and_swapsi
 #define HAVE_sync_compare_and_swapsi 0
 #endif
@@ -767,6 +833,32 @@ tree_profiling (void)
 	      read_thunk_profile (node);
 	      continue;
 	    }
+	}
+
+      /* Do not instrument an IFUNC resolver nor its callees.  */
+      bool is_ifunc_resolver = false;
+      switch (node->has_ifunc_caller)
+	{
+	case IFUNC_CALLER_UNKNOWN:
+	  node->call_for_symbol_and_aliases (check_ifunc_resolver,
+					     &is_ifunc_resolver, true);
+	  if (is_ifunc_resolver || is_caller_ifunc_resolver (node))
+	    {
+	      node->has_ifunc_caller = IFUNC_CALLER_TRUE;
+	      continue;
+	    }
+	  else
+	    node->has_ifunc_caller = IFUNC_CALLER_FALSE;
+	  break;
+
+	case IFUNC_CALLER_TRUE:
+	  continue;
+
+	case IFUNC_CALLER_FALSE:
+	  break;
+
+	case IFUNC_CALLER_WIP:
+	  gcc_unreachable ();
 	}
 
       push_cfun (DECL_STRUCT_FUNCTION (node->decl));
