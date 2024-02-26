@@ -4545,7 +4545,7 @@
 (define_expand "vsx_splat_<mode>"
   [(set (match_operand:VSX_D 0 "vsx_register_operand")
 	(vec_duplicate:VSX_D
-	 (match_operand:<VEC_base> 1 "input_operand")))]
+	 (match_operand:<VEC_base> 1 "splat_input_operand")))]
   "VECTOR_MEM_VSX_P (<MODE>mode)"
 {
   rtx op1 = operands[1];
