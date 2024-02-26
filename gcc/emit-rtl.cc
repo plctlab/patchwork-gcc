@@ -933,7 +933,8 @@ validate_subreg (machine_mode omode, machine_mode imode,
     ;
   /* ??? Similarly, e.g. with (subreg:DF (reg:TI)).  Though store_bit_field
      is the culprit here, and not the backends.  */
-  else if (known_ge (osize, regsize) && known_ge (isize, osize))
+  else if (known_ge (isize, osize) && (known_ge (osize, regsize)
+    || (VECTOR_MODE_P (imode) || VECTOR_MODE_P (omode))))
     ;
   /* Allow component subregs of complex and vector.  Though given the below
      extraction rules, it's not always clear what that means.  */

@@ -1,5 +1,5 @@
 /* { dg-do compile } */
-/* { dg-options "-O -fdump-tree-fre1" } */
+/* { dg-options "-O -fdump-tree-fre1 -O3 -ftree-vectorize" } */
 
 struct A { float x, y; };
 struct B { struct A u; };
