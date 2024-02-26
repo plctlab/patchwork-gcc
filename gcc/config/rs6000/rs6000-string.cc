@@ -38,6 +38,49 @@
 #include "profile-count.h"
 #include "predict.h"
 
+/* Return the widest mode which mode size is less than or equal to the
+   size.  */
+static fixed_size_mode
+widest_fixed_size_mode_for_block_clear (unsigned int size, unsigned int align,
+					bool unaligned_vsx_ok)
+{
+  machine_mode mode;
+
+  if (TARGET_ALTIVEC
+      && size >= 16
+      && (align >= 128
+	  || unaligned_vsx_ok))
+    mode = V4SImode;
+  else if (size >= 8
+	   && TARGET_POWERPC64
+	   && (align >= 64
+	       || !STRICT_ALIGNMENT))
+    mode = DImode;
+  else if (size >= 4
+	   && (align >= 32
+	       || !STRICT_ALIGNMENT))
+    mode = SImode;
+  else if (size >= 2
+	   && (align >= 16
+	       || !STRICT_ALIGNMENT))
+    mode = HImode;
+  else
+    mode = QImode;
+
+  return as_a <fixed_size_mode> (mode);
+}
+
+/* Return the smallest mode which mode size is smaller than or eqaul to
+   the size.  */
+static fixed_size_mode
+smallest_fixed_size_mode_for_block_clear (unsigned int size)
+{
+  if (size > UNITS_PER_WORD)
+    return as_a <fixed_size_mode> (V4SImode);
+
+  return smallest_int_mode_for_size (size * BITS_PER_UNIT);
+}
+
 /* Expand a block clear operation, and return 1 if successful.  Return 0
    if we should let the compiler generate normal code.
 
@@ -55,7 +98,6 @@ expand_block_clear (rtx operands[])
   HOST_WIDE_INT align;
   HOST_WIDE_INT bytes;
   int offset;
-  int clear_bytes;
   int clear_step;
 
   /* If this is not a fixed size move, just call memcpy */
@@ -89,62 +131,36 @@ expand_block_clear (rtx operands[])
 
   bool unaligned_vsx_ok = (bytes >= 32 && TARGET_EFFICIENT_UNALIGNED_VSX);
 
-  for (offset = 0; bytes > 0; offset += clear_bytes, bytes -= clear_bytes)
+  auto mode = widest_fixed_size_mode_for_block_clear (bytes, align,
+						      unaligned_vsx_ok);
+  offset = 0;
+  rtx dest;
+
+  do
     {
-      machine_mode mode = BLKmode;
-      rtx dest;
+      unsigned int size = GET_MODE_SIZE (mode);
 
-      if (TARGET_ALTIVEC
-	  && (bytes >= 16 && (align >= 128 || unaligned_vsx_ok)))
+      while (bytes >= size)
 	{
-	  clear_bytes = 16;
-	  mode = V4SImode;
+	  dest = adjust_address (orig_dest, mode, offset);
+	  emit_move_insn (dest, CONST0_RTX (mode));
+
+	  offset += size;
+	  bytes -= size;
 	}
-      else if (bytes >= 8 && TARGET_POWERPC64
-	       && (align >= 64 || !STRICT_ALIGNMENT))
+
+      if (bytes == 0)
+	return 1;
+
+      mode = smallest_fixed_size_mode_for_block_clear (bytes);
+      int gap = GET_MODE_SIZE (mode) - bytes;
+      if (gap > 0)
 	{
-	  clear_bytes = 8;
-	  mode = DImode;
-	  if (offset == 0 && align < 64)
-	    {
-	      rtx addr;
-
-	      /* If the address form is reg+offset with offset not a
-		 multiple of four, reload into reg indirect form here
-		 rather than waiting for reload.  This way we get one
-		 reload, not one per store.  */
-	      addr = XEXP (orig_dest, 0);
-	      if ((GET_CODE (addr) == PLUS || GET_CODE (addr) == LO_SUM)
-		  && CONST_INT_P (XEXP (addr, 1))
-		  && (INTVAL (XEXP (addr, 1)) & 3) != 0)
-		{
-		  addr = copy_addr_to_reg (addr);
-		  orig_dest = replace_equiv_address (orig_dest, addr);
-		}
-	    }
+	  offset -= gap;
+	  bytes += gap;
 	}
-      else if (bytes >= 4 && (align >= 32 || !STRICT_ALIGNMENT))
-	{			/* move 4 bytes */
-	  clear_bytes = 4;
-	  mode = SImode;
-	}
-      else if (bytes >= 2 && (align >= 16 || !STRICT_ALIGNMENT))
-	{			/* move 2 bytes */
-	  clear_bytes = 2;
-	  mode = HImode;
-	}
-      else /* move 1 byte at a time */
-	{
-	  clear_bytes = 1;
-	  mode = QImode;
-	}
-
-      dest = adjust_address (orig_dest, mode, offset);
-
-      emit_move_insn (dest, CONST0_RTX (mode));
     }
-
-  return 1;
+  while (1);
 }
 
 /* Figure out the correct instructions to generate to load data for
