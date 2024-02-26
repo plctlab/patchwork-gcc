@@ -6587,3 +6587,19 @@
   "vmsumcud %0,%1,%2,%3"
   [(set_attr "type" "veccomplex")]
 )
+
+(define_split
+  [(set (match_operand:V1TI 0 "int_reg_operand")
+       (match_operand:V1TI 1 "vsx_register_operand"))]
+  "reload_completed
+   && TARGET_DIRECT_MOVE_64BIT"
+   [(pc)]
+{
+  rtx op0 = gen_rtx_REG (DImode, REGNO (operands[0]));
+  rtx op1 = gen_rtx_REG (V2DImode, REGNO (operands[1]));
+  rtx op2 = gen_rtx_REG (DImode, REGNO (operands[0]) + 1);
+  rtx op3 = gen_rtx_REG (V2DImode, REGNO (operands[1]));
+  emit_insn (gen_vsx_extract_v2di (op0, op1, GEN_INT (0)));
+  emit_insn (gen_vsx_extract_v2di (op2, op3, GEN_INT (1)));
+  DONE;
+})
