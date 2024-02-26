@@ -18477,6 +18477,8 @@ maybe_register_incomplete_var (tree var)
 	  vec_safe_push (incomplete_vars, iv);
 	}
       else if (!(DECL_LANG_SPECIFIC (var) && DECL_TEMPLATE_INFO (var))
+	       && DECL_CLASS_SCOPE_P (var)
+	       && currently_open_class (DECL_CONTEXT (var))
 	       && decl_constant_var_p (var)
 	       && (TYPE_PTRMEM_P (inner_type) || CLASS_TYPE_P (inner_type)))
 	{
