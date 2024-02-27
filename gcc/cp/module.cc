@@ -2773,6 +2773,7 @@ enum merge_kind
 
   MK_enum,	/* Found by CTX, & 1stMemberNAME.  */
   MK_keyed,     /* Found by key & index.  */
+  MK_local_class, /* Found by CTX, index.  */
 
   MK_friend_spec,  /* Like named, but has a tmpl & args too.  */
   MK_local_friend, /* Found by CTX, index.  */
@@ -2801,7 +2802,7 @@ static char const *const merge_kind_name[MK_hwm] =
     "unique", "named", "field", "vtable",	/* 0...3  */
     "asbase", "partial", "enum", "attached",	/* 4...7  */
 
-    "friend spec", "local friend", NULL, NULL,  /* 8...11 */
+    "local class", "friend spec", "local friend", NULL,  /* 8...11 */
     NULL, NULL, NULL, NULL,
 
     "type spec", "type tmpl spec",	/* 16,17 type (template).  */
@@ -2923,6 +2924,7 @@ public:
   unsigned binfo_mergeable (tree *);
 
 private:
+  tree key_local_class (const merge_key&, tree);
   uintptr_t *find_duplicate (tree existing);
   void register_duplicate (tree decl, tree existing);
   /* Mark as an already diagnosed bad duplicate.  */
@@ -3081,6 +3083,7 @@ public:
   void binfo_mergeable (tree binfo);
 
 private:
+  void key_local_class (merge_key&, tree, tree);
   bool decl_node (tree, walk_kind ref);
   void type_node (tree);
   void tree_value (tree);
@@ -4947,18 +4950,7 @@ void
 trees_out::chained_decls (tree decls)
 {
   for (; decls; decls = DECL_CHAIN (decls))
-    {
-      if (VAR_OR_FUNCTION_DECL_P (decls)
-	  && DECL_LOCAL_DECL_P (decls))
-	{
-	  /* Make sure this is the first encounter, and mark for
-	     walk-by-value.  */
-	  gcc_checking_assert (!TREE_VISITED (decls)
-			       && !DECL_TEMPLATE_INFO (decls));
-	  mark_by_value (decls);
-	}
-      tree_node (decls);
-    }
+    tree_node (decls);
   tree_node (NULL_TREE);
 }
 
@@ -6196,7 +6188,21 @@ trees_out::core_vals (tree t)
 
       /* DECL_LOCAL_DECL_P decls are first encountered here and
          streamed by value.  */
-      chained_decls (t->block.vars);
+      for (tree decls = t->block.vars; decls; decls = DECL_CHAIN (decls))
+	{
+	  if (VAR_OR_FUNCTION_DECL_P (decls)
+	      && DECL_LOCAL_DECL_P (decls))
+	    {
+	      /* Make sure this is the first encounter, and mark for
+		 walk-by-value.  */
+	      gcc_checking_assert (!TREE_VISITED (decls)
+				   && !DECL_TEMPLATE_INFO (decls));
+	      mark_by_value (decls);
+	    }
+	  tree_node (decls);
+	}
+      tree_node (NULL_TREE);
+
       /* nonlocalized_vars is a middle-end thing.  */
       WT (t->block.subblocks);
       WT (t->block.supercontext);
@@ -6702,7 +6708,34 @@ trees_in::core_vals (tree t)
     case BLOCK:
       t->block.locus = state->read_location (*this);
       t->block.end_locus = state->read_location (*this);
-      t->block.vars = chained_decls ();
+
+      for (tree *chain = &t->block.vars;;)
+	if (tree decl = tree_node ())
+	  {
+	    /* For a deduplicated local class, chain the to-be-discarded
+	       decl not the in-TU decl (which is already chained to in-TU
+	       entities).  */
+	    if (is_duplicate (decl))
+	      decl = maybe_duplicate (decl);
+	    else if (DECL_IMPLICIT_TYPEDEF_P (decl)
+		     && TYPE_TEMPLATE_INFO (TREE_TYPE (decl)))
+	      {
+		tree tmpl = TYPE_TI_TEMPLATE (TREE_TYPE (decl));
+		if (DECL_TEMPLATE_RESULT (tmpl) == decl && is_duplicate (tmpl))
+		  decl = DECL_TEMPLATE_RESULT (maybe_duplicate (tmpl));
+	      }
+
+	    if (!DECL_P (decl) || DECL_CHAIN (decl))
+	      {
+		set_overrun ();
+		break;
+	      }
+	    *chain = decl;
+	    chain = &DECL_CHAIN (decl);
+	  }
+	else
+	  break;
+
       /* nonlocalized_vars is middle-end.  */
       RT (t->block.subblocks);
       RT (t->block.supercontext);
@@ -10270,6 +10303,83 @@ trees_in::fn_parms_fini (int tag, tree fn, tree existing, bool is_defn)
     }
 }
 
+/* Encode into KEY the position of the local class declaration DECL
+   within FN.  The position is encoded as the index of the innermost
+   BLOCK (numbered in BFS order) along with the index within its
+   BLOCK_VARS list.  */
+
+void
+trees_out::key_local_class (merge_key& key, tree decl, tree fn)
+{
+  auto_vec<tree, 4> blocks;
+  blocks.quick_push (DECL_INITIAL (fn));
+  unsigned block_ix = 0;
+  while (block_ix != blocks.length ())
+    {
+      tree block = blocks[block_ix];
+      unsigned decl_ix = 0;
+      for (tree var = BLOCK_VARS (block); var; var = DECL_CHAIN (var))
+	{
+	  if (TREE_CODE (var) != TYPE_DECL)
+	    continue;
+	  if (var == decl)
+	    {
+	      key.index = (block_ix << 10) | decl_ix;
+	      return;
+	    }
+	  ++decl_ix;
+	}
+      for (tree sub = BLOCK_SUBBLOCKS (block); sub; sub = BLOCK_CHAIN (sub))
+	blocks.safe_push (sub);
+      ++block_ix;
+    }
+
+  /* Not-found value.  */
+  key.index = 1023;
+}
+
+/* Look up the local class corresponding at the position encoded by
+   KEY within FN.  */
+
+tree
+trees_in::key_local_class (const merge_key& key, tree fn)
+{
+  if (!DECL_INITIAL (fn))
+    return NULL_TREE;
+
+  const unsigned block_pos = key.index >> 10;
+  const unsigned decl_pos = key.index & 1023;
+
+  if (decl_pos == 1023)
+    return NULL_TREE;
+
+  auto_vec<tree, 4> blocks;
+  blocks.quick_push (DECL_INITIAL (fn));
+  unsigned block_ix = 0;
+  while (block_ix != blocks.length ())
+    {
+      tree block = blocks[block_ix];
+      if (block_ix == block_pos)
+	{
+	  unsigned decl_ix = 0;
+	  for (tree var = BLOCK_VARS (block); var; var = DECL_CHAIN (var))
+	    {
+	      if (TREE_CODE (var) != TYPE_DECL)
+		continue;
+	      if (decl_ix == decl_pos)
+		return var;
+	      ++decl_ix;
+	    }
+	  return NULL_TREE;
+	}
+      for (tree sub = BLOCK_SUBBLOCKS (block); sub; sub = BLOCK_CHAIN (sub))
+	blocks.safe_push (sub);
+      ++block_ix;
+    }
+
+  return NULL_TREE;
+}
+
 /* DEP is the depset of some decl we're streaming by value.  Determine
    the merging behaviour.  */
 
@@ -10389,17 +10499,10 @@ trees_out::get_merge_kind (tree decl, depset *dep)
 	    gcc_unreachable ();
 
 	  case FUNCTION_DECL:
-	    // FIXME: This can occur for (a) voldemorty TYPE_DECLS
-	    // (which are returned from a function), or (b)
-	    // block-scope class definitions in template functions.
-	    // These are as unique as the containing function.  While
-	    // on read-back we can discover if the CTX was a
-	    // duplicate, we don't have a mechanism to get from the
-	    // existing CTX to the existing version of this decl.
 	    gcc_checking_assert
 	      (DECL_IMPLICIT_TYPEDEF_P (STRIP_TEMPLATE (decl)));
 
-	    mk = MK_unique;
+	    mk = MK_local_class;
 	    break;
 
 	  case RECORD_TYPE:
@@ -10692,6 +10795,10 @@ trees_out::key_mergeable (int tag, merge_kind mk, tree decl, tree inner,
 	    key.index = ix;
 	    name = NULL_TREE;
 	  }
+	  break;
+
+	case MK_local_class:
+	  key_local_class (key, STRIP_TEMPLATE (decl), container);
 	  break;
 
 	case MK_enum:
@@ -11043,11 +11150,10 @@ trees_in::key_mergeable (int tag, merge_kind mk, tree decl, tree inner,
 	    break;
 
 	  case FUNCTION_DECL:
-	    // FIXME: What about a voldemort? how do we find what it
-	    // duplicates? Do we have to number vmorts relative to
-	    // their containing function?  But how would that work
-	    // when matching an in-TU declaration?
-	    kind = "unique";
+	    gcc_checking_assert (mk == MK_local_class);
+	    existing = key_local_class (key, container);
+	    if (existing && inner != decl)
+	      existing = TYPE_TI_TEMPLATE (TREE_TYPE (existing));
 	    break;
 
 	  case TYPE_DECL:
@@ -11300,6 +11406,11 @@ trees_in::is_matching_decl (tree existing, tree decl, bool is_typedef)
 	/* Just like duplicate_decls, presum the user knows what
 	   they're doing in overriding a builtin.   */
 	TREE_TYPE (existing) = TREE_TYPE (decl);
+      else if (decl_function_context (decl))
+	/* The type of a mergeable local entity (such as a function scope
+	   capturing lambda's closure type fields) can depend on an
+	   unmergeable local entity (such as a local variable), so type
+	   equality isn't feasible in general for local entities.  */;
       else
 	{
 	  // FIXME:QOI Might be template specialization from a module,
