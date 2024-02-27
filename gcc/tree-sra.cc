@@ -21,14 +21,16 @@ along with GCC; see the file COPYING3.  If not see
 <http://www.gnu.org/licenses/>.  */
 
 /* This file implements Scalar Reduction of Aggregates (SRA).  SRA is run
-   twice, once in the early stages of compilation (early SRA) and once in the
-   late stages (late SRA).  The aim of both is to turn references to scalar
-   parts of aggregates into uses of independent scalar variables.
+   three times, once in the early stages of compilation (early SRA) and once
+   in the late stages (late SRA).  The aim of them is to turn references to
+   scalar parts of aggregates into uses of independent scalar variables.
 
-   The two passes are nearly identical, the only difference is that early SRA
+   The three passes are nearly identical, the difference are that early SRA
    does not scalarize unions which are used as the result in a GIMPLE_RETURN
    statement because together with inlining this can lead to weird type
-   conversions.
+   conversions.  The third pass is more care about parameters and returns,
+   it would be helpful for the parameters and returns which are passed through
+   registers.
 
    Both passes operate in four stages:
 
@@ -104,6 +106,7 @@ along with GCC; see the file COPYING3.  If not see
 /* Enumeration of all aggregate reductions we can do.  */
 enum sra_mode { SRA_MODE_EARLY_IPA,   /* early call regularization */
 		SRA_MODE_EARLY_INTRA, /* early intraprocedural SRA */
+		SRA_MODE_FINAL_INTRA, /* final gimple intraprocedural SRA */
 		SRA_MODE_INTRA };     /* late intraprocedural SRA */
 
 /* Global variable describing which aggregate reduction we are performing at
@@ -1318,7 +1321,8 @@ build_accesses_from_assign (gimple *stmt)
     }
 
   if (lacc && racc
-      && (sra_mode == SRA_MODE_EARLY_INTRA || sra_mode == SRA_MODE_INTRA)
+      && (sra_mode == SRA_MODE_EARLY_INTRA || sra_mode == SRA_MODE_INTRA
+	  || sra_mode == SRA_MODE_FINAL_INTRA)
       && !lacc->grp_unscalarizable_region
       && !racc->grp_unscalarizable_region
       && AGGREGATE_TYPE_P (TREE_TYPE (lhs))
@@ -1972,6 +1976,24 @@ find_var_candidates (void)
        parm;
        parm = DECL_CHAIN (parm))
     ret |= maybe_add_sra_candidate (parm);
+
+  /* fsra only care about parameters and returns */
+  if (sra_mode == SRA_MODE_FINAL_INTRA)
+    {
+      if (!DECL_RESULT (current_function_decl))
+	return ret;
+
+      edge_iterator ei;
+      edge e;
+      FOR_EACH_EDGE (e, ei, EXIT_BLOCK_PTR_FOR_FN (cfun)->preds)
+	if (greturn *r = safe_dyn_cast<greturn *> (*gsi_last_bb (e->src)))
+	  {
+	    tree val = gimple_return_retval (r);
+	    if (val && VAR_P (val))
+	      ret |= maybe_add_sra_candidate (val);
+	  }
+      return ret;
+    }
 
   FOR_EACH_LOCAL_DECL (cfun, i, var)
     {
@@ -4746,6 +4768,14 @@ late_intra_sra (void)
   return perform_intra_sra ();
 }
 
+/* Perform "final sra" intraprocedural SRA just before expander.  */
+static unsigned int
+final_intra_sra (void)
+{
+  sra_mode = SRA_MODE_FINAL_INTRA;
+  return perform_intra_sra ();
+}
+
 
 static bool
 gate_intra_sra (void)
@@ -4827,4 +4857,43 @@ gimple_opt_pass *
 make_pass_sra (gcc::context *ctxt)
 {
   return new pass_sra (ctxt);
+}
+
+namespace
+{
+const pass_data pass_data_sra_final = {
+  GIMPLE_PASS,		 /* type */
+  "fsra",		 /* name */
+  OPTGROUP_NONE,	 /* optinfo_flags */
+  TV_TREE_SRA,		 /* tv_id */
+  (PROP_cfg | PROP_ssa), /* properties_required */
+  0,			 /* properties_provided */
+  0,			 /* properties_destroyed */
+  0,			 /* todo_flags_start */
+  TODO_update_ssa,	 /* todo_flags_finish */
+};
+
+class pass_sra_final : public gimple_opt_pass
+{
+public:
+  pass_sra_final (gcc::context *ctxt)
+    : gimple_opt_pass (pass_data_sra_final, ctxt)
+  {
+  }
+
+  /* opt_pass methods: */
+  bool gate (function *) final override { return gate_intra_sra (); }
+  unsigned int execute (function *) final override
+  {
+    return final_intra_sra ();
+  }
+
+}; // class pass_sra_final
+
+} // namespace
+
+gimple_opt_pass *
+make_pass_sra_final (gcc::context *ctxt)
+{
+  return new pass_sra_final (ctxt);
 }

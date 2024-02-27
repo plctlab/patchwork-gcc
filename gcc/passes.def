@@ -431,6 +431,8 @@ along with GCC; see the file COPYING3.  If not see
   NEXT_PASS (pass_harden_conditional_branches);
   NEXT_PASS (pass_harden_compares);
   NEXT_PASS (pass_warn_access, /*early=*/false);
+  NEXT_PASS (pass_sra_final);
+
   NEXT_PASS (pass_cleanup_cfg_post_optimizing);
   NEXT_PASS (pass_warn_function_noreturn);
 
