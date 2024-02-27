@@ -234,6 +234,8 @@ struct gimplify_omp_ctx
   bool order_concurrent;
   bool has_depend;
   bool in_for_exprs;
+  bool in_omp_for_body;
+  bool is_doacross;
   int defaultmap[5];
 };
 
@@ -455,6 +457,10 @@ new_omp_context (enum omp_region_type region_type)
   c->privatized_types = new hash_set<tree>;
   c->location = input_location;
   c->region_type = region_type;
+  c->loop_iter_var.create (0);
+  c->in_omp_for_body = false;
+  c->is_doacross = false;
+
   if ((region_type & ORT_TASK) == 0)
     c->default_kind = OMP_CLAUSE_DEFAULT_SHARED;
   else
@@ -6078,6 +6084,18 @@ gimplify_modify_expr (tree *expr_p, gimple_seq *pre_p, gimple_seq *post_p,
 
   gcc_assert (TREE_CODE (*expr_p) == MODIFY_EXPR
 	      || TREE_CODE (*expr_p) == INIT_EXPR);
+
+  if (gimplify_omp_ctxp && gimplify_omp_ctxp->in_omp_for_body)
+    {
+      size_t num_vars = gimplify_omp_ctxp->loop_iter_var.length () / 2;
+      for (size_t i = 0; i < num_vars; i++)
+	{
+	  if (*to_p == gimplify_omp_ctxp->loop_iter_var[2 * i + 1])
+	    warning_at (input_location, OPT_Wopenmp,
+			"forbidden modification of iteration variable %qE in "
+			"OpenMP loop", *to_p);
+	}
+    }
 
   /* Trying to simplify a clobber using normal logic doesn't work,
      so handle it here.  */
@@ -13953,6 +13971,8 @@ gimplify_omp_for (tree *expr_p, gimple_seq *pre_p)
 	      == TREE_VEC_LENGTH (OMP_FOR_COND (for_stmt)));
   gcc_assert (TREE_VEC_LENGTH (OMP_FOR_INIT (for_stmt))
 	      == TREE_VEC_LENGTH (OMP_FOR_INCR (for_stmt)));
+  int len = TREE_VEC_LENGTH (OMP_FOR_INIT (for_stmt));
+  gimplify_omp_ctxp->loop_iter_var.create (len * 2);
 
   tree c = omp_find_clause (OMP_FOR_CLAUSES (for_stmt), OMP_CLAUSE_ORDERED);
   bool is_doacross = false;
@@ -13961,8 +13981,6 @@ gimplify_omp_for (tree *expr_p, gimple_seq *pre_p)
     {
       OMP_CLAUSE_ORDERED_DOACROSS (c) = 1;
       is_doacross = true;
-      int len = TREE_VEC_LENGTH (OMP_FOR_INIT (for_stmt));
-      gimplify_omp_ctxp->loop_iter_var.create (len * 2);
       for (tree *pc = &OMP_FOR_CLAUSES (for_stmt); *pc; )
 	if (OMP_CLAUSE_CODE (*pc) == OMP_CLAUSE_LINEAR)
 	  {
@@ -13999,23 +14017,22 @@ gimplify_omp_for (tree *expr_p, gimple_seq *pre_p)
       gcc_assert (DECL_P (decl));
       gcc_assert (INTEGRAL_TYPE_P (TREE_TYPE (decl))
 		  || POINTER_TYPE_P (TREE_TYPE (decl)));
-      if (is_doacross)
+
+      if (TREE_CODE (for_stmt) == OMP_FOR && OMP_FOR_ORIG_DECLS (for_stmt))
 	{
-	  if (TREE_CODE (for_stmt) == OMP_FOR && OMP_FOR_ORIG_DECLS (for_stmt))
+	  tree orig_decl = TREE_VEC_ELT (OMP_FOR_ORIG_DECLS (for_stmt), i);
+	  if (TREE_CODE (orig_decl) == TREE_LIST)
 	    {
-	      tree orig_decl = TREE_VEC_ELT (OMP_FOR_ORIG_DECLS (for_stmt), i);
-	      if (TREE_CODE (orig_decl) == TREE_LIST)
-		{
-		  orig_decl = TREE_PURPOSE (orig_decl);
-		  if (!orig_decl)
-		    orig_decl = decl;
-		}
-	      gimplify_omp_ctxp->loop_iter_var.quick_push (orig_decl);
+	      orig_decl = TREE_PURPOSE (orig_decl);
+	      if (!orig_decl)
+		orig_decl = decl;
 	    }
-	  else
-	    gimplify_omp_ctxp->loop_iter_var.quick_push (decl);
-	  gimplify_omp_ctxp->loop_iter_var.quick_push (decl);
+	  gimplify_omp_ctxp->loop_iter_var.quick_push (orig_decl);
 	}
+      else
+	gimplify_omp_ctxp->loop_iter_var.quick_push (decl);
+      gimplify_omp_ctxp->loop_iter_var.quick_push (decl);
+
 
       if (for_stmt == orig_for_stmt)
 	{
@@ -14437,9 +14454,13 @@ gimplify_omp_for (tree *expr_p, gimple_seq *pre_p)
 	  TREE_SIDE_EFFECTS (OMP_FOR_BODY (orig_for_stmt)) = 1;
 	}
     }
+  gimplify_omp_ctxp->in_omp_for_body = true;
+  gimplify_omp_ctxp->is_doacross = is_doacross;
 
   gimple *g = gimplify_and_return_first (OMP_FOR_BODY (orig_for_stmt),
 					 &for_body);
+  gimplify_omp_ctxp->in_omp_for_body = false;
+  gimplify_omp_ctxp->is_doacross = false;
 
   if (TREE_CODE (orig_for_stmt) == OMP_TASKLOOP
       || (loop_p && orig_for_stmt == for_stmt))
@@ -16048,7 +16069,8 @@ gimplify_omp_ordered (tree expr, gimple_seq body)
     {
       for (c = OMP_ORDERED_CLAUSES (expr); c; c = OMP_CLAUSE_CHAIN (c))
 	if (OMP_CLAUSE_CODE (c) == OMP_CLAUSE_DOACROSS
-	    && gimplify_omp_ctxp->loop_iter_var.is_empty ())
+	    && (!gimplify_omp_ctxp->is_doacross
+		|| gimplify_omp_ctxp->loop_iter_var.is_empty ()))
 	  {
 	    error_at (OMP_CLAUSE_LOCATION (c),
 		      "%<ordered%> construct with %qs clause must be "
