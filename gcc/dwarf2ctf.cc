@@ -349,41 +349,39 @@ gen_ctf_pointer_type (ctf_container_ref ctfc, dw_die_ref ptr_type)
   return ptr_type_id;
 }
 
-/* Generate CTF for an array type.  */
+/* Generate CTF for an ARRAY_TYPE.
+   C argument is used as the iterator for the recursive calls to
+   gen_ctf_array_type. C is the current die within the recursion.
+   When C is NULL, it means it is the first call to gen_ctf_array_type.
+   C should always be NULL when called from other functions.  */
 
 static ctf_id_t
-gen_ctf_array_type (ctf_container_ref ctfc, dw_die_ref array_type)
+gen_ctf_array_type (ctf_container_ref ctfc,
+		    dw_die_ref array_type,
+		    dw_die_ref c = NULL)
 {
-  dw_die_ref c;
-  ctf_id_t array_elems_type_id = CTF_NULL_TYPEID;
-
   int vector_type_p = get_AT_flag (array_type, DW_AT_GNU_vector);
   if (vector_type_p)
-    return array_elems_type_id;
+    return CTF_NULL_TYPEID;
 
-  dw_die_ref array_elems_type = ctf_get_AT_type (array_type);
-
-  /* First, register the type of the array elements if needed.  */
-  array_elems_type_id = gen_ctf_type (ctfc, array_elems_type);
-
-  /* DWARF array types pretend C supports multi-dimensional arrays.
-     So for the type int[N][M], the array type DIE contains two
-     subrange_type children, the first with upper bound N-1 and the
-     second with upper bound M-1.
-
-     CTF, on the other hand, just encodes each array type in its own
-     array type CTF struct.  Therefore we have to iterate on the
-     children and create all the needed types.  */
-
-  c = dw_get_die_child (array_type);
-  gcc_assert (c);
-  do
+  if (c == dw_get_die_child (array_type))
+    {
+      dw_die_ref array_elems_type = ctf_get_AT_type (array_type);
+      return gen_ctf_type (ctfc, array_elems_type);
+    }
+  else
     {
       ctf_arinfo_t arinfo;
-      dw_die_ref array_index_type;
-      uint32_t array_num_elements;
+      ctf_id_t array_node_type_id = CTF_NULL_TYPEID;
+      if (c == NULL)
+	c = dw_get_die_child (array_type);
 
       c = dw_get_die_sib (c);
+
+      ctf_id_t child_id = gen_ctf_array_type (ctfc, array_type, c);
+
+      dw_die_ref array_index_type;
+      uint32_t array_num_elements;
 
       if (dw_get_die_tag (c) == DW_TAG_subrange_type)
 	{
@@ -431,23 +429,12 @@ gen_ctf_array_type (ctf_container_ref ctfc, dw_die_ref array_type)
       else
 	arinfo.ctr_index = gen_ctf_type (ctfc, ctf_array_index_die);
 
-      arinfo.ctr_contents = array_elems_type_id;
-      if (!ctf_type_exists (ctfc, c, &array_elems_type_id))
-	array_elems_type_id = ctf_add_array (ctfc, CTF_ADD_ROOT, &arinfo,
-					     c);
+      arinfo.ctr_contents = child_id;
+      if (!ctf_type_exists (ctfc, c, &array_node_type_id))
+	array_node_type_id = ctf_add_array (ctfc, CTF_ADD_ROOT, &arinfo,
+					    c);
+      return array_node_type_id;
     }
-  while (c != dw_get_die_child (array_type));
-
-#if 0
-  /* Type de-duplication.
-     Consult the ctfc_types hash again before adding the CTF array type because
-     there can be cases where an array_type type may have been added by the
-     gen_ctf_type call above.  */
-  if (!ctf_type_exists (ctfc, array_type, &type_id))
-    type_id = ctf_add_array (ctfc, CTF_ADD_ROOT, &arinfo, array_type);
-#endif
-
-  return array_elems_type_id;
 }
 
 /* Generate CTF for a typedef.  */
