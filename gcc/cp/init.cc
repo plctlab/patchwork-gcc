@@ -4248,6 +4248,8 @@ create_temporary_var (tree type)
   DECL_ARTIFICIAL (decl) = 1;
   DECL_IGNORED_P (decl) = 1;
   DECL_CONTEXT (decl) = current_function_decl;
+  if (!DECL_CONTEXT (decl))
+    DECL_CONTEXT (decl) = current_namespace;
 
   return decl;
 }
