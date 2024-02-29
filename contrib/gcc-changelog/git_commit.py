@@ -104,6 +104,7 @@ bug_components = {
     'java',
     'jit',
     'libbacktrace',
+    'libcc1',
     'libf2c',
     'libffi',
     'libfortran',
