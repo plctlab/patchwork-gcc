@@ -13324,9 +13324,9 @@ depset::hash::find_dependencies (module_state *module)
 		  /* Turn the Sneakoscope on when depending the decl.  */
 		  sneakoscope = true;
 		  walker.decl_value (decl, current);
-		  sneakoscope = false;
 		  if (current->has_defn ())
 		    walker.write_definition (decl);
+		  sneakoscope = false;
 		}
 	      walker.end ();
 
