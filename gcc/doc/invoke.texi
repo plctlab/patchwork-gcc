@@ -2699,6 +2699,13 @@ Offload targets are specified in GCC's internal target-triplet format. You can
 run the compiler with @option{-v} to show the list of configured offload targets
 under @code{OFFLOAD_TARGET_NAMES}.
 
+Note that this option does not affect the available offload devices detected by
+the run-time library and, hence, the values returned by the OpenMP/OpenACC API
+routines or access to devices using those routines.  The run-time library
+itself can be tuned using environment variables; in particular, to fully disable
+the device detection, set the @code{OMP_TARGET_OFFLOAD} environment variable to
+@code{disabled}.
+
 @opindex foffload-options
 @cindex Offloading options
 @cindex OpenACC offloading options
