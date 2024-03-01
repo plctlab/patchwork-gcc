@@ -1175,7 +1175,22 @@ slpeel_tree_duplicate_loop_to_edge_cfg (class loop *loop,
       flush_pending_stmts (e);
       set_immediate_dominator (CDI_DOMINATORS, new_preheader, e->src);
       if (was_imm_dom || duplicate_outer_loop)
-	set_immediate_dominator (CDI_DOMINATORS, exit_dest, new_exit->src);
+	{
+	  set_immediate_dominator (CDI_DOMINATORS, exit_dest, new_exit->src);
+
+	  /* Update the dominator info for children of duplicated bbs.  */
+	  for (unsigned i = 0; i < scalar_loop->num_nodes; i++)
+	    {
+	      basic_block dom_bb = NULL;
+	      edge e;
+	      edge_iterator ei;
+	      FOR_EACH_EDGE (e, ei, new_bbs[i]->succs)
+		{
+		  dom_bb = recompute_dominator (CDI_DOMINATORS, e->dest);
+		  set_immediate_dominator (CDI_DOMINATORS, e->dest, dom_bb);
+		}
+	    }
+	}
 
       /* And remove the non-necessary forwarder again.  Keep the other
          one so we have a proper pre-header for the loop at the exit edge.  */
