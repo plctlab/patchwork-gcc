@@ -11,7 +11,7 @@ AC_CONFIG_HEADER(config.h)
 ### am handles this now?  ORIGINAL_LD_FOR_MULTILIBS=$LD
 
 # Find the rest of the source tree framework.
-AM_ENABLE_MULTILIB(, ..)
+AM_ENABLE_MULTILIB([], ..)
 
 # Gets build, host, target, *_vendor, *_cpu, *_os, etc.
 #
