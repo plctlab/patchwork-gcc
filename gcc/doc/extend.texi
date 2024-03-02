@@ -25365,6 +25365,11 @@ type (disregarding cv-qualifiers), @var{derived_type} shall be a complete
 type.  A diagnostic is produced if this requirement is not met.
 @enddefbuiltin
 
+@defbuiltin{bool __is_bounded_array (@var{type})}
+If @var{type} is an array type of known bound ([dcl.array])
+the trait is @code{true}, else it is @code{false}.
+@enddefbuiltin
+
 @defbuiltin{bool __is_class (@var{type})}
 If @var{type} is a cv-qualified class type, and not a union type
 ([basic.compound]) the trait is @code{true}, else it is @code{false}.
