@@ -25348,6 +25348,11 @@ If @var{type} is an aggregate type ([dcl.init.aggr]) the trait is
 Requires: If @var{type} is a class type, it shall be a complete type.
 @enddefbuiltin
 
+@defbuiltin{bool __is_array (@var{type})}
+If @var{type} is an array type ([dcl.array]) the trait is @code{true},
+else it is @code{false}.
+@enddefbuiltin
+
 @defbuiltin{bool __is_base_of (@var{base_type}, @var{derived_type})}
 If @var{base_type} is a base class of @var{derived_type}
 ([class.derived]) then the trait is @code{true}, otherwise it is @code{false}.
