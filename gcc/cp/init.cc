@@ -923,6 +923,31 @@ find_uninit_fields (tree *t, hash_set<tree> *uninitialized, tree member)
     }
 }
 
+/* Return true if it's OK to initialize an array from INIT.  Mere mortals
+   can't copy arrays, but the compiler can do so with a VEC_INIT_EXPR in
+   certain cases.  */
+
+static bool
+can_init_array_with_p (tree init)
+{
+  if (!init)
+    return true;
+
+  /* We're called from synthesize_method, and we're processing the
+     mem-initializers of a constructor.  */
+  if (DECL_DEFAULTED_FN (current_function_decl))
+    return true;
+  /* As an extension, we allow copying from a compound literal.  */
+  else if (TREE_CODE (init) == TARGET_EXPR)
+    {
+      init = TARGET_EXPR_INITIAL (init);
+      if (TREE_CODE (init) == CONSTRUCTOR)
+	return CONSTRUCTOR_C99_COMPOUND_LITERAL (init);
+    }
+
+  return false;
+}
+
 /* Initialize MEMBER, a FIELD_DECL, with INIT, a TREE_LIST of
    arguments.  If TREE_LIST is void_type_node, an empty initializer
    list was given; if NULL_TREE no initializer was given.  UNINITIALIZED
@@ -1074,7 +1099,7 @@ perform_member_init (tree member, tree init, hash_set<tree> &uninitialized)
   else if (type_build_ctor_call (type)
 	   || (init && CLASS_TYPE_P (strip_array_types (type))))
     {
-      if (TREE_CODE (type) == ARRAY_TYPE)
+      if (TREE_CODE (type) == ARRAY_TYPE && can_init_array_with_p (init))
 	{
 	  if (init == NULL_TREE
 	      || same_type_ignoring_top_level_qualifiers_p (type,
