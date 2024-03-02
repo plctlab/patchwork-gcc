@@ -25453,6 +25453,11 @@ If @var{type} is a reference type ([dcl.ref]) the trait is @code{true},
 else it is @code{false}.
 @enddefbuiltin
 
+@defbuiltin{bool __is_scoped_enum (@var{type})}
+If @var{type} is a scoped enumeration type ([dcl.enum]) the trait is
+@code{true}, else it is @code{false}.
+@enddefbuiltin
+
 @defbuiltin{bool __is_standard_layout (@var{type})}
 If @var{type} is a standard-layout type ([basic.types]) the trait is
 @code{true}, else it is @code{false}.
