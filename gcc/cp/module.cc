@@ -10059,10 +10059,14 @@ trees_out::tpl_parms_fini (tree tmpl, unsigned tpl_levels)
 	  tree dflt = TREE_PURPOSE (parm);
 	  tree_node (dflt);
 
-	  if (streaming_p ())
+	  if (CHECKING_P && streaming_p ())
 	    {
+	      /* Sanity check that the DECL_CONTEXT we'll infer when
+		 streaming in is correct.  */
 	      tree decl = TREE_VALUE (parm);
-	      if (TREE_CODE (decl) == TEMPLATE_DECL)
+	      if (TREE_CODE (decl) == TEMPLATE_DECL
+		  /* A template template parm is not the owning template.  */
+		  && !DECL_TEMPLATE_TEMPLATE_PARM_P (tmpl))
 		{
 		  tree ctx = DECL_CONTEXT (decl);
 		  tree inner = DECL_TEMPLATE_RESULT (decl);
@@ -10097,8 +10101,13 @@ trees_in::tpl_parms_fini (tree tmpl, unsigned tpl_levels)
 	    return false;
 	  TREE_PURPOSE (parm) = dflt;
 
+	  /* Original template template parms have a context
+	     of their owning template.  Reduced ones do not.
+	     But if TMPL is itself a template template parm
+	     then it cannot be the owning template.  */
 	  tree decl = TREE_VALUE (parm);
-	  if (TREE_CODE (decl) == TEMPLATE_DECL)
+	  if (TREE_CODE (decl) == TEMPLATE_DECL
+	      && !DECL_TEMPLATE_TEMPLATE_PARM_P (tmpl))
 	    {
 	      tree inner = DECL_TEMPLATE_RESULT (decl);
 	      tree tpi = (TREE_CODE (inner) == TYPE_DECL
@@ -10106,8 +10115,6 @@ trees_in::tpl_parms_fini (tree tmpl, unsigned tpl_levels)
 			  : DECL_INITIAL (inner));
 	      bool original = (TEMPLATE_PARM_LEVEL (tpi)
 			       == TEMPLATE_PARM_ORIG_LEVEL (tpi));
-	      /* Original template template parms have a context
-		 of their owning template.  Reduced ones do not.  */
 	      if (original)
 		DECL_CONTEXT (decl) = tmpl;
 	    }
