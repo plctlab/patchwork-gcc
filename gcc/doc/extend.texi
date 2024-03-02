@@ -25448,6 +25448,11 @@ is @code{true}, else it is @code{false}.
 Requires: If @var{type} is a non-union class type, it shall be a complete type.
 @enddefbuiltin
 
+@defbuiltin{bool __is_reference (@var{type})}
+If @var{type} is a reference type ([dcl.ref]) the trait is @code{true},
+else it is @code{false}.
+@enddefbuiltin
+
 @defbuiltin{bool __is_standard_layout (@var{type})}
 If @var{type} is a standard-layout type ([basic.types]) the trait is
 @code{true}, else it is @code{false}.
