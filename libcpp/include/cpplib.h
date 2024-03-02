@@ -576,6 +576,10 @@ struct cpp_options
      2 if it should be a pedwarn.  */
   unsigned char cpp_warn_invalid_utf8;
 
+  /* True if libcpp should warn about #pragma once outside of a header.
+     2 if it should be an error, i.e., -Werror.  */
+  unsigned char cpp_warn_pragma_once_outside_header;
+
   /* True if libcpp should warn about invalid forms of delimited or named
      escape sequences.  */
   bool cpp_warn_unicode;

@@ -407,6 +407,15 @@ c_common_handle_option (size_t scode, const char *arg, HOST_WIDE_INT value,
       cpp_opts->warn_num_sign_change = value;
       break;
 
+    case OPT_Wpragma_once_outside_header:
+      if (value == 0)
+	cpp_opts->cpp_warn_pragma_once_outside_header = 0;
+      else if (kind == DK_ERROR)
+	cpp_opts->cpp_warn_pragma_once_outside_header = 2;
+      else
+	cpp_opts->cpp_warn_pragma_once_outside_header = 1;
+      break;
+
     case OPT_Wunknown_pragmas:
       /* Set to greater than 1, so that even unknown pragmas in
 	 system headers will be warned about.  */
