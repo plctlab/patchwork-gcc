@@ -233,6 +233,7 @@ cpp_create_reader (enum c_lang lang, cpp_hash_table *table,
   CPP_OPTION (pfile, cpp_warn_bidirectional) = bidirectional_unpaired;
   CPP_OPTION (pfile, cpp_warn_invalid_utf8) = 0;
   CPP_OPTION (pfile, cpp_warn_unicode) = 1;
+  CPP_OPTION (pfile, cpp_warn_pragma_once_outside_header) = 1;
   CPP_OPTION (pfile, cpp_input_charset_explicit) = 0;
 
   /* Default CPP arithmetic to something sensible for the host for the

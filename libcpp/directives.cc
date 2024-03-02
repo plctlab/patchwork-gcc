@@ -1585,8 +1585,10 @@ do_pragma (cpp_reader *pfile)
 static void
 do_pragma_once (cpp_reader *pfile)
 {
-  if (_cpp_in_main_source_file (pfile))
-    cpp_error (pfile, CPP_DL_WARNING, "#pragma once in main file");
+  if (CPP_OPTION (pfile, cpp_warn_pragma_once_outside_header)
+      && _cpp_in_main_source_file (pfile))
+    cpp_warning (pfile, CPP_W_PRAGMA_ONCE_OUTSIDE_HEADER,
+		 "#pragma once in main file");
 
   check_eol (pfile, false);
   _cpp_mark_file_once_only (pfile, pfile->buffer->file);

@@ -576,6 +576,9 @@ struct cpp_options
      2 if it should be a pedwarn.  */
   unsigned char cpp_warn_invalid_utf8;
 
+  /* True if libcpp should warn about #pragma once outside of a header.  */
+  bool cpp_warn_pragma_once_outside_header;
+
   /* True if libcpp should warn about invalid forms of delimited or named
      escape sequences.  */
   bool cpp_warn_unicode;
@@ -691,7 +694,8 @@ enum cpp_warning_reason {
   CPP_W_EXPANSION_TO_DEFINED,
   CPP_W_BIDIRECTIONAL,
   CPP_W_INVALID_UTF8,
-  CPP_W_UNICODE
+  CPP_W_UNICODE,
+  CPP_W_PRAGMA_ONCE_OUTSIDE_HEADER
 };
 
 /* Callback for header lookup for HEADER, which is the name of a
