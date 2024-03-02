@@ -25397,6 +25397,11 @@ is @code{true}, else it is @code{false}.
 Requires: If @var{type} is a class type, it shall be a complete type.
 @enddefbuiltin
 
+@defbuiltin{bool __is_function (@var{type})}
+If @var{type} is a function type ([dcl.fct]) the trait is @code{true},
+else it is @code{false}.
+@enddefbuiltin
+
 @c FIXME Commented out for GCC 13, discuss user interface for GCC 14.
 @c @defbuiltin{bool __is_deducible (@var{template}, @var{type})}
 @c If template arguments for @code{template} can be deduced from
