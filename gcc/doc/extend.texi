@@ -25477,6 +25477,11 @@ If @var{type} is a cv union type ([basic.compound]) the trait is
 @code{true}, else it is @code{false}.
 @enddefbuiltin
 
+@defbuiltin{@var{type} __remove_pointer (@var{type} @var{t})}
+If @var{type} is a pointer type ([dcl.ptr]) then the trait is the @var{type}
+pointed to by @var{t}, else it is @var{t}.
+@enddefbuiltin
+
 @defbuiltin{bool __underlying_type (@var{type})}
 The underlying type of @var{type}.
 Requires: @var{type} shall be an enumeration type ([dcl.enum]).
