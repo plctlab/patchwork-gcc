@@ -25430,6 +25430,11 @@ If @var{type} is a pointer to member ([dcl.mptr]) the trait is
 @code{true}, else it is @code{false}.
 @enddefbuiltin
 
+@defbuiltin{bool __is_object (@var{type})}
+If @var{type} is an object type ([basic.types]) the trait is
+@code{true}, else it is @code{false}.
+@enddefbuiltin
+
 @defbuiltin{bool __is_pod (@var{type})}
 If @var{type} is a cv POD type ([basic.types]) then the trait is @code{true},
 else it is @code{false}.
