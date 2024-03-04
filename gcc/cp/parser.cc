@@ -549,6 +549,8 @@ cp_debug_parser (FILE *file, cp_parser *parser)
 			       & THIS_FORBIDDEN));
   cp_debug_print_flag (file, "In unbraced linkage specification",
 			      parser->in_unbraced_linkage_specification_p);
+  cp_debug_print_flag (file, "In unbraced export declaration",
+			      parser->in_unbraced_export_declaration_p);
   cp_debug_print_flag (file, "Parsing a declarator",
 			      parser->in_declarator_p);
   cp_debug_print_flag (file, "In template argument list",
@@ -4298,6 +4300,9 @@ cp_parser_new (cp_lexer *lexer)
 
   /* We are not processing an `extern "C"' declaration.  */
   parser->in_unbraced_linkage_specification_p = false;
+
+  /* We aren't parsing an export-declaration.  */
+  parser->in_unbraced_export_declaration_p = false;
 
   /* We are not processing a declarator.  */
   parser->in_declarator_p = false;
@@ -14797,10 +14802,6 @@ cp_parser_import_declaration (cp_parser *parser, module_parse mp_state,
 	goto skip_eol;
       cp_parser_require_pragma_eol (parser, token);
 
-      if (parser->in_unbraced_linkage_specification_p)
-	error_at (token->location, "import cannot appear directly in"
-		  " a linkage-specification");
-
       if (mp_state == MP_PURVIEW_IMPORTS || mp_state == MP_PRIVATE_IMPORTS)
 	{
 	  /* Module-purview imports must not be from source inclusion
@@ -14821,7 +14822,7 @@ cp_parser_import_declaration (cp_parser *parser, module_parse mp_state,
 
 /*  export-declaration.
 
-    export declaration
+    export name-declaration
     export { declaration-seq-opt }  */
 
 static void
@@ -14863,7 +14864,13 @@ cp_parser_module_export (cp_parser *parser)
 	  || cp_lexer_next_token_is_keyword (parser->lexer, RID__EXPORT))
 	error_at (token->location, "%<export%> not part of following"
 		  " module-directive");
+
+      bool saved_in_unbraced_export_declaration_p
+	= parser->in_unbraced_export_declaration_p;
+      parser->in_unbraced_export_declaration_p = true;
       cp_parser_declaration (parser, NULL_TREE);
+      parser->in_unbraced_export_declaration_p
+	= saved_in_unbraced_export_declaration_p;
     }
 
   module_kind = mk;
@@ -14894,27 +14901,29 @@ cp_parser_declaration_seq_opt (cp_parser* parser)
     }
 }
 
-/* Parse a declaration.
+/* Parse a declaration.  The distinction between name-declaration
+   and special-declaration is only since C++20.
 
    declaration:
+     name-declaration
+     special-declaration
+
+   name-declaration:
      block-declaration
+     nodeclspec-function-declaration
      function-definition
      template-declaration
-     explicit-instantiation
-     explicit-specialization
+     deduction-guide  (C++17)
      linkage-specification
      namespace-definition
+     empty-declaration
+     attribute-declaration
+     module-import-declaration  (modules)
 
-   C++17:
-     deduction-guide
-
-   modules:
-     (all these are only allowed at the outermost level, check
-   	that semantically, for better diagnostics)
-     module-declaration
-     module-export-declaration
-     module-import-declaration
-     export-declaration
+   special-declaration:
+     explicit-instantiation
+     explicit-specialization
+     export-declaration   (modules)
 
    GNU extension:
 
@@ -14936,6 +14945,13 @@ cp_parser_declaration (cp_parser* parser, tree prefix_attrs)
 
       return;
     }
+
+  /* P2615: Determine if we're parsing a name-declaration specifically,
+     or if special-declarations are OK too.  */
+  bool require_name_decl_p
+    = (parser->in_unbraced_export_declaration_p
+       || (parser->in_unbraced_linkage_specification_p
+	   && cxx_dialect >= cxx20));
 
   /* Try to figure out what kind of declaration is present.  */
   cp_token *token1 = cp_lexer_peek_token (parser->lexer);
@@ -15044,13 +15060,30 @@ cp_parser_declaration (cp_parser* parser, tree prefix_attrs)
       /* `template <>' indicates a template specialization.  */
       if (token2->type == CPP_LESS
 	  && cp_lexer_peek_nth_token (parser->lexer, 3)->type == CPP_GREATER)
-	cp_parser_explicit_specialization (parser);
+	{
+	  if (require_name_decl_p)
+	    {
+	      auto_diagnostic_group d;
+	      cp_token *token3 = cp_lexer_peek_nth_token (parser->lexer, 3);
+	      location_t loc = make_location (token1, token1, token3);
+	      error_at (loc, "explicit specializations are not permitted here");
+	      if (parser->in_unbraced_export_declaration_p)
+		inform (loc, "a specialization is always exported alongside "
+			"its primary template");
+	    }
+	  cp_parser_explicit_specialization (parser);
+	}
       /* `template <' indicates a template declaration.  */
       else if (token2->type == CPP_LESS)
 	cp_parser_template_declaration (parser, /*member_p=*/false);
       /* Anything else must be an explicit instantiation.  */
       else
-	cp_parser_explicit_instantiation (parser);
+	{
+	  if (require_name_decl_p)
+	    error_at (token1->location,
+		     "explicit instantiations are not permitted here");
+	  cp_parser_explicit_instantiation (parser);
+	}
     }
   /* If the next token is `export', it's new-style modules or
      old-style template.  */
@@ -15059,7 +15092,14 @@ cp_parser_declaration (cp_parser* parser, tree prefix_attrs)
       if (!modules_p ())
 	cp_parser_template_declaration (parser, /*member_p=*/false);
       else
-	cp_parser_module_export (parser);
+	{
+	  /* We check for nested exports in cp_parser_module_export.  */
+	  if (require_name_decl_p
+	      && !parser->in_unbraced_export_declaration_p)
+	    error_at (token1->location,
+		      "export-declarations are not permitted here");
+	  cp_parser_module_export (parser);
+	}
     }
   else if (cp_token_is_module_directive (token1))
     {
@@ -16308,7 +16348,7 @@ cp_parser_function_specifier_opt (cp_parser* parser,
 
    linkage-specification:
      extern string-literal { declaration-seq [opt] }
-     extern string-literal declaration  */
+     extern string-literal name-declaration  */
 
 static void
 cp_parser_linkage_specification (cp_parser* parser, tree prefix_attr)
@@ -26133,6 +26173,7 @@ cp_parser_class_specifier (cp_parser* parser)
   unsigned char in_statement;
   bool in_switch_statement_p;
   bool saved_in_unbraced_linkage_specification_p;
+  bool saved_in_unbraced_export_declaration_p;
   tree old_scope = NULL_TREE;
   tree scope = NULL_TREE;
   cp_token *closing_brace;
@@ -26184,6 +26225,10 @@ cp_parser_class_specifier (cp_parser* parser)
   saved_in_unbraced_linkage_specification_p
     = parser->in_unbraced_linkage_specification_p;
   parser->in_unbraced_linkage_specification_p = false;
+  /* Or in an export-declaration.  */
+  saved_in_unbraced_export_declaration_p
+    = parser->in_unbraced_export_declaration_p;
+  parser->in_unbraced_export_declaration_p = false;
   /* 'this' from an enclosing non-static member function is unavailable.  */
   tree saved_ccp = current_class_ptr;
   tree saved_ccr = current_class_ref;
@@ -26566,6 +26611,8 @@ cp_parser_class_specifier (cp_parser* parser)
     = saved_num_template_parameter_lists;
   parser->in_unbraced_linkage_specification_p
     = saved_in_unbraced_linkage_specification_p;
+  parser->in_unbraced_export_declaration_p
+    = saved_in_unbraced_export_declaration_p;
   current_class_ptr = saved_ccp;
   current_class_ref = saved_ccr;
 
@@ -26852,6 +26899,20 @@ cp_parser_class_head (cp_parser* parser,
       if (scope == nested_name_specifier)
 	permerror (nested_name_specifier_token_start->location,
 		   "extra qualification not allowed");
+    }
+  /* The name-declaration of an export-declaration shall not declare
+     a partial specialization.  */
+  if (template_id_p
+      && parser->in_unbraced_export_declaration_p
+      && !processing_specialization
+      && !processing_explicit_instantiation)
+    {
+      auto_diagnostic_group d;
+      location_t loc = type_start_token->location;
+      error_at (loc, "declaration of partial specialization in unbraced "
+		"export-declaration");
+      inform (loc, "a specialization is always exported alongside its "
+	      "primary template");
     }
   /* An explicit-specialization must be preceded by "template <>".  If
      it is not, try to recover gracefully.  */
