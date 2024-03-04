@@ -3674,6 +3674,12 @@ arm_option_override (void)
       arm_pic_register = FDPIC_REGNUM;
       if (TARGET_THUMB1)
 	sorry ("FDPIC mode is not supported in Thumb-1 mode");
+
+      /* FDPIC code is a special form of PIC, and the vast majority of code
+	 generation constraints that apply to PIC also apply to FDPIC, so we
+         set flag_pic to avoid the need to check TARGET_FDPIC everywhere
+         flag_pic is checked. */
+      flag_pic = 2;
     }
 
   if (arm_pic_register_string != NULL)
