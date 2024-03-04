@@ -2818,10 +2818,10 @@
 
 (define_insn "*sge<u>_<X:mode><GPR:mode>"
   [(set (match_operand:GPR 0 "register_operand" "=r")
-	(any_ge:GPR (match_operand:X 1 "register_operand" "r")
+	(any_ge:GPR (match_operand:X 1 "arith_operand" "rI")
 		     (const_int 1)))]
   ""
-  "slt<u>i\t%0,%.,%1"
+  "slt<u>%i1\t%0,%.,%1"
   [(set_attr "type" "slt")
    (set_attr "mode" "<X:MODE>")])
 
