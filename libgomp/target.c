@@ -470,7 +470,9 @@ gomp_increment_refcount (splay_tree_key k, htab_t *refcount_set)
 
   uintptr_t *refcount_ptr = &k->refcount;
 
-  if (REFCOUNT_STRUCTELEM_FIRST_P (k->refcount))
+  if (k->refcount == REFCOUNT_ACC_MAP_DATA)
+    refcount_ptr = &k->dynamic_refcount;
+  else if (REFCOUNT_STRUCTELEM_FIRST_P (k->refcount))
     refcount_ptr = &k->structelem_refcount;
   else if (REFCOUNT_STRUCTELEM_P (k->refcount))
     refcount_ptr = k->structelem_refcount_ptr;
@@ -517,7 +519,9 @@ gomp_decrement_refcount (splay_tree_key k, htab_t *refcount_set, bool delete_p,
 
   uintptr_t *refcount_ptr = &k->refcount;
 
-  if (REFCOUNT_STRUCTELEM_FIRST_P (k->refcount))
+  if (k->refcount == REFCOUNT_ACC_MAP_DATA)
+    refcount_ptr = &k->dynamic_refcount;
+  else if (REFCOUNT_STRUCTELEM_FIRST_P (k->refcount))
     refcount_ptr = &k->structelem_refcount;
   else if (REFCOUNT_STRUCTELEM_P (k->refcount))
     refcount_ptr = k->structelem_refcount_ptr;
@@ -549,6 +553,10 @@ gomp_decrement_refcount (splay_tree_key k, htab_t *refcount_set, bool delete_p,
     *refcount_ptr = 0;
   else if (*refcount_ptr > 0)
     *refcount_ptr -= 1;
+
+  /* Force back to 1 if this is an acc_map_data mapping.  */
+  if (k->refcount == REFCOUNT_ACC_MAP_DATA && *refcount_ptr == 0)
+    *refcount_ptr = 1;
 
  end:
   if (*refcount_ptr == 0)
